@@ -26,18 +26,28 @@ export function normalizeRole(role?: string | null, fallback: RoleCode = 'viewer
   return fallback;
 }
 
-/** Matriks minimum sisi klien - sumber utama tetap `GET /api/rbac/me`. */
-export const ROLE_PERMISSIONS: Record<RoleCode, '*' | string[]> = {
+/**
+ * Matriks BOOTSTRAP minimal sisi klien.
+ *
+ * ?? PRD �20 melarang frontend menghardcode logika otorisasi yang kompleks.
+ * Nilai di sini HANYA untuk render pertama sebelum `GET /api/rbac/me` menjawab.
+ * Sumber kebenaran tetap server; setelah respons `/api/rbac/me` masuk,
+ * `permissionValueFromMe()` memakai daftar permission dari server.
+ */
+export const EDITOR_CAN_DELETE_DOCUMENT = true;
+
+export const BOOTSTRAP_ROLE_PERMISSIONS: Record<RoleCode, '*' | string[]> = {
   superuser: '*',
   admin: ['user.view', 'user.create', 'user.edit', 'user.delete', 'user.invite', 'user.role.assign',
     'user.status.update', 'document.view', 'document.create', 'document.edit', 'document.delete',
     'document.export', 'document.download', 'department.view', 'department.create', 'department.edit',
     'export.csv', 'export.document', 'admin.access', 'admin.user.manage', 'admin.department.manage',
-    'tenant.view', 'audit.view'],
+    'tenant.view'],
   manager: ['user.view', 'user.create', 'user.edit', 'user.invite', 'user.role.assign', 'user.status.update',
     'document.view', 'document.create', 'document.edit', 'document.delete', 'document.export',
     'document.download', 'department.view', 'export.csv', 'export.document', 'admin.access', 'admin.user.manage'],
-  editor: ['document.view', 'document.create', 'document.edit', 'document.delete', 'document.download'],
+  editor: ['document.view', 'document.create', 'document.edit',
+    ...(EDITOR_CAN_DELETE_DOCUMENT ? ['document.delete'] : []), 'document.download'],
   viewer: ['document.view'],
 };
 
@@ -49,7 +59,7 @@ export interface PermissionContextValue {
 }
 
 export const PermissionContext = createContext<PermissionContextValue>({
-  role: 'viewer', permissions: ROLE_PERMISSIONS.viewer as string[],
+  role: 'viewer', permissions: BOOTSTRAP_ROLE_PERMISSIONS.viewer as string[],
 });
 
 /** Menghasilkan nilai context dari respons `GET /api/rbac/me`. */
@@ -60,7 +70,7 @@ export function permissionValueFromMe(me: {
   const role = normalizeRole(me?.actor?.role ?? fallbackRole);
   const permissions = me?.permissions?.length
     ? me.permissions
-    : (ROLE_PERMISSIONS[role] === '*' ? ['*'] : (ROLE_PERMISSIONS[role] as string[]));
+    : (BOOTSTRAP_ROLE_PERMISSIONS[role] === '*' ? ['*'] : (BOOTSTRAP_ROLE_PERMISSIONS[role] as string[]));
   return {
     role,
     permissions,
