@@ -1,7 +1,7 @@
 /**
- * Suite pengujian otorisasi RBAC - memetakan langsung ke
- * "Engineering PRD - RBAC Structure & Authorization" �30 (QA Test Matrix),
- * �13 (invitation), �26 (role change), �29 (errors), �32 (prinsip).
+ * Suite pengujian otorisasi RBAC — memetakan langsung ke
+ * "Engineering PRD — RBAC Structure & Authorization" §30 (QA Test Matrix),
+ * §13 (invitation), §26 (role change), §29 (errors), §32 (prinsip).
  *
  * Jalankan:  npx tsx --test tests/rbac.test.ts
  *         (atau) node --import tsx --test tests/rbac.test.ts
@@ -31,14 +31,14 @@ const ok = (r: { allowed: true } | { allowed: false; error: string }) => r.allow
 const err = (r: { allowed: true } | { allowed: false; error: string }) =>
   r.allowed === false ? r.error : `ALLOWED(${(r as any).error ?? ''})`;
 
-/* ---------------------- �3 hierarki & level ---------------------- */
+/* ---------------------- §3 hierarki & level ---------------------- */
 
-test('�3 hierarki: level menurun sesuai PRD', () => {
+test('§3 hierarki: level menurun sesuai PRD', () => {
   assert.deepEqual(ROLE_LEVEL, { superuser: 1, admin: 2, manager: 3, editor: 4, viewer: 5 });
   assert.equal(ROLES.length, 5);
 });
 
-test('�3 normalisasi role: legacy dipetakan, unknown ? viewer (deny by default)', () => {
+test('§3 normalisasi role: legacy dipetakan, unknown → viewer (deny by default)', () => {
   assert.equal(normalizeRole('Legal'), 'manager');
   assert.equal(normalizeRole('finance'), 'editor');
   assert.equal(normalizeRole('staff'), 'viewer');
@@ -48,7 +48,7 @@ test('�3 normalisasi role: legacy dipetakan, unknown ? viewer (deny by default
   assert.equal(normalizeRole('nonsense'), 'viewer');
 });
 
-test('�6.1 constraint scope per role', () => {
+test('§6.1 constraint scope per role', () => {
   assert.equal(validateActorScope(SH).ok, true);
   assert.equal(validateActorScope(AD).ok, true);
   assert.equal(validateActorScope({ ...AD, departmentId: 'd1' }).ok, false); // admin tak boleh punya dept
@@ -56,9 +56,9 @@ test('�6.1 constraint scope per role', () => {
   assert.equal(validateActorScope({ ...MG, departmentId: null }).ok, false); // manager wajib dept
 });
 
-/* ------------------- �12/�33 matriks permission ------------------- */
+/* ------------------- §12/§33 matriks permission ------------------- */
 
-test('�33 SUPERUSER = ALL permissions', () => {
+test('§33 SUPERUSER = ALL permissions', () => {
   const m = permissionsFor('superuser');
   assert.ok(m.includes('document.delete'));
   assert.ok(m.includes('workspace.switch'));
@@ -66,7 +66,7 @@ test('�33 SUPERUSER = ALL permissions', () => {
   assert.ok(m.includes('audit.view'));
 });
 
-test('�12 ADMIN: punya akses user & department, TIDAK punya workspace.switch/tenant.create', () => {
+test('§12 ADMIN: punya akses user & department, TIDAK punya workspace.switch/tenant.create', () => {
   assert.ok(hasPermission('admin', 'user.invite'));
   assert.ok(hasPermission('admin', 'user.role.assign'));
   assert.ok(hasPermission('admin', 'department.create'));
@@ -76,7 +76,7 @@ test('�12 ADMIN: punya akses user & department, TIDAK punya workspace.switch/t
   assert.equal(hasPermission('admin', 'tenant.delete'), false);
 });
 
-test('�33 MANAGER: tanpa department.create dan tanpa user.delete', () => {
+test('§33 MANAGER: tanpa department.create dan tanpa user.delete', () => {
   assert.ok(hasPermission('manager', 'user.invite'));
   assert.ok(hasPermission('manager', 'document.export'));
   assert.ok(hasPermission('manager', 'admin.access'));
@@ -86,7 +86,7 @@ test('�33 MANAGER: tanpa department.create dan tanpa user.delete', () => {
   assert.equal(hasPermission('manager', 'admin.department.manage'), false);
 });
 
-test('�33 EDITOR: hanya dokumen, tanpa invite/admin/export/workspace.switch', () => {
+test('§33 EDITOR: hanya dokumen, tanpa invite/admin/export/workspace.switch', () => {
   assert.ok(hasPermission('editor', 'document.create'));
   assert.ok(hasPermission('editor', 'document.download'));
   assert.equal(hasPermission('editor', 'user.invite'), false);
@@ -96,7 +96,7 @@ test('�33 EDITOR: hanya dokumen, tanpa invite/admin/export/workspace.switch', 
   assert.equal(hasPermission('editor', 'user.role.assign'), false);
 });
 
-test('�33 VIEWER: read-only', () => {
+test('§33 VIEWER: read-only', () => {
   assert.ok(hasPermission('viewer', 'document.view'));
   for (const p of ['document.create', 'document.edit', 'document.delete',
     'document.export', 'document.download', 'user.invite', 'admin.access',
@@ -105,49 +105,49 @@ test('�33 VIEWER: read-only', () => {
   }
 });
 
-test('�32 deny by default: permission tak dikenal ditolak', () => {
+test('§32 deny by default: permission tak dikenal ditolak', () => {
   for (const r of ['admin', 'manager', 'editor', 'viewer'] as const) {
     assert.equal(hasPermission(r, 'document.nuke'), false, `${r} seharusnya menolak permission tak dikenal`);
   }
 });
 
-/* ------------------ �30 Invitation role tests -------------------- */
+/* ------------------ §30 Invitation role tests -------------------- */
 
-test('�30 SUPERUSER dapat mengundang semua role di bawahnya', () => {
+test('§30 SUPERUSER dapat mengundang semua role di bawahnya', () => {
   for (const t of ['admin', 'manager', 'editor', 'viewer'] as const) {
-    assert.equal(ok(canInvite(SH, t, { tenantId: 't9', departmentId: 'd9' })), true, `superuser?${t}`);
+    assert.equal(ok(canInvite(SH, t, { tenantId: 't9', departmentId: 'd9' })), true, `superuser→${t}`);
   }
 });
 
-test('�30 ADMIN dapat mengundang manager/editor/viewer, tidak admin/superuser', () => {
+test('§30 ADMIN dapat mengundang manager/editor/viewer, tidak admin/superuser', () => {
   for (const t of ['manager', 'editor', 'viewer'] as const) {
-    assert.equal(ok(canInvite(AD, t, { tenantId: 't1' })), true, `admin?${t}`);
+    assert.equal(ok(canInvite(AD, t, { tenantId: 't1' })), true, `admin→${t}`);
   }
   assert.equal(err(canInvite(AD, 'admin', { tenantId: 't1' })), 'INVALID_ROLE_ASSIGNMENT');
   assert.equal(err(canInvite(AD, 'superuser', { tenantId: 't1' })), 'INVALID_ROLE_ASSIGNMENT');
 });
 
-test('�30 MANAGER dapat mengundang editor/viewer, tidak manager/admin/superuser', () => {
+test('§30 MANAGER dapat mengundang editor/viewer, tidak manager/admin/superuser', () => {
   for (const t of ['editor', 'viewer'] as const) {
-    assert.equal(ok(canInvite(MG, t, { tenantId: 't1', departmentId: 'd1' })), true, `manager?${t}`);
+    assert.equal(ok(canInvite(MG, t, { tenantId: 't1', departmentId: 'd1' })), true, `manager→${t}`);
   }
   assert.equal(err(canInvite(MG, 'manager', { tenantId: 't1', departmentId: 'd1' })), 'INVALID_ROLE_ASSIGNMENT');
   assert.equal(err(canInvite(MG, 'admin', { tenantId: 't1', departmentId: 'd1' })), 'INVALID_ROLE_ASSIGNMENT');
   assert.equal(err(canInvite(MG, 'superuser', { tenantId: 't1', departmentId: 'd1' })), 'INVALID_ROLE_ASSIGNMENT');
 });
 
-test('�30 EDITOR & VIEWER tidak dapat mengundang siapa pun', () => {
+test('§30 EDITOR & VIEWER tidak dapat mengundang siapa pun', () => {
   assert.equal(err(canInvite(ED, 'viewer', { tenantId: 't1', departmentId: 'd1' })), 'INSUFFICIENT_PERMISSION');
   assert.equal(err(canInvite(VW, 'editor', { tenantId: 't1', departmentId: 'd1' })), 'INSUFFICIENT_PERMISSION');
 });
 
-test('�14 invitation scope: lintas tenant & lintas departemen ditolak', () => {
+test('§14 invitation scope: lintas tenant & lintas departemen ditolak', () => {
   assert.equal(err(canInvite(AD, 'editor', { tenantId: 't2' })), 'TENANT_SCOPE_VIOLATION');
   assert.equal(err(canInvite(MG, 'editor', { tenantId: 't1', departmentId: 'd2' })), 'DEPARTMENT_SCOPE_VIOLATION');
   assert.equal(err(canInvite(MG, 'editor', { tenantId: 't2', departmentId: 'd1' })), 'TENANT_SCOPE_VIOLATION');
 });
 
-test('�13 assignableRoles sesuai hierarki', () => {
+test('§13 assignableRoles sesuai hierarki', () => {
   assert.deepEqual(assignableRoles(SH).sort(), ['admin', 'editor', 'manager', 'viewer']);
   assert.deepEqual(assignableRoles(AD).sort(), ['editor', 'manager', 'viewer']);
   assert.deepEqual(assignableRoles(MG).sort(), ['editor', 'viewer']);
@@ -155,58 +155,58 @@ test('�13 assignableRoles sesuai hierarki', () => {
   assert.deepEqual(assignableRoles(VW), []);
 });
 
-/* -------------------- �30 Tenant isolation ---------------------- */
+/* -------------------- §30 Tenant isolation ---------------------- */
 
-test('�30 isolasi tenant: non-superuser tidak bisa lintas tenant', () => {
+test('§30 isolasi tenant: non-superuser tidak bisa lintas tenant', () => {
   const otherTenantDoc = { tenantId: 't2', departmentId: 'd1' };
   for (const a of [AD, MG, ED, VW]) {
     assert.equal(err(checkScope(a, otherTenantDoc, 'tenant')), 'TENANT_SCOPE_VIOLATION', `${a.role} lintas tenant`);
   }
 });
 
-test('�30 SUPERUSER dapat mengakses seluruh tenant', () => {
+test('§30 SUPERUSER dapat mengakses seluruh tenant', () => {
   assert.equal(ok(checkScope(SH, { tenantId: 't2', departmentId: 'd9' }, 'department')), true);
 });
 
-/* ------------------ �30 Department isolation -------------------- */
+/* ------------------ §30 Department isolation -------------------- */
 
-test('�30 isolasi departemen: manager/editor/viewer terkunci ke departemennya', () => {
+test('§30 isolasi departemen: manager/editor/viewer terkunci ke departemennya', () => {
   const otherDeptDoc = { tenantId: 't1', departmentId: 'd2' };
   for (const a of [MG, ED, VW]) {
     assert.equal(err(checkScope(a, otherDeptDoc, 'department')), 'DEPARTMENT_SCOPE_VIOLATION', `${a.role} lintas departemen`);
   }
 });
 
-test('�30 ADMIN dapat mengakses seluruh departemen dalam tenant-nya', () => {
+test('§30 ADMIN dapat mengakses seluruh departemen dalam tenant-nya', () => {
   assert.equal(ok(checkScope(AD, { tenantId: 't1', departmentId: 'd2' }, 'department')), true);
   assert.equal(ok(checkScope(AD, { tenantId: 't1', departmentId: 'd99' }, 'department')), true);
 });
 
-/* ---------------------- �30 API bypass tests -------------------- */
+/* ---------------------- §30 API bypass tests -------------------- */
 
-test('�30 bypass: viewer tidak bisa create/edit/delete dokumen', () => {
+test('§30 bypass: viewer tidak bisa create/edit/delete dokumen', () => {
   assert.equal(decide({ actor: VW, permission: 'document.create' }).allow, false);
   assert.equal(decide({ actor: VW, permission: 'document.edit' }).allow, false);
   assert.equal(decide({ actor: VW, permission: 'document.delete' }).allow, false);
   assert.equal(decide({ actor: VW, permission: 'document.view' }).allow, true);
 });
 
-test('�30 bypass: editor tidak bisa memanggil user.invite', () => {
+test('§30 bypass: editor tidak bisa memanggil user.invite', () => {
   const d = decide({ actor: ED, permission: 'user.invite' });
   assert.equal(d.allow, false);
   if (!d.allow) assert.equal(d.error.error, 'INSUFFICIENT_PERMISSION');
 });
 
-test('�30 bypass: manager tidak bisa mengundang admin lewat request yang dimanipulasi', () => {
+test('§30 bypass: manager tidak bisa mengundang admin lewat request yang dimanipulasi', () => {
   // role target dimanipulasi menjadi admin dari body request
   assert.equal(err(canInvite(MG, 'admin', { tenantId: 't1', departmentId: 'd1' })), 'INVALID_ROLE_ASSIGNMENT');
 });
 
-test('�30 bypass: manager tidak bisa memindahkan target ke departemen lain', () => {
+test('§30 bypass: manager tidak bisa memindahkan target ke departemen lain', () => {
   assert.equal(err(canInvite(MG, 'editor', { tenantId: 't1', departmentId: 'd2' })), 'DEPARTMENT_SCOPE_VIOLATION');
 });
 
-test('�25 bypass: non-superuser tidak bisa memanipulasi tenantId dari client', () => {
+test('§25 bypass: non-superuser tidak bisa memanipulasi tenantId dari client', () => {
   const spoofed = { tenantId: 't-999', departmentId: 'finance' };
   assert.deepEqual(resolveTrustedScope(MG, spoofed), { tenantId: 't1', departmentId: 'd1' });
   assert.deepEqual(resolveTrustedScope(ED, spoofed), { tenantId: 't1', departmentId: 'd1' });
@@ -214,15 +214,15 @@ test('�25 bypass: non-superuser tidak bisa memanipulasi tenantId dari client',
   assert.deepEqual(resolveTrustedScope(SH, spoofed), spoofed); // superuser global
 });
 
-test('�24 buildScopeFilter: filter query wajib per role (scope dipersempit sesuai peran)', () => {
+test('§24 buildScopeFilter: filter query wajib per role (scope dipersempit sesuai peran)', () => {
   assert.deepEqual(buildScopeFilter(SH), { tenantId: null, departmentId: null });
   assert.deepEqual(buildScopeFilter(AD), { tenantId: 't1', departmentId: null });
   assert.deepEqual(buildScopeFilter(MG), { tenantId: 't1', departmentId: 'd1' });
-  // editor meninta scope 'tenant' ? DIPERSEMPIT ke departemennya (tidak boleh melebar)
+  // editor meninta scope 'tenant' → DIPERSEMPIT ke departemennya (tidak boleh melebar)
   assert.deepEqual(buildScopeFilter(ED, 'tenant'), { tenantId: 't1', departmentId: 'd1' });
 });
 
-test('�25/�4 pemanggil tidak bisa memperlebar scope (clamp)', () => {
+test('§25/§4 pemanggil tidak bisa memperlebar scope (clamp)', () => {
   assert.equal(err(checkScope(ED, { tenantId: 't1', departmentId: 'd2' }, 'tenant')), 'DEPARTMENT_SCOPE_VIOLATION');
   assert.equal(decide({ actor: VW, permission: 'document.view', resource: { tenantId: 't1', departmentId: 'd2' }, scope: 'tenant' }).allow, false);
   assert.equal(err(checkScope(AD, { tenantId: 't2', departmentId: 'd1' }, 'global')), 'TENANT_SCOPE_VIOLATION');
@@ -231,7 +231,7 @@ test('�25/�4 pemanggil tidak bisa memperlebar scope (clamp)', () => {
   assert.equal(clampScope('superuser', 'department'), 'department');
 });
 
-test('�32.4 scope wajib: fail-closed bila resource tanpa departmentId', () => {
+test('§32.4 scope wajib: fail-closed bila resource tanpa departmentId', () => {
   assert.equal(err(checkScope(ED, {}, 'department')), 'DEPARTMENT_SCOPE_VIOLATION');
   assert.equal(err(checkScope(MG, { tenantId: 't1' }, 'department')), 'DEPARTMENT_SCOPE_VIOLATION');
   assert.equal(err(checkScope(VW, { tenantId: 't1' }, 'department')), 'DEPARTMENT_SCOPE_VIOLATION');
@@ -240,57 +240,57 @@ test('�32.4 scope wajib: fail-closed bila resource tanpa departmentId', () => 
   assert.equal(err(canInvite(AD, 'editor', {})), 'TENANT_SCOPE_VIOLATION');
 });
 
-test('�24 buildScopeFilter fail-closed bila actor non-superuser tanpa tenant', () => {
+test('§24 buildScopeFilter fail-closed bila actor non-superuser tanpa tenant', () => {
   assert.throws(() => buildScopeFilter({ id: 'x', role: 'manager', tenantId: null, departmentId: 'd1' }));
 });
 
-test('�12 ADMIN tidak menerima audit.view (tidak ada di PRD)', () => {
+test('§12 ADMIN tidak menerima audit.view (tidak ada di PRD)', () => {
   assert.equal(hasPermission('admin', 'audit.view'), false);
   assert.equal(hasPermission('superuser', 'audit.view'), true);
 });
 
-/* ---------------------- �26 role change rules ------------------- */
+/* ---------------------- §26 role change rules ------------------- */
 
-test('�26 tidak boleh mengubah role sendiri', () => {
+test('§26 tidak boleh mengubah role sendiri', () => {
   assert.equal(err(canChangeRole(AD, { id: AD.id, tenantId: 't1' }, 'editor')), 'SELF_ROLE_CHANGE_FORBIDDEN');
   assert.equal(err(canChangeRole(MG, { id: MG.id, tenantId: 't1', departmentId: 'd1' }, 'viewer')), 'SELF_ROLE_CHANGE_FORBIDDEN');
 });
 
-test('�26 admin tidak bisa mengangkat ke admin/superuser, tidak lintas tenant', () => {
+test('§26 admin tidak bisa mengangkat ke admin/superuser, tidak lintas tenant', () => {
   assert.equal(err(canChangeRole(AD, { id: 'u-x', tenantId: 't1' }, 'superuser')), 'INVALID_ROLE_ASSIGNMENT');
   assert.equal(err(canChangeRole(AD, { id: 'u-x', tenantId: 't1' }, 'admin')), 'INVALID_ROLE_ASSIGNMENT');
   assert.equal(ok(canChangeRole(AD, { id: 'u-x', tenantId: 't1' }, 'manager')), true);
   assert.equal(err(canChangeRole(AD, { id: 'u-y', tenantId: 't2' }, 'manager')), 'TENANT_SCOPE_VIOLATION');
 });
 
-test('�26 manager hanya dalam departemennya, tidak bisa mengangkat manager', () => {
+test('§26 manager hanya dalam departemennya, tidak bisa mengangkat manager', () => {
   assert.equal(ok(canChangeRole(MG, { id: 'u-x', tenantId: 't1', departmentId: 'd1' }, 'editor')), true);
   assert.equal(err(canChangeRole(MG, { id: 'u-x', tenantId: 't1', departmentId: 'd2' }, 'editor')), 'DEPARTMENT_SCOPE_VIOLATION');
   assert.equal(err(canChangeRole(MG, { id: 'u-x', tenantId: 't1', departmentId: 'd1' }, 'manager')), 'INVALID_ROLE_ASSIGNMENT');
 });
 
-test('�26 editor/viewer tidak bisa mengganti role', () => {
+test('§26 editor/viewer tidak bisa mengganti role', () => {
   assert.equal(err(canChangeRole(ED, { id: 'u-x', tenantId: 't1', departmentId: 'd1' }, 'viewer')), 'INSUFFICIENT_PERMISSION');
   assert.equal(err(canChangeRole(VW, { id: 'u-x', tenantId: 't1', departmentId: 'd1' }, 'editor')), 'INSUFFICIENT_PERMISSION');
 });
 
-/* ---------------------- �29 error standar ----------------------- */
+/* ---------------------- §29 error standar ----------------------- */
 
-test('�29 error standar tidak membocorkan info sensitif', () => {
+test('§29 error standar tidak membocorkan info sensitif', () => {
   assert.equal(authzError('TENANT_SCOPE_VIOLATION').status, 403);
   assert.equal(authzError('RESOURCE_NOT_FOUND').status, 404);
   assert.ok(!/other tenant|tenant lain/i.test(authzError('TENANT_SCOPE_VIOLATION').message));
 });
 
-test('�4 decide(): unauthenticated ? 401', () => {
+test('§4 decide(): unauthenticated → 401', () => {
   const d = decide({ actor: null, permission: 'document.view' });
   assert.equal(d.allow, false);
   if (!d.allow) assert.equal(d.error.status, 401);
 });
 
-/* ---------------------- �27 audit trail ------------------------- */
+/* ---------------------- §27 audit trail ------------------------- */
 
-test('�27 audit: event berisi actor, action, target, scope, timestamp', () => {
+test('§27 audit: event berisi actor, action, target, scope, timestamp', () => {
   const ev = buildAuditEvent(MG, 'user.role.assign', 'USER', 'u-x', { previousRole: 'viewer', newRole: 'editor' });
   assert.equal(ev.actorId, 'u-mgr');
   assert.equal(ev.action, 'user.role.assign');
@@ -300,7 +300,7 @@ test('�27 audit: event berisi actor, action, target, scope, timestamp', () => 
   assert.equal(ev.impersonatedBy, null);
 });
 
-test('�27 audit: sesi impersonasi tercatat terpisah dari identitas admin', () => {
+test('§27 audit: sesi impersonasi tercatat terpisah dari identitas admin', () => {
   const ev = buildAuditEvent(ED, 'document.edit', 'DOCUMENT', 'doc-1', {}, 'u-super');
   assert.equal(ev.actorId, 'u-ed');          // pelaku efektif (user yang disamari)
   assert.equal(ev.impersonatedBy, 'u-super'); // admin asli, jejak terpisah

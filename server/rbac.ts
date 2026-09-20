@@ -1,9 +1,9 @@
 /**
- * RBAC Engine - implementasi tunggal sesuai
- * "Engineering PRD - RBAC Structure & Authorization" (v1.0).
+ * RBAC Engine — implementasi tunggal sesuai
+ * "Engineering PRD — RBAC Structure & Authorization" (v1.0).
  *
  * Prinsip PRD:
- *   ROLE ? AUTHORIZATION
+ *   ROLE ≠ AUTHORIZATION
  *   AUTHORIZATION = ROLE + PERMISSION + TENANT SCOPE + DEPARTMENT SCOPE + RESOURCE SCOPE
  *
  * Modul ini SENGAJA bebas-dependensi (tanpa import dari app) agar dapat diuji
@@ -11,12 +11,12 @@
  */
 
 /* ------------------------------------------------------------------ */
-/* 1. Peran & hierarki (PRD �3)                                        */
+/* 1. Peran & hierarki (PRD §3)                                        */
 /* ------------------------------------------------------------------ */
 
 export type RoleCode = 'superuser' | 'admin' | 'manager' | 'editor' | 'viewer';
 
-/** Lower numeric level = higher authority (PRD �3.1). */
+/** Lower numeric level = higher authority (PRD §3.1). */
 export const ROLE_LEVEL: Record<RoleCode, number> = {
   superuser: 1,
   admin: 2,
@@ -33,7 +33,7 @@ export interface RoleDefinition {
   description: string;
 }
 
-/** Seed resmi (PRD �7 Seed Data). */
+/** Seed resmi (PRD §7 Seed Data). */
 export const ROLES: RoleDefinition[] = [
   { code: 'superuser', name: 'Superuser', level: 1, scope: 'Global', description: 'Global owner with access to all tenants' },
   { code: 'admin', name: 'Admin', level: 2, scope: 'Tenant', description: 'Tenant administrator' },
@@ -42,7 +42,7 @@ export const ROLES: RoleDefinition[] = [
   { code: 'viewer', name: 'Viewer', level: 5, scope: 'Tenant + Department', description: 'Read-only user' },
 ];
 
-/** Pemetaan role legacy ? role standar (menjaga kompatibilitas data lama). */
+/** Pemetaan role legacy → role standar (menjaga kompatibilitas data lama). */
 export const LEGACY_ROLE_MAP: Record<string, RoleCode> = {
   owner: 'superuser',
   'super admin': 'superuser',
@@ -64,7 +64,7 @@ export function normalizeRole(role?: string | null): RoleCode {
 }
 
 /* ------------------------------------------------------------------ */
-/* 2. Katalog permission (PRD �9-�10)                                  */
+/* 2. Katalog permission (PRD §9–§10)                                  */
 /* ------------------------------------------------------------------ */
 
 export interface PermissionDefinition {
@@ -79,9 +79,9 @@ function def(code: string, description = ''): PermissionDefinition {
   return { code, resource, action, description };
 }
 
-/** Permission code mengikuti konvensi `<resource>.<action>` (PRD �9). */
+/** Permission code mengikuti konvensi `<resource>.<action>` (PRD §9). */
 export const PERMISSIONS: PermissionDefinition[] = [
-  // User Management (PRD �10)
+  // User Management (PRD §10)
   def('user.view'), def('user.create'), def('user.edit'), def('user.delete'),
   def('user.invite'), def('user.role.assign'), def('user.status.update'),
   // Document Management
@@ -98,7 +98,7 @@ export const PERMISSIONS: PermissionDefinition[] = [
   // Administration
   def('admin.access'), def('admin.user.manage'), def('admin.role.manage'),
   def('admin.tenant.manage'), def('admin.department.manage'), def('admin.configuration.manage'),
-  // Audit (PRD �27)
+  // Audit (PRD §27)
   def('audit.view'),
 ];
 
@@ -107,15 +107,15 @@ export const PERMISSION_CODES: string[] = PERMISSIONS.map((p) => p.code);
 export type PermissionCode = string;
 
 /* ------------------------------------------------------------------ */
-/* 3. Pemetaan role ? permission (PRD �12 & �33)                       */
+/* 3. Pemetaan role → permission (PRD §12 & §33)                       */
 /* ------------------------------------------------------------------ */
 
 /**
- * `'*'` = seluruh permission (SUPERUSER, PRD �12 "ALL PERMISSIONS").
+ * `'*'` = seluruh permission (SUPERUSER, PRD §12 "ALL PERMISSIONS").
  *
- * Catatan keputusan terbuka PRD �34.2: `document.delete` untuk EDITOR
- * tertulis TBD di �18/�21 tetapi DIPEROLEH di �12/�33. Default di sini
- * mengikuti �33 (diberikan) dan dapat dimatikan lewat EDITOR_CAN_DELETE_DOCUMENT.
+ * Catatan keputusan terbuka PRD §34.2: `document.delete` untuk EDITOR
+ * tertulis TBD di §18/§21 tetapi DIPEROLEH di §12/§33. Default di sini
+ * mengikuti §33 (diberikan) dan dapat dimatikan lewat EDITOR_CAN_DELETE_DOCUMENT.
  */
 export const EDITOR_CAN_DELETE_DOCUMENT = true;
 
@@ -152,7 +152,7 @@ export const ROLE_PERMISSIONS: Record<RoleCode, '*' | string[]> = {
   viewer: ['document.view'],
 };
 
-/** Permission yang secara eksplisit DILARANG meski ada di daftar lain (PRD �12). */
+/** Permission yang secara eksplisit DILARANG meski ada di daftar lain (PRD §12). */
 export const ROLE_DENYLIST: Record<RoleCode, string[]> = {
   superuser: [],
   admin: ['workspace.switch', 'tenant.create', 'tenant.delete', 'admin.configuration.manage'],
@@ -174,7 +174,7 @@ export function permissionsFor(role: RoleCode): string[] {
 }
 
 /* ------------------------------------------------------------------ */
-/* 4. Pemeriksaan permission (PRD �4, �32)                             */
+/* 4. Pemeriksaan permission (PRD §4, §32)                             */
 /* ------------------------------------------------------------------ */
 
 export function hasPermission(role: RoleCode | string, permission: PermissionCode): boolean {
@@ -187,7 +187,7 @@ export function hasPermission(role: RoleCode | string, permission: PermissionCod
 }
 
 /* ------------------------------------------------------------------ */
-/* 5. Scope tenant & department (PRD �14, �19, �24-�25)                */
+/* 5. Scope tenant & department (PRD §14, §19, §24–§25)                */
 /* ------------------------------------------------------------------ */
 
 export interface Actor {
@@ -207,7 +207,7 @@ export type ScopeKind = 'global' | 'tenant' | 'department';
 
 export const isGlobalRole = (role: RoleCode | string): boolean => normalizeRole(role) === 'superuser';
 
-/** Validasi constraint kolom sesuai PRD �6.1. */
+/** Validasi constraint kolom sesuai PRD §6.1. */
 export function validateActorScope(actor: Actor): { ok: boolean; errors: string[] } {
   const role = normalizeRole(actor.role);
   const errors: string[] = [];
@@ -231,7 +231,7 @@ export type ScopeResult =
   | { allowed: true }
   | { allowed: false; error: 'TENANT_SCOPE_VIOLATION' | 'DEPARTMENT_SCOPE_VIOLATION' | 'RESOURCE_SCOPE_VIOLATION' };
 
-/** Scope maksimum yang boleh dinikmati sebuah peran (PRD �3.1 scope). */
+/** Scope maksimum yang boleh dinikmati sebuah peran (PRD §3.1 scope). */
 export function maxScopeFor(role: RoleCode | string): ScopeKind {
   const r = normalizeRole(role);
   if (r === 'superuser') return 'global';
@@ -243,8 +243,8 @@ const SCOPE_WIDTH: Record<ScopeKind, number> = { department: 0, tenant: 1, globa
 
 /**
  * Mengecilkan scope yang diminta pemanggil agar tidak melebihi scope perannya.
- * PRD �4/�25: scope TIDAK boleh ditentukan pemanggil. Meminta yang lebih lebar
- * akan dipersempit otomatis (mis. editor minta 'tenant' ? menjadi 'department').
+ * PRD §4/§25: scope TIDAK boleh ditentukan pemanggil. Meminta yang lebih lebar
+ * akan dipersempit otomatis (mis. editor minta 'tenant' → menjadi 'department').
  */
 export function clampScope(role: RoleCode | string, requested: ScopeKind): ScopeKind {
   const max = maxScopeFor(role);
@@ -252,7 +252,7 @@ export function clampScope(role: RoleCode | string, requested: ScopeKind): Scope
 }
 
 /**
- * Inti aturan scope (PRD �19 canEditDocument + �24 + �25 + �32.4 "Scope Is Mandatory").
+ * Inti aturan scope (PRD §19 canEditDocument + §24 + §25 + §32.4 "Scope Is Mandatory").
  *
  * Fail-closed: untuk peran ber-scope departemen, resource tanpa `departmentId`
  * DITOLAK (bukan diloloskan). Pemanggil tidak dapat memperlebar scope.
@@ -285,9 +285,9 @@ export function checkScope(actor: Actor, resource: ScopedResource, scope: ScopeK
 }
 
 /**
- * Filter scope yang HARUS diterapkan ke query (PRD �24).
+ * Filter scope yang HARUS diterapkan ke query (PRD §24).
  * `tenantId: null` HANYA bermakna "tanpa filter" untuk SUPERUSER.
- * Untuk peran lain tanpa tenantId ? melempar (fail-closed), bukan mengembalikan
+ * Untuk peran lain tanpa tenantId → melempar (fail-closed), bukan mengembalikan
  * null yang bisa disalahartikan konsumen query sebagai "tanpa filter".
  */
 export function buildScopeFilter(actor: Actor, scope: ScopeKind = 'department'):
@@ -301,7 +301,7 @@ export function buildScopeFilter(actor: Actor, scope: ScopeKind = 'department'):
   return { tenantId: actor.tenantId, departmentId: eff === 'department' ? actor.departmentId : null };
 }
 
-/** PRD �25 - scope dari client TIDAK boleh dipercaya untuk non-superuser. */
+/** PRD §25 — scope dari client TIDAK boleh dipercaya untuk non-superuser. */
 export function resolveTrustedScope(actor: Actor, clientSupplied?: Partial<ScopedResource>): ScopedResource {
   const role = normalizeRole(actor.role);
   if (role === 'superuser') {
@@ -314,7 +314,7 @@ export function resolveTrustedScope(actor: Actor, clientSupplied?: Partial<Scope
 }
 
 /* ------------------------------------------------------------------ */
-/* 6. Invitation hierarchy (PRD �13-�14)                               */
+/* 6. Invitation hierarchy (PRD §13–§14)                               */
 /* ------------------------------------------------------------------ */
 
 export type InviteDeny = 'INSUFFICIENT_PERMISSION' | 'INVALID_ROLE_ASSIGNMENT'
@@ -352,7 +352,7 @@ export function canInvite(
 }
 
 /* ------------------------------------------------------------------ */
-/* 7. Perubahan role (PRD �26)                                         */
+/* 7. Perubahan role (PRD §26)                                         */
 /* ------------------------------------------------------------------ */
 
 export type RoleChangeDeny = InviteDeny | 'SELF_ROLE_CHANGE_FORBIDDEN';
@@ -386,8 +386,8 @@ export function canChangeRole(
 
 /**
  * Daftar role yang boleh di-assign oleh actor (untuk dropdown UI).
- * Aturan tunggal PRD �3.1: hanya role dengan level LEBIH BESAR (otoritas lebih rendah).
- * Berlaku juga untuk SUPERUSER - target tetap harus `target_level > actor_level`.
+ * Aturan tunggal PRD §3.1: hanya role dengan level LEBIH BESAR (otoritas lebih rendah).
+ * Berlaku juga untuk SUPERUSER — target tetap harus `target_level > actor_level`.
  */
 export function assignableRoles(actor: Actor): RoleCode[] {
   const actorRole = normalizeRole(actor.role);
@@ -399,7 +399,7 @@ export function assignableRoles(actor: Actor): RoleCode[] {
 }
 
 /* ------------------------------------------------------------------ */
-/* 8. Audit log (PRD �27)                                              */
+/* 8. Audit log (PRD §27)                                              */
 /* ------------------------------------------------------------------ */
 
 export const AUDITABLE_ACTIONS = [
@@ -420,7 +420,7 @@ export interface AuditEvent {
   departmentId?: string | null;
   metadata?: Record<string, unknown>;
   timestamp: string;
-  /** Diisi bila aksi dilakukan di dalam sesi impersonasi (PRD �27 + acceptance "impersonation-audit-trail"). */
+  /** Diisi bila aksi dilakukan di dalam sesi impersonasi (PRD §27 + acceptance "impersonation-audit-trail"). */
   impersonatedBy?: string | null;
 }
 
@@ -446,7 +446,7 @@ export function buildAuditEvent(
 }
 
 /* ------------------------------------------------------------------ */
-/* 9. Error standar (PRD �29)                                          */
+/* 9. Error standar (PRD §29)                                          */
 /* ------------------------------------------------------------------ */
 
 export interface AuthzError {
@@ -471,7 +471,7 @@ export function authzError(code: keyof typeof AUTHZ_ERRORS | string): AuthzError
 }
 
 /* ------------------------------------------------------------------ */
-/* 10. Keputusan otorisasi terpadu (PRD �4)                            */
+/* 10. Keputusan otorisasi terpadu (PRD §4)                            */
 /* ------------------------------------------------------------------ */
 
 export type Decision =
@@ -485,7 +485,7 @@ export interface AuthorizeInput {
   scope?: ScopeKind;
 }
 
-/** Can User U perform Action A on Resource R? (PRD �4) */
+/** Can User U perform Action A on Resource R? (PRD §4) */
 export function decide({ actor, permission, resource, scope = 'department' }: AuthorizeInput): Decision {
   if (!actor) return { allow: false, error: authzError('UNAUTHENTICATED') };
 

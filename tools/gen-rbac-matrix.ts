@@ -1,5 +1,5 @@
 /**
- * Menghasilkan dokumen matriks peran-permission LANGSUNG dari engine
+ * Menghasilkan dokumen matriks peran–permission LANGSUNG dari engine
  * (`server/rbac.ts`) sehingga dokumen tidak mungkin menyimpang dari kode.
  *
  * Jalankan: npx tsx tools/gen-rbac-matrix.ts <outputDir>
@@ -16,7 +16,7 @@ const matrix = Object.fromEntries(roles.map((r) => [r, new Set(permissionsFor(r)
 
 /* ---------- Markdown ---------- */
 const md: string[] = [];
-md.push('# Matriks Peran � Permission (dihasilkan otomatis dari `server/rbac.ts`)');
+md.push('# Matriks Peran × Permission (dihasilkan otomatis dari `server/rbac.ts`)');
 md.push('');
 md.push(`Dihasilkan: ${new Date().toISOString()}`);
 md.push('');
@@ -25,7 +25,7 @@ md.push('');
 md.push('| Permission | Resource | ' + roles.map((r) => r.toUpperCase()).join(' | ') + ' |');
 md.push('|---|---|' + roles.map(() => '---:').join('|') + '|');
 for (const p of PERMISSIONS) {
-  md.push(`| \`${p.code}\` | ${p.resource} | ` + roles.map((r) => (matrix[r].has(p.code) ? '?' : '-')).join(' | ') + ' |');
+  md.push(`| \`${p.code}\` | ${p.resource} | ` + roles.map((r) => (matrix[r].has(p.code) ? '✅' : '—')).join(' | ') + ' |');
 }
 md.push('');
 md.push('## Ringkasan jumlah permission per peran');
@@ -53,4 +53,4 @@ writeFileSync(join(outDir, 'rbac-matrix.generated.json'), JSON.stringify({
   matrix: Object.fromEntries(roles.map((r) => [r, [...matrix[r]].sort()])),
 }, null, 2));
 
-console.log(`OK: ${PERMISSIONS.length} permission � ${roles.length} peran ? ${outDir}`);
+console.log(`OK: ${PERMISSIONS.length} permission × ${roles.length} peran → ${outDir}`);
