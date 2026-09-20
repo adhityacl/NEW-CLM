@@ -11,6 +11,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { decide, canInvite, canChangeRole, buildMatrix, authzError, normalizeRole, resolveTrustedScope, type Actor, type ScopeKind } from '../server/rbac';
 
 const PORT = Number(process.argv[2] || 3999);
+/** --legacy = replika perilaku middleware LAMA (anonim diperlakukan sebagai Viewer, baca selalu lolos). */
+const LEGACY = process.argv.includes('--legacy');
 
 interface User { id: string; name: string; role: string; tenantId: string | null; departmentId: string | null; }
 
@@ -62,7 +64,16 @@ async function readBody(req: IncomingMessage): Promise<any> {
 }
 
 /** Gerbang otorisasi (setara requirePermission pada app nyata). */
-function guard(actor: Actor | null, permission: string, scope: ScopeKind = 'department', resource?: { tenantId?: string | null; departmentId?: string | null }) {
+function guard(actor: Actor | null, permission: string, scope: ScopeKind = 'department', resource?: { tenantId?: string | null; departmentId?: string | null }, method?: string) {
+  if (LEGACY) {
+    // Replika middleware lama: anonim → Viewer; hanya metode tulis yang diblokir.
+    const effective: Actor = actor ?? { id: 'anon', role: 'viewer', tenantId: null, departmentId: null };
+    const isViewer = normalizeRole(effective.role) === 'viewer';
+    if (isViewer && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(method ?? 'GET'))) {
+      return authzError('INSUFFICIENT_PERMISSION');
+    }
+    return null; // baca selalu lolos -> inilah kebocoran yang terbukti di QA live
+  }
   const d = decide({ actor, permission, resource, scope });
   if (d.allow) return null;
   return d.error;
@@ -72,6 +83,20 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://localhost:${PORT}`);
   const path = url.pathname;
   const actor = actorFor(bearer(req));
+
+  /* --- Emulasi middleware app (berjalan SEBELUM routing) --- */
+  const PUBLIC_PATHS = ['/api/rbac/matrix', '/api/health'];
+  const isPublic = PUBLIC_PATHS.includes(path) || path.startsWith('/api/auth/');
+  if (!isPublic) {
+    if (LEGACY) {
+      const effRole = normalizeRole(actor?.role ?? 'viewer');
+      if (effRole === 'viewer' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(req.method))) {
+        return send(res, 403, authzError('INSUFFICIENT_PERMISSION'));
+      }
+    } else if (!actor) {
+      return send(res, 401, authzError('UNAUTHENTICATED'));
+    }
+  }
 
   try {
     /* ---- katalog RBAC (publik, read-only) ---- */
@@ -104,21 +129,26 @@ const server = createServer(async (req, res) => {
       return send(res, 200, { ok: true, requested, trusted: resolveTrustedScope(actor, requested) });
     }
     if (req.method === 'GET' && path === '/api/contracts') {
-      const e = guard(actor, 'document.view', 'tenant');
+      const e = guard(actor, 'document.view', 'tenant', undefined, req.method);
       if (e) return send(res, e.status, e);
-      const scoped = normalizeRole(actor!.role) === 'superuser' ? documents
-        : documents.filter((d) => d.tenantId === actor!.tenantId);
+      const scoped = !actor ? documents : (normalizeRole(actor.role) === 'superuser' ? documents
+        : documents.filter((d) => d.tenantId === actor!.tenantId));
       return send(res, 200, { ok: true, count: scoped.length, items: scoped.map((d) => d.id) });
     }
     if (req.method === 'POST' && path === '/api/contracts') {
-      const e = guard(actor, 'document.create', 'department', { tenantId: 't1', departmentId: 'd1' });
+      const e = guard(actor, 'document.create', 'department', { tenantId: 't1', departmentId: 'd1' }, req.method);
       if (e) return send(res, e.status, e);
       return send(res, 201, { ok: true, created: 'doc-new' });
     }
     if (req.method === 'GET' && path === '/api/auth-console/users') {
-      const e = guard(actor, 'user.view', 'tenant');
+      const e = guard(actor, 'user.view', 'tenant', undefined, req.method);
       if (e) return send(res, e.status, e);
       return send(res, 200, { ok: true, count: users.length });
+    }
+    /* Endpoint ini di app nyata memang menuntut sesi (terbukti 401 di QA live). */
+    if (req.method === 'GET' && path === '/api/user/my-role') {
+      if (!actor) return send(res, 401, authzError('UNAUTHENTICATED'));
+      return send(res, 200, { ok: true, actor });
     }
     if (req.method === 'POST' && path === '/api/rbac/simulate/invite') {
       if (!actor) return send(res, 401, authzError('UNAUTHENTICATED'));

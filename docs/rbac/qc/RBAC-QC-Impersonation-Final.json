@@ -1,0 +1,391 @@
+{
+  "base": "http://localhost:3999",
+  "generatedAt": "2026-09-20T20:30:14.609Z",
+  "total": 35,
+  "passed": 35,
+  "failed": 0,
+  "byLevel": [
+    {
+      "level": "superuser",
+      "pass": 7,
+      "total": 7,
+      "tokenSource": "super-token"
+    },
+    {
+      "level": "admin",
+      "pass": 7,
+      "total": 7,
+      "tokenSource": "impersonation"
+    },
+    {
+      "level": "manager",
+      "pass": 7,
+      "total": 7,
+      "tokenSource": "impersonation"
+    },
+    {
+      "level": "editor",
+      "pass": 7,
+      "total": 7,
+      "tokenSource": "impersonation"
+    },
+    {
+      "level": "viewer",
+      "pass": 7,
+      "total": 7,
+      "tokenSource": "impersonation"
+    }
+  ],
+  "results": [
+    {
+      "scenario": "doc.view",
+      "level": "superuser",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "super-token"
+    },
+    {
+      "scenario": "doc.view",
+      "level": "admin",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "doc.view",
+      "level": "manager",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "doc.view",
+      "level": "editor",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "doc.view",
+      "level": "viewer",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "doc.create",
+      "level": "superuser",
+      "expect": true,
+      "status": 201,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "super-token"
+    },
+    {
+      "scenario": "doc.create",
+      "level": "admin",
+      "expect": true,
+      "status": 201,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "doc.create",
+      "level": "manager",
+      "expect": true,
+      "status": 201,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "doc.create",
+      "level": "editor",
+      "expect": true,
+      "status": 201,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "doc.create",
+      "level": "viewer",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "users.list",
+      "level": "superuser",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "super-token"
+    },
+    {
+      "scenario": "users.list",
+      "level": "admin",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "users.list",
+      "level": "manager",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "users.list",
+      "level": "editor",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "users.list",
+      "level": "viewer",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "rbac.matrix",
+      "level": "superuser",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "super-token"
+    },
+    {
+      "scenario": "rbac.matrix",
+      "level": "admin",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "rbac.matrix",
+      "level": "manager",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "rbac.matrix",
+      "level": "editor",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "rbac.matrix",
+      "level": "viewer",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.simulator",
+      "level": "superuser",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "super-token"
+    },
+    {
+      "scenario": "invite.simulator",
+      "level": "admin",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.simulator",
+      "level": "manager",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.simulator",
+      "level": "editor",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.simulator",
+      "level": "viewer",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.no-scope",
+      "level": "superuser",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "super-token"
+    },
+    {
+      "scenario": "invite.no-scope",
+      "level": "admin",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "TENANT_SCOPE_VIOLATION",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.no-scope",
+      "level": "manager",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "TENANT_SCOPE_VIOLATION",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.no-scope",
+      "level": "editor",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.no-scope",
+      "level": "viewer",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.as.admin",
+      "level": "superuser",
+      "expect": true,
+      "status": 200,
+      "allowed": true,
+      "errorCode": null,
+      "pass": true,
+      "tokenSource": "super-token"
+    },
+    {
+      "scenario": "invite.as.admin",
+      "level": "admin",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "INVALID_ROLE_ASSIGNMENT",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.as.admin",
+      "level": "manager",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "INVALID_ROLE_ASSIGNMENT",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.as.admin",
+      "level": "editor",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "pass": true,
+      "tokenSource": "impersonation"
+    },
+    {
+      "scenario": "invite.as.admin",
+      "level": "viewer",
+      "expect": false,
+      "status": 403,
+      "allowed": false,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "pass": true,
+      "tokenSource": "impersonation"
+    }
+  ]
+}

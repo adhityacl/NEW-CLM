@@ -1,0 +1,153 @@
+{
+  "base": "http://localhost:3999",
+  "generatedAt": "2026-09-20T20:29:48.250Z",
+  "total": 16,
+  "leaks": 0,
+  "verdict": "BERSIH",
+  "results": [
+    {
+      "kind": "protected-get",
+      "path": "/api/contracts",
+      "label": "data kontrak",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/partners",
+      "label": "data mitra",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/ios",
+      "label": "data IO",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/tenants",
+      "label": "daftar tenant",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/activity-logs",
+      "label": "log aktivitas (email/IP)",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/users",
+      "label": "daftar pengguna (email/role)",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/sessions",
+      "label": "daftar sesi",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/organizations",
+      "label": "daftar organisasi",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/invitations",
+      "label": "daftar undangan",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/teams",
+      "label": "daftar tim/departemen",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/api-keys",
+      "label": "daftar API key",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/user/allowed-users",
+      "label": "daftar user diizinkan",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "public-get",
+      "path": "/api/exchange-rates",
+      "label": "kurs",
+      "status": 401,
+      "verdict": "lain (401)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "public-get",
+      "path": "/api/health",
+      "label": "health (opsional)",
+      "status": 200,
+      "verdict": "publik (wajar)",
+      "leak": false,
+      "snippet": "{\"ok\":true}"
+    },
+    {
+      "kind": "write-guard",
+      "path": "/api/__rbac_probe__",
+      "label": "uji gerbang tulis (path tidak ada)",
+      "status": 401,
+      "verdict": "butuh autentikasi",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "write-guard",
+      "path": "/api/contracts/__rbac_probe__",
+      "label": "uji gerbang tulis (path tidak ada)",
+      "status": 401,
+      "verdict": "butuh autentikasi",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    }
+  ]
+}
