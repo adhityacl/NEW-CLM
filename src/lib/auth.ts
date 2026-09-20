@@ -225,6 +225,57 @@ try {
   // Session table may not exist yet if fresh
 }
 
+// Better Auth 1.7.3 no longer writes account.issuer for every provider.
+// Keep older databases compatible by making the legacy column nullable.
+try {
+  const accountColumns = sqliteDb.prepare("PRAGMA table_info(account)").all() as Array<{
+    name: string;
+    notnull: number;
+  }>;
+  const issuerColumn = accountColumns.find((column) => column.name === "issuer");
+
+  if (issuerColumn?.notnull === 1) {
+    sqliteDb.transaction(() => {
+      sqliteDb.exec(`
+        ALTER TABLE account RENAME TO account_legacy_schema;
+        CREATE TABLE account (
+          id TEXT NOT NULL PRIMARY KEY,
+          accountId TEXT NOT NULL,
+          providerId TEXT NOT NULL,
+          userId TEXT NOT NULL REFERENCES "user" ("id") ON DELETE CASCADE,
+          accessToken TEXT,
+          refreshToken TEXT,
+          idToken TEXT,
+          accessTokenExpiresAt date,
+          refreshTokenExpiresAt date,
+          scope TEXT,
+          password TEXT,
+          createdAt date NOT NULL,
+          updatedAt date NOT NULL,
+          issuer TEXT
+        );
+        INSERT INTO account (
+          id, accountId, providerId, userId, accessToken, refreshToken, idToken,
+          accessTokenExpiresAt, refreshTokenExpiresAt, scope, password,
+          createdAt, updatedAt, issuer
+        )
+        SELECT
+          id, accountId, providerId, userId, accessToken, refreshToken, idToken,
+          accessTokenExpiresAt, refreshTokenExpiresAt, scope, password,
+          createdAt, updatedAt, issuer
+        FROM account_legacy_schema;
+        DROP TABLE account_legacy_schema;
+        CREATE INDEX account_userId_idx ON account (userId);
+        CREATE UNIQUE INDEX account_issuer_accountId_uidx
+          ON account (issuer, accountId);
+      `);
+    })();
+  }
+} catch (err) {
+  console.error("Could not migrate the Better Auth account schema:", err);
+  throw err;
+}
+
 // Seed default organization only if table is completely empty
 try {
   const orgCount = (sqliteDb.prepare('SELECT COUNT(*) as count FROM organization').get() as any)?.count || 0;
