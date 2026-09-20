@@ -1,0 +1,282 @@
+{
+  "generatedAt": "2026-09-20T20:05:26.721Z",
+  "hierarchy": [
+    {
+      "code": "superuser",
+      "level": 1,
+      "scope": "Global"
+    },
+    {
+      "code": "admin",
+      "level": 2,
+      "scope": "Tenant"
+    },
+    {
+      "code": "manager",
+      "level": 3,
+      "scope": "Tenant + Department"
+    },
+    {
+      "code": "editor",
+      "level": 4,
+      "scope": "Tenant + Department"
+    },
+    {
+      "code": "viewer",
+      "level": 5,
+      "scope": "Tenant + Department"
+    }
+  ],
+  "permissions": [
+    {
+      "code": "user.view",
+      "resource": "user",
+      "action": "view"
+    },
+    {
+      "code": "user.create",
+      "resource": "user",
+      "action": "create"
+    },
+    {
+      "code": "user.edit",
+      "resource": "user",
+      "action": "edit"
+    },
+    {
+      "code": "user.delete",
+      "resource": "user",
+      "action": "delete"
+    },
+    {
+      "code": "user.invite",
+      "resource": "user",
+      "action": "invite"
+    },
+    {
+      "code": "user.role.assign",
+      "resource": "user",
+      "action": "role"
+    },
+    {
+      "code": "user.status.update",
+      "resource": "user",
+      "action": "status"
+    },
+    {
+      "code": "document.view",
+      "resource": "document",
+      "action": "view"
+    },
+    {
+      "code": "document.create",
+      "resource": "document",
+      "action": "create"
+    },
+    {
+      "code": "document.edit",
+      "resource": "document",
+      "action": "edit"
+    },
+    {
+      "code": "document.delete",
+      "resource": "document",
+      "action": "delete"
+    },
+    {
+      "code": "document.export",
+      "resource": "document",
+      "action": "export"
+    },
+    {
+      "code": "document.download",
+      "resource": "document",
+      "action": "download"
+    },
+    {
+      "code": "tenant.view",
+      "resource": "tenant",
+      "action": "view"
+    },
+    {
+      "code": "tenant.create",
+      "resource": "tenant",
+      "action": "create"
+    },
+    {
+      "code": "tenant.edit",
+      "resource": "tenant",
+      "action": "edit"
+    },
+    {
+      "code": "tenant.delete",
+      "resource": "tenant",
+      "action": "delete"
+    },
+    {
+      "code": "department.view",
+      "resource": "department",
+      "action": "view"
+    },
+    {
+      "code": "department.create",
+      "resource": "department",
+      "action": "create"
+    },
+    {
+      "code": "department.edit",
+      "resource": "department",
+      "action": "edit"
+    },
+    {
+      "code": "department.delete",
+      "resource": "department",
+      "action": "delete"
+    },
+    {
+      "code": "workspace.view",
+      "resource": "workspace",
+      "action": "view"
+    },
+    {
+      "code": "workspace.switch",
+      "resource": "workspace",
+      "action": "switch"
+    },
+    {
+      "code": "export.csv",
+      "resource": "export",
+      "action": "csv"
+    },
+    {
+      "code": "export.document",
+      "resource": "export",
+      "action": "document"
+    },
+    {
+      "code": "admin.access",
+      "resource": "admin",
+      "action": "access"
+    },
+    {
+      "code": "admin.user.manage",
+      "resource": "admin",
+      "action": "user"
+    },
+    {
+      "code": "admin.role.manage",
+      "resource": "admin",
+      "action": "role"
+    },
+    {
+      "code": "admin.tenant.manage",
+      "resource": "admin",
+      "action": "tenant"
+    },
+    {
+      "code": "admin.department.manage",
+      "resource": "admin",
+      "action": "department"
+    },
+    {
+      "code": "admin.configuration.manage",
+      "resource": "admin",
+      "action": "configuration"
+    },
+    {
+      "code": "audit.view",
+      "resource": "audit",
+      "action": "view"
+    }
+  ],
+  "matrix": {
+    "superuser": [
+      "admin.access",
+      "admin.configuration.manage",
+      "admin.department.manage",
+      "admin.role.manage",
+      "admin.tenant.manage",
+      "admin.user.manage",
+      "audit.view",
+      "department.create",
+      "department.delete",
+      "department.edit",
+      "department.view",
+      "document.create",
+      "document.delete",
+      "document.download",
+      "document.edit",
+      "document.export",
+      "document.view",
+      "export.csv",
+      "export.document",
+      "tenant.create",
+      "tenant.delete",
+      "tenant.edit",
+      "tenant.view",
+      "user.create",
+      "user.delete",
+      "user.edit",
+      "user.invite",
+      "user.role.assign",
+      "user.status.update",
+      "user.view",
+      "workspace.switch",
+      "workspace.view"
+    ],
+    "admin": [
+      "admin.access",
+      "admin.department.manage",
+      "admin.user.manage",
+      "audit.view",
+      "department.create",
+      "department.edit",
+      "department.view",
+      "document.create",
+      "document.delete",
+      "document.download",
+      "document.edit",
+      "document.export",
+      "document.view",
+      "export.csv",
+      "export.document",
+      "tenant.view",
+      "user.create",
+      "user.delete",
+      "user.edit",
+      "user.invite",
+      "user.role.assign",
+      "user.status.update",
+      "user.view"
+    ],
+    "manager": [
+      "admin.access",
+      "admin.user.manage",
+      "department.view",
+      "document.create",
+      "document.delete",
+      "document.download",
+      "document.edit",
+      "document.export",
+      "document.view",
+      "export.csv",
+      "export.document",
+      "user.create",
+      "user.edit",
+      "user.invite",
+      "user.role.assign",
+      "user.status.update",
+      "user.view"
+    ],
+    "editor": [
+      "document.create",
+      "document.delete",
+      "document.download",
+      "document.edit",
+      "document.view"
+    ],
+    "viewer": [
+      "document.view"
+    ]
+  }
+}
