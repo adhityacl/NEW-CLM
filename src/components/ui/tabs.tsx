@@ -35,7 +35,7 @@ export function TabsTrigger({ value, className, children }: { value: string; cla
       aria-selected={active}
       onClick={() => ctx?.onChange(value)}
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-1 text-sm font-medium transition-all cursor-pointer",
+        "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--shadcn-radius-sm)] px-3 py-1 text-sm font-medium transition-all cursor-pointer",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40",
         active
           ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm"
