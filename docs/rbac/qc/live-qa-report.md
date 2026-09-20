@@ -1,76 +1,87 @@
 # Laporan QA Live — Port Forwarding Codespaces (port 3000)
 
 - **Target:** `https://automatic-umbrella-pw96gr5vjgp36j49-3000.app.github.dev/` (Codespaces port-forward, port 3000)
-- **Waktu:** 2026-09-21 ~03:20 (GMT+7)
-- **Metode:** HTTP read-only dari luar (tanpa kredensial), tanpa operasi tulis apa pun
-- **Verdict:** 🔴 **KRITIS — data bisnis & data pengguna terekspos ke request anonim selama URL dapat diakses publik**
+- **Waktu:** 2026-09-21 ~03:20–03:25 (GMT+7)
+- **Metode:** HTTP **read-only** dari luar, tanpa kredensial, **tanpa operasi tulis apa pun**
+- **Verdict:** 🔴 **KRITIS — hampir seluruh dataset bisnis & data pengguna dapat dibaca anonim selama URL publik**
 
 ## 1. Ringkasan eksekutif
 
-App berjalan (Vite dev), tetapi **hampir semua endpoint API membalas data nyata tanpa autentikasi**. Karena port 3000 di-forward sebagai **publik**, siapa pun yang memiliki URL dapat membaca data tersebut. Ini bukan sekadar bug RBAC — ini **kebocoran data aktif**.
+App berjalan (Vite dev, judul "LMS - Legal Management System"), tetapi **hampir semua endpoint API membalas data nyata tanpa autentikasi**. Karena port 3000 di-forward sebagai **publik**, siapa pun yang memiliki URL dapat membaca data tersebut.
 
-Mitigasi tercepat (lakukan sekarang): di Codespaces → tab **Ports** → port 3000 → klik kanan → **Port Visibility → Private**. Lalu rotasi kredensial yang mungkin terpapar dan pertimbangkan menghapus Codespace.
+**Mitigasi tercepat (sekarang):** Codespaces → tab **Ports** → port 3000 → klik kanan → **Port Visibility → Private**. Lalu rotasi sesi/kredensial dan pertimbangkan menghapus Codespace.
 
-## 2. Bukti probe (semua TANPA header Authorization)
+## 2. Matriks paparan anonim (semua TANPA header Authorization)
 
-| Endpoint | HTTP | Isi yang terekspos |
-|---|---:|---|
-| `GET /` | 200 | Halaman app ("LMS - Legal Management System"), Vite dev |
-| `GET /api/health` | 404 | — (app tidak punya route ini) |
-| `GET /api/rbac/matrix` | 404 | ✅ Patcher RBAC **belum diterapkan** (sesuai dugaan) |
-| `GET /api/auth-console/users` | 200 | **Daftar pengguna + email + role + status ban** (3 user) |
-| `GET /api/contracts` | 200 | **10 kontrak** dengan nomor kontrak & nama mitra |
-| `GET /api/tenants` | 200 | **2 tenant** beserta ID/domain |
-| `GET /api/activity-logs` | 200 | **10 log aktivitas** (email pengguna, IP, aksi) |
-| `GET /api/auth-console/rbac-matrix` | 200 | Matriks izin deskriptif (3,6 KB) |
-| `GET /api/user/my-role` | 401 | ✅ satu-satunya endpoint yang benar menolak |
+| Endpoint | HTTP | Data yang terekspos | Jumlah |
+|---|---:|---|---:|
+| `GET /api/contracts` | 200 | nomor kontrak, nama mitra, kategori | **10** |
+| `GET /api/partners` | 200 | data mitra | **10** |
+| `GET /api/ios` | 200 | data IO | **10** |
+| `GET /api/activity-logs` | 200 | log aktivitas (email, IP, aksi) | **10** |
+| `GET /api/tenants` | 200 | daftar tenant (id, domain, driveFolderId) | **2** |
+| `GET /api/auth-console/users` | 200 | **pengguna: email, role, status ban** | **3** |
+| `GET /api/auth-console/sessions` | 200 | daftar sesi login | 2.156 B |
+| `GET /api/auth-console/organizations` | 200 | daftar organisasi | 685 B |
+| `GET /api/auth-console/invitations` | 200 | undangan | 33 B |
+| `GET /api/auth-console/teams` | 200 | tim/departemen | 27 B |
+| `GET /api/auth-console/api-keys` | 200 | daftar API key | 29 B (kosong) |
+| `GET /api/user/allowed-users` | 200 | daftar user yang diizinkan | 1 |
+| `GET /api/auth-console/rbac-matrix` | 200 | matriks izin deskriptif | 3.636 B |
+| `GET /api/templates` · `/api/exchange-rates` | 200 | (non-sensitif) | — |
+| `GET /api/rbac/matrix` | **404** | ✅ patcher RBAC belum diterapkan | — |
+| `GET /api/dashboard` · `/api/notifications` | 404 | route tidak ada | — |
+| `GET /api/user/my-role` | 401 | ✅ satu-satunya endpoint yang benar menolak | — |
 
-### Data nyata yang terlihat (contoh nyata)
+### Contoh data nyata (diredaksi sebagian)
 
 ```
-users (3):
-  adhitcl@gmail.com    role=superuser  banned=False   ← akun superuser ikut terbaca
-  maolili@adapundi.com role=viewer     banned=True (PENDING_APPROVAL)
-  farid@adapundi.com   role=viewer     banned=True (PENDING_APPROVAL)
-
-tenants (2): org_1789905619545_7137a1, org_1789542306289_b3a4f3
-contracts (10): CTR-001 001/LEG/MND/2026 "Perjanjian Kerjasama Media Placement Digital 2026" —
-  PT Media Nusantara Digital; CTR-002 PT Cloud Teknologi Indonesia; CTR-003 PT Global Logistics Utama;
-  CTR-004 PT Solusi Cyber Global; …
-activity-logs (10): termasuk email pelaku + IP.
+users:      adhitcl@gmail.com (superuser, active) · maolili@adapundi.com (viewer, banned) · farid@adapundi.com (viewer, banned)
+contracts:  CTR-001 001/LEG/MND/2026 "Perjanjian Kerjasama Media Placement Digital 2026" — PT Media Nusantara Digital
+            CTR-002 PT Cloud Teknologi Indonesia · CTR-003 PT Global Logistics Utama · CTR-004 PT Solusi Cyber Global
+tenants:    org_1789905619545_7137a1 · org_1789542306289_b3a4f3
 ```
 
-### Uji validasi identitas
+## 3. Uji validasi identitas
 
-| Permintaan | HTTP | Arti |
+| Permintaan | HTTP | Kesimpulan |
 |---|---:|---|
-| Tanpa header apa pun | 200 | Anonim dianggap **Viewer** |
-| Dengan `Authorization: Bearer <token acak>` | 200 | **Token tidak divalidasi** → tetap Viewer |
-| Dengan `x-user-email: adhitcl@gmail.com` | 200 | Header email **dapat dipalsukan** (tidak ada verifikasi) |
+| tanpa header | 200 | anonim diperlakukan sebagai **Viewer** |
+| `Authorization: Bearer <token acak>` | 200 | **token tidak divalidasi** → tetap lolos |
+| `x-user-email: adhitcl@gmail.com` | 200 | identitas dari **header dapat dipalsukan** |
 
-## 3. Akar masalah (kode)
+## 4. Kesesuaian kode yang berjalan dengan repo
 
-1. **`rbacAuthMiddleware` (`server.ts:84-217`)**: identitas diambil dari header (`x-user-email`, `x-google-user-email`, `?userEmail`) atau token yang dicari di tabel `session`; bila tidak ketemu → default `Viewer`. Hanya metode tulis yang diblokir untuk Viewer — **semua GET diloloskan**, termasuk endpoint admin.
-2. **`authConsoleRouter` tidak punya guard per-route** (`server.ts:7864`) → `/api/auth-console/users`, `/api/auth-console/rbac-matrix`, dst. terbuka.
-3. **Whitelist middleware** memuat `/api/tenants/switch` dan `/api/auth-console/organizations/*` (C4) — kali ini tidak saya eksekusi karena bersifat mengubah state.
-4. Header email sebagai identitas (C5) masih hidup.
+| Path | Status | Catatan |
+|---|---|---|
+| `/src/main.tsx` | 200 (2.354 B) | disajikan Vite dev |
+| `/src/components/Sidebar.tsx` | 200 (111.258 B) | memuat penanda `partner-spending` & `admin-users` → **sesuai `main` repo** |
+| `/src/lib/rbacScoping.ts` | 200 | ada |
+| `/src/lib/permissions.ts`, `/src/styles/tokens.css` | 200 tapi isi = `index.html` (1.494 B) | **tidak ada** — SPA fallback (perubahan branch belum diterapkan, sesuai dugaan) |
 
-## 4. Kaitan dengan perbaikan yang sudah disiapkan
+## 5. Akar masalah (kode)
 
-| Perbaikan yang sudah ada | Menutup |
+1. **`rbacAuthMiddleware` (`server.ts:84-217`)** — identitas dari header (`x-user-email`, `x-google-user-email`, `?userEmail`) atau token yang dicari di tabel `session`; jika tidak ketemu → default **`Viewer`**. Hanya metode tulis yang diblokir untuk Viewer → **semua GET lolos**, termasuk endpoint admin.
+2. **`authConsoleRouter` tanpa guard per-route** (`server.ts:7864`) → terbukti: `/api/auth-console/*` semuanya 200.
+3. **Whitelist middleware** memuat `/api/tenants/switch` dan `/api/auth-console/organizations/*` (C4) — **tidak** saya eksekusi (bersifat mengubah state).
+4. Identitas berbasis header email (C5) masih hidup.
+
+## 6. Perbaikan yang menutupnya (sudah siap di branch `feat/rbac-alignment`)
+
+| Perbaikan | Menutup |
 |---|---|
-| Patch `--tier=secure` (`tools/apply-rbac-integration.mjs`) | Menutup whitelist C4 + memasang guard `requirePermission` pada `/api/auth-console/users` dan `/api/tenants/switch` |
-| `server/rbac.ts` + `server/rbacRoutes.ts` | Sumber izin tunggal berbasis permission; `GET /api/rbac/matrix` untuk verifikasi cepat (sekarang masih 404) |
-| Rencana §6 handover | Menghilangkan default "anonim = Viewer" dan identitas dari header (C5) |
+| `tools/apply-rbac-integration.mjs --tier=secure` | whitelist C4 + guard `requirePermission` pada `/api/auth-console/users` dan `/api/tenants/switch` |
+| `server/rbac.ts` + `server/rbacRoutes.ts` | sumber izin tunggal berbasis permission; `/api/rbac/matrix` sebagai verifikasi cepat (kini 404) |
+| Handover §6 | menghapus default "anonim = Viewer" dan identitas dari header (C5) |
 
-## 5. Rekomendasi berurutan
+## 7. Rekomendasi berurutan
 
-1. **(Sekarang)** Jadikan port 3000 **Private** di Codespaces; hentikan paparan publik.
-2. Terapkan `node tools/apply-rbac-integration.mjs server.ts --tier=secure`, restart, lalu ulangi probe di laporan ini — target: `/api/auth-console/users` → **401/403**, `/api/contracts` → tetap 200 hanya untuk sesi sah.
-3. Hapus jalur identitas berbasis header email (C5) dan default `Viewer` untuk anonim → **401 UNAUTHENTICATED**.
-4. Jalankan `node scripts/rbac-qc.mjs --base <url> --super-token <TOKEN>` setelah token tersedia untuk QC per level.
-5. Rotasi: karena email pengguna & superuser bocor, pertimbangkan reset sesi/notifikasi.
+1. **(Sekarang)** jadikan port 3000 **Private**; hentikan paparan publik.
+2. Terapkan `node tools/apply-rbac-integration.mjs server.ts --tier=secure`, restart, ulangi probe §2 — target: `/api/auth-console/*` → **401/403**; `/api/contracts` → 200 hanya untuk sesi sah.
+3. Ubah anonim menjadi **401 UNAUTHENTICATED** (bukan Viewer) dan hapus identitas dari header.
+4. Jalankan `node scripts/rbac-qc.mjs --base <url> --super-token <TOKEN>` untuk QC per level setelah token tersedia.
+5. Rotasi sesi/kredensial: email pengguna & superuser sudah terpapar.
 
-## 6. Yang TIDAK dilakukan (batas etika pengujian)
+## 8. Batas pengujian (transparansi)
 
-Tidak ada operasi tulis/ubah data (tanpa POST/PUT/DELETE), tidak ada percobaan eskalasi, tidak ada eksploitasi lebih jauh. Semua probe bersifat **GET read-only** untuk keperluan QA sesuai permintaan pemilik app.
+Tidak ada operasi tulis/ubah data, tidak ada percobaan eskalasi, tidak ada eksploitasi lanjutan. Semua probe **GET read-only** untuk QA yang diminta pemilik app. Panel browser AutoClaw tidak dapat memuat host tersebut (`ERR_ABORTED`), jadi inspeksi UI berbasis HTTP, bukan tangkapan layar.
