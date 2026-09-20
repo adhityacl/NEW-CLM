@@ -1,25 +1,44 @@
 {
   "target": "https://automatic-umbrella-pw96gr5vjgp36j49-3000.app.github.dev/",
-  "testedAt": "2026-09-21T03:20:00+07:00",
+  "testedAt": "2026-09-21T03:25:00+07:00",
   "method": "HTTP GET read-only, tanpa kredensial, tanpa operasi tulis",
-  "verdict": "CRITICAL - data bisnis & data pengguna terekspos ke request anonim",
-  "rootPage": { "status": 200, "title": "LMS - Legal Management System", "bytes": 1494 },
-  "probes": [
-    { "method": "GET", "path": "/", "status": 200, "note": "Vite dev, halaman app" },
-    { "method": "GET", "path": "/api/health", "status": 404, "note": "route tidak ada" },
-    { "method": "GET", "path": "/api/rbac/matrix", "status": 404, "note": "patcher RBAC belum diterapkan" },
-    { "method": "GET", "path": "/api/auth-console/users", "status": 200, "exposed": "3 user: email, role, banned" },
-    { "method": "GET", "path": "/api/contracts", "status": 200, "exposed": "10 kontrak: nomor kontrak, nama mitra" },
-    { "method": "GET", "path": "/api/tenants", "status": 200, "exposed": "2 tenant: id, domain" },
-    { "method": "GET", "path": "/api/activity-logs", "status": 200, "exposed": "10 log aktivitas: email, IP" },
-    { "method": "GET", "path": "/api/auth-console/rbac-matrix", "status": 200, "exposed": "matriks izin deskriptif (3636 B)" },
-    { "method": "GET", "path": "/api/user/my-role", "status": 401, "note": "satu-satunya endpoint yang benar menolak" }
+  "verdict": "CRITICAL",
+  "rootPage": { "status": 200, "title": "LMS - Legal Management System", "bytes": 1494, "server": "Vite dev" },
+  "exposureAnonymousGet": [
+    { "path": "/api/contracts", "status": 200, "count": 10, "data": "nomor kontrak + nama mitra" },
+    { "path": "/api/partners", "status": 200, "count": 10, "data": "data mitra" },
+    { "path": "/api/ios", "status": 200, "count": 10, "data": "data IO" },
+    { "path": "/api/activity-logs", "status": 200, "count": 10, "data": "email, IP, aksi" },
+    { "path": "/api/tenants", "status": 200, "count": 2, "data": "id tenant, domain, driveFolderId" },
+    { "path": "/api/auth-console/users", "status": 200, "count": 3, "data": "email, role, banned" },
+    { "path": "/api/auth-console/sessions", "status": 200, "bytes": 2156, "data": "daftar sesi" },
+    { "path": "/api/auth-console/organizations", "status": 200, "bytes": 685, "data": "daftar organisasi" },
+    { "path": "/api/auth-console/invitations", "status": 200, "bytes": 33, "data": "undangan" },
+    { "path": "/api/auth-console/teams", "status": 200, "bytes": 27, "data": "tim/departemen" },
+    { "path": "/api/auth-console/api-keys", "status": 200, "bytes": 29, "data": "api key (kosong)" },
+    { "path": "/api/user/allowed-users", "status": 200, "count": 1, "data": "daftar user diizinkan" },
+    { "path": "/api/auth-console/rbac-matrix", "status": 200, "bytes": 3636, "data": "matriks izin deskriptif" },
+    { "path": "/api/templates", "status": 200, "bytes": 2, "data": "non-sensitif" },
+    { "path": "/api/exchange-rates", "status": 200, "bytes": 30, "data": "non-sensitif" }
+  ],
+  "denied": [
+    { "path": "/api/user/my-role", "status": 401, "note": "satu-satunya endpoint yang benar menolak" }
+  ],
+  "notPresent": [
+    { "path": "/api/rbac/matrix", "status": 404, "note": "patcher RBAC belum diterapkan" },
+    { "path": "/api/dashboard", "status": 404 },
+    { "path": "/api/notifications", "status": 404 }
   ],
   "identityValidation": [
     { "case": "tanpa header", "status": 200, "conclusion": "anonim diperlakukan sebagai Viewer" },
     { "case": "Authorization: Bearer <token acak>", "status": 200, "conclusion": "token tidak divalidasi" },
     { "case": "x-user-email: adhitcl@gmail.com", "status": 200, "conclusion": "header email dapat dipalsukan" }
   ],
+  "codeFidelity": {
+    "appMatchesRepoMain": true,
+    "evidence": "/src/components/Sidebar.tsx memuat penanda 'partner-spending' dan 'admin-users'",
+    "branchChangesNotDeployed": ["/src/lib/permissions.ts", "/src/styles/tokens.css"]
+  },
   "samples": {
     "users": [
       { "email": "adhitcl@gmail.com", "role": "superuser", "banned": false },
@@ -28,12 +47,12 @@
     ],
     "tenants": ["org_1789905619545_7137a1", "org_1789542306289_b3a4f3"],
     "contracts": ["CTR-001", "CTR-002", "CTR-003", "CTR-004"],
-    "counts": { "users": 3, "tenants": 2, "contracts": 10, "activityLogs": 10 }
+    "totals": { "users": 3, "tenants": 2, "contracts": 10, "partners": 10, "ios": 10, "activityLogs": 10 }
   },
   "remediation": [
     "SEGERA: ubah visibilitas port 3000 menjadi Private di Codespaces",
-    "Terapkan tools/apply-rbac-integration.mjs --tier=secure kemudian ulangi probe",
-    "Hapus identitas dari header email; anonim harus 401 UNAUTHENTICATED, bukan Viewer",
+    "Terapkan tools/apply-rbac-integration.mjs --tier=secure lalu ulangi probe",
+    "Anonim harus 401 UNAUTHENTICATED (bukan Viewer); hapus identitas dari header email",
     "Rotasi sesi/kredensial yang mungkin terpapar"
   ]
 }
