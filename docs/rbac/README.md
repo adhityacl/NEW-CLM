@@ -14,6 +14,7 @@ Indeks semua hasil kerja. Sumber kebenaran RBAC: `Engineering PRD — RBAC Struc
 | [ObsidianUI-Integration-Plan.md](ObsidianUI-Integration-Plan.md) | Cara pasang Obsidian UI, pemetaan komponen, design token, hasil uji kontras |
 | [RBAC-Role-Permission-Matrix.md](RBAC-Role-Permission-Matrix.md) / [.csv](RBAC-Role-Permission-Matrix.csv) | Matriks 32 permission × 5 peran (dihasilkan dari kode) |
 | [design-preview.html](design-preview.html) | Pratinjau desain mandiri (token Takram + pola Obsidian UI) |
+| [Laporan-RBAC-ObsidianUI.docx](Laporan-RBAC-ObsidianUI.docx) | **Laporan serah terima final (DOCX)** — 11 tabel, data dibaca langsung dari hasil pengukuran |
 
 ## Bukti eksekusi (qc/)
 
