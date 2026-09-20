@@ -10,7 +10,7 @@
       "status": "Active",
       "addedBy": "System Core",
       "createdAt": "2026-01-01T08:00:00.000Z",
-      "lastLoginAt": "2026-09-20T20:29:48.251Z"
+      "lastLoginAt": "2026-09-20T23:47:34.107Z"
     }
   ],
   "partners": [
@@ -1561,6 +1561,54 @@
   ],
   "activityLogs": [
     {
+      "id": "act-1789947150297-663",
+      "timestamp": "2026-09-20T23:32:30.297Z",
+      "userEmail": "user@app",
+      "userName": "User",
+      "role": "Legal",
+      "actionType": "DELETE",
+      "module": "PARTNER",
+      "description": "Menghapus Partner 'QC' beserta 0 Kontrak dan 0 Insertion Order pendukung.",
+      "ipAddress": "127.0.0.1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36"
+    },
+    {
+      "id": "act-1789947150236-251",
+      "timestamp": "2026-09-20T23:32:30.236Z",
+      "userEmail": "user@app",
+      "userName": "User",
+      "role": "Legal",
+      "actionType": "DELETE",
+      "module": "PARTNER",
+      "description": "Menghapus Partner 'QC' beserta 0 Kontrak dan 0 Insertion Order pendukung.",
+      "ipAddress": "127.0.0.1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36"
+    },
+    {
+      "id": "act-1789947055096-452",
+      "timestamp": "2026-09-20T23:30:55.096Z",
+      "userEmail": "adhitcl@gmail.com",
+      "userName": "Aditya Pratama",
+      "role": "Superuser",
+      "actionType": "CREATE",
+      "module": "PARTNER",
+      "description": "Menambahkan Partner baru: QC (BHI)",
+      "ipAddress": "114.10.79.65",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36"
+    },
+    {
+      "id": "act-1789947011090-106",
+      "timestamp": "2026-09-20T23:30:11.090Z",
+      "userEmail": "adhitcl@gmail.com",
+      "userName": "Aditya Pratama",
+      "role": "Superuser",
+      "actionType": "CREATE",
+      "module": "PARTNER",
+      "description": "Menambahkan Partner baru: QC (BHI)",
+      "ipAddress": "114.10.79.65",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36"
+    },
+    {
       "id": "LOG-001",
       "organizationId": "org-adapundi",
       "timestamp": "2026-09-15T21:10:00.000Z",
@@ -2120,7 +2168,7 @@
     }
   ],
   "departments": [],
-  "activeTenantId": "org_1789905619545_7137a1",
+  "activeTenantId": "org_1789542306289_b3a4f3",
   "branding": {
     "appName": "LMS - Legal Management System",
     "logoUrl": "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=250&auto=format&fit=crop&q=80",
