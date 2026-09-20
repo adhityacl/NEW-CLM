@@ -1,0 +1,58 @@
+name: RBAC Guard
+
+# Menjalankan seluruh verifikasi RBAC otomatis di runner GitHub,
+# tanpa perlu dependensi aplikasi (tidak butuh express/better-sqlite3).
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Verifikasi RBAC (test + migrasi + kontras + patch)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Siapkan tool (tsx + esbuild)
+        run: npm i -g tsx@4 esbuild@0.25
+
+      - name: 1) Suite otorisasi (44 test, positif + negatif)
+        run: tsx --test tests/rbac.test.ts
+
+      - name: 2) Matriks peran-permission dihasilkan dari kode
+        run: |
+          tsx tools/gen-rbac-matrix.ts qc-output
+          echo "--- ringkasan ---"
+          tail -n 10 qc-output/RBAC-Role-Permission-Matrix.md
+
+      - name: 3) Migrasi skema idempoten + integritas FK
+        run: |
+          tsx tools/gen-rbac-migration.ts server/migrations/001_rbac_alignment.sql
+          node tools/verify-migration.mjs server/migrations/001_rbac_alignment.sql
+
+      - name: 4) Kontras WCAG 2.1 AA (light + dark)
+        run: node tools/check-contrast.mjs src/index.css src/styles/tokens.css
+
+      - name: 5) Patch integrasi masih dapat diterapkan & idempoten
+        run: |
+          cp server.ts /tmp/server.orig.ts
+          for tier in additive secure strict strict2; do
+            cp /tmp/server.orig.ts /tmp/server.$tier.ts
+            node tools/apply-rbac-integration.mjs /tmp/server.$tier.ts --tier=$tier >/dev/null
+            node tools/apply-rbac-integration.mjs /tmp/server.$tier.ts --tier=$tier | grep -q "TIDAK ADA PERUBAHAN" \
+              && echo "$tier: idempoten OK" || (echo "$tier: NOT idempotent" && exit 1)
+            esbuild /tmp/server.$tier.ts --outfile=/tmp/out.$tier.js >/dev/null \
+              && echo "$tier: syntax OK" || (echo "$tier: SYNTAX ERROR" && exit 1)
+          done
+
+      - name: 6) Ringkasan
+        if: always()
+        run: echo "RBAC Guard selesai. Lihat langkah di atas untuk hasil per-blok."
