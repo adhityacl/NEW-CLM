@@ -84,6 +84,17 @@ actor=U-SUPER action=user.impersonate target=U-VIEWER  impersonatedBy=U-SUPER
 
 Artefak bukti: `DELIVERY/qc/RBAC-QC-Impersonation-Run.md`, `.json`, dan `impersonation-audit-trail.json`.
 
+**Bukti penegakan scope (PRD �25) - client memalsukan `tenantId=t-999&departmentId=d-9`:**
+
+| Level | Diminta | Dipaksa menjadi |
+|---|---|---|
+| manager | t-999 / d-9 | **t1 / d1** (miliknya) |
+| editor | t-999 / d-9 | **t1 / d1** (miliknya) |
+| admin | t-999 / d-9 | **t1 / d-9** (tenant dipaksa, departemen bebas dalam tenant) |
+| superuser | t-999 / d-9 | t-999 / d-9 (global, apa adanya) |
+
+Artefak: `DELIVERY/qc/scope-enforcement-evidence.json`.
+
 ## 3. Cara menjalankan ulang
 
 ```bash
