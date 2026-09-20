@@ -1,0 +1,14 @@
+diff --git "a/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.cluster\\rbac-obsidian\\artifacts\\qc-output\\_patchtest2\\strictOnly.ts" "b/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.cluster\\rbac-obsidian\\artifacts\\qc-output\\_patchtest2\\s1\\server.ts"
+index cef7f0a..a28b9fc 100644
+--- "a/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.cluster\\rbac-obsidian\\artifacts\\qc-output\\_patchtest2\\strictOnly.ts"
++++ "b/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.cluster\\rbac-obsidian\\artifacts\\qc-output\\_patchtest2\\s1\\server.ts"
+@@ -88,7 +88,8 @@ app.all(["/api/auth", "/api/auth/*"], (req: express.Request, res: express.Respon
+ export const rbacAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+   if (
+     !req.path.startsWith("/api/") ||
+-    req.path.startsWith("/api/auth") ||
++    /* RBAC-INTEGRATION-V1-STRICT2 */
++    (req.path === "/api/auth" || req.path.startsWith("/api/auth/")) ||
+     req.path === "/api/health" ||
+     req.path === "/api/exchange-rates" ||
+     req.path === "/api/exchange-rate-historical" ||

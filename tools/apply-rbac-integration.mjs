@@ -19,17 +19,18 @@ const file = process.argv[2] ?? 'server.ts';
 const tierArg = process.argv.find((a) => a.startsWith('--tier='));
 const tier = (tierArg ? tierArg.split('=')[1] : 'additive');
 const dryRun = process.argv.includes('--dry-run');
-const doSecure = tier === 'secure' || tier === 'strict';
-const doStrict = tier === 'strict';
+const doSecure = tier === 'secure' || tier === 'strict' || tier === 'strict2';
+const doStrict = tier === 'strict' || tier === 'strict2';
 
-if (!['additive', 'secure', 'strict'].includes(tier)) {
-  console.error(`tier tidak dikenal: ${tier} (pakai additive|secure|strict)`);
+if (!['additive', 'secure', 'strict', 'strict2'].includes(tier)) {
+  console.error(`tier tidak dikenal: ${tier} (pakai additive|secure|strict|strict2)`);
   process.exit(2);
 }
 
 const MARK = '/* RBAC-INTEGRATION-V1 */';
 const MARK_SECURE = '/* RBAC-INTEGRATION-V1-SECURE */';
 const MARK_STRICT = '/* RBAC-INTEGRATION-V1-STRICT */';
+const MARK_STRICT2 = '/* RBAC-INTEGRATION-V1-STRICT2 */';
 
 let src = readFileSync(file, 'utf8');
 const before = src;
@@ -153,6 +154,18 @@ if (doStrict && !src.includes(MARK_STRICT)) {
   ].join('\n');
   const FALLBACK_NEW = ['  } else {', '    role = "Viewer";', '  }'].join('\n');
   replaceOnce(FALLBACK, FALLBACK_NEW, 'STRICT: hapus fallback email superadmin yang di-hardcode');
+}
+
+/* ---------- Tier strict2 (persempit whitelist /api/auth) ---------- */
+
+if (tier === 'strict2' && !src.includes(MARK_STRICT2)) {
+  // `/api/auth-console/*` ikut lolos karena prefix "/api/auth" ikut cocok.
+  replaceOnce(
+    '    req.path.startsWith("/api/auth") ||',
+    '    ' + MARK_STRICT2 + '\n' +
+      '    (req.path === "/api/auth" || req.path.startsWith("/api/auth/")) ||',
+    'STRICT2: persempit whitelist /api/auth (auth-console ikut dijaga)',
+  );
 }
 
 /* ---------- Simpan ---------- */
