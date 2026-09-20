@@ -130,7 +130,7 @@ export const ROLE_PERMISSIONS: Record<RoleCode, '*' | string[]> = {
     'department.view', 'department.create', 'department.edit',
     'export.csv', 'export.document',
     'admin.access', 'admin.user.manage', 'admin.department.manage',
-    'tenant.view', 'audit.view',
+    'tenant.view',
   ],
 
   manager: [
@@ -231,47 +231,74 @@ export type ScopeResult =
   | { allowed: true }
   | { allowed: false; error: 'TENANT_SCOPE_VIOLATION' | 'DEPARTMENT_SCOPE_VIOLATION' | 'RESOURCE_SCOPE_VIOLATION' };
 
-/** Inti aturan scope (PRD �19 canEditDocument + �24 + �25). */
+/** Scope maksimum yang boleh dinikmati sebuah peran (PRD �3.1 scope). */
+export function maxScopeFor(role: RoleCode | string): ScopeKind {
+  const r = normalizeRole(role);
+  if (r === 'superuser') return 'global';
+  if (r === 'admin') return 'tenant';
+  return 'department';
+}
+
+const SCOPE_WIDTH: Record<ScopeKind, number> = { department: 0, tenant: 1, global: 2 };
+
+/**
+ * Mengecilkan scope yang diminta pemanggil agar tidak melebihi scope perannya.
+ * PRD �4/�25: scope TIDAK boleh ditentukan pemanggil. Meminta yang lebih lebar
+ * akan dipersempit otomatis (mis. editor minta 'tenant' ? menjadi 'department').
+ */
+export function clampScope(role: RoleCode | string, requested: ScopeKind): ScopeKind {
+  const max = maxScopeFor(role);
+  return SCOPE_WIDTH[requested] <= SCOPE_WIDTH[max] ? requested : max;
+}
+
+/**
+ * Inti aturan scope (PRD �19 canEditDocument + �24 + �25 + �32.4 "Scope Is Mandatory").
+ *
+ * Fail-closed: untuk peran ber-scope departemen, resource tanpa `departmentId`
+ * DITOLAK (bukan diloloskan). Pemanggil tidak dapat memperlebar scope.
+ */
 export function checkScope(actor: Actor, resource: ScopedResource, scope: ScopeKind = 'department'): ScopeResult {
   const role = normalizeRole(actor.role);
 
   if (role === 'superuser') return { allowed: true };
 
-  if (scope === 'global') {
-    if (resource.tenantId && resource.tenantId !== actor.tenantId) {
-      return { allowed: false, error: 'TENANT_SCOPE_VIOLATION' };
-    }
-    return { allowed: true };
-  }
+  const eff = clampScope(role, scope);
 
-  // ADMIN: seluruh departemen di dalam tenant-nya
   if (resource.tenantId && resource.tenantId !== actor.tenantId) {
     return { allowed: false, error: 'TENANT_SCOPE_VIOLATION' };
   }
-  if (role === 'admin') return { allowed: true };
 
-  // MANAGER / EDITOR / VIEWER: hanya departemennya sendiri
-  if (scope === 'department') {
-    if (resource.departmentId && resource.departmentId !== actor.departmentId) {
-      return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
-    }
+  // ADMIN: seluruh departemen di dalam tenant-nya.
+  if (role === 'admin') {
+    if (eff === 'global') return { allowed: false, error: 'TENANT_SCOPE_VIOLATION' };
+    return { allowed: true };
+  }
+
+  // MANAGER / EDITOR / VIEWER: wajib departemennya sendiri (fail-closed).
+  if (resource.departmentId == null) {
+    return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
+  }
+  if (resource.departmentId !== actor.departmentId) {
+    return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
   }
   return { allowed: true };
 }
 
 /**
  * Filter scope yang HARUS diterapkan ke query (PRD �24).
- * `null` = tanpa filter (superuser).
+ * `tenantId: null` HANYA bermakna "tanpa filter" untuk SUPERUSER.
+ * Untuk peran lain tanpa tenantId ? melempar (fail-closed), bukan mengembalikan
+ * null yang bisa disalahartikan konsumen query sebagai "tanpa filter".
  */
 export function buildScopeFilter(actor: Actor, scope: ScopeKind = 'department'):
   { tenantId: string | null; departmentId: string | null } {
   const role = normalizeRole(actor.role);
   if (role === 'superuser') return { tenantId: null, departmentId: null };
-  if (role === 'admin') return { tenantId: actor.tenantId ?? null, departmentId: null };
-  return {
-    tenantId: actor.tenantId ?? null,
-    departmentId: scope === 'department' ? actor.departmentId ?? null : null,
-  };
+  if (!actor.tenantId) throw new Error('RBAC: actor non-superuser tanpa tenantId (scope wajib).');
+  const eff = clampScope(role, scope);
+  if (role === 'admin') return { tenantId: actor.tenantId, departmentId: null };
+  if (!actor.departmentId) throw new Error('RBAC: actor ber-scope departemen tanpa departmentId.');
+  return { tenantId: actor.tenantId, departmentId: eff === 'department' ? actor.departmentId : null };
 }
 
 /** PRD �25 - scope dari client TIDAK boleh dipercaya untuk non-superuser. */
@@ -311,14 +338,14 @@ export function canInvite(
 
   if (actorRole === 'superuser') return { allowed: true };
 
-  // sama tenant untuk semua di bawah superuser
-  if (target?.tenantId && target.tenantId !== actor.tenantId) {
+  // sama tenant untuk semua di bawah superuser (fail-closed bila tak diketahui)
+  if (target?.tenantId == null || target.tenantId !== actor.tenantId) {
     return { allowed: false, error: 'TENANT_SCOPE_VIOLATION' };
   }
   if (actorRole === 'admin') return { allowed: true };
 
-  // MANAGER: hanya departemennya sendiri
-  if (target?.departmentId && target.departmentId !== actor.departmentId) {
+  // MANAGER: hanya departemennya sendiri (fail-closed)
+  if (target?.departmentId == null || target.departmentId !== actor.departmentId) {
     return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
   }
   return { allowed: true };
@@ -348,10 +375,10 @@ export function canChangeRole(
   if (ROLE_LEVEL[nRole] <= ROLE_LEVEL[actorRole]) {
     return { allowed: false, error: 'INVALID_ROLE_ASSIGNMENT' };
   }
-  if (targetUser.tenantId && targetUser.tenantId !== actor.tenantId) {
+  if (targetUser.tenantId == null || targetUser.tenantId !== actor.tenantId) {
     return { allowed: false, error: 'TENANT_SCOPE_VIOLATION' };
   }
-  if (actorRole === 'manager' && targetUser.departmentId && targetUser.departmentId !== actor.departmentId) {
+  if (actorRole === 'manager' && (targetUser.departmentId == null || targetUser.departmentId !== actor.departmentId)) {
     return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
   }
   return { allowed: true };
