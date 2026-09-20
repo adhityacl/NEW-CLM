@@ -63,15 +63,15 @@ Status: ? sesuai � ?? sebagian � ? tidak ada/bertentangan
 | C1 | ?? Kritis | `POST /users/:id/impersonate` membuat **session token asli 2 jam** tanpa cek peran pemanggil, **tanpa audit**; kolom `impersonatedBy` ada tapi tidak diisi | `authConsoleRoutes.ts:657-692` |
 | C2 | ?? Kritis | `PUT /users/:id/role` tanpa hierarki - pemanggil mana pun bisa mengangkat akun ke `superuser` | `authConsoleRoutes.ts:521-625` |
 | C3 | ?? Kritis | Invitation tanpa hierarki/scope; siapa pun bisa mengundang `superuser`; accept **tanpa autentikasi** | `authConsoleRoutes.ts:1511, 1623` |
-| C4 | ?? Kritis | `/api/auth-console/organizations/*`, `/api/tenants/switch`, `/api/audit-logs` di-whitelist ? lolos tanpa otorisasi | `server.ts:100-105` |
+| C4 | ?? Kritis | `/api/tenants/switch` + `/api/auth-console/organizations/*` di-whitelist ? lolos tanpa otorisasi. **Koreksi:** `/api/audit-logs` & `/api/export-csv` juga di-whitelist tetapi **tidak punya route** ? entri inert (bukan kebocoran) | `server.ts:100-101` |
 | C5 | ?? Tinggi | Identitas dari header `x-user-email`/`?userEmail` yang dapat dipalsukan; admin di-hardcode ke `adhitcl@gmail.com` | `server.ts:110,188,2239` |
 | C6 | ?? Tinggi | `authConsoleRouter` (40+ endpoint admin) tanpa guard per-route | `server.ts:7864` |
-| C7 | ?? Tinggi | Isolasi departemen tidak berjalan (`rbacScoping.ts` tidak diimpor) | `server.ts` (0 match) |
+| C7 | ?? Tinggi | Isolasi departemen tidak berjalan di backend (`rbacScoping.ts` **tidak diimpor oleh `server.ts`**, 0 match). **Koreksi:** modul tetap dipakai frontend (`AuthContext.tsx:6`), jadi label "dead code" tidak akurat | `server.ts` (0 match) |
 | C8 | ?? Tinggi | `?all=true` pada `GET /api/contracts` melewati filter tenant | `server.ts:4122-4134` |
 | C9 | ?? Sedang | Audit log in-memory cap 500, tanpa tabel; aksi admin tidak tercatat | `server.ts:1890-1915` |
 | C10 | ?? Sedang | Role legacy (`legal/finance/staff`, `Admin/Editor/Viewer`) jadi default user & invitation | `authConsoleRoutes.ts:311,1513` |
 | C11 | ?? Sedang | UI gating berbasis `isAdmin`; `partner-spending` & `settings-google` tanpa proteksi | `Sidebar.tsx:213-236` |
-| C12 | ?? Sedang | Flag kumulatif: `isManager`/`isEditor` mewarisi peran di atasnya ? Editor "mewarisi" Manager | `AuthContext.tsx:218-225` |
+| C12 | ?? Sedang | Flag kumulatif berarah **ke atas**: `isManager`/`isEditor` juga bernilai true untuk peran di atasnya (Admin/Superuser lolos gate Manager; Manager lolos gate Editor) - bukan "Editor mewarisi Manager" | `AuthContext.tsx:218-225` |
 
 ## 4. Yang sudah dikerjakan oleh PR ini (`feat/rbac-alignment`)
 
@@ -98,9 +98,47 @@ Status: ? sesuai � ?? sebagian � ? tidak ada/bertentangan
 ## 6. Rekomendasi urutan perbaikan
 
 1. **Pasang engine baru** (`server/rbac.ts`) + mount `server/rbacRoutes.ts` (1 baris di `server.ts`).
-2. **Tutup C1-C4**: pasang `requirePermission()` pada route `auth-console` (impersonate, role, invite, ban), hapus whitelist `/api/tenants/switch` & `/api/audit-logs`.
+2. **Tutup C1-C4**: pasang `requirePermission()` pada route `auth-console` (impersonate, role, invite, ban); hapus whitelist `/api/tenants/switch` & `/api/auth-console/organizations/*` (entri `/api/audit-logs` & `/api/export-csv` inert, tetap sebaiknya dibersihkan). `requirePermission()` **wajib** melewati `resolveTrustedScope()` agar tidak mempercayai tenant/department dari client (PRD �25) - sudah diperbaiki di `server/rbacRoutes.ts`.
 3. **Ganti identitas header** dengan sesi better-auth sebagai satu-satunya sumber; hapus hardcode email admin.
 4. **Audit log**: buat tabel `audit_log` di SQLite; catat 18 aksi PRD �27 termasuk impersonasi (isi `impersonatedBy`).
 5. **Isolasi departemen**: impor `buildScopeFilter`/`checkScope` ke query dokumen.
 6. **Frontend**: pasang `PermissionContext` dari `GET /api/rbac/me`, ganti semua `isAdmin` dengan `<Can>`.
 7. Jalankan `scripts/rbac-qc.mjs` di staging untuk QC per level.
+
+## 7. Koreksi pasca review adversarial independen
+
+Sebuah reviewer independen (mode adversarial) menguji ulang temuan di atas dan engine `server/rbac.ts`. Verdict: temuan inti **valid**, dengan beberapa koreksi dan **3 bug nyata pada engine yang sudah diperbaiki**.
+
+### 7.1 Koreksi klaim laporan
+
+| Klaim awal | Koreksi |
+|---|---|
+| C4 menyebut `/api/audit-logs` sebagai kebocoran kritis | Route-nya tidak ada ? entri whitelist **inert**. Yang nyata berbahaya: `tenants/switch` & `organizations/*` |
+| C7 menyebut `rbacScoping.ts` "dead code" | Dijmpor frontend (`AuthContext.tsx:6`) ? istilah tepat: "tidak dipakai lapisan backend" |
+| C12 contoh arah warisan terbalik | Flag kumulatif berarah **ke atas** (peran tinggi lolos gate peran bawah) |
+| C2/C3 "pemanggil mana pun" | Berlebihan: middleware global tetap memblokir bucket Viewer; pelaku = Admin/Editor atau identitas palsu (C5) |
+| C9 "`/api/activity-logs` tanpa auth" | Frasa tepat: di belakang middleware, tetapi default peran = Viewer & GET diizinkan |
+| Nomor baris C5 | Bergeser 2-7 baris vs commit yang dibaca |
+
+### 7.2 Bug engine yang diperbaiki (ditemukan reviewer)
+
+| # | Bug | Perbaikan |
+|---|---|---|
+| 1 | **Pelebaran scope oleh pemanggil** - `checkScope(editor, res, 'tenant')` lolos; `decide` menerima `scope` dari pemanggil | Tambah `maxScopeFor()` + `clampScope()`; scope yang diminta dipersempit otomatis sesuai peran |
+| 2 | **Fail-open** - resource tanpa `departmentId` lolos untuk peran ber-scope departemen | `checkScope` kini fail-closed; `canInvite`/`canChangeRole` mewajibkan tenant/department target |
+| 3 | **`audit.view` tanpa dasar** diberikan ke ADMIN (tidak ada di PRD �10/�12/�33) | Dihapus dari ADMIN; dicatat sebagai keputusan |
+| 4 | `requirePermission()` membaca tenant/department dari client (melanggar �25) | Diderivasi lewat `resolveTrustedScope()` |
+| 5 | `buildScopeFilter` mengembalikan `{tenantId:null}` untuk non-superuser tanpa tenant (ambigu dengan "tanpa filter") | Kini **melempar** (fail-closed) |
+
+Suite diperluas: **36 ? 40 test**, semuanya lulus. QC runtime dijalankan ulang: **30/30 lulus**.
+
+### 7.3 Sisa keputusan produk (dari review)
+
+1. `audit.view` untuk ADMIN: hapus permanen, atau tambahkan resmi ke PRD?
+2. `canInvite(superuser,'superuser')` ditolak, tetapi `canChangeRole(superuser,x,'superuser')` diizinkan (PRD �13 vs �26 bertentangan) ? perlu satu aturan.
+3. `hasPermission('superuser', <apa pun>)` = true (termasuk permission tak dikenal) - sesuai �12 "ALL", tetapi bertabrakan dengan deny-by-default �32.1.
+4. `ScopedResource.ownerId` (�19 ownership) dan `RESOURCE_NOT_FOUND` (�29 anti-enumeration) belum dipakai di engine - perlu diimplementasikan saat query nyata sudah terpasang.
+
+### 7.4 Batasan review
+
+Reviewer tidak memiliki runtime app (tanpa kredensial); verdict berbasis pembacaan kode + eksekusi unit test, bukan uji endpoint produksi. Uji runtime endpoint **telah** dijalankan terpisah terhadap engine standalone (30/30) - lihat `RBAC-Impersonation-QC-Report.md`.
