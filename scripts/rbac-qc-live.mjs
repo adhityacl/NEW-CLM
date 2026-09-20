@@ -179,6 +179,13 @@ async function main() {
   if (orgId) console.log(`Organisasi      : ${orgId}`);
   console.log(`Token superuser : ${token ? 'ditemukan' : 'TIDAK ditemukan'}`);
   console.log('');
+  if (!token) {
+    console.error('❌ Tidak ada sesi superuser aktif di database.');
+    console.error('   → Penyebab paling umum: sesi sudah dicabut/kedaluwarsa (mis. setelah “Revoke all”).');
+    console.error('   → Solusi: buka app di browser dan LOGIN sebagai superuser, lalu jalankan ulang perintah ini.');
+    console.error('   → Cek cepat tanpa QC:  node scripts/get-superuser-token.mjs');
+    process.exit(4);
+  }
   if (userCount != null) notes.push(`Database berisi ${userCount} user dan ${sessionCount} sesi aktif.`);
   if (orgId) notes.push(`Organisasi aktif terdeteksi: ${orgId}.`);
   if (!token) notes.push('Token superuser tidak ditemukan — bagian impersonasi dilewati (anonim akan 401).');
