@@ -55,19 +55,32 @@ node scripts/rbac-qc.mjs --base http://localhost:3000 --super-token "<TOKEN>" \
   --accounts '{"admin":"<id>","manager":"<id>","editor":"<id>","viewer":"<id>"}'
 ```
 
-## 4. ⚠️ Wajib: satu baris pemasangan
+## 4. ⚠️ Aktivasi (otomatis, idempoten, reversible)
 
-Engine belum otomatis aktif (agar tidak mengubah perilaku produksi tanpa review). Tambahkan di `server.ts`, setelah middleware body-parser:
+Jangan edit `server.ts` manual — pakai patcher idempoten:
 
-```ts
-import { createRbacRouter } from "./server/rbacRoutes";
-app.use("/api/rbac", createRbacRouter({ resolveActor }));
-```
-
-`resolveActor(req)` cukup mengembalikan `{ id, role, tenantId, departmentId }` dari sesi better-auth yang sudah ada. Setelah ini:
 ```bash
-curl http://localhost:3000/api/rbac/matrix   # verifikasi cepat
+node tools/apply-rbac-integration.mjs server.ts --tier=additive   # DEFAULT: hanya mount /api/rbac/* — NOL perubahan perilaku
+node tools/apply-rbac-integration.mjs server.ts --tier=secure     # + tutup whitelist C4 + guard endpoint admin-inti
 ```
+
+Terapkan `additive` dulu, smoke test di staging, lalu `secure`. Dijalankan ulang = tidak ada perubahan (aman).
+
+Verifikasi lokal (dijalankan di sini; bukti `DELIVERY/qc/patch-verification.json`):
+
+| Tier | Perubahan | Idempoten | Syntax (esbuild) |
+|---|---|:--:|:--:|
+| additive | +34 baris | ✅ | ✅ exit 0 |
+| secure | +40 / −2 baris | ✅ | ✅ exit 0 |
+
+Patch untuk review: `DELIVERY/qc/server.ts.additive.patch` dan `server.ts.secure.patch`.
+
+Setelah aktif, verifikasi cepat:
+```bash
+curl http://localhost:3000/api/rbac/matrix   # harus HTTP 200 + katalog 32 permission
+```
+
+> Catatan: file `server.ts` (287 KB) melebihi batas transport konektor, sehingga perubahan dikirim sebagai **patcher + patch**, bukan sebagai file penuh. Base yang diverifikasi: 287.072 byte (identik dengan `main`).
 
 ## 5. Catatan migrasi role (legacy → standar)
 
@@ -141,6 +154,7 @@ Sebelum migrasi, pastikan setiap user non-superuser punya `tenantId` + `departme
 | Skema RBAC sesuai PRD §5–§12 | 🟢 Migrasi idempoten terverifikasi (6 tabel, 5 role, 32 permission, 77 pemetaan, 0 FK error) |
 | Test otorisasi otomatis lulus | ✅ 36/36 |
 | Integrasi Obsidian UI | 🟡 Config + token + 2 komponen vendored; sisanya via CLI/`npm i` |
+| Kode RBAC terpasang di app | 🟡 Patcher idempoten siap & terverifikasi (patch lolos syntax check); eksekusi di Codespaces/staging |
 | Token desain konsisten | 🟡 Token lengkap disediakan; migrasi komponen lama bertahap |
 | Responsif & aksesibilitas | ⚪ Belum diverifikasi visual (butuh runtime) |
 | Anggaran performa | ⚪ Belum diukur (butuh `npm run build` + runtime) |
