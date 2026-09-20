@@ -160,8 +160,25 @@ code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px}
 }
 
 async function main() {
+  /* Preflight: pastikan app benar-benar berjalan di BASE. */
+  const probe = await call('GET', '/api/exchange-rates');
+  if (probe.status === null) {
+    console.error(`\n❌ Tidak bisa menghubungi ${BASE}`);
+    console.error('   → App belum berjalan. Nyalakan dulu di terminal lain:');
+    console.error('       npm run dev      (tunggu: "Pengelola Kontrak & IO Server running on http://0.0.0.0:3000")');
+    console.error('     Lalu buka terminal KEDUA dan ulangi perintah QC ini.');
+    console.error(`   (detail: ${probe.error ?? 'koneksi ditolak'})`);
+    process.exit(3);
+  }
+
   const { source, accounts, token, userCount, sessionCount, orgId } = await loadAccounts();
   const notes = [];
+  console.log(`Base            : ${BASE}`);
+  console.log(`Sumber akun     : ${source}`);
+  if (userCount != null) console.log(`Database        : ${userCount} user, ${sessionCount} sesi aktif`);
+  if (orgId) console.log(`Organisasi      : ${orgId}`);
+  console.log(`Token superuser : ${token ? 'ditemukan' : 'TIDAK ditemukan'}`);
+  console.log('');
   if (userCount != null) notes.push(`Database berisi ${userCount} user dan ${sessionCount} sesi aktif.`);
   if (orgId) notes.push(`Organisasi aktif terdeteksi: ${orgId}.`);
   if (!token) notes.push('Token superuser tidak ditemukan — bagian impersonasi dilewati (anonim akan 401).');
@@ -182,6 +199,7 @@ async function main() {
     if (accounts[lv] && token) {
       const t = await impersonate(accounts[lv], token);
       tokens[lv] = { token: t, source: t ? 'impersonation' : 'impersonation-failed' };
+      if (!t) console.error(`  ! impersonasi gagal untuk level ${lv} (user id ${accounts[lv]})`);
     } else {
       tokens[lv] = { token: null, source: 'none' };
     }
