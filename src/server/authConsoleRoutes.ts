@@ -8,6 +8,34 @@ import nodemailer from 'nodemailer';
 
 export const authConsoleRouter = Router();
 
+/* RBAC-ADMIN-AREA-GUARD-V1 */
+// Guard area admin: hanya peran admin ke atas (identitas dari token sesi, bukan header email).
+const _adminAreaRoles = new Set(["superuser", "admin", "manager"]);
+authConsoleRouter.use(["/sessions", "/organizations", "/teams", "/invitations", "/api-keys", "/rbac-matrix"], (req: Request, res: Response, next: any) => {
+  try {
+    const token = ((req.headers["authorization"] || "").toString().replace(/^Bearer\s+/i, "")
+      || (req.headers["x-session-token"] || "").toString()).trim();
+    if (!token || !sqliteDb) {
+      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
+    }
+    const session = sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(token) as any;
+    if (!session?.userId) {
+      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
+    }
+    const user = sqliteDb.prepare("SELECT role, banned FROM user WHERE id = ?").get(session.userId) as any;
+    if (!user || user.banned === 1) {
+      return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "You do not have permission to access this area." });
+    }
+    const role = String(user.role || "").toLowerCase().trim();
+    if (!_adminAreaRoles.has(role)) {
+      return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "You do not have permission to access this area." });
+    }
+    next();
+  } catch {
+    return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
+  }
+});
+
 let globalDbRef: any = null;
 let saveDbFnRef: (() => void) | null = null;
 
