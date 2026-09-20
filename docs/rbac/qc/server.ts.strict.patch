@@ -1,0 +1,103 @@
+diff --git "a/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.openclaw\\tmp\\server.clean.ts" "b/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.cluster\\rbac-obsidian\\artifacts\\qc-output\\_patchtest\\strict\\server.ts"
+index 56046a3..cef7f0a 100644
+--- "a/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.openclaw\\tmp\\server.clean.ts"
++++ "b/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.cluster\\rbac-obsidian\\artifacts\\qc-output\\_patchtest\\strict\\server.ts"
+@@ -8,6 +8,8 @@ import fs from "fs";
+ import crypto from "crypto";
+ import nodemailer from "nodemailer";
+ import { createServer as createViteServer } from "vite";
++/* RBAC-INTEGRATION-V1 */
++import { createRbacRouter, requirePermission } from "./server/rbacRoutes";
+ import { GoogleGenAI, Type } from "@google/genai";
+ import { OAuth2Client } from "google-auth-library";
+ import { toNodeHandler } from "better-auth/node";
+@@ -96,8 +98,6 @@ export const rbacAuthMiddleware = (req: express.Request, res: express.Response,
+     req.path.endsWith("/redline-analysis") ||
+     req.path === "/api/google/test-connection" ||
+     req.path === "/api/export-csv" ||
+-    req.path === "/api/tenants/switch" ||
+-    req.path.startsWith("/api/auth-console/organizations/") ||
+     req.path === "/api/templates" ||
+     req.path.startsWith("/api/templates/") ||
+     req.path === "/api/translate-template" ||
+@@ -180,6 +180,22 @@ export const rbacAuthMiddleware = (req: express.Request, res: express.Response,
+     });
+   }
+ 
++  /* RBAC-INTEGRATION-V1-STRICT */
++  // Identitas WAJIB berasal dari sesi terverifikasi (token di tabel session).
++  // Menutup kebocoran: request anonim sebelumnya diperlakukan sebagai Viewer.
++  {
++    let strictSessionOk = false;
++    if (authHeader && sqliteDb) {
++      try {
++        const t = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7).trim() : String(authHeader).trim();
++        strictSessionOk = !!sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(t);
++      } catch { strictSessionOk = false; }
++    }
++    if (!strictSessionOk) {
++      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
++    }
++  }
++
+   // Determine role based on verified DB/Session role
+   const rawRole = (detectedRole || "").toString().toLowerCase().trim();
+ 
+@@ -191,11 +207,7 @@ export const rbacAuthMiddleware = (req: express.Request, res: express.Response,
+   } else if (/viewer|guest|readonly|read/i.test(rawRole)) {
+     role = "Viewer";
+   } else {
+-    if (userEmail === "adhitcl@gmail.com") {
+-      role = "Admin";
+-    } else {
+-      role = "Viewer";
+-    }
++    role = "Viewer";
+   }
+ 
+   (req as any).rbacRole = role;
+@@ -215,6 +227,44 @@ export const rbacAuthMiddleware = (req: express.Request, res: express.Response,
+ 
+ app.use(rbacAuthMiddleware);
+ 
++/* RBAC-INTEGRATION-V1 */
++// Actor RBAC diambil dari sesi terverifikasi (better-auth / token sesi), bukan header yang bisa dipalsukan.
++const resolveRbacActor = async (req: any) => {
++  try {
++    const session = await betterAuthInstance.api.getSession({ headers: req.headers as any });
++    if (session?.user?.id) {
++      const u: any = sqliteDb.prepare("SELECT role FROM user WHERE id = ?").get(session.user.id);
++      const m: any = sqliteDb.prepare("SELECT organizationId, role FROM member WHERE userId = ? LIMIT 1").get(session.user.id);
++      const raw = (m?.role === "owner" ? "superuser" : (u?.role || m?.role || "viewer"));
++      return { id: session.user.id, role: String(raw).toLowerCase(), tenantId: m?.organizationId ?? null, departmentId: null };
++    }
++  } catch { /* lanjut ke fallback */ }
++  try {
++    const authHeader = req.headers["authorization"] || req.headers["x-session-token"];
++    if (authHeader && sqliteDb) {
++      const token = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7).trim() : String(authHeader).trim();
++      const s: any = sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(token);
++      if (s?.userId) {
++        const u: any = sqliteDb.prepare("SELECT role FROM user WHERE id = ?").get(s.userId);
++        return { id: s.userId, role: String(u?.role || "viewer").toLowerCase(), tenantId: null, departmentId: null };
++      }
++    }
++  } catch { /* tanpa actor */ }
++  return null;
++};
++const attachRbacActor = async (req: any, _res: any, next: any) => {
++  req.actor = await resolveRbacActor(req);
++  next();
++};
++app.use(attachRbacActor);
++app.use("/api/rbac", createRbacRouter({ resolveActor: (req: any) => req.actor ?? null }));
++
++/* RBAC-INTEGRATION-V1-SECURE */
++// Guard izin bertarget (jangan blanket ΓÇö endpoint publik seperti invitations/accept harus tetap jalan).
++app.use("/api/auth-console/users", requirePermission("admin.user.manage", "tenant"));
++app.post("/api/tenants/switch", requirePermission("workspace.switch", "global"));
++app.use("/api/tenants/switch", requirePermission("workspace.switch", "global"));
++
+ // Middleware proteksi route berdasarkan Tenant & Role (Better Auth Organization Plugin)
+ export const requireTenantRole = (requiredRole: string) => {
+   return async (req: express.Request, res: express.Response, next: express.NextFunction) => {

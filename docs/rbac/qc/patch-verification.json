@@ -1,26 +1,34 @@
 {
-    "generatedAt":  "2026-09-20T20:18:17.5444473Z",
+    "generatedAt":  "2026-09-20T20:27:57.0871887Z",
     "baselineBytes":  287072,
-    "baselineMatchesRepo":  true,
     "repoBytes":  287072,
     "tiers":  [
                   {
                       "tier":  "additive",
-                      "bytesAfterApply":  288889,
+                      "changes":  2,
+                      "bytesAfter":  288889,
                       "idempotent":  true,
                       "esbuildSyntaxOk":  true,
-                      "patchFile":  "server.ts.additive.patch",
-                      "patchBytes":  3086,
-                      "diffStat":  "1 file changed, 34 insertions(+)"
+                      "diffStat":  "1 file changed, 34 insertions(+)",
+                      "patchBytes":  3086
                   },
                   {
                       "tier":  "secure",
-                      "bytesAfterApply":  289174,
+                      "changes":  5,
+                      "bytesAfter":  289174,
                       "idempotent":  true,
                       "esbuildSyntaxOk":  true,
-                      "patchFile":  "server.ts.secure.patch",
-                      "patchBytes":  3970,
-                      "diffStat":  "1 file changed, 40 insertions(+), 2 deletions(-)"
+                      "diffStat":  "1 file changed, 40 insertions(+), 2 deletions(-)",
+                      "patchBytes":  3970
+                  },
+                  {
+                      "tier":  "strict",
+                      "changes":  7,
+                      "bytesAfter":  289801,
+                      "idempotent":  true,
+                      "esbuildSyntaxOk":  true,
+                      "diffStat":  "1 file changed, 57 insertions(+), 7 deletions(-)",
+                      "patchBytes":  5356
                   }
               ]
 }

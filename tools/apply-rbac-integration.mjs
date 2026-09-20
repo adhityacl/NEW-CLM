@@ -19,14 +19,17 @@ const file = process.argv[2] ?? 'server.ts';
 const tierArg = process.argv.find((a) => a.startsWith('--tier='));
 const tier = (tierArg ? tierArg.split('=')[1] : 'additive');
 const dryRun = process.argv.includes('--dry-run');
+const doSecure = tier === 'secure' || tier === 'strict';
+const doStrict = tier === 'strict';
 
-if (!['additive', 'secure'].includes(tier)) {
-  console.error(`tier tidak dikenal: ${tier} (pakai additive|secure)`);
+if (!['additive', 'secure', 'strict'].includes(tier)) {
+  console.error(`tier tidak dikenal: ${tier} (pakai additive|secure|strict)`);
   process.exit(2);
 }
 
 const MARK = '/* RBAC-INTEGRATION-V1 */';
 const MARK_SECURE = '/* RBAC-INTEGRATION-V1-SECURE */';
+const MARK_STRICT = '/* RBAC-INTEGRATION-V1-STRICT */';
 
 let src = readFileSync(file, 'utf8');
 const before = src;
@@ -98,7 +101,7 @@ if (!src.includes(MARK)) {
 
 /* ---------- Tier secure ---------- */
 
-if (tier === 'secure' && !src.includes(MARK_SECURE)) {
+if (doSecure && !src.includes(MARK_SECURE)) {
   removeOnce('    req.path === "/api/tenants/switch" ||\n', 'tutup whitelist /api/tenants/switch (C4)');
   removeOnce('    req.path.startsWith("/api/auth-console/organizations/") ||\n', 'tutup whitelist /api/auth-console/organizations/* (C4)');
 
@@ -112,6 +115,44 @@ if (tier === 'secure' && !src.includes(MARK_SECURE)) {
       '\napp.use("/api/tenants/switch", requirePermission("workspace.switch", "global"));',
     'guard endpoint admin-inti + workspace switch',
   );
+}
+
+/* ---------- Tier strict (menutup kebocoran anonim, C5) ---------- */
+
+if (doStrict && !src.includes(MARK_STRICT)) {
+  const ROLE_ANCHOR = '  // Determine role based on verified DB/Session role';
+  const strictGuard = [
+    '  ' + MARK_STRICT,
+    '  // Identitas WAJIB berasal dari sesi terverifikasi (token di tabel session).',
+    '  // Menutup kebocoran: request anonim sebelumnya diperlakukan sebagai Viewer.',
+    '  {',
+    '    let strictSessionOk = false;',
+    '    if (authHeader && sqliteDb) {',
+    '      try {',
+    '        const t = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7).trim() : String(authHeader).trim();',
+    '        strictSessionOk = !!sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(t);',
+    '      } catch { strictSessionOk = false; }',
+    '    }',
+    '    if (!strictSessionOk) {',
+    '      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });',
+    '    }',
+    '  }',
+    '',
+    ROLE_ANCHOR,
+  ].join('\n');
+  replaceOnce(ROLE_ANCHOR, strictGuard, 'STRICT: wajib sesi terverifikasi (401 untuk anonim)');
+
+  const FALLBACK = [
+    '  } else {',
+    '    if (userEmail === "adhitcl@gmail.com") {',
+    '      role = "Admin";',
+    '    } else {',
+    '      role = "Viewer";',
+    '    }',
+    '  }',
+  ].join('\n');
+  const FALLBACK_NEW = ['  } else {', '    role = "Viewer";', '  }'].join('\n');
+  replaceOnce(FALLBACK, FALLBACK_NEW, 'STRICT: hapus fallback email superadmin yang di-hardcode');
 }
 
 /* ---------- Simpan ---------- */
