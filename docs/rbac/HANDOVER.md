@@ -150,13 +150,13 @@ Sebelum migrasi, pastikan setiap user non-superuser punya `tenantId` + `departme
 
 | Kriteria | Status |
 |---|---|
-| RBAC sesuai panduan | 🟡 Engine + matriks + test selesai; **pemasangan ke route lama belum** (menunggu review karena mengubah jalur auth) |
+| RBAC sesuai panduan | 🟡 Engine + matriks + test (44/44) + migrasi + patcher selesai; **terapan ke app menunggu eksekusi di Codespaces** |
 | Matriks peran–permission | ✅ Tergenerasi dari kode (32×5) |
 | QC impersonasi tiap level | 🟢 Runtime pada engine: **30/30 lulus** + jejak audit impersonasi terisi. App penuh: menunggu Codespaces |
 | Akses terlarang benar-benar ditolak | 🟢 Terbukti runtime pada engine (6 probe negatif → 403 + kode standar §29). App penuh menunggu C1–C4 ditutup |
 | Jejak audit impersonasi | 🟢 Terbukti runtime (4 event, `impersonatedBy` terisi) + tabel `audit_log` terverifikasi. Sisa: isi kolom di `authConsoleRoutes.ts:658` |
 | Skema RBAC sesuai PRD §5–§12 | 🟢 Migrasi idempoten terverifikasi (6 tabel, 5 role, 32 permission, 77 pemetaan, 0 FK error) |
-| Test otorisasi otomatis lulus | ✅ 36/36 |
+| Test otorisasi otomatis lulus | ✅ 44/44 |
 | Integrasi Obsidian UI | 🟡 Config + token + 2 komponen vendored; sisanya via CLI/`npm i` |
 | Kode RBAC terpasang di app | 🟡 Patcher idempoten siap & terverifikasi (patch lolos syntax check); eksekusi di Codespaces/staging |
 | Token desain konsisten | 🟡 Token lengkap + kontras terverifikasi; migrasi komponen lama bertahap |
