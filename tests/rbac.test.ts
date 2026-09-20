@@ -15,7 +15,7 @@ import {
   ROLES, ROLE_LEVEL, normalizeRole, hasPermission, permissionsFor,
   canInvite, canChangeRole, assignableRoles, checkScope, buildScopeFilter,
   resolveTrustedScope, decide, authzError, buildAuditEvent, buildMatrix,
-  validateActorScope, clampScope, type Actor,
+  validateActorScope, clampScope, canEditDocument, maskCrossTenantAsNotFound, type Actor,
 } from '../server/rbac';
 
 /* --------------------------- fixtures --------------------------- */
@@ -326,4 +326,42 @@ test('matriks: 5 role, katalog permission lengkap', () => {
 
 test('setiap role punya minimal document.view (kecuali yang sengaja dikunci)', () => {
   assert.deepEqual(ALL.map((a) => hasPermission(a.role, 'document.view')), [true, true, true, true, true]);
+});
+
+/* ---------------------- §19 ownership / resource authz ------------ */
+
+test('§19 canEditDocument: sesuai pseudo PRD', () => {
+  const doc = { tenantId: 't1', departmentId: 'd1' };
+  assert.equal(canEditDocument(SH, { tenantId: 't2', departmentId: 'd9' }), true); // superuser
+  assert.equal(canEditDocument(AD, doc), true);            // admin, departemen apa pun di tenant-nya
+  assert.equal(canEditDocument(MG, doc), true);            // manager departemennya
+  assert.equal(canEditDocument(ED, doc), true);            // editor departemennya
+  assert.equal(canEditDocument(VW, doc), false);           // viewer tak punya document.edit
+});
+
+test('§19 canEditDocument: tolak lintas tenant/departemen & fail-closed', () => {
+  assert.equal(canEditDocument(MG, { tenantId: 't2', departmentId: 'd1' }), false); // lintas tenant
+  assert.equal(canEditDocument(MG, { tenantId: 't1', departmentId: 'd2' }), false); // lintas departemen
+  assert.equal(canEditDocument(MG, { tenantId: 't1' }), false);                    // departemen tak diketahui → tolak
+  assert.equal(canEditDocument(null, { tenantId: 't1', departmentId: 'd1' }), false); // tanpa actor
+});
+
+/* ---------------------- §29 anti-enumeration ---------------------- */
+
+test('§29 anti-enumeration: penolakan lintas tenant disamarkan jadi 404', () => {
+  const foreign = { tenantId: 't2', departmentId: 'd1' };
+  const d = decide({ actor: MG, permission: 'document.edit', resource: foreign, scope: 'department' });
+  assert.equal(d.allow, false);
+  const masked = maskCrossTenantAsNotFound(MG, foreign, d);
+  assert.equal(masked.allow, false);
+  if (!masked.allow) assert.equal(masked.error.error, 'RESOURCE_NOT_FOUND');
+});
+
+test('§29 anti-enumeration: penolakan dalam tenant tetap 403 (bukan 404)', () => {
+  const sameDept = { tenantId: 't1', departmentId: 'd2' };
+  const d = decide({ actor: MG, permission: 'document.edit', resource: sameDept, scope: 'department' });
+  const masked = maskCrossTenantAsNotFound(MG, sameDept, d);
+  assert.equal(masked.allow, false);
+  if (!masked.allow) assert.equal(masked.error.error, 'DEPARTMENT_SCOPE_VIOLATION');
+  assert.equal(maskCrossTenantAsNotFound(SH, sameDept, { allow: true }).allow, true);
 });

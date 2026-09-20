@@ -314,6 +314,49 @@ export function resolveTrustedScope(actor: Actor, clientSupplied?: Partial<Scope
 }
 
 /* ------------------------------------------------------------------ */
+/* 5b. Otorisasi resource dokumen (PRD §19) + anti-enumeration (§29)   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * PRD §19 — canEditDocument(user, document):
+ *   1) wajib punya permission `document.edit`
+ *   2) SUPERUSER lolos
+ *   3) tenant harus sama
+ *   4) MANAGER/EDITOR/VIEWER: departemen harus sama
+ */
+export function canEditDocument(actor: Actor | null, document: ScopedResource): boolean {
+  if (!actor) return false;
+  if (!hasPermission(actor.role, 'document.edit')) return false;
+  const role = normalizeRole(actor.role);
+  if (role === 'superuser') return true;
+  if (document.tenantId != null && document.tenantId !== actor.tenantId) return false;
+  if (['manager', 'editor', 'viewer'].includes(role)) {
+    if (document.departmentId != null && document.departmentId !== actor.departmentId) return false;
+    if (document.departmentId == null) return false; // fail-closed (PRD §32.4)
+  }
+  return true;
+}
+
+/**
+ * PRD §29 — anti-enumeration. Bila penolakan disebabkan perbedaan tenant,
+ * kembalikan RESOURCE_NOT_FOUND (bukan TENANT_SCOPE_VIOLATION) agar penyerang
+ * tidak dapat memastikan keberadaan resource milik tenant lain.
+ */
+export function maskCrossTenantAsNotFound(
+  actor: Actor | null,
+  resource: ScopedResource,
+  decision: Decision,
+): Decision {
+  if (decision.allow) return decision;
+  const role = normalizeRole(actor?.role);
+  if (role === 'superuser') return decision;
+  if (resource.tenantId != null && resource.tenantId !== actor?.tenantId) {
+    return { allow: false, error: authzError('RESOURCE_NOT_FOUND') };
+  }
+  return decision;
+}
+
+/* ------------------------------------------------------------------ */
 /* 6. Invitation hierarchy (PRD §13–§14)                               */
 /* ------------------------------------------------------------------ */
 
