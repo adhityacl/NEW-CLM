@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Harness QC Impersonasi RBAC (PRD �30).
+ * Harness QC Impersonasi RBAC (PRD §30).
  *
  * Menjalankan skenario "menyamar sebagai user di setiap level" terhadap
  * instance yang SEDANG BERJALAN, lalu membandingkan hasilnya dengan matriks
@@ -10,7 +10,7 @@
  *
  *   node scripts/rbac-qc.mjs --base http://localhost:3000 --super-token <TOKEN_SUPERUSER>
  *
- * Token superuser didapat dari sesi login di browser (DevTools ? Application ?
+ * Token superuser didapat dari sesi login di browser (DevTools → Application →
  * Cookies/localStorage) atau dari `POST /api/auth-console/users/<id>/impersonate`.
  * Harness akan memakai superuser untuk meng-impersonate akun tiap level yang
  * diberikan via --accounts, atau memakai token yang diberikan langsung.
@@ -36,7 +36,7 @@ const OUT = arg('out', 'qc-output');
 
 const LEVELS = ['superuser', 'admin', 'manager', 'editor', 'viewer'];
 
-/** Skenario uji (PRD �18 + �30). expected: true = boleh, false = harus ditolak. */
+/** Skenario uji (PRD §18 + §30). expected: true = boleh, false = harus ditolak. */
 const SCENARIOS = [
   { id: 'doc.view',        method: 'GET',    path: '/api/contracts',                    perm: 'document.view',   expected: { superuser: true, admin: true, manager: true, editor: true, viewer: true } },
   { id: 'doc.create',      method: 'POST',   path: '/api/contracts',                    perm: 'document.create', expected: { superuser: true, admin: true, manager: true, editor: true, viewer: false } },
@@ -119,9 +119,9 @@ async function main() {
     ...byLevel.map((b) => `| ${b.level} | ${b.tokenSource} | ${b.pass} | ${b.total} |`), '',
     '## Detail', '',
     '| Skenario | Level | Harapan | HTTP | Kode error | Hasil |', '|---|---|---|---:|---|---|',
-    ...results.map((r) => `| ${r.scenario} | ${r.level} | ${r.expect ? 'ALLOW' : 'DENY'} | ${r.status} | ${r.errorCode ?? '-'} | ${r.pass ? '?' : '?'} |`),
+    ...results.map((r) => `| ${r.scenario} | ${r.level} | ${r.expect ? 'ALLOW' : 'DENY'} | ${r.status} | ${r.errorCode ?? '-'} | ${r.pass ? '✅' : '❌'} |`),
     '', '> Catatan: skenario ber-harapan DENY dianggap lulus hanya bila HTTP 401/403',
-    '> dengan kode error standar PRD �29 (bukan 500 / halaman kosong).', '',
+    '> dengan kode error standar PRD §29 (bukan 500 / halaman kosong).', '',
   ].join('\n');
   writeFileSync(`${OUT}/rbac-qc-report.md`, md);
 
