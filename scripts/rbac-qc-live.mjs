@@ -61,6 +61,8 @@ async function loadAccounts() {
   const db = new DatabaseSync(dbPath, { readOnly: true });
   const users = db.prepare('SELECT id, email, role, banned FROM user').all();
   const sessions = db.prepare("SELECT token, userId, expiresAt FROM session WHERE datetime(expiresAt) > datetime('now')").all();
+  let orgId = null;
+  try { orgId = db.prepare('SELECT id FROM organization LIMIT 1').get()?.id ?? null; } catch {}
   db.close();
 
   const byRole = {};
@@ -75,6 +77,7 @@ async function loadAccounts() {
     source: `sqlite:${dbPath}`,
     token: token || suSession?.token || '',
     accounts: { admin: byRole.admin?.id, manager: byRole.manager?.id, editor: byRole.editor?.id, viewer: byRole.viewer?.id, superuser: su?.id },
+    orgId,
     userCount: users.length,
     sessionCount: sessions.length,
   };
@@ -99,10 +102,15 @@ async function impersonate(userId, superToken) {
   return r.json?.sessionToken || r.json?.token || null;
 }
 
-async function seedUser(level, superToken) {
+async function seedUser(level, superToken, orgId) {
   const email = `qc.tester+${level}@example.test`;
-  const r = await call('POST', '/api/auth-console/users', superToken, { email, name: `QC ${level}`, role: level });
-  return r.json?.user?.id || r.json?.id || null;
+  const payload = { email, name: `QC ${level}`, role: level };
+  // App mensyaratkan organizationId untuk role di bawah Superuser/Admin.
+  if (orgId && !['superuser', 'admin'].includes(level)) payload.organizationId = orgId;
+  const r = await call('POST', '/api/auth-console/users', superToken, payload);
+  if (r.status >= 200 && r.status < 300) return r.json?.user?.id || r.json?.id || null;
+  console.error(`  ! gagal membuat user uji ${level}: HTTP ${r.status} ${JSON.stringify(r.json ?? {}).slice(0, 160)}`);
+  return null;
 }
 
 function html(report) {
@@ -152,16 +160,17 @@ code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px}
 }
 
 async function main() {
-  const { source, accounts, token, userCount, sessionCount } = await loadAccounts();
+  const { source, accounts, token, userCount, sessionCount, orgId } = await loadAccounts();
   const notes = [];
   if (userCount != null) notes.push(`Database berisi ${userCount} user dan ${sessionCount} sesi aktif.`);
+  if (orgId) notes.push(`Organisasi aktif terdeteksi: ${orgId}.`);
   if (!token) notes.push('Token superuser tidak ditemukan — bagian impersonasi dilewati (anonim akan 401).');
 
   // Seed user uji bila diminta & level belum punya akun
   if (SEED && token) {
     for (const lv of ['admin', 'manager', 'editor', 'viewer']) {
       if (!accounts[lv]) {
-        const id = await seedUser(lv, token);
+        const id = await seedUser(lv, token, orgId);
         if (id) { accounts[lv] = id; notes.push(`User uji dibuat untuk level ${lv} (id ${id}).`); }
       }
     }
