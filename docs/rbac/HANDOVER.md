@@ -63,6 +63,8 @@ Jangan edit `server.ts` manual — pakai patcher idempoten:
 node tools/apply-rbac-integration.mjs server.ts --tier=additive   # DEFAULT: hanya mount /api/rbac/* — NOL perubahan perilaku
 node tools/apply-rbac-integration.mjs server.ts --tier=secure     # + tutup whitelist C4 + guard endpoint admin-inti
 node tools/apply-rbac-integration.mjs server.ts --tier=strict     # + WAJIB sesi terverifikasi (401 untuk anonim) + hapus fallback email superadmin
+node tools/apply-rbac-integration.mjs server.ts --tier=strict2    # + persempit whitelist /api/auth (auth-console ikut dijaga)
+node tools/apply-rbac-integration.mjs server.ts --tier=strict3    # + gerbangi sisa endpoint area admin (sessions/teams/invitations/api-keys/organizations/rbac-matrix + activity-logs)
 ```
 
 Terapkan `additive` dulu, smoke test di staging, lalu `secure`, terakhir `strict`. Dijalankan ulang = tidak ada perubahan (aman).
@@ -74,6 +76,8 @@ Verifikasi lokal (dijalankan di sini; bukti `DELIVERY/qc/patch-verification.json
 | additive | +34 baris | ✅ | ✅ exit 0 |
 | secure | +40 / −2 baris | ✅ | ✅ exit 0 |
 | strict | +57 / −7 baris | ✅ | ✅ exit 0 |
+| strict2 | +59 / -8 baris | ✅ | ✅ exit 0 |
+| strict3 | +68 / -8 baris | ✅ | ✅ exit 0 |
 
 Patch untuk review: `DELIVERY/qc/server.ts.additive.patch`, `server.ts.secure.patch`, `server.ts.strict.patch`.
 
