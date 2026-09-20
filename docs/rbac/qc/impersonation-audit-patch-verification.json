@@ -1,0 +1,29 @@
+{
+  "artifact": "tools/apply-impersonation-audit.mjs",
+  "purpose": "Mengisi session.impersonatedBy pada sesi hasil impersonasi (PRD §27 — jejak audit impersonasi)",
+  "target": "src/server/authConsoleRoutes.ts",
+  "baselineBytes": 80527,
+  "repoBytes": 80609,
+  "baselineMatchesRepo": true,
+  "results": {
+    "apply1": "PATCHED — sesi impersonasi kini mencatat impersonatedBy (dari token sesi pemanggil).",
+    "apply2": "ALREADY PATCHED (idempoten)",
+    "idempotent": true,
+    "bytesAfter": 81112,
+    "esbuildSyntaxOk": true,
+    "esbuildExit": 0
+  },
+  "changes": [
+    { "line": 668, "what": "penanda /* RBAC-IMPERSONATION-AUDIT-V1 */" },
+    { "line": 672, "what": "let _callerUserId: string | null = null;" },
+    { "line": 675, "what": "resolusi pemanggil dari token sesi (bukan header email): SELECT userId FROM session WHERE token = ?" },
+    { "line": 681, "what": "INSERT INTO session (...) kini menyertakan kolom impersonatedBy" },
+    { "line": 683, "what": ".run(..., id, null, _callerUserId)" },
+    { "line": 832, "what": "konsumen yang sudah ada: SELECT s.impersonatedBy (GET /sessions)" }
+  ],
+  "verificationAfterApply": [
+    "node scripts/get-superuser-token.mjs --all  → kolom impersonatedBy terisi pada sesi hasil impersonasi",
+    "qc-output/impersonation-live/report.json → setelah impersonasi, GET /api/auth-console/sessions memuat nilai impersonatedBy"
+  ],
+  "note": "Identitas pemanggil diambil dari token sesi (Authorization/x-session-token), bukan header email, sehingga tidak dapat dipalsukan seperti C5."
+}
