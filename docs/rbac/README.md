@@ -35,7 +35,7 @@ Indeks semua hasil kerja. Sumber kebenaran RBAC: `Engineering PRD — RBAC Struc
 | `server/rbac.ts` | Engine RBAC tunggal sesuai PRD |
 | `server/rbacRoutes.ts` | Router `/api/rbac/*` + `requirePermission()` (additif) |
 | `server/migrations/001_rbac_alignment.sql` | Skema RBAC + `audit_log` (idempoten, dari engine) |
-| `tests/rbac.test.ts` | 40 test otorisasi (PRD §30) — **40/40 lulus** |
+| `tests/rbac.test.ts` | 44 test otorisasi (PRD §30 + §19 + §29) — **44/44 lulus** |
 | `tools/gen-rbac-matrix.ts` · `tools/gen-rbac-migration.ts` | Generator matriks & migrasi dari kode (anti-drift) |
 | `tools/apply-rbac-integration.mjs` | Patcher `server.ts` 2-tier, idempoten |
 | `tools/rbac-devserver.ts` · `scripts/rbac-qc.mjs` | Server standalone + harness QC impersonasi |
@@ -46,7 +46,7 @@ Indeks semua hasil kerja. Sumber kebenaran RBAC: `Engineering PRD — RBAC Struc
 ## Cara cepat
 
 ```bash
-# test otorisasi                       → 40/40
+# test otorisasi                       → 44/44
 npx tsx --test tests/rbac.test.ts
 # matriks dari kode                    → 32 × 5
 npx tsx tools/gen-rbac-matrix.ts qc-output
