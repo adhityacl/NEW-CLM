@@ -235,6 +235,15 @@ async function main() {
     const rs = results.filter((r) => r.level === lv);
     console.log(`  ${lv.padEnd(10)} ${rs.filter((r) => r.pass).length}/${rs.length}  (token: ${tokens[lv]?.source})`);
   }
+  const bad = results.filter((r) => !r.pass);
+  if (bad.length) {
+    console.log(`\n! ${bad.length} skenario menyimpang dari PRD:`);
+    for (const r of bad) {
+      const got = r.status == null ? 'tidak ada respons' : `HTTP ${r.status}${r.errorCode ? ' ' + r.errorCode : ''}`;
+      console.log(`  ${r.scenario.padEnd(14)} ${r.level.padEnd(10)} harapan=${r.expect.padEnd(5)} dapat=${got}  →  ${r.method} ${r.path}`);
+    }
+    console.log('\n  Tempelkan baris-baris ini ke chat; saya perbaiki akar penyebabnya.');
+  }
   console.log(`\nBukti visual: ${join(OUT, 'report.html')}`);
   console.log(`Data: ${join(OUT, 'report.json')}`);
   console.log(`\nKirim ke saya dengan: git add ${OUT} && git commit -m "qc: impersonasi live" && git push`);
