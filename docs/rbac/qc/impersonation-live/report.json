@@ -1,6 +1,6 @@
 {
   "base": "http://localhost:3999",
-  "generatedAt": "2026-09-20T21:11:54.911Z",
+  "generatedAt": "2026-09-20T21:32:13.431Z",
   "accountSource": "sqlite:qc-output/_qc-live-test/auth.db",
   "levels": [
     "superuser",
@@ -89,19 +89,19 @@
       "source": "superuser-session"
     },
     "admin": {
-      "token": "IMP-U-ADMIN-1789938714870",
+      "token": "IMP-U-ADMIN-1789939933405",
       "source": "impersonation"
     },
     "manager": {
-      "token": "IMP-U-MANAGER-1789938714879",
+      "token": "IMP-U-MANAGER-1789939933406",
       "source": "impersonation"
     },
     "editor": {
-      "token": "IMP-U-EDITOR-1789938714881",
+      "token": "IMP-U-EDITOR-1789939933407",
       "source": "impersonation"
     },
     "viewer": {
-      "token": "IMP-U-VIEWER-1789938714882",
+      "token": "IMP-U-VIEWER-1789939933408",
       "source": "impersonation"
     }
   },
