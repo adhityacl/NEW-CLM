@@ -104,7 +104,22 @@ Aturan integrasi (wajib):
 | Pratinjau cepat desain (tanpa build) | buka `docs/rbac/design-preview.html` — mandiri, tanpa aset eksternal |
 
 ### Verifikasi pratinjau (dijalankan di sini)
-
 `node .openclaw/tmp/verify-preview.mjs` (DOM-stub) → 5 kartu peran · 15 baris matriks · 90 sel · 42 sel izin / 33 tolak · **LULUS**. Bukti: `DELIVERY/qc/design-preview-render.json`.
 
 > Panel browser AutoClaw tidak dapat memuat `localhost`, jadi verifikasi dilakukan dengan mengeksekusi skrip halaman terhadap DOM-stub (bukan tangkapan layar piksel). Tangkapan layar visual perlu dilakukan di Codespaces/ browser lokal.
+
+### Kontras WCAG 2.1 AA (terukur, dijalankan di sini)
+
+`node tools/check-contrast.mjs <index.css> <tokens.css>` menghitung rasio kontras nyata untuk 14 pasangan × 2 tema:
+
+| Temuan awal | Nilai | Perbaikan | Hasil |
+|---|---|---|---|
+| Placeholder (light) | 2.68:1 ❌ | `#9E9E9E` → `#6E6E6E` | **5.10:1** ✅ |
+| Teks error (light) | 3.55:1 ❌ | `--line-red` `#FF3B30` → `#B3261E` | **6.54:1** ✅ |
+| Aksen brand untuk teks | 2.26:1 ❌ | token baru `--color-accent-text` = `#037436` | **5.91:1** ✅ |
+| Placeholder (dark) | 3.67:1 ❌ | `#6B7280` → `#8A93A3` | **5.73:1** ✅ |
+| `data-5` di latar gelap | 1.53:1 ❌ | override dark `#2E3A46` → `#9FB3C8` | **8.24:1** ✅ |
+
+Sebelum perbaikan **23/28**, sesudah perbaikan **28/28 lulus AA**. Bukti: `DELIVERY/qc/contrast-report.json`.
+
+> Catatan: `#06C755` tetap dipertahankan sebagai warna isian/tombol (identitas produk, teks di atasnya memakai `--color-on-accent` = 6.4:1 ✅); untuk teks/ikon aksen dipakai `--color-accent-text`.
