@@ -35,7 +35,7 @@ const SCENARIOS = [
   { id: 'sessions.list', path: '/api/auth-console/sessions', method: 'GET', expect: { superuser: 1, admin: 1, manager: 1, editor: 0, viewer: 0 } },
   { id: 'audit.logs', path: '/api/activity-logs', method: 'GET', expect: { superuser: 1, admin: 1, manager: 1, editor: 0, viewer: 0 } },
   { id: 'partners.list', path: '/api/partners', method: 'GET', expect: { superuser: 1, admin: 1, manager: 1, editor: 1, viewer: 1 } },
-  { id: 'tenant.switch', path: '/api/tenants/switch', method: 'POST', expect: { superuser: 1, admin: 0, manager: 0, editor: 0, viewer: 0 } },
+  { id: 'tenant.switch', path: '/api/tenants/switch', method: 'POST', expect: { superuser: 1, admin: 0, manager: 0, editor: 0, viewer: 0 }, body: { tenantId: '__ORG__' } },
 ];
 
 /* ---------- util DB (node:sqlite bawaan Node 22) ---------- */
@@ -209,7 +209,10 @@ async function main() {
   for (const sc of SCENARIOS) {
     for (const lv of LEVELS) {
       const t = tokens[lv]?.token || null;
-      const r = await call(sc.method, sc.path, t, sc.id === 'tenant.switch' ? {} : undefined);
+      const body = sc.body
+        ? JSON.parse(JSON.stringify(sc.body).replace('__ORG__', orgId ?? ''))
+        : undefined;
+      const r = await call(sc.method, sc.path, t, body);
       const allowed = r.status >= 200 && r.status < 300;
       const expectAllow = sc.expect[lv] === 1;
       results.push({
