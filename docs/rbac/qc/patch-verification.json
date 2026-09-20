@@ -1,0 +1,26 @@
+{
+    "generatedAt":  "2026-09-20T20:18:17.5444473Z",
+    "baselineBytes":  287072,
+    "baselineMatchesRepo":  true,
+    "repoBytes":  287072,
+    "tiers":  [
+                  {
+                      "tier":  "additive",
+                      "bytesAfterApply":  288889,
+                      "idempotent":  true,
+                      "esbuildSyntaxOk":  true,
+                      "patchFile":  "server.ts.additive.patch",
+                      "patchBytes":  3086,
+                      "diffStat":  "1 file changed, 34 insertions(+)"
+                  },
+                  {
+                      "tier":  "secure",
+                      "bytesAfterApply":  289174,
+                      "idempotent":  true,
+                      "esbuildSyntaxOk":  true,
+                      "patchFile":  "server.ts.secure.patch",
+                      "patchBytes":  3970,
+                      "diffStat":  "1 file changed, 40 insertions(+), 2 deletions(-)"
+                  }
+              ]
+}
