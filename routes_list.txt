@@ -1,0 +1,74 @@
+1666: app.get('/api/user/my-role', async (req, res) => {
+1750: app.get('/api/departments', async (req, res) => {
+1800: app.post('/api/user/log-activity', async (req, res) => {
+1916: app.get('/api/user/allowed-users', (req, res) => {
+1921: app.post('/api/user/allowed-users', async (req, res) => {
+1968: app.put('/api/user/allowed-users/:id', async (req, res) => {
+2014: app.delete('/api/user/allowed-users/:id', async (req, res) => {
+2061: app.post('/api/user/reset-password', async (req, res) => {
+2138: app.get('/api/activity-logs', (req, res) => {
+2143: app.get('/api/partners', (req, res) => {
+2158: app.post('/api/partners/parse', async (req, res) => {
+2212: app.post('/api/partners/generate-dd-notes', async (req, res) => {
+2265: app.post('/api/partners', async (req, res) => {
+2342: app.put('/api/partners/:id', async (req, res) => {
+2409: app.delete('/api/partners/:id', async (req, res) => {
+2499: app.get('/api/partner-evaluations', (req, res) => {
+2510: app.post('/api/partner-evaluations', async (req, res) => {
+2581: app.put('/api/partner-evaluations/:id', async (req, res) => {
+2646: app.delete('/api/partner-evaluations/:id', async (req, res) => {
+2674: app.get('/api/exchange-rates', async (req, res) => {
+2693: app.get('/api/exchange-rate-historical', async (req, res) => {
+2718: app.get('/api/partner-spendings', (req, res) => {
+2738: app.post('/api/spendings/parse', async (req, res) => {
+2841: app.post('/api/partner-spendings', async (req, res) => {
+3051: app.put('/api/partner-spendings/:id', async (req, res) => {
+3217: app.delete('/api/partner-spendings/:id', async (req, res) => {
+3246: app.post('/api/partners/:id/upload-dd', async (req, res) => {
+3386: app.delete('/api/partners/:id/dd-file', async (req, res) => {
+3436: app.get('/api/contracts', (req, res) => {
+3462: app.post('/api/contracts/parse', async (req, res) => {
+3669: app.get('/api/contracts/:id/redline-analysis', (req, res) => {
+3684: app.post('/api/contracts/:id/redline-analysis', async (req, res) => {
+3823: app.post('/api/contracts', async (req, res) => {
+4027: app.put('/api/contracts/:id', async (req, res) => {
+4181: app.delete('/api/contracts/:id', async (req, res) => {
+4207: app.get('/api/ios', (req, res) => {
+4234: app.post('/api/ios/parse', async (req, res) => {
+4397: app.post('/api/ios', async (req, res) => {
+4565: app.put('/api/ios/:id', async (req, res) => {
+4699: app.delete('/api/ios/:id', async (req, res) => {
+4725: app.get('/api/notification-logs', (req, res) => {
+4729: app.post('/api/notification-logs/mark-read', (req, res) => {
+4740: app.post('/api/notification-logs/delete', (req, res) => {
+4753: app.post('/api/cron/trigger-check', (req, res) => {
+4759: app.get(['/api/auth/google/client-id', '/api/google-auth/client-id'], (req, res)
+4764: app.post(['/api/auth/google/exchange-code', '/api/google-auth/exchange-code'], a
+4837: app.get(['/api/auth/google/token', '/api/google-auth/token'], async (req, res) =
+4854: app.post(['/api/auth/google/refresh-token', '/api/google-auth/refresh-token'], a
+4868: app.post(['/api/google-integration/connect', '/api/auth/google/connect'], async 
+4900: app.post(['/api/google-integration/disconnect', '/api/auth/google/disconnect'], 
+4918: app.get('/api/google-integration', async (req, res) => {
+4938: app.post('/api/google-integration', async (req, res) => {
+5079: app.post('/api/smtp/test', async (req, res) => {
+5157: app.post('/api/ai/test-key', async (req, res) => {
+5204: app.post('/api/google-integration/sync', async (req, res) => {
+5311: app.get('/api/google-integration/sync-status', (req, res) => {
+5316: app.post('/api/google-integration/sync-flush', async (req, res) => {
+5325: app.post('/api/google-integration/auto-provision-master', async (req, res) => {
+5389: app.post('/api/tenants/auto-provision-folders', async (req, res) => {
+5438: app.post('/api/google-integration/provision-folders', provisionFoldersHandler);
+5439: app.post('/api/partners/provision-folders', provisionFoldersHandler);
+5442: app.post('/api/admin/reset-database', async (req, res) => {
+5640: app.get('/api/google-service-account/status', async (req, res) => {
+5664: app.post('/api/bulk-import', async (req, res) => {
+6043: app.get('/api/tenants', async (req, res) => {
+6074: app.post('/api/tenants/switch', (req, res) => {
+6089: app.post('/api/tenants', (req, res) => {
+6117: app.put('/api/tenants/:id', (req, res) => {
+6137: app.delete('/api/tenants/:id', (req, res) => {
+6168: app.post('/api/tenants/:id/setup-google', async (req, res) => {
+6227: app.post('/api/tenants/:id/sync-google', async (req, res) => {
+6241: app.get('/api/branding', (req, res) => {
+6252: app.post('/api/branding', (req, res) => {
+6270: app.post('/api/chat', async (req, res) => {

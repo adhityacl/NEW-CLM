@@ -1,0 +1,339 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { MessageSquare, X, Send, Bot, User, Loader2, RotateCcw, Sparkles } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+
+interface Message {
+  id: string;
+  role: 'user' | 'ai';
+  text: string;
+}
+
+const INITIAL_MESSAGE: Message = {
+  id: 'welcome',
+  role: 'ai',
+  text: 'Halo! Saya Asisten AI SiLegal dengan **Session Context**. Anda bisa bertanya seputar partner, kontrak, atau IO, lalu melanjutkan dengan pertanyaan bertahap (follow-up) terkait topik sebelumnya.'
+};
+
+const SUGGESTED_PROMPTS = [
+  'Berapa jumlah kontrak yang akan segera berakhir?',
+  'Siapa saja partner Tier 1 yang aktif?',
+  'Ringkas total pengeluaran per mata uang.',
+  'Apakah ada kontrak yang perlu perpanjangan/terminasi?'
+];
+
+const STORAGE_KEY = 'silegal_ai_chat_session_v1';
+
+export const AIChatWidget: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return [INITIAL_MESSAGE];
+  });
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Sync to sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    } catch {
+      // ignore
+    }
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom();
+    }
+  }, [messages, isOpen]);
+
+  const handleResetSession = () => {
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        role: 'ai',
+        text: 'Sesi percakapan telah direset. Silakan tanyakan hal baru seputar partner, kontrak, atau IO!'
+      }
+    ]);
+  };
+
+  const handleSend = async (customText?: string, e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    const queryText = (customText || input).trim();
+    if (!queryText || isLoading) return;
+    
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: queryText
+    };
+    
+    // Prepare history from existing messages (exclude initial greeting to keep context clean)
+    const historyPayload = messages
+      .filter((m) => m.id !== 'welcome' && !m.id.startsWith('welcome-'))
+      .map((m) => ({
+        role: m.role,
+        text: m.text
+      }));
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const tokenData = localStorage.getItem('silegal_google_token');
+      const parsedAuth = tokenData ? JSON.parse(tokenData) : null;
+      const token = parsedAuth?.access_token || '';
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          query: userMessage.text,
+          history: historyPayload
+        })
+      });
+
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = { error: res.ok ? rawText : `Server error (${res.status}): Silakan periksa koneksi atau kuota API Key.` };
+      }
+
+      if (res.ok && data.reply) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: 'ai',
+            text: data.reply
+          }
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: 'ai',
+            text: `Maaf, terjadi kendala: ${data.error || 'Server AI tidak dapat memproses permintaan saat ini.'}`
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('AI Chat error:', error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'ai',
+          text: 'Maaf, gagal terhubung ke server AI. Pastikan koneksi internet stabil dan Gemini API Key telah terkonfigurasi.'
+        }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const isInitialOnly = messages.length === 1 && (messages[0].id === 'welcome' || messages[0].id.startsWith('welcome-'));
+
+  return (
+    <div className="fixed bottom-6 right-6 z-[9999]">
+      {/* Chat Window */}
+      {isOpen && (
+        <div
+          className="absolute bottom-16 right-0 w-84 sm:w-[410px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden transition-all duration-300 ease-in-out transform origin-bottom-right"
+          style={{ height: '520px', maxHeight: '82vh' }}
+        >
+          {/* Header */}
+          <div className="bg-[#06C755] px-4 py-3 text-white flex justify-between items-center shadow-md z-10 select-none">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 bg-white/20 rounded-lg flex items-center justify-center">
+                <Bot size={18} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm leading-tight text-white">
+                  SiLegal AI
+                </h3>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleResetSession}
+                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white"
+                title="Reset Sesi Percakapan (Hapus Konteks)"
+              >
+                <RotateCcw size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white"
+                title="Tutup Chat"
+              >
+                <X size={17} />
+              </button>
+            </div>
+          </div>
+
+          {/* Message Area */}
+          <div className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-950 flex flex-col gap-3">
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex gap-2.5 max-w-[88%] ${
+                  msg.role === 'user' ? 'self-end flex-row-reverse' : 'self-start'
+                }`}
+              >
+                <div
+                  className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs ${
+                    msg.role === 'user'
+                      ? 'bg-[#06C755] text-white'
+                      : 'bg-white dark:bg-slate-800 shadow-xs text-[#06C755] border border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  {msg.role === 'user' ? <User size={14} /> : <Bot size={14} />}
+                </div>
+                <div
+                  className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                    msg.role === 'user'
+                      ? 'bg-[#06C755] text-white rounded-tr-xs shadow-xs'
+                      : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-tl-xs shadow-xs'
+                  }`}
+                >
+                  {msg.role === 'user' ? (
+                    <div className="whitespace-pre-wrap font-medium">{msg.text}</div>
+                  ) : (
+                    <div className="break-words space-y-1">
+                      <ReactMarkdown
+                        components={{
+                          ul: ({ node, ...props }) => <ul className="list-disc pl-4 my-1 space-y-0.5" {...props} />,
+                          ol: ({ node, ...props }) => <ol className="list-decimal pl-4 my-1 space-y-0.5" {...props} />,
+                          li: ({ node, ...props }) => <li className="my-0.5" {...props} />,
+                          p: ({ node, ...props }) => <p className="mb-1.5 last:mb-0" {...props} />,
+                          strong: ({ node, ...props }) => <strong className="font-bold text-slate-900 dark:text-white" {...props} />,
+                          a: ({ node, ...props }) => (
+                            <a
+                              className="underline text-emerald-600 dark:text-emerald-400 hover:opacity-80"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              {...props}
+                            />
+                          ),
+                          h1: ({ node, ...props }) => <h1 className="text-sm font-bold mb-1 mt-2 text-slate-900 dark:text-white" {...props} />,
+                          h2: ({ node, ...props }) => <h2 className="text-xs font-bold mb-1 mt-2 text-slate-900 dark:text-white" {...props} />,
+                          h3: ({ node, ...props }) => <h3 className="text-xs font-bold mb-1 mt-1.5 text-slate-900 dark:text-white" {...props} />,
+                          table: ({ node, ...props }) => (
+                            <div className="overflow-x-auto my-2 border border-slate-200 dark:border-slate-700 rounded-lg">
+                              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-[11px]" {...props} />
+                            </div>
+                          ),
+                          th: ({ node, ...props }) => <th className="px-2 py-1 bg-slate-100 dark:bg-slate-900 font-bold text-left" {...props} />,
+                          td: ({ node, ...props }) => <td className="px-2 py-1 border-t border-slate-200 dark:border-slate-700" {...props} />
+                        }}
+                      >
+                        {msg.text}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Suggested Prompts if starting fresh */}
+            {isInitialOnly && (
+              <div className="flex gap-2.5 self-start w-full mt-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <div className="shrink-0 w-7 h-7 flex items-center justify-center text-emerald-500">
+                  <Sparkles size={16} />
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                  <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center h-7">
+                    Saran Pertanyaan:
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    {SUGGESTED_PROMPTS.map((prompt, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSend(prompt)}
+                        className="text-left text-[11px] text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200 dark:border-slate-700 hover:border-emerald-400 p-2.5 rounded-xl transition-all cursor-pointer shadow-2xs"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isLoading && (
+              <div className="flex gap-2.5 self-start max-w-[85%]">
+                <div className="shrink-0 w-7 h-7 rounded-full bg-white dark:bg-slate-800 shadow-xs border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[#06C755]">
+                  <Loader2 size={14} className="animate-spin" />
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-xs shadow-xs text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span>Menganalisis data & konteks sesi...</span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Area */}
+          <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+            <form onSubmit={(e) => handleSend(undefined, e)} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Tanya seputar data atau lanjutkan konteks..."
+                className="flex-1 px-3.5 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#06C755] focus:border-[#06C755] placeholder-slate-400 dark:placeholder-slate-500"
+                disabled={isLoading}
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || isLoading}
+                className="p-2.5 bg-[#06C755] text-white rounded-xl hover:bg-[#05b34c] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                title="Kirim Pesan"
+              >
+                <Send size={15} />
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Toggle Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-13 h-13 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 transform hover:scale-105 cursor-pointer ${
+          isOpen ? 'bg-[#05b34c] rotate-12' : 'bg-[#06C755] hover:bg-[#05b34c]'
+        }`}
+        title={isOpen ? 'Tutup AI Assistant' : 'Buka Asisten AI SiLegal'}
+      >
+        <MessageSquare size={22} className="text-white" />
+      </button>
+    </div>
+  );
+};
