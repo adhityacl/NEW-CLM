@@ -155,8 +155,9 @@ Sebelum migrasi, pastikan setiap user non-superuser punya `tenantId` + `departme
 | Test otorisasi otomatis lulus | ✅ 36/36 |
 | Integrasi Obsidian UI | 🟡 Config + token + 2 komponen vendored; sisanya via CLI/`npm i` |
 | Kode RBAC terpasang di app | 🟡 Patcher idempoten siap & terverifikasi (patch lolos syntax check); eksekusi di Codespaces/staging |
-| Token desain konsisten | 🟡 Token lengkap disediakan; migrasi komponen lama bertahap |
-| Responsif & aksesibilitas | ⚪ Belum diverifikasi visual (butuh runtime) |
+| Token desain konsisten | 🟡 Token lengkap + kontras terverifikasi; migrasi komponen lama bertahap |
+| Responsif & aksesibilitas | 🟡 Kontras WCAG 2.1 AA **terukur & lolos 28/28** (dari 23/28) + fokus keyboard & `prefers-reduced-motion` tersedia. Verifikasi piksel/responsif penuh butuh runtime |
+| Anggaran performa | ⚪ Belum diukur (butuh `npm run build` + runtime) |
 | Anggaran performa | ⚪ Belum diukur (butuh `npm run build` + runtime) |
 | Rencana deploy & rollback | ✅ Dokumen §6 |
 | Dokumentasi serah terima | ✅ Dokumen ini + 4 dokumen di `DELIVERY/` |
