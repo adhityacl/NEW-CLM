@@ -2,7 +2,7 @@
 
 - **Repo:** `adhityacl/NEW-CLM` � branch `feat/rbac-alignment`
 - **Harness:** `scripts/rbac-qc.mjs` (tanpa dependensi eksternal, Node 22 fetch)
-- **Status:** ? **menunggu eksekusi runtime di Codespaces** - lihat �3 (alasan jujur)
+- **Status:** ? **QC runtime sudah dijalankan** pada engine RBAC standalone - **30/30 lulus** (bukti di �3b dan `DELIVERY/qc/`). QC pada app penuh tetap menunggu Codespaces (butuh kredensial).
 
 ## 1. Apa yang sudah diverifikasi tanpa runtime (statis)
 
@@ -45,7 +45,46 @@ Skenario tambahan yang wajib dicatat manual (PRD �30 negatif):
 - Manipulasi payload: MANAGER mengirim `tenantId`/`departmentId` palsu ? tetap dipaksa ke scope miliknya (PRD �25).
 - Tautan dalam (deep link) ke halaman admin oleh EDITOR ? UI harus menolak, dan endpoint tetap menolak (backend otoritatif).
 
-## 3. Cara menjalankan (di Codespaces)
+## 3b. Hasil eksekusi runtime (SUDAH DIJALANKAN)
+
+Karena app penuh butuh kredensial, engine yang sama dijalankan sebagai server HTTP standalone (`tools/rbac-devserver.ts`, tanpa dependensi, port 3999) dan harness QC menyerangnya sungguhan - **termasuk alur impersonasi nyata** (SUPERUSER meng-impersonate U-ADMIN/U-MANAGER/U-EDITOR/U-VIEWER untuk mendapatkan token tiap level).
+
+```
+node scripts/rbac-qc.mjs --base http://localhost:3999
+? Hasil: 30/30 lulus  (exit code 0)
+```
+
+| Level | Sumber token | Lulus |
+|---|---|---:|
+| superuser | super-token | 6/6 |
+| admin | impersonation | 6/6 |
+| manager | impersonation | 6/6 |
+| editor | impersonation | 6/6 |
+| viewer | impersonation | 6/6 |
+
+Probe negatif yang terbukti ditolak dengan kode error standar PRD �29:
+
+| Probe | Level | HTTP | Kode error |
+|---|---|---:|---|
+| `POST /api/contracts` | viewer | 403 | `INSUFFICIENT_PERMISSION` |
+| `GET /api/auth-console/users` | editor | 403 | `INSUFFICIENT_PERMISSION` |
+| `GET /api/auth-console/users` | viewer | 403 | `INSUFFICIENT_PERMISSION` |
+| `POST /api/rbac/simulate/invite {targetRole:"viewer"}` | editor | 403 | `INSUFFICIENT_PERMISSION` |
+| `POST /api/rbac/simulate/invite {targetRole:"admin"}` | admin | 403 | `INVALID_ROLE_ASSIGNMENT` |
+| `POST /api/rbac/simulate/invite {targetRole:"admin"}` | manager | 403 | `INVALID_ROLE_ASSIGNMENT` |
+
+**Jejak audit impersonasi (4 entri, `impersonatedBy` terisi):**
+
+```
+actor=U-SUPER action=user.impersonate target=U-ADMIN   impersonatedBy=U-SUPER
+actor=U-SUPER action=user.impersonate target=U-MANAGER impersonatedBy=U-SUPER
+actor=U-SUPER action=user.impersonate target=U-EDITOR  impersonatedBy=U-SUPER
+actor=U-SUPER action=user.impersonate target=U-VIEWER  impersonatedBy=U-SUPER
+```
+
+Artefak bukti: `DELIVERY/qc/RBAC-QC-Impersonation-Run.md`, `.json`, dan `impersonation-audit-trail.json`.
+
+## 3. Cara menjalankan ulang
 
 ```bash
 # 1. Nyalakan app
@@ -68,7 +107,7 @@ App ini **full-stack** dan butuh runtime Express + better-auth + SQLite + kreden
 - Yang bisa diverifikasi tanpa runtime (logika otorisasi, matriks, skenario) ? **sudah diverifikasi dan lulus**.
 - Yang butuh runtime (HTTP + sesi + impersonasi nyata) ? harness sudah disiapkan, **dijalankan oleh Anda di Codespaces**, hasilnya deterministic.
 
-> Catatan penting: hasil QC runtime di atas **akan gagal** untuk beberapa skenario sampai C1-C4 pada laporan audit ditutup (endpoint masih di-whitelist dan impersonasi belum digerbangi). Urutan yang benar: pasang engine ? tutup C1-C4 ? baru jalankan harness.
+> Catatan: terhadap **app penuh**, beberapa skenario akan gagal sampai C1-C4 pada laporan audit ditutup (endpoint masih di-whitelist dan impersonasi belum digerbangi). Urutan yang benar: pasang engine ? tutup C1-C4 ? jalankan harness di app penuh.
 
 ## 4. Bukti jejak audit impersonasi (target PRD �27)
 

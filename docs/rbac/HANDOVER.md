@@ -29,6 +29,7 @@ Repo: `adhityacl/NEW-CLM` � Branch kerja: `feat/rbac-alignment` � Baseline: 
 | `components.json` | Konfigurasi shadcn + registry Obsidian UI (`rsc: false` untuk Vite) |
 | `src/components/obsidian/table.tsx`, `separator.tsx` | Komponen Obsidian UI (vendored, MIT) |
 | `scripts/rbac-qc.mjs` | Harness QC impersonasi (6 skenario � 5 level) |
+| `tools/rbac-devserver.ts` | Server RBAC standalone (tanpa dependensi) untuk eksekusi QC runtime |
 
 ## 3. Cara menjalankan
 
@@ -114,9 +115,9 @@ Sebelum migrasi, pastikan setiap user non-superuser punya `tenantId` + `departme
 |---|---|
 | RBAC sesuai panduan | ?? Engine + matriks + test selesai; **pemasangan ke route lama belum** (menunggu review karena mengubah jalur auth) |
 | Matriks peran-permission | ? Tergenerasi dari kode (32�5) |
-| QC impersonasi tiap level | ?? Harness siap + skenario terdefinisi; eksekusi runtime di Codespaces |
-| Akses terlarang benar-benar ditolak | ?? Terbukti di level engine (test negatif); runtime menunggu C1-C4 ditutup |
-| Jejak audit impersonasi | ?? Engine siap & teruji; kolom `impersonatedBy` belum diisi di `authConsoleRoutes.ts:658` |
+| QC impersonasi tiap level | ?? Runtime pada engine: **30/30 lulus** + jejak audit impersonasi terisi. App penuh: menunggu Codespaces |
+| Akses terlarang benar-benar ditolak | ?? Terbukti runtime pada engine (6 probe negatif ? 403 + kode standar �29). App penuh menunggu C1-C4 ditutup |
+| Jejak audit impersonasi | ?? Terbukti runtime (4 event, `impersonatedBy` terisi). Sisa: isi kolom di `authConsoleRoutes.ts:658` |
 | Test otorisasi otomatis lulus | ? 36/36 |
 | Integrasi Obsidian UI | ?? Config + token + 2 komponen vendored; sisanya via CLI/`npm i` |
 | Token desain konsisten | ?? Token lengkap disediakan; migrasi komponen lama bertahap |
