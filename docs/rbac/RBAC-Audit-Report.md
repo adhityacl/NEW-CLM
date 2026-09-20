@@ -80,6 +80,7 @@ Status: ? sesuai � ?? sebagian � ? tidak ada/bertentangan
 - `server/rbacRoutes.ts` - router additif: `/api/rbac/matrix`, `/roles`, `/me`, `/check`, `/simulate/invite`, `/simulate/role-change` + middleware `requirePermission()`.
 - `tools/gen-rbac-matrix.ts` - generator matriks dari kode (anti-drift).
 - `src/lib/permissions.ts` - helper frontend (`hasPermission`, `can`, `usePermissions`, `<Can>`, `ROUTE_PERMISSIONS`).
+- `tools/rbac-devserver.ts` + `scripts/rbac-qc.mjs` - eksekusi QC runtime nyata: **30/30 lulus** + bukti penegakan scope �25.
 
 ## 5. Keputusan produk terbuka (PRD �34) - perlu diputuskan pemilik produk
 
