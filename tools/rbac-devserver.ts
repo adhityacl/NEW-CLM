@@ -145,6 +145,21 @@ const server = createServer(async (req, res) => {
       if (e) return send(res, e.status, e);
       return send(res, 200, { ok: true, count: users.length });
     }
+    if (req.method === 'GET' && path === '/api/auth-console/sessions') {
+      const e = guard(actor, 'admin.access', 'tenant', undefined, req.method);
+      if (e) return send(res, e.status, e);
+      return send(res, 200, { ok: true, count: sessions.size });
+    }
+    if (req.method === 'GET' && path === '/api/partners') {
+      const e = guard(actor, 'document.view', 'tenant', undefined, req.method);
+      if (e) return send(res, e.status, e);
+      return send(res, 200, { ok: true, count: 10 });
+    }
+    if (req.method === 'POST' && path === '/api/tenants/switch') {
+      const e = guard(actor, 'workspace.switch', 'global', undefined, req.method);
+      if (e) return send(res, e.status, e);
+      return send(res, 200, { ok: true, switched: true });
+    }
     /* Endpoint ini di app nyata memang menuntut sesi (terbukti 401 di QA live). */
     if (req.method === 'GET' && path === '/api/user/my-role') {
       if (!actor) return send(res, 401, authzError('UNAUTHENTICATED'));
@@ -165,6 +180,11 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && path === '/api/audit-logs') {
       return send(res, 200, { ok: true, count: audit.length, items: audit });
+    }
+    if (req.method === 'GET' && path === '/api/activity-logs') {
+      const e = guard(actor, 'admin.access', 'tenant', undefined, req.method);
+      if (e) return send(res, e.status, e);
+      return send(res, 200, { ok: true, count: audit.length });
     }
     if (path === '/api/health') return send(res, 200, { ok: true });
 
