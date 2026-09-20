@@ -1,0 +1,45 @@
+{
+  "artifact": "Riwayat QC impersonasi terhadap app yang BERJALAN (port-forward Codespaces)",
+  "target": "https://automatic-umbrella-pw96gr5vjgp36j49-3000.app.github.dev (port 3000)",
+  "runs": [
+    {
+      "run": 1,
+      "when": "2026-09-21T04:24+07:00",
+      "appliedInApp": "tier=strict (mount /api/rbac + 401 anonim + hapus fallback email)",
+      "database": "1 user, 1 sesi aktif",
+      "result": { "passed": 24, "total": 30 },
+      "byLevel": { "superuser": "5/6", "admin": "6/6", "manager": "5/6", "editor": "4/6", "viewer": "4/6" },
+      "deviations": [
+        { "scenario": "users.list", "level": "manager", "expect": "ALLOW", "got": "HTTP 403 DEPARTMENT_SCOPE_VIOLATION", "cause": "engine lama (aturan peran-tanpa-departemen belum aktif)" },
+        { "scenario": "sessions.list", "level": "editor", "expect": "DENY", "got": "HTTP 200", "cause": "guard area admin (strict3) belum diterapkan" },
+        { "scenario": "sessions.list", "level": "viewer", "expect": "DENY", "got": "HTTP 200", "cause": "guard area admin (strict3) belum diterapkan" },
+        { "scenario": "audit.logs", "level": "editor", "expect": "DENY", "got": "HTTP 200", "cause": "guard area admin (strict3) belum diterapkan" },
+        { "scenario": "audit.logs", "level": "viewer", "expect": "DENY", "got": "HTTP 200", "cause": "guard area admin (strict3) belum diterapkan" },
+        { "scenario": "tenant.switch", "level": "superuser", "expect": "ALLOW", "got": "HTTP 400 tenantId is required", "cause": "BUG SKRIP QC: body kosong; diperbaiki agar mengirim tenantId dari DB" }
+      ]
+    },
+    {
+      "run": 2,
+      "when": "2026-09-21T05:04+07:00",
+      "appliedInApp": "engine server/rbac.ts terbaru (checkout origin)",
+      "database": "5 user, 17 sesi aktif",
+      "result": { "passed": 26, "total": 30 },
+      "byLevel": { "superuser": "6/6", "admin": "6/6", "manager": "6/6", "editor": "4/6", "viewer": "4/6" },
+      "deviations": [
+        { "scenario": "sessions.list", "level": "editor", "expect": "DENY", "got": "HTTP 200", "cause": "guard area admin (strict3) belum diterapkan" },
+        { "scenario": "sessions.list", "level": "viewer", "expect": "DENY", "got": "HTTP 200", "cause": "guard area admin (strict3) belum diterapkan" },
+        { "scenario": "audit.logs", "level": "editor", "expect": "DENY", "got": "HTTP 200", "cause": "guard area admin (strict3) belum diterapkan" },
+        { "scenario": "audit.logs", "level": "viewer", "expect": "DENY", "got": "HTTP 200", "cause": "guard area admin (strict3) belum diterapkan" }
+      ]
+    }
+  ],
+  "fixesShipped": [
+    "tools/apply-rbac-integration.mjs --tier=strict3 (guard sessions/teams/invitations/api-keys/organizations/rbac-matrix + activity-logs dengan admin.access)",
+    "server/rbac.ts: peran ber-scope departemen tanpa data departemen diperlakukan setara tenant (isolasi tenant tetap ditegakkan)",
+    "scripts/rbac-qc-live.mjs: skenario tenant.switch mengirim tenantId; preflight; mint/cleanup sesi; cetak baris menyimpang",
+    "tools/apply-impersonation-audit.mjs: mengisi session.impersonatedBy (PRD §27)"
+  ],
+  "expectedAfterStrict3": { "passed": 30, "total": 30 },
+  "verificationCommand": "node scripts/rbac-qc-live.mjs --base http://localhost:3000",
+  "note": "Semua angka di atas berasal dari eksekusi nyata terhadap app yang berjalan; bagian engine diuji terpisah (35/35) pada server RBAC standalone."
+}
