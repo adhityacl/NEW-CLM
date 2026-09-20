@@ -1,0 +1,22 @@
+{
+  "file": "DELIVERY\\design-preview.html",
+  "renderedAt": "2026-09-20T20:20:30.112Z",
+  "method": "eksekusi skrip halaman terhadap DOM-stub (panel browser tidak dapat memuat localhost)",
+  "counts": {
+    "roleCards": 5,
+    "matrixRows": 15,
+    "cells": 90,
+    "allowedCells": 42,
+    "deniedCells": 33
+  },
+  "checks": {
+    "roleCardsRendered": true,
+    "matrixRowsRendered": true,
+    "matrixCellsRendered": true,
+    "allowPlusDenyEqualsRoleCells": true,
+    "allowCellsGreaterThanDeny": true,
+    "superuserHasWorkspaceSwitch": true,
+    "containsLevelBadges": true
+  },
+  "verdict": "LULUS"
+}
