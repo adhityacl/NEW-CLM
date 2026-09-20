@@ -97,7 +97,7 @@ const server = createServer(async (req, res) => {
       return send(res, 200, { success: true, sessionToken: token, userId: targetId });
     }
 
-    /* ---- endpoint terproteksi (PRD �18) ---- */
+    /* ---- endpoint terproteksi (PRD §18) ---- */
     if (req.method === 'GET' && path === '/api/rbac/trusted-scope') {
       if (!actor) return send(res, 401, authzError('UNAUTHENTICATED'));
       const requested = { tenantId: url.searchParams.get('tenantId'), departmentId: url.searchParams.get('departmentId') };
