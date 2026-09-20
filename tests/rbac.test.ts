@@ -15,7 +15,7 @@ import {
   ROLES, ROLE_LEVEL, normalizeRole, hasPermission, permissionsFor,
   canInvite, canChangeRole, assignableRoles, checkScope, buildScopeFilter,
   resolveTrustedScope, decide, authzError, buildAuditEvent, buildMatrix,
-  validateActorScope, type Actor,
+  validateActorScope, clampScope, type Actor,
 } from '../server/rbac';
 
 /* --------------------------- fixtures --------------------------- */
@@ -214,11 +214,39 @@ test('�25 bypass: non-superuser tidak bisa memanipulasi tenantId dari client',
   assert.deepEqual(resolveTrustedScope(SH, spoofed), spoofed); // superuser global
 });
 
-test('�24 buildScopeFilter: filter query wajib per role', () => {
+test('�24 buildScopeFilter: filter query wajib per role (scope dipersempit sesuai peran)', () => {
   assert.deepEqual(buildScopeFilter(SH), { tenantId: null, departmentId: null });
   assert.deepEqual(buildScopeFilter(AD), { tenantId: 't1', departmentId: null });
   assert.deepEqual(buildScopeFilter(MG), { tenantId: 't1', departmentId: 'd1' });
-  assert.deepEqual(buildScopeFilter(ED, 'tenant'), { tenantId: 't1', departmentId: null });
+  // editor meninta scope 'tenant' ? DIPERSEMPIT ke departemennya (tidak boleh melebar)
+  assert.deepEqual(buildScopeFilter(ED, 'tenant'), { tenantId: 't1', departmentId: 'd1' });
+});
+
+test('�25/�4 pemanggil tidak bisa memperlebar scope (clamp)', () => {
+  assert.equal(err(checkScope(ED, { tenantId: 't1', departmentId: 'd2' }, 'tenant')), 'DEPARTMENT_SCOPE_VIOLATION');
+  assert.equal(decide({ actor: VW, permission: 'document.view', resource: { tenantId: 't1', departmentId: 'd2' }, scope: 'tenant' }).allow, false);
+  assert.equal(err(checkScope(AD, { tenantId: 't2', departmentId: 'd1' }, 'global')), 'TENANT_SCOPE_VIOLATION');
+  assert.equal(clampScope('editor', 'tenant'), 'department');
+  assert.equal(clampScope('admin', 'global'), 'tenant');
+  assert.equal(clampScope('superuser', 'department'), 'department');
+});
+
+test('�32.4 scope wajib: fail-closed bila resource tanpa departmentId', () => {
+  assert.equal(err(checkScope(ED, {}, 'department')), 'DEPARTMENT_SCOPE_VIOLATION');
+  assert.equal(err(checkScope(MG, { tenantId: 't1' }, 'department')), 'DEPARTMENT_SCOPE_VIOLATION');
+  assert.equal(err(checkScope(VW, { tenantId: 't1' }, 'department')), 'DEPARTMENT_SCOPE_VIOLATION');
+  assert.equal(ok(checkScope(AD, { tenantId: 't1' }, 'department')), true);
+  assert.equal(err(canInvite(MG, 'editor', { tenantId: 't1' })), 'DEPARTMENT_SCOPE_VIOLATION');
+  assert.equal(err(canInvite(AD, 'editor', {})), 'TENANT_SCOPE_VIOLATION');
+});
+
+test('�24 buildScopeFilter fail-closed bila actor non-superuser tanpa tenant', () => {
+  assert.throws(() => buildScopeFilter({ id: 'x', role: 'manager', tenantId: null, departmentId: 'd1' }));
+});
+
+test('�12 ADMIN tidak menerima audit.view (tidak ada di PRD)', () => {
+  assert.equal(hasPermission('admin', 'audit.view'), false);
+  assert.equal(hasPermission('superuser', 'audit.view'), true);
 });
 
 /* ---------------------- �26 role change rules ------------------- */
