@@ -1,0 +1,153 @@
+{
+  "base": "https://automatic-umbrella-pw96gr5vjgp36j49-3000.app.github.dev",
+  "generatedAt": "2026-09-20T20:26:20.667Z",
+  "total": 16,
+  "leaks": 12,
+  "verdict": "BOCOR (12 endpoint)",
+  "results": [
+    {
+      "kind": "protected-get",
+      "path": "/api/contracts",
+      "label": "data kontrak",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "[{\"contract_id\":\"CTR-001\",\"organizationId\":\"org-adapundi\",\"jenis_dokumen\":\"Master Agreement\",\"nomor_kontrak\":\"001/LEG/MND/2026\",\"judul_kontrak\":\"Perjanjian Kerj"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/partners",
+      "label": "data mitra",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "[{\"partner_id\":\"PRT-001\",\"organizationId\":\"org-adapundi\",\"nama_partner\":\"PT Media Nusantara Digital\",\"jenis_partner\":\"Media Partner\",\"pic_partner\":\"Andi Wijaya"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/ios",
+      "label": "data IO",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "[{\"io_id\":\"IO-2026-001\",\"organizationId\":\"org-adapundi\",\"contract_id\":\"CTR-001\",\"contract_nomor\":\"001/LEG/MND/2026\",\"nomor_io\":\"IO/2026/01/001\",\"judul_io\":\"Camp"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/tenants",
+      "label": "daftar tenant",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"tenants\":[{\"id\":\"org_1789905619545_7137a1\",\"name\":\"AFPI\",\"legalEntity\":\"PT\",\"brandName\":\"AFPI\",\"tagline\":\"Legal & Commercial Contract Managemen"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/activity-logs",
+      "label": "log aktivitas (email/IP)",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "[{\"id\":\"LOG-001\",\"organizationId\":\"org-adapundi\",\"timestamp\":\"2026-09-15T21:10:00.000Z\",\"userEmail\":\"adhitcl@gmail.com\",\"userName\":\"Aditya Pratama\",\"role\":\"Supe"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/users",
+      "label": "daftar pengguna (email/role)",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"users\":[{\"id\":\"DP1xVt1QyONbGg2M9gvr8xkRt3agMCIg\",\"name\":\"maolili\",\"email\":\"maolili@adapundi.com\",\"emailVerified\":false,\"image\":null,\"createdAt\""
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/sessions",
+      "label": "daftar sesi",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"sessions\":[{\"id\":\"yg1864EQVNURAhuQSvpoplxGORRoybb4\",\"token\":\"awAN7VBUY0sxIoXOvXV5mQGsAScFlYMa\",\"createdAt\":\"2026-09-20T20:25:29.081Z\",\"updatedA"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/organizations",
+      "label": "daftar organisasi",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"organizations\":[{\"id\":\"org_1789905619545_7137a1\",\"name\":\"AFPI\",\"slug\":\"afpi\",\"logo\":\"/favicon.png\",\"createdAt\":\"2026-09-20T12:00:19.545Z\",\"meta"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/invitations",
+      "label": "daftar undangan",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"invitations\":[]}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/teams",
+      "label": "daftar tim/departemen",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"teams\":[]}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/api-keys",
+      "label": "daftar API key",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"apiKeys\":[]}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/user/allowed-users",
+      "label": "daftar user diizinkan",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "[{\"id\":\"usr-1\",\"organizationId\":\"org-adapundi\",\"email\":\"adhitcl@gmail.com\",\"name\":\"Aditya Pratama\",\"role\":\"Superuser\",\"department\":\"Legal & Compliance\",\"status\""
+    },
+    {
+      "kind": "public-get",
+      "path": "/api/exchange-rates",
+      "label": "kurs",
+      "status": 200,
+      "verdict": "publik (wajar)",
+      "leak": false,
+      "snippet": "{\"IDR\":0.00005628146133688732}"
+    },
+    {
+      "kind": "public-get",
+      "path": "/api/health",
+      "label": "health (opsional)",
+      "status": 404,
+      "verdict": "lain (404)",
+      "leak": false,
+      "snippet": "{\"error\":\"API route not found: GET /api/health\"}"
+    },
+    {
+      "kind": "write-guard",
+      "path": "/api/__rbac_probe__",
+      "label": "uji gerbang tulis (path tidak ada)",
+      "status": 403,
+      "verdict": "gerbang tulis AKTIF (Viewer diblokir)",
+      "leak": false,
+      "snippet": "{\"error\":\"Forbidden: Viewer role is view-only.\",\"message\":\"Peran Viewer hanya memiliki izin baca (view-only). Tindakan perubahan data ditolak.\",\"role\":\"Viewer\","
+    },
+    {
+      "kind": "write-guard",
+      "path": "/api/contracts/__rbac_probe__",
+      "label": "uji gerbang tulis (path tidak ada)",
+      "status": 403,
+      "verdict": "gerbang tulis AKTIF (Viewer diblokir)",
+      "leak": false,
+      "snippet": "{\"error\":\"Forbidden: Viewer role is view-only.\",\"message\":\"Peran Viewer hanya memiliki izin baca (view-only). Tindakan perubahan data ditolak.\",\"role\":\"Viewer\","
+    }
+  ]
+}
