@@ -1,0 +1,39 @@
+{
+  "target": "https://automatic-umbrella-pw96gr5vjgp36j49-3000.app.github.dev/",
+  "testedAt": "2026-09-21T03:20:00+07:00",
+  "method": "HTTP GET read-only, tanpa kredensial, tanpa operasi tulis",
+  "verdict": "CRITICAL - data bisnis & data pengguna terekspos ke request anonim",
+  "rootPage": { "status": 200, "title": "LMS - Legal Management System", "bytes": 1494 },
+  "probes": [
+    { "method": "GET", "path": "/", "status": 200, "note": "Vite dev, halaman app" },
+    { "method": "GET", "path": "/api/health", "status": 404, "note": "route tidak ada" },
+    { "method": "GET", "path": "/api/rbac/matrix", "status": 404, "note": "patcher RBAC belum diterapkan" },
+    { "method": "GET", "path": "/api/auth-console/users", "status": 200, "exposed": "3 user: email, role, banned" },
+    { "method": "GET", "path": "/api/contracts", "status": 200, "exposed": "10 kontrak: nomor kontrak, nama mitra" },
+    { "method": "GET", "path": "/api/tenants", "status": 200, "exposed": "2 tenant: id, domain" },
+    { "method": "GET", "path": "/api/activity-logs", "status": 200, "exposed": "10 log aktivitas: email, IP" },
+    { "method": "GET", "path": "/api/auth-console/rbac-matrix", "status": 200, "exposed": "matriks izin deskriptif (3636 B)" },
+    { "method": "GET", "path": "/api/user/my-role", "status": 401, "note": "satu-satunya endpoint yang benar menolak" }
+  ],
+  "identityValidation": [
+    { "case": "tanpa header", "status": 200, "conclusion": "anonim diperlakukan sebagai Viewer" },
+    { "case": "Authorization: Bearer <token acak>", "status": 200, "conclusion": "token tidak divalidasi" },
+    { "case": "x-user-email: adhitcl@gmail.com", "status": 200, "conclusion": "header email dapat dipalsukan" }
+  ],
+  "samples": {
+    "users": [
+      { "email": "adhitcl@gmail.com", "role": "superuser", "banned": false },
+      { "email": "maolili@adapundi.com", "role": "viewer", "banned": true },
+      { "email": "farid@adapundi.com", "role": "viewer", "banned": true }
+    ],
+    "tenants": ["org_1789905619545_7137a1", "org_1789542306289_b3a4f3"],
+    "contracts": ["CTR-001", "CTR-002", "CTR-003", "CTR-004"],
+    "counts": { "users": 3, "tenants": 2, "contracts": 10, "activityLogs": 10 }
+  },
+  "remediation": [
+    "SEGERA: ubah visibilitas port 3000 menjadi Private di Codespaces",
+    "Terapkan tools/apply-rbac-integration.mjs --tier=secure kemudian ulangi probe",
+    "Hapus identitas dari header email; anonim harus 401 UNAUTHENTICATED, bukan Viewer",
+    "Rotasi sesi/kredensial yang mungkin terpapar"
+  ]
+}
