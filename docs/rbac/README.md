@@ -15,6 +15,7 @@ Indeks semua hasil kerja. Sumber kebenaran RBAC: `Engineering PRD — RBAC Struc
 | [RBAC-Role-Permission-Matrix.md](RBAC-Role-Permission-Matrix.md) / [.csv](RBAC-Role-Permission-Matrix.csv) | Matriks 32 permission × 5 peran (dihasilkan dari kode) |
 | [design-preview.html](design-preview.html) | Pratinjau desain mandiri (token Takram + pola Obsidian UI) |
 | [Laporan-RBAC-ObsidianUI.docx](Laporan-RBAC-ObsidianUI.docx) | **Laporan serah terima final (DOCX)** — 11 tabel, data dibaca langsung dari hasil pengukuran. *Hanya di folder DELIVERY lokal* (format biner tidak dapat dikirim lewat konektor GitHub). |
+| [RUNBOOK-perbaikan-Codespaces.docx](RUNBOOK-perbaikan-Codespaces.docx) | **Runbook 1 halaman**: cara menutup kebocoran, perintah perbaikan, cara restart app, verifikasi, dan troubleshooting. *Hanya di DELIVERY lokal.* |
 
 ## Bukti eksekusi (qc/)
 
