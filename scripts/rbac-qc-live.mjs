@@ -107,11 +107,15 @@ async function mintQcSession(dbPath, superUserId) {
   return vals.token;
 }
 
-/** Menghapus semua sesi buatan harness QC. */
+/** Menghapus semua sesi buatan harness QC (tahan perbedaan skema). */
 async function cleanupQcSessions(dbPath) {
   const { DatabaseSync } = await import('node:sqlite');
   const db = new DatabaseSync(dbPath);
-  const info = db.prepare("DELETE FROM session WHERE userAgent = 'qc-harness'").run();
+  const cols = db.prepare('PRAGMA table_info(session)').all().map((c) => c.name);
+  const where = cols.includes('userAgent')
+    ? "userAgent = 'qc-harness' OR id LIKE 'qc_sess_%'"
+    : "id LIKE 'qc_sess_%'";
+  const info = db.prepare(`DELETE FROM session WHERE ${where}`).run();
   db.close();
   return Number(info.changes ?? 0);
 }
