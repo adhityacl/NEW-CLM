@@ -82,6 +82,26 @@ Data lama masih memakai role legacy. Pemetaan yang diterapkan otomatis oleh `nor
 | `staff`, `member` | `viewer` |
 | nilai tak dikenal | `viewer` (deny by default) |
 
+### 5.1 Migrasi skema RBAC (baru — dihasilkan dari engine)
+
+`server/migrations/001_rbac_alignment.sql` (185 baris, **aditif & idempoten**) membuat tabel yang sebelumnya tidak ada: `rbac_roles`, `rbac_permissions`, `rbac_role_permissions`, `rbac_departments`, `rbac_user_roles`, dan `audit_log` (PRD §27). File ini di-generate dari `server/rbac.ts` lewat `tools/gen-rbac-migration.ts`, jadi tidak bisa menyimpang dari matriks izin.
+
+Verifikasi eksekusi nyata (`node tools/verify-migration.mjs`, SQLite via `node:sqlite`):
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Dijalankan 2× (idempotensi) | ✅ jumlah baris identik |
+| Pelanggaran foreign key | ✅ 0 |
+| Tabel terbentuk | 6 |
+| Role / permission / pemetaan | 5 / 32 / 77 baris |
+| SUPERUSER mendapat semua permission | ✅ 32 |
+| ADMIN | 22 (tanpa `audit.view`) |
+| `audit_log` tulis+baca (`impersonated_by` terisi) | ✅ |
+
+Bukti: `DELIVERY/qc/migration-verification.json`.
+
+### 5.2 Migrasi data role legacy
+
 Migrasi data (idempotent, **jalankan di staging dulu**):
 ```sql
 UPDATE user SET role='superuser' WHERE lower(role) IN ('owner','super admin','super_admin');
@@ -117,7 +137,8 @@ Sebelum migrasi, pastikan setiap user non-superuser punya `tenantId` + `departme
 | Matriks peran–permission | ✅ Tergenerasi dari kode (32×5) |
 | QC impersonasi tiap level | 🟢 Runtime pada engine: **30/30 lulus** + jejak audit impersonasi terisi. App penuh: menunggu Codespaces |
 | Akses terlarang benar-benar ditolak | 🟢 Terbukti runtime pada engine (6 probe negatif → 403 + kode standar §29). App penuh menunggu C1–C4 ditutup |
-| Jejak audit impersonasi | 🟢 Terbukti runtime (4 event, `impersonatedBy` terisi). Sisa: isi kolom di `authConsoleRoutes.ts:658` |
+| Jejak audit impersonasi | 🟢 Terbukti runtime (4 event, `impersonatedBy` terisi) + tabel `audit_log` terverifikasi. Sisa: isi kolom di `authConsoleRoutes.ts:658` |
+| Skema RBAC sesuai PRD §5–§12 | 🟢 Migrasi idempoten terverifikasi (6 tabel, 5 role, 32 permission, 77 pemetaan, 0 FK error) |
 | Test otorisasi otomatis lulus | ✅ 36/36 |
 | Integrasi Obsidian UI | 🟡 Config + token + 2 komponen vendored; sisanya via CLI/`npm i` |
 | Token desain konsisten | 🟡 Token lengkap disediakan; migrasi komponen lama bertahap |
