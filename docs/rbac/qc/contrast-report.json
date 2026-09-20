@@ -1,0 +1,265 @@
+{
+  "generatedAt": "2026-09-20T20:22:18.007Z",
+  "sources": {
+    "indexCss": ".cluster\\rbac-obsidian\\raw\\src__index.css",
+    "tokensCss": ".cluster\\rbac-obsidian\\artifacts\\src\\styles\\tokens.css"
+  },
+  "total": 28,
+  "passed": 28,
+  "failed": 0,
+  "failures": [],
+  "rows": [
+    {
+      "theme": "light",
+      "label": "teks utama di canvas",
+      "fg": "--color-ink=#111111",
+      "bg": "--color-canvas=#F7F8FA",
+      "ratio": 17.77,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "teks utama di surface",
+      "fg": "--color-ink=#111111",
+      "bg": "--color-surface=#FFFFFF",
+      "ratio": 18.88,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "teks sekunder di canvas",
+      "fg": "--color-ink-soft=#666666",
+      "bg": "--color-canvas=#F7F8FA",
+      "ratio": 5.4,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "teks sekunder di surface",
+      "fg": "--color-ink-soft=#666666",
+      "bg": "--color-surface=#FFFFFF",
+      "ratio": 5.74,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "placeholder di surface",
+      "fg": "--color-ink-faint=#6E6E6E",
+      "bg": "--color-surface=#FFFFFF",
+      "ratio": 5.1,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "teks tombol di accent",
+      "fg": "--color-on-accent=#06310F",
+      "bg": "--color-accent=#06C755",
+      "ratio": 6.4,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "teks bahaya di surface",
+      "fg": "--color-danger=#B3261E",
+      "bg": "--color-surface=#FFFFFF",
+      "ratio": 6.54,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "teks info di surface",
+      "fg": "--color-info=#0066FF",
+      "bg": "--color-surface=#FFFFFF",
+      "ratio": 4.83,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "aksen brand untuk teks di surface",
+      "fg": "--color-accent-text=#037436",
+      "bg": "--color-surface=#FFFFFF",
+      "ratio": 5.91,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "data-1 di surface",
+      "fg": "--color-data-1=#4A6FA5",
+      "bg": "--color-surface=#FFFFFF",
+      "ratio": 5.11,
+      "min": 3,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "data-2 di surface",
+      "fg": "--color-data-2=#6B8E6B",
+      "bg": "--color-surface=#FFFFFF",
+      "ratio": 3.68,
+      "min": 3,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "data-3 di surface",
+      "fg": "--color-data-3=#C08552",
+      "bg": "--color-surface=#FFFFFF",
+      "ratio": 3.13,
+      "min": 3,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "data-4 di surface",
+      "fg": "--color-data-4=#8C8579",
+      "bg": "--color-surface=#FFFFFF",
+      "ratio": 3.65,
+      "min": 3,
+      "pass": true
+    },
+    {
+      "theme": "light",
+      "label": "data-5 di surface",
+      "fg": "--color-data-5=#2E3A46",
+      "bg": "--color-surface=#FFFFFF",
+      "ratio": 11.6,
+      "min": 3,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "teks utama di canvas",
+      "fg": "--color-ink=#F9FAFB",
+      "bg": "--color-canvas=#0B0F19",
+      "ratio": 18.33,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "teks utama di surface",
+      "fg": "--color-ink=#F9FAFB",
+      "bg": "--color-surface=#111827",
+      "ratio": 16.98,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "teks sekunder di canvas",
+      "fg": "--color-ink-soft=#9CA3AF",
+      "bg": "--color-canvas=#0B0F19",
+      "ratio": 7.54,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "teks sekunder di surface",
+      "fg": "--color-ink-soft=#9CA3AF",
+      "bg": "--color-surface=#111827",
+      "ratio": 6.99,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "placeholder di surface",
+      "fg": "--color-ink-faint=#8A93A3",
+      "bg": "--color-surface=#111827",
+      "ratio": 5.73,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "teks tombol di accent",
+      "fg": "--color-on-accent=#06310F",
+      "bg": "--color-accent=#06C755",
+      "ratio": 6.4,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "teks bahaya di surface",
+      "fg": "--color-danger=#EF4444",
+      "bg": "--color-surface=#111827",
+      "ratio": 4.71,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "teks info di surface",
+      "fg": "--color-info=#3B82F6",
+      "bg": "--color-surface=#111827",
+      "ratio": 4.82,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "aksen brand untuk teks di surface",
+      "fg": "--color-accent-text=#34D399",
+      "bg": "--color-surface=#111827",
+      "ratio": 9.23,
+      "min": 4.5,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "data-1 di surface",
+      "fg": "--color-data-1=#4A6FA5",
+      "bg": "--color-surface=#111827",
+      "ratio": 3.47,
+      "min": 3,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "data-2 di surface",
+      "fg": "--color-data-2=#6B8E6B",
+      "bg": "--color-surface=#111827",
+      "ratio": 4.82,
+      "min": 3,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "data-3 di surface",
+      "fg": "--color-data-3=#C08552",
+      "bg": "--color-surface=#111827",
+      "ratio": 5.68,
+      "min": 3,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "data-4 di surface",
+      "fg": "--color-data-4=#8C8579",
+      "bg": "--color-surface=#111827",
+      "ratio": 4.85,
+      "min": 3,
+      "pass": true
+    },
+    {
+      "theme": "dark",
+      "label": "data-5 di surface",
+      "fg": "--color-data-5=#9FB3C8",
+      "bg": "--color-surface=#111827",
+      "ratio": 8.24,
+      "min": 3,
+      "pass": true
+    }
+  ]
+}
