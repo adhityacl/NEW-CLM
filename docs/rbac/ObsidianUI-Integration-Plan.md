@@ -76,7 +76,12 @@ Aturan integrasi (wajib):
 | Config shadcn + registry Obsidian | `components.json` |
 | Token desain (Takram + jembatan shadcn) | `src/styles/tokens.css` |
 | Komponen Obsidian UI (vendored, import relatif mengikuti konvensi repo) | `src/components/obsidian/table.tsx`, `src/components/obsidian/separator.tsx` |
+| **Halaman yang memakai komponen Obsidian UI** | `src/components/rbac/RbacMatrixView.tsx` |
 | Helper permission frontend | `src/lib/permissions.ts` |
+
+`RbacMatrixView.tsx` = bukti “komponen dipakai pada halaman”: memakai `obsidian/table` + `obsidian/separator`, gating `<Can permission="admin.access">`, data dari `GET /api/rbac/matrix`, **0 warna hardcoded** (36 kelas token + 5 token palet data), menangani keadaan memuat (skeleton), kosong, dan galat (dengan tombol “Coba lagi”), responsif (tabel bisa di-scroll di layar sempit, grid 5→2→1 kolom), dan 5 atribut `aria-*`.
+
+Verifikasi statis: `esbuild` parse TSX → exit 0; `grep '#[0-9a-f]{3,8}'` → 0 hit.
 
 > Komponen di-vendor ke `src/components/obsidian/` dan **tidak menimpa** `src/components/ui/*` yang sudah ada (`badge/button/card/separator/...`) supaya build tidak pecah. Migrasi primitif lama → Obsidian UI dilakukan bertahap setelah verifikasi visual.
 
