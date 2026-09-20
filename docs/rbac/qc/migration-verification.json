@@ -1,0 +1,52 @@
+{
+  "sqlFile": "server/migrations/001_rbac_alignment.sql",
+  "generatedAt": "2026-09-20T20:16:33.391Z",
+  "run1": {
+    "tables": [
+      "audit_log",
+      "rbac_departments",
+      "rbac_permissions",
+      "rbac_role_permissions",
+      "rbac_roles",
+      "rbac_user_roles"
+    ],
+    "roles": 5,
+    "permissions": 32,
+    "role_permissions": 77,
+    "audit_log": 0
+  },
+  "run2": {
+    "tables": [
+      "audit_log",
+      "rbac_departments",
+      "rbac_permissions",
+      "rbac_role_permissions",
+      "rbac_roles",
+      "rbac_user_roles"
+    ],
+    "roles": 5,
+    "permissions": 32,
+    "role_permissions": 77,
+    "audit_log": 0
+  },
+  "idempotent": true,
+  "foreignKeyViolations": 0,
+  "checks": {
+    "superuserGetsAllPermissions": true,
+    "adminPermissionCount": 22,
+    "adminHasNoAuditView": true,
+    "auditRowWritesAndReadsBack": true
+  },
+  "auditSample": {
+    "id": "ev-1",
+    "actor_id": "u-super",
+    "action": "user.role.assign",
+    "target_type": "USER",
+    "target_id": "u-x",
+    "tenant_id": "t1",
+    "department_id": "d1",
+    "impersonated_by": "u-super",
+    "metadata": "{\"previousRole\":\"viewer\",\"newRole\":\"editor\"}",
+    "created_at": "2026-09-20 20:16:33"
+  }
+}
