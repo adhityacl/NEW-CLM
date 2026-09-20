@@ -1,0 +1,110 @@
+/**
+ * Design tokens - penyatuan identitas app (LINE green) dengan estetika
+ * "Obsidian UI" memakai panduan preset 17 Takram (Teknologi Lembut Presisi).
+ *
+ * Import sekali di `src/index.css` SETELAH `@import "tailwindcss";`:
+ *   @import "./styles/tokens.css";
+ *
+ * Aturan: komponen (termasuk Obsidian UI) HANYA memakai token ini -
+ * tidak boleh hex/nama warna Tailwind hardcoded.
+ */
+
+@theme {
+  /* --- Tipografi --- */
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --text-2xs: 0.6875rem;
+  --leading-tight: 1.25;
+  --tracking-tight: -0.01em;
+
+  /* --- Radius (Takram: membulat, bukan pill) --- */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* --- Shadow bertingkat (lembut, opasitas rendah) --- */
+  --shadow-xs: 0 1px 2px rgba(17, 17, 17, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-elevated: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  --shadow-focus: 0 0 0 3px rgba(6, 199, 85, 0.20);
+
+  /* --- Motion (kalem) --- */
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+
+  /* --- Warna semantik (memetakan ke variabel --line-* yang sudah ada) --- */
+  --color-canvas: var(--line-neutral-bg);
+  --color-surface: var(--line-surface-card);
+  --color-surface-2: var(--line-surface-2);
+  --color-hairline: var(--line-neutral-border);
+  --color-ink: var(--line-neutral-dark);
+  --color-ink-soft: var(--line-neutral-sub);
+  --color-ink-faint: var(--line-neutral-placeholder);
+  --color-accent: var(--line-brand-green);
+  --color-accent-hover: var(--line-brand-green-hover);
+  --color-accent-soft: var(--line-brand-green-light);
+  --color-accent-dark: var(--line-brand-green-dark);
+  --color-info: var(--line-blue);
+  --color-danger: var(--line-red);
+  --color-warning: var(--line-yellow);
+
+  /* --- Palet data Takram (chart, matriks RBAC, badge status) --- */
+  --color-data-1: #4A6FA5; /* biru redup */
+  --color-data-2: #6B8E6B; /* sage */
+  --color-data-3: #C08552; /* clay */
+  --color-data-4: #8C8579; /* warm gray */
+  --color-data-5: #2E3A46; /* navy dalam */
+
+  /* --- Token shadcn/Obsidian UI (jembatan ke komponen registry) --- */
+  --background: var(--line-neutral-bg);
+  --foreground: var(--line-neutral-dark);
+  --card: var(--line-surface-card);
+  --card-foreground: var(--line-neutral-dark);
+  --muted: var(--line-surface-2);
+  --muted-foreground: var(--line-neutral-sub);
+  --primary: var(--line-brand-green);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--line-surface-2);
+  --secondary-foreground: var(--line-neutral-body, var(--line-neutral-dark));
+  --accent: var(--line-surface-2);
+  --accent-foreground: var(--line-neutral-dark);
+  --destructive: var(--line-red);
+  --border: var(--line-neutral-border);
+  --input: var(--line-neutral-border);
+  --ring: var(--line-brand-green);
+  --radius: 14px;
+}
+
+:root {
+  --line-surface-2: #F2F3F5;
+}
+
+.dark {
+  --line-surface-2: #161F30;
+}
+
+/* Alias kompatibilitas: token lama tetap tersedia selama migrasi bertahap. */
+:root, .dark {
+  --color-blue: var(--color-info);
+  --color-red: var(--color-danger);
+  --color-yellow: var(--color-warning);
+}
+
+/* Fokus terlihat & konsisten (aksesibilitas WCAG 2.1 AA). */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
