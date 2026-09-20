@@ -19,11 +19,16 @@ const file = process.argv[2] ?? 'server.ts';
 const tierArg = process.argv.find((a) => a.startsWith('--tier='));
 const tier = (tierArg ? tierArg.split('=')[1] : 'additive');
 const dryRun = process.argv.includes('--dry-run');
-const doSecure = tier === 'secure' || tier === 'strict' || tier === 'strict2';
-const doStrict = tier === 'strict' || tier === 'strict2';
+const TIERS = ['additive', 'secure', 'strict', 'strict2', 'strict3'];
+const tierIdx = TIERS.indexOf(tier);
+const atLeast = (t) => tierIdx >= TIERS.indexOf(t);
+const doSecure = atLeast('secure');
+const doStrict = atLeast('strict');
+const doStrict2 = atLeast('strict2');
+const doStrict3 = atLeast('strict3');
 
-if (!['additive', 'secure', 'strict', 'strict2'].includes(tier)) {
-  console.error(`tier tidak dikenal: ${tier} (pakai additive|secure|strict|strict2)`);
+if (tierIdx < 0) {
+  console.error(`tier tidak dikenal: ${tier} (pakai ${TIERS.join('|')})`);
   process.exit(2);
 }
 
@@ -31,6 +36,7 @@ const MARK = '/* RBAC-INTEGRATION-V1 */';
 const MARK_SECURE = '/* RBAC-INTEGRATION-V1-SECURE */';
 const MARK_STRICT = '/* RBAC-INTEGRATION-V1-STRICT */';
 const MARK_STRICT2 = '/* RBAC-INTEGRATION-V1-STRICT2 */';
+const MARK_STRICT3 = '/* RBAC-INTEGRATION-V1-STRICT3 */';
 
 let src = readFileSync(file, 'utf8');
 const before = src;
@@ -158,7 +164,7 @@ if (doStrict && !src.includes(MARK_STRICT)) {
 
 /* ---------- Tier strict2 (persempit whitelist /api/auth) ---------- */
 
-if (tier === 'strict2' && !src.includes(MARK_STRICT2)) {
+if (doStrict2 && !src.includes(MARK_STRICT2)) {
   // `/api/auth-console/*` ikut lolos karena prefix "/api/auth" ikut cocok.
   replaceOnce(
     '    req.path.startsWith("/api/auth") ||',
@@ -166,6 +172,25 @@ if (tier === 'strict2' && !src.includes(MARK_STRICT2)) {
       '    (req.path === "/api/auth" || req.path.startsWith("/api/auth/")) ||',
     'STRICT2: persempit whitelist /api/auth (auth-console ikut dijaga)',
   );
+}
+
+/* ---------- Tier strict3 (gerbangi sisa endpoint area admin) ---------- */
+
+if (doStrict3 && !src.includes(MARK_STRICT3)) {
+  const ANCHOR = 'app.use("/api/auth-console/users", requirePermission("admin.user.manage", "tenant"));';
+  const guards = [
+    ANCHOR,
+    MARK_STRICT3,
+    '// Area admin: sisa endpoint console yang sebelumnya hanya butuh login.',
+    'app.use("/api/auth-console/sessions", requirePermission("admin.access", "tenant"));',
+    'app.use("/api/auth-console/teams", requirePermission("admin.access", "tenant"));',
+    'app.use("/api/auth-console/invitations", requirePermission("admin.access", "tenant"));',
+    'app.use("/api/auth-console/api-keys", requirePermission("admin.access", "tenant"));',
+    'app.use("/api/auth-console/organizations", requirePermission("admin.access", "tenant"));',
+    'app.use("/api/auth-console/rbac-matrix", requirePermission("admin.access", "tenant"));',
+    'app.use("/api/activity-logs", requirePermission("admin.access", "tenant"));',
+  ].join('\n');
+  replaceOnce(ANCHOR, guards, 'STRICT3: gerbangi sessions/teams/invitations/api-keys/organizations/rbac-matrix + activity-logs');
 }
 
 /* ---------- Simpan ---------- */

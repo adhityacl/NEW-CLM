@@ -1,0 +1,30 @@
+diff --git "a/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.cluster\\rbac-obsidian\\artifacts\\qc-output\\_patchtest4\\pre.ts" "b/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.cluster\\rbac-obsidian\\artifacts\\qc-output\\_patchtest4\\base.ts"
+index cef7f0a..5f41539 100644
+--- "a/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.cluster\\rbac-obsidian\\artifacts\\qc-output\\_patchtest4\\pre.ts"
++++ "b/C:\\Users\\User\\.openclaw-autoclaw\\workspace\\.cluster\\rbac-obsidian\\artifacts\\qc-output\\_patchtest4\\base.ts"
+@@ -88,7 +88,8 @@ app.all(["/api/auth", "/api/auth/*"], (req: express.Request, res: express.Respon
+ export const rbacAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+   if (
+     !req.path.startsWith("/api/") ||
+-    req.path.startsWith("/api/auth") ||
++    /* RBAC-INTEGRATION-V1-STRICT2 */
++    (req.path === "/api/auth" || req.path.startsWith("/api/auth/")) ||
+     req.path === "/api/health" ||
+     req.path === "/api/exchange-rates" ||
+     req.path === "/api/exchange-rate-historical" ||
+@@ -262,6 +263,15 @@ app.use("/api/rbac", createRbacRouter({ resolveActor: (req: any) => req.actor ??
+ /* RBAC-INTEGRATION-V1-SECURE */
+ // Guard izin bertarget (jangan blanket ΓÇö endpoint publik seperti invitations/accept harus tetap jalan).
+ app.use("/api/auth-console/users", requirePermission("admin.user.manage", "tenant"));
++/* RBAC-INTEGRATION-V1-STRICT3 */
++// Area admin: sisa endpoint console yang sebelumnya hanya butuh login.
++app.use("/api/auth-console/sessions", requirePermission("admin.access", "tenant"));
++app.use("/api/auth-console/teams", requirePermission("admin.access", "tenant"));
++app.use("/api/auth-console/invitations", requirePermission("admin.access", "tenant"));
++app.use("/api/auth-console/api-keys", requirePermission("admin.access", "tenant"));
++app.use("/api/auth-console/organizations", requirePermission("admin.access", "tenant"));
++app.use("/api/auth-console/rbac-matrix", requirePermission("admin.access", "tenant"));
++app.use("/api/activity-logs", requirePermission("admin.access", "tenant"));
+ app.post("/api/tenants/switch", requirePermission("workspace.switch", "global"));
+ app.use("/api/tenants/switch", requirePermission("workspace.switch", "global"));
+ 
