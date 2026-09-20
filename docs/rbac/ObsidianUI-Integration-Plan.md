@@ -89,3 +89,22 @@ Aturan integrasi (wajib):
 5. Ukur bundle sebelum/sesudah (`npm run build`) — patokan anggaran: halaman utama tidak memburuk signifikan.
 
 **Risiko:** proyek Obsidian UI sangat baru (dibuat 2026-09-17) dan API-nya setara shadcn/ui, sehingga bila ada masalah dapat diganti balik ke shadcn resmi tanpa lock-in.
+
+## 7. Panduan modifikasi cepat
+
+| Ingin mengubah… | Ubah di |
+|---|---|
+| Warna brand/accent | `src/styles/tokens.css` → `--line-brand-green*` (light + `.dark`) |
+| Warna permukaan / teks / garis | `--line-surface-*`, `--line-neutral-*` |
+| Palet data (chart, matriks, badge status) | `--color-data-1..5` |
+| Radius / bayangan / animasi | `--radius-*`, `--shadow-*`, `--ease-soft`, `--duration-*` |
+| Teks, label, navigasi | komponen di `src/components/*` + kunci i18n di `src/context/LanguageContext.tsx` |
+| Isi tabel peran/permission | `AdminRbacMatrixTab` (data dari `GET /api/rbac/matrix`) |
+| Gating tampilan menu/tombol | `<Can permission="...">` dari `src/lib/permissions.ts` |
+| Pratinjau cepat desain (tanpa build) | buka `docs/rbac/design-preview.html` — mandiri, tanpa aset eksternal |
+
+### Verifikasi pratinjau (dijalankan di sini)
+
+`node .openclaw/tmp/verify-preview.mjs` (DOM-stub) → 5 kartu peran · 15 baris matriks · 90 sel · 42 sel izin / 33 tolak · **LULUS**. Bukti: `DELIVERY/qc/design-preview-render.json`.
+
+> Panel browser AutoClaw tidak dapat memuat `localhost`, jadi verifikasi dilakukan dengan mengeksekusi skrip halaman terhadap DOM-stub (bukan tangkapan layar piksel). Tangkapan layar visual perlu dilakukan di Codespaces/ browser lokal.
