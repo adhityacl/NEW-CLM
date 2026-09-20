@@ -1,0 +1,74 @@
+1770: app.get("/api/user/my-role", async (req: express.Request, res: express.Response)
+1849: app.get("/api/departments", async (req: express.Request, res: express.Response) 
+1906: app.post("/api/user/log-activity", async (req: express.Request, res: express.Res
+2044: app.get("/api/user/allowed-users", (req: express.Request, res: express.Response)
+2048: app.post("/api/user/allowed-users", async (req: express.Request, res: express.Re
+2095: app.put("/api/user/allowed-users/:id", async (req: express.Request, res: express
+2137: app.delete("/api/user/allowed-users/:id", async (req: express.Request, res: expr
+2186: app.post("/api/user/reset-password", async (req: express.Request, res: express.R
+2295: app.get("/api/activity-logs", (req: express.Request, res: express.Response) => {
+2298: app.get("/api/partners", (req: express.Request, res: express.Response) => {
+2317: app.post("/api/partners/parse", async (req: express.Request, res: express.Respon
+2382: app.post("/api/partners/generate-dd-notes", async (req: express.Request, res: ex
+2443: app.post("/api/partners", async (req: express.Request, res: express.Response) =>
+2550: app.put("/api/partners/:id", async (req: express.Request, res: express.Response)
+2641: app.delete("/api/partners/:id", async (req: express.Request, res: express.Respon
+2702: app.get("/api/partner-evaluations", (req: express.Request, res: express.Response
+2717: app.post("/api/partner-evaluations", async (req: express.Request, res: express.R
+2797: app.put("/api/partner-evaluations/:id", async (req: express.Request, res: expres
+2855: app.delete("/api/partner-evaluations/:id", async (req: express.Request, res: exp
+2876: app.get("/api/exchange-rates", async (req: express.Request, res: express.Respons
+2900: app.get("/api/exchange-rate-historical", async (req: express.Request, res: expre
+2931: app.get("/api/partner-spendings", (req: express.Request, res: express.Response) 
+2958: app.post("/api/spendings/parse", async (req: express.Request, res: express.Respo
+3074: app.post("/api/partner-spendings", async (req: express.Request, res: express.Res
+3317: app.put("/api/partner-spendings/:id", async (req: express.Request, res: express.
+3523: app.delete("/api/partner-spendings/:id", async (req: express.Request, res: expre
+3545: app.post("/api/partners/:id/upload-dd", async (req: express.Request, res: expres
+3721: app.delete("/api/partners/:id/dd-file", async (req: express.Request, res: expres
+3763: app.get("/api/contracts", (req: express.Request, res: express.Response) => {
+3795: app.post("/api/contracts/parse", async (req: express.Request, res: express.Respo
+4008: app.get("/api/contracts/:id/redline-analysis", (req: express.Request, res: expre
+4021: app.post("/api/contracts/:id/redline-analysis", async (req: express.Request, res
+4177: app.post("/api/contracts", async (req: express.Request, res: express.Response) =
+4429: app.put("/api/contracts/:id", async (req: express.Request, res: express.Response
+4614: app.delete("/api/contracts/:id", async (req: express.Request, res: express.Respo
+4633: app.get("/api/ios", (req: express.Request, res: express.Response) => {
+4667: app.post("/api/ios/parse", async (req: express.Request, res: express.Response) =
+4841: app.post("/api/ios", async (req: express.Request, res: express.Response) => {
+5048: app.put("/api/ios/:id", async (req: express.Request, res: express.Response) => {
+5212: app.delete("/api/ios/:id", async (req: express.Request, res: express.Response) =
+5231: app.get("/api/notification-logs", (req: express.Request, res: express.Response) 
+5234: app.post("/api/notification-logs/mark-read", (req: express.Request, res: express
+5246: app.post("/api/notification-logs/delete", (req: express.Request, res: express.Re
+5260: app.post("/api/cron/trigger-check", (req: express.Request, res: express.Response
+5264: app.get(
+5272: app.post(
+5356: app.get(
+5382: app.post(
+5399: app.post(
+5442: app.post(
+5466: app.get("/api/google-integration", async (req: express.Request, res: express.Res
+5486: app.post("/api/google-integration", async (req: express.Request, res: express.Re
+5683: app.post("/api/smtp/test", async (req: express.Request, res: express.Response) =
+5763: app.post("/api/ai/test-key", async (req: express.Request, res: express.Response)
+5818: app.post("/api/google-integration/sync", async (req: express.Request, res: expre
+5949: app.get("/api/google-integration/sync-status", (req: express.Request, res: expre
+5953: app.post("/api/google-integration/sync-flush", async (req: express.Request, res:
+5960: app.post("/api/google-integration/auto-provision-master", async (req: express.Re
+6048: app.post("/api/tenants/auto-provision-folders", async (req: express.Request, res
+6111: app.post("/api/google-integration/provision-folders", provisionFoldersHandler);
+6112: app.post("/api/partners/provision-folders", provisionFoldersHandler);
+6113: app.post("/api/admin/reset-database", async (req: express.Request, res: express.
+6326: app.get("/api/google-service-account/status", async (req: express.Request, res: 
+6346: app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
+6847: app.get("/api/tenants", async (req: express.Request, res: express.Response) => {
+6882: app.post("/api/tenants/switch", (req: express.Request, res: express.Response) =>
+6895: app.post("/api/tenants", (req: express.Request, res: express.Response) => {
+6921: app.put("/api/tenants/:id", (req: express.Request, res: express.Response) => {
+6937: app.delete("/api/tenants/:id", (req: express.Request, res: express.Response) => 
+6974: app.post("/api/tenants/:id/setup-google", async (req: express.Request, res: expr
+7043: app.post("/api/tenants/:id/sync-google", async (req: express.Request, res: expre
+7054: app.get("/api/branding", (req: express.Request, res: express.Response) => {
+7060: app.post("/api/branding", (req: express.Request, res: express.Response) => {
+7066: app.post("/api/chat", async (req: express.Request, res: express.Response) => {

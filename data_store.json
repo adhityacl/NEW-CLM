@@ -1,0 +1,2146 @@
+{
+  "allowedUsers": [
+    {
+      "id": "usr-1",
+      "organizationId": "org-adapundi",
+      "email": "adhitcl@gmail.com",
+      "name": "Aditya Pratama",
+      "role": "Superuser",
+      "department": "Legal & Compliance",
+      "status": "Active",
+      "addedBy": "System Core",
+      "createdAt": "2026-01-01T08:00:00.000Z",
+      "lastLoginAt": "2026-09-20T13:03:28.734Z"
+    }
+  ],
+  "partners": [
+    {
+      "partner_id": "PRT-001",
+      "organizationId": "org-adapundi",
+      "nama_partner": "PT Media Nusantara Digital",
+      "jenis_partner": "Media Partner",
+      "pic_partner": "Andi Wijaya (andi@mnd.co.id / 081234567890)",
+      "nama_pic": "Andi Wijaya",
+      "email_pic": "andi@mnd.co.id",
+      "telepon_pic": "081234567890",
+      "pic_internal": "Commercial & Marketing",
+      "badan_hukum": "BHI",
+      "status_dd": "Belum Lengkap",
+      "link_folder_dd": "https://drive.google.com/drive/folders/1EF-4PviaOU-_HAoosu1Fopu4DNYY_0AF",
+      "daftar_dokumen_dd": [
+        {
+          "nama": "NDA",
+          "wajib": true,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "COR",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "DGT",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Termination notice",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Vendor assessment form",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Placement Documentation",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NIB/SIUP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "9120001234567",
+          "files": []
+        },
+        {
+          "nama": "Business license",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NPWP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "01.234.567.8-012.000",
+          "files": []
+        },
+        {
+          "nama": "Akta Pendirian",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "AHU-00123.AH.01.01",
+          "files": []
+        }
+      ],
+      "catatan": "Partner media prioritas untuk campaign digital Q1-Q4.",
+      "tags": [
+        "Media",
+        "Digital",
+        "Priority"
+      ],
+      "created_at": "2026-01-05T08:00:00.000Z",
+      "updated_at": "2026-09-15T10:00:00.000Z"
+    },
+    {
+      "partner_id": "PRT-002",
+      "organizationId": "org-adapundi",
+      "nama_partner": "PT Cloud Teknologi Indonesia",
+      "jenis_partner": "Vendor",
+      "pic_partner": "Rina Marlina (rina@cloudtek.co.id / 081987654321)",
+      "nama_pic": "Rina Marlina",
+      "email_pic": "rina@cloudtek.co.id",
+      "telepon_pic": "081987654321",
+      "pic_internal": "Procurement & Operations",
+      "badan_hukum": "BHI",
+      "status_dd": "Belum Lengkap",
+      "link_folder_dd": "https://drive.google.com/drive/folders/1Q3qglYpbVHtLYslG0ATFTv2Y1Npmfujb",
+      "daftar_dokumen_dd": [
+        {
+          "nama": "NDA",
+          "wajib": true,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "COR",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "DGT",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Termination notice",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Vendor assessment form",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Placement Documentation",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NIB/SIUP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "9120007654321",
+          "files": []
+        },
+        {
+          "nama": "Business license",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NPWP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "02.345.678.9-023.000",
+          "files": []
+        },
+        {
+          "nama": "Akta Pendirian",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "AHU-00456.AH.01.01",
+          "files": []
+        }
+      ],
+      "catatan": "Penyedia infrastruktur server & cloud storage utama.",
+      "tags": [
+        "Infrastructure",
+        "Cloud",
+        "Core"
+      ],
+      "created_at": "2026-01-10T09:00:00.000Z",
+      "updated_at": "2026-09-14T11:30:00.000Z"
+    },
+    {
+      "partner_id": "PRT-003",
+      "organizationId": "org-adapundi",
+      "nama_partner": "PT Global Logistics Utama",
+      "jenis_partner": "Supplier",
+      "pic_partner": "Bambang Suryo (bambang@globallogistics.co.id / 081311223344)",
+      "nama_pic": "Bambang Suryo",
+      "email_pic": "bambang@globallogistics.co.id",
+      "telepon_pic": "081311223344",
+      "pic_internal": "Procurement & Operations",
+      "badan_hukum": "BHI",
+      "status_dd": "Belum Lengkap",
+      "link_folder_dd": "https://drive.google.com/drive/folders/179d442JGFYwr4XrBT3N1ooJRre8NODL5",
+      "daftar_dokumen_dd": [
+        {
+          "nama": "NDA",
+          "wajib": true,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "COR",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "DGT",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Termination notice",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Vendor assessment form",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Placement Documentation",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NIB/SIUP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "9120008899001",
+          "files": []
+        },
+        {
+          "nama": "Business license",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NPWP",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Akta Pendirian",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "AHU-00789.AH.01.01",
+          "files": []
+        }
+      ],
+      "catatan": "Menunggu pembaruan dokumen NPWP terbaru dari partner.",
+      "tags": [
+        "Logistics",
+        "Courier"
+      ],
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-09-10T15:20:00.000Z"
+    },
+    {
+      "partner_id": "PRT-004",
+      "organizationId": "org-adapundi",
+      "nama_partner": "PT Solusi Cyber Global",
+      "jenis_partner": "Vendor",
+      "pic_partner": "Denny Sumargo (denny@cybersec.co.id / 081566778899)",
+      "nama_pic": "Denny Sumargo",
+      "email_pic": "denny@cybersec.co.id",
+      "telepon_pic": "081566778899",
+      "pic_internal": "Legal & Compliance",
+      "badan_hukum": "BHI",
+      "status_dd": "Belum Lengkap",
+      "link_folder_dd": "https://drive.google.com/drive/folders/1ECYnNiVFecTIPy3SHpQPUKnFSlUtA-M8",
+      "daftar_dokumen_dd": [
+        {
+          "nama": "NDA",
+          "wajib": true,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "COR",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "DGT",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Termination notice",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Vendor assessment form",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Placement Documentation",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NIB/SIUP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "9120009988776",
+          "files": []
+        },
+        {
+          "nama": "Business license",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NPWP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "04.567.890.1-045.000",
+          "files": []
+        },
+        {
+          "nama": "Akta Pendirian",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "AHU-00999.AH.01.01",
+          "files": []
+        }
+      ],
+      "catatan": "Vendor audit penetrasi sistem & konsultasi keamanan IT.",
+      "tags": [
+        "Security",
+        "Audit"
+      ],
+      "created_at": "2026-02-01T11:00:00.000Z",
+      "updated_at": "2026-09-12T16:00:00.000Z"
+    },
+    {
+      "partner_id": "PRT-005",
+      "organizationId": "org-adapundi",
+      "nama_partner": "PT Creative Agency Asia",
+      "jenis_partner": "Klien",
+      "pic_partner": "Erika Carlina (erika@creativeasia.com / 081722334455)",
+      "nama_pic": "Erika Carlina",
+      "email_pic": "erika@creativeasia.com",
+      "telepon_pic": "081722334455",
+      "pic_internal": "Commercial & Marketing",
+      "badan_hukum": "BHI",
+      "status_dd": "Belum Lengkap",
+      "link_folder_dd": "https://drive.google.com/drive/folders/1OsW6yeeh1SO765KE_DkyF2SiWgIOrF_8",
+      "daftar_dokumen_dd": [
+        {
+          "nama": "NDA",
+          "wajib": true,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "COR",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "DGT",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Termination notice",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Vendor assessment form",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Placement Documentation",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NIB/SIUP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "9120001122334",
+          "files": []
+        },
+        {
+          "nama": "Business license",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NPWP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "05.678.901.2-056.000",
+          "files": []
+        },
+        {
+          "nama": "Akta Pendirian",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "AHU-00111.AH.01.01",
+          "files": []
+        }
+      ],
+      "catatan": "Agensi produksi konten video & materi promosi.",
+      "tags": [
+        "Creative",
+        "Agency"
+      ],
+      "created_at": "2026-02-10T14:00:00.000Z",
+      "updated_at": "2026-09-15T09:30:00.000Z"
+    },
+    {
+      "partner_id": "PRT-006",
+      "organizationId": "org-adapundi",
+      "nama_partner": "Global Ad Networks Inc.",
+      "jenis_partner": "Media Partner",
+      "pic_partner": "John Smith (jsmith@globalad.com / +1-415-555-0199)",
+      "nama_pic": "John Smith",
+      "email_pic": "jsmith@globalad.com",
+      "telepon_pic": "+1-415-555-0199",
+      "pic_internal": "Commercial & Marketing",
+      "badan_hukum": "BHA",
+      "status_dd": "Belum Lengkap",
+      "link_folder_dd": "https://drive.google.com/drive/folders/1APlc9kdYlmETospMKufVsk5pod5FdEAn",
+      "daftar_dokumen_dd": [
+        {
+          "nama": "NDA",
+          "wajib": true,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "COR",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "DGT",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Termination notice",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Vendor assessment form",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Placement Documentation",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NIB/SIUP",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Business license",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NPWP",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Akta Pendirian",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        }
+      ],
+      "catatan": "Mitra jaringan iklan internasional terintegrasi programmatic.",
+      "tags": [
+        "Global",
+        "AdNetwork"
+      ],
+      "created_at": "2026-02-20T09:00:00.000Z",
+      "updated_at": "2026-09-11T13:45:00.000Z"
+    },
+    {
+      "partner_id": "PRT-007",
+      "organizationId": "org-adapundi",
+      "nama_partner": "PT Telekomunikasi Digital Mandiri",
+      "jenis_partner": "Vendor",
+      "pic_partner": "Fitri Handayani (fitri@telkodigital.co.id / 081899001122)",
+      "nama_pic": "Fitri Handayani",
+      "email_pic": "fitri@telkodigital.co.id",
+      "telepon_pic": "081899001122",
+      "pic_internal": "Procurement & Operations",
+      "badan_hukum": "BHI",
+      "status_dd": "Belum Lengkap",
+      "link_folder_dd": "https://drive.google.com/drive/folders/1do8trKcymaD9AfjsOgRqr_T7u3VlqOBD",
+      "daftar_dokumen_dd": [
+        {
+          "nama": "NDA",
+          "wajib": true,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "COR",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "DGT",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Termination notice",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Vendor assessment form",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Placement Documentation",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NIB/SIUP",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Business license",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NPWP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "07.890.123.4-078.000",
+          "files": []
+        },
+        {
+          "nama": "Akta Pendirian",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "AHU-00222.AH.01.01",
+          "files": []
+        }
+      ],
+      "catatan": "Penyedia jaringan serat optik dedicated kantor & DC.",
+      "tags": [
+        "Telco",
+        "Network"
+      ],
+      "created_at": "2026-03-01T10:30:00.000Z",
+      "updated_at": "2026-09-08T10:00:00.000Z"
+    },
+    {
+      "partner_id": "PRT-008",
+      "organizationId": "org-adapundi",
+      "nama_partner": "PT Prisma Konsultan Legal",
+      "jenis_partner": "Vendor",
+      "pic_partner": "Haryo Poerwanto (haryo@prismalegal.co.id / 081244556677)",
+      "nama_pic": "Haryo Poerwanto",
+      "email_pic": "haryo@prismalegal.co.id",
+      "telepon_pic": "081244556677",
+      "pic_internal": "Legal & Compliance",
+      "badan_hukum": "BHI",
+      "status_dd": "Belum Lengkap",
+      "link_folder_dd": "https://drive.google.com/drive/folders/1QXf3fqLv0GOvLHMi8s3krrBtOCQMnbie",
+      "daftar_dokumen_dd": [
+        {
+          "nama": "NDA",
+          "wajib": true,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "COR",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "DGT",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Termination notice",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Vendor assessment form",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Placement Documentation",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NIB/SIUP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "9120003344556",
+          "files": []
+        },
+        {
+          "nama": "Business license",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NPWP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "08.901.234.5-089.000",
+          "files": []
+        },
+        {
+          "nama": "Akta Pendirian",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "AHU-00333.AH.01.01",
+          "files": []
+        }
+      ],
+      "catatan": "Konsultan hukum eksternal retainer corporate legal & compliance.",
+      "tags": [
+        "Legal",
+        "Consultant"
+      ],
+      "created_at": "2026-03-15T11:00:00.000Z",
+      "updated_at": "2026-09-14T17:10:00.000Z"
+    },
+    {
+      "partner_id": "PRT-009",
+      "organizationId": "org-adapundi",
+      "nama_partner": "Southeast Asia Reseller Ltd",
+      "jenis_partner": "Reseller",
+      "pic_partner": "Michael Tan (mtan@seareseller.sg / +65-6789-0123)",
+      "nama_pic": "Michael Tan",
+      "email_pic": "mtan@seareseller.sg",
+      "telepon_pic": "+65-6789-0123",
+      "pic_internal": "Commercial & Marketing",
+      "badan_hukum": "BHA",
+      "status_dd": "Belum Lengkap",
+      "link_folder_dd": "https://drive.google.com/drive/folders/1639eSeZd9TWzYBDrkEVIG26xhhiof6Pr",
+      "daftar_dokumen_dd": [
+        {
+          "nama": "NDA",
+          "wajib": true,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "COR",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "DGT",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Termination notice",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Vendor assessment form",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Placement Documentation",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NIB/SIUP",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Business license",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NPWP",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Akta Pendirian",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        }
+      ],
+      "catatan": "Reseller resmi produk aplikasi kawasan Asia Tenggara.",
+      "tags": [
+        "Reseller",
+        "Regional"
+      ],
+      "created_at": "2026-04-01T13:00:00.000Z",
+      "updated_at": "2026-09-13T12:00:00.000Z"
+    },
+    {
+      "partner_id": "PRT-010",
+      "organizationId": "org-adapundi",
+      "nama_partner": "PT Infrastruktur Data Prima",
+      "jenis_partner": "Supplier",
+      "pic_partner": "Irwan Mussry (irwan@dataprima.co.id / 081155667788)",
+      "nama_pic": "Irwan Mussry",
+      "email_pic": "irwan@dataprima.co.id",
+      "telepon_pic": "081155667788",
+      "pic_internal": "Procurement & Operations",
+      "badan_hukum": "BHI",
+      "status_dd": "Belum Lengkap",
+      "link_folder_dd": "https://drive.google.com/drive/folders/dummy-dataprima",
+      "daftar_dokumen_dd": [
+        {
+          "nama": "NDA",
+          "wajib": true,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "COR",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "DGT",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Termination notice",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Vendor assessment form",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "Placement Documentation",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NIB/SIUP",
+          "wajib": false,
+          "status": "Kadaluarsa",
+          "tanggalKadaluarsa": "2026-08-01",
+          "files": []
+        },
+        {
+          "nama": "Business license",
+          "wajib": false,
+          "status": "Belum",
+          "files": []
+        },
+        {
+          "nama": "NPWP",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "10.123.456.7-101.000",
+          "files": []
+        },
+        {
+          "nama": "Akta Pendirian",
+          "wajib": false,
+          "status": "Ada",
+          "nomorDokumen": "AHU-00444.AH.01.01",
+          "files": []
+        }
+      ],
+      "catatan": "Sertifikat NIB telah kadaluarsa, perlu pengunggahan dokumen pembaruan.",
+      "tags": [
+        "Infrastructure",
+        "ExpiredDD"
+      ],
+      "created_at": "2026-04-20T09:30:00.000Z",
+      "updated_at": "2026-09-01T14:15:00.000Z"
+    }
+  ],
+  "contracts": [
+    {
+      "contract_id": "CTR-001",
+      "organizationId": "org-adapundi",
+      "jenis_dokumen": "Master Agreement",
+      "nomor_kontrak": "001/LEG/MND/2026",
+      "judul_kontrak": "Perjanjian Kerjasama Media Placement Digital 2026",
+      "partner_id": "PRT-001",
+      "partner_nama": "PT Media Nusantara Digital",
+      "kategori_kerjasama": [
+        "Advertising",
+        "Media Placement"
+      ],
+      "tanggal_mulai": "2026-01-01",
+      "tanggal_berakhir": "2026-12-31",
+      "currency": "IDR",
+      "nilai_kontrak": 450000000,
+      "auto_renewal": true,
+      "notice_period_hari": 60,
+      "notice_type_required": "Termination",
+      "status": "Aktif",
+      "status_approval": "Signed",
+      "pic_internal": "Commercial & Marketing",
+      "link_file_kontrak": "https://drive.google.com/file/d/dummy-ctr-001/view",
+      "fileName": "Kontrak_001_LEG_MND_2026.pdf",
+      "internal_notes": "Kerjasama mencakup banner placement & artikel sponsor.",
+      "created_at": "2026-01-05T09:00:00.000Z",
+      "updated_at": "2026-09-15T10:00:00.000Z",
+      "sisa_hari": 102
+    },
+    {
+      "contract_id": "CTR-002",
+      "organizationId": "org-adapundi",
+      "jenis_dokumen": "Master Agreement",
+      "nomor_kontrak": "002/LEG/CTI/2026",
+      "judul_kontrak": "Master Service Agreement Cloud Infrastructure & Storage",
+      "partner_id": "PRT-002",
+      "partner_nama": "PT Cloud Teknologi Indonesia",
+      "kategori_kerjasama": [
+        "Infrastructure",
+        "SaaS & Cloud"
+      ],
+      "tanggal_mulai": "2026-01-15",
+      "tanggal_berakhir": "2027-01-14",
+      "currency": "IDR",
+      "nilai_kontrak": 1200000000,
+      "auto_renewal": true,
+      "notice_period_hari": 60,
+      "notice_type_required": "Both",
+      "status": "Aktif",
+      "status_approval": "Signed",
+      "pic_internal": "Procurement & Operations",
+      "link_file_kontrak": "https://drive.google.com/file/d/dummy-ctr-002/view",
+      "fileName": "Kontrak_002_LEG_CTI_2026.pdf",
+      "internal_notes": "Termasuk SLA ketersediaan 99.99% dan garansi recovery 2 jam.",
+      "created_at": "2026-01-10T10:00:00.000Z",
+      "updated_at": "2026-09-14T11:30:00.000Z",
+      "sisa_hari": 116
+    },
+    {
+      "contract_id": "CTR-003",
+      "organizationId": "org-adapundi",
+      "jenis_dokumen": "Master Agreement",
+      "nomor_kontrak": "003/LEG/GLU/2026",
+      "judul_kontrak": "Perjanjian Jasa Pengiriman & Logistik Nasional",
+      "partner_id": "PRT-003",
+      "partner_nama": "PT Global Logistics Utama",
+      "kategori_kerjasama": [
+        "Logistik",
+        "Supplier"
+      ],
+      "tanggal_mulai": "2025-10-15",
+      "tanggal_berakhir": "2026-10-14",
+      "currency": "IDR",
+      "nilai_kontrak": 320000000,
+      "auto_renewal": false,
+      "notice_period_hari": 30,
+      "notice_type_required": "Termination",
+      "status": "Akan Berakhir",
+      "status_approval": "Signed",
+      "pic_internal": "Procurement & Operations",
+      "link_file_kontrak": "https://drive.google.com/file/d/dummy-ctr-003/view",
+      "fileName": "Kontrak_003_LEG_GLU_2026.pdf",
+      "internal_notes": "Mendekati periode berakhir (H-30), perlu opsi adendum / negosiasi ulang.",
+      "created_at": "2025-10-15T11:00:00.000Z",
+      "updated_at": "2026-09-15T08:00:00.000Z",
+      "sisa_hari": 24
+    },
+    {
+      "contract_id": "CTR-004",
+      "organizationId": "org-adapundi",
+      "jenis_dokumen": "Master Agreement",
+      "nomor_kontrak": "004/LEG/SCG/2026",
+      "judul_kontrak": "Perjanjian Pemeliharaan Keamanan Siber & Penetration Test",
+      "partner_id": "PRT-004",
+      "partner_nama": "PT Solusi Cyber Global",
+      "kategori_kerjasama": [
+        "Keamanan IT",
+        "Consulting"
+      ],
+      "tanggal_mulai": "2026-02-01",
+      "tanggal_berakhir": "2027-01-31",
+      "currency": "IDR",
+      "nilai_kontrak": 180000000,
+      "auto_renewal": false,
+      "notice_period_hari": 30,
+      "notice_type_required": "Extension",
+      "status": "Aktif",
+      "status_approval": "Signed",
+      "pic_internal": "Legal & Compliance",
+      "link_file_kontrak": "https://drive.google.com/file/d/dummy-ctr-004/view",
+      "fileName": "Kontrak_004_LEG_SCG_2026.pdf",
+      "internal_notes": "Jadwal pen-test dilakukan 2x setahun (Q2 & Q4).",
+      "created_at": "2026-02-01T12:00:00.000Z",
+      "updated_at": "2026-09-12T16:00:00.000Z",
+      "sisa_hari": 133
+    },
+    {
+      "contract_id": "CTR-005",
+      "organizationId": "org-adapundi",
+      "jenis_dokumen": "Master Agreement",
+      "nomor_kontrak": "005/LEG/CAA/2026",
+      "judul_kontrak": "Kontrak Branding & Production Campaign Q1-Q4",
+      "partner_id": "PRT-005",
+      "partner_nama": "PT Creative Agency Asia",
+      "kategori_kerjasama": [
+        "Creative Production",
+        "Marketing"
+      ],
+      "tanggal_mulai": "2026-02-15",
+      "tanggal_berakhir": "2026-12-31",
+      "currency": "IDR",
+      "nilai_kontrak": 850000000,
+      "auto_renewal": false,
+      "notice_period_hari": 90,
+      "notice_type_required": "Both",
+      "status": "Aktif",
+      "status_approval": "Signed",
+      "pic_internal": "Commercial & Marketing",
+      "link_file_kontrak": "https://drive.google.com/file/d/dummy-ctr-005/view",
+      "fileName": "Kontrak_005_LEG_CAA_2026.pdf",
+      "internal_notes": "Termasuk paket video commercial & visual design asset.",
+      "created_at": "2026-02-10T15:00:00.000Z",
+      "updated_at": "2026-09-15T09:30:00.000Z",
+      "sisa_hari": 102
+    },
+    {
+      "contract_id": "CTR-006",
+      "organizationId": "org-adapundi",
+      "jenis_dokumen": "Master Agreement",
+      "nomor_kontrak": "006/LEG/GAN/2026",
+      "judul_kontrak": "International Programmatic Ad Serving Agreement",
+      "partner_id": "PRT-006",
+      "partner_nama": "Global Ad Networks Inc.",
+      "kategori_kerjasama": [
+        "Advertising",
+        "AdTech"
+      ],
+      "tanggal_mulai": "2026-03-01",
+      "tanggal_berakhir": "2027-02-28",
+      "currency": "USD",
+      "nilai_kontrak": 60000,
+      "nilai_kontrak_usd": 60000,
+      "auto_renewal": true,
+      "notice_period_hari": 60,
+      "notice_type_required": "Termination",
+      "status": "Aktif",
+      "status_approval": "Signed",
+      "pic_internal": "Commercial & Marketing",
+      "link_file_kontrak": "https://drive.google.com/file/d/dummy-ctr-006/view",
+      "fileName": "Kontrak_006_LEG_GAN_2026.pdf",
+      "internal_notes": "Pembayaran dilakukan via transfer valas USD secara triwulanan.",
+      "created_at": "2026-02-20T10:00:00.000Z",
+      "updated_at": "2026-09-11T13:45:00.000Z",
+      "sisa_hari": 161
+    },
+    {
+      "contract_id": "CTR-007",
+      "organizationId": "org-adapundi",
+      "jenis_dokumen": "Master Agreement",
+      "nomor_kontrak": "007/LEG/TDM/2026",
+      "judul_kontrak": "Sewa Bandwidth & Dedicated Fibre Optic Line",
+      "partner_id": "PRT-007",
+      "partner_nama": "PT Telekomunikasi Digital Mandiri",
+      "kategori_kerjasama": [
+        "Telekomunikasi",
+        "Infrastructure"
+      ],
+      "tanggal_mulai": "2025-11-01",
+      "tanggal_berakhir": "2026-10-31",
+      "currency": "IDR",
+      "nilai_kontrak": 240000000,
+      "auto_renewal": true,
+      "notice_period_hari": 60,
+      "notice_type_required": "Termination",
+      "status": "Akan Berakhir",
+      "status_approval": "Signed",
+      "pic_internal": "Procurement & Operations",
+      "link_file_kontrak": "https://drive.google.com/file/d/dummy-ctr-007/view",
+      "fileName": "Kontrak_007_LEG_TDM_2026.pdf",
+      "internal_notes": "Akan dilakukan koordinasi peningkatan kapasitas jaringan ke 1Gbps.",
+      "created_at": "2025-11-01T11:00:00.000Z",
+      "updated_at": "2026-09-10T11:00:00.000Z",
+      "sisa_hari": 41
+    },
+    {
+      "contract_id": "CTR-008",
+      "organizationId": "org-adapundi",
+      "jenis_dokumen": "Master Agreement",
+      "nomor_kontrak": "008/LEG/PKL/2026",
+      "judul_kontrak": "Perjanjian Retainer Konsultasi Hukum Corporate",
+      "partner_id": "PRT-008",
+      "partner_nama": "PT Prisma Konsultan Legal",
+      "kategori_kerjasama": [
+        "Legal Advice",
+        "Consulting"
+      ],
+      "tanggal_mulai": "2026-04-01",
+      "tanggal_berakhir": "2027-03-31",
+      "currency": "IDR",
+      "nilai_kontrak": 150000000,
+      "auto_renewal": false,
+      "notice_period_hari": 30,
+      "notice_type_required": "Extension",
+      "status": "Aktif",
+      "status_approval": "Signed",
+      "pic_internal": "Legal & Compliance",
+      "link_file_kontrak": "https://drive.google.com/file/d/dummy-ctr-008/view",
+      "fileName": "Kontrak_008_LEG_PKL_2026.pdf",
+      "internal_notes": "Mencakup alokasi 20 jam konsultasi hukum per bulan.",
+      "created_at": "2026-03-15T12:00:00.000Z",
+      "updated_at": "2026-09-14T17:10:00.000Z",
+      "sisa_hari": 192
+    },
+    {
+      "contract_id": "CTR-009",
+      "organizationId": "org-adapundi",
+      "jenis_dokumen": "Master Agreement",
+      "nomor_kontrak": "009/LEG/SAR/2026",
+      "judul_kontrak": "Regional Software Distribution & Reseller Agreement",
+      "partner_id": "PRT-009",
+      "partner_nama": "Southeast Asia Reseller Ltd",
+      "kategori_kerjasama": [
+        "Distribution",
+        "Software"
+      ],
+      "tanggal_mulai": "2026-04-15",
+      "tanggal_berakhir": "2027-04-14",
+      "currency": "USD",
+      "nilai_kontrak": 45000,
+      "nilai_kontrak_usd": 45000,
+      "auto_renewal": true,
+      "notice_period_hari": 60,
+      "notice_type_required": "Termination",
+      "status": "Aktif",
+      "status_approval": "Signed",
+      "pic_internal": "Commercial & Marketing",
+      "link_file_kontrak": "https://drive.google.com/file/d/dummy-ctr-009/view",
+      "fileName": "Kontrak_009_LEG_SAR_2026.pdf",
+      "internal_notes": "Hak distribusi eksklusif untuk wilayah Singapura & Malaysia.",
+      "created_at": "2026-04-01T14:00:00.000Z",
+      "updated_at": "2026-09-13T12:00:00.000Z",
+      "sisa_hari": 206
+    },
+    {
+      "contract_id": "CTR-010",
+      "organizationId": "org-adapundi",
+      "jenis_dokumen": "Agreement Addendum",
+      "parent_contract_id": "CTR-002",
+      "parent_contract_nomor": "002/LEG/CTI/2026",
+      "nomor_kontrak": "010/ADD/CTI/2026",
+      "judul_kontrak": "Addendum 01 - Penambahan Node Server Datacenter",
+      "partner_id": "PRT-002",
+      "partner_nama": "PT Cloud Teknologi Indonesia",
+      "kategori_kerjasama": [
+        "Infrastructure",
+        "Addendum"
+      ],
+      "tanggal_mulai": "2026-05-01",
+      "tanggal_berakhir": "2027-01-14",
+      "currency": "IDR",
+      "nilai_kontrak": 250000000,
+      "auto_renewal": false,
+      "notice_period_hari": 30,
+      "notice_type_required": "None",
+      "status": "Aktif",
+      "status_approval": "Signed",
+      "pic_internal": "Procurement & Operations",
+      "link_file_kontrak": "https://drive.google.com/file/d/dummy-ctr-010/view",
+      "fileName": "Addendum_010_ADD_CTI_2026.pdf",
+      "internal_notes": "Penambahan 4 unit node server GPU untuk pemrosesan AI.",
+      "created_at": "2026-04-25T10:00:00.000Z",
+      "updated_at": "2026-09-15T09:00:00.000Z",
+      "sisa_hari": 116
+    }
+  ],
+  "ios": [
+    {
+      "io_id": "IO-2026-001",
+      "organizationId": "org-adapundi",
+      "contract_id": "CTR-001",
+      "contract_nomor": "001/LEG/MND/2026",
+      "nomor_io": "IO/2026/01/001",
+      "judul_io": "Campaign Banner Ads Main Homepage Q1",
+      "partner_id": "PRT-001",
+      "partner_nama": "PT Media Nusantara Digital",
+      "kanal_media": "News Portal Homepage",
+      "tanggal_mulai": "2026-01-15",
+      "tanggal_berakhir": "2026-03-31",
+      "pricing_model": "CPM",
+      "charging_type": "Postpaid",
+      "currency": "IDR",
+      "nilai_io": 75000000,
+      "deliverables": "1,500,000 Impressions Banner 970x90 & Native Ads",
+      "notice_period_hari": 14,
+      "notice_type_required": "Termination",
+      "status": "Expired",
+      "internal_notes": "Laporan tayang diserahkan mingguan.",
+      "created_at": "2026-01-12T09:00:00.000Z",
+      "updated_at": "2026-09-15T10:00:00.000Z",
+      "sisa_hari": -173
+    },
+    {
+      "io_id": "IO-2026-002",
+      "organizationId": "org-adapundi",
+      "contract_id": "CTR-002",
+      "contract_nomor": "002/LEG/CTI/2026",
+      "nomor_io": "IO/2026/01/002",
+      "judul_io": "Cloud Migration Phase 1 Deployment",
+      "partner_id": "PRT-002",
+      "partner_nama": "PT Cloud Teknologi Indonesia",
+      "kanal_media": "AWS/GCP Infrastructure",
+      "tanggal_mulai": "2026-01-20",
+      "tanggal_berakhir": "2026-04-20",
+      "pricing_model": "Fixed Package",
+      "charging_type": "Milestone-based",
+      "currency": "IDR",
+      "nilai_io": 300000000,
+      "deliverables": "Migrasi 12 Microservices & Setup Kubernetes Cluster",
+      "notice_period_hari": 15,
+      "notice_type_required": "None",
+      "status": "Expired",
+      "internal_notes": "Termin 1 (30%), Termin 2 (40%), Termin 3 (30%).",
+      "created_at": "2026-01-18T10:00:00.000Z",
+      "updated_at": "2026-09-14T11:30:00.000Z",
+      "sisa_hari": -153
+    },
+    {
+      "io_id": "IO-2026-003",
+      "organizationId": "org-adapundi",
+      "contract_id": "CTR-003",
+      "contract_nomor": "003/LEG/GLU/2026",
+      "nomor_io": "IO/2026/02/003",
+      "judul_io": "Logistik Kurir Ekspres Jabodetabek Q1",
+      "partner_id": "PRT-003",
+      "partner_nama": "PT Global Logistics Utama",
+      "kanal_media": "Fleet Cargo Delivery",
+      "tanggal_mulai": "2026-02-01",
+      "tanggal_berakhir": "2026-04-30",
+      "pricing_model": "Flat Fee",
+      "charging_type": "Postpaid",
+      "currency": "IDR",
+      "nilai_io": 50000000,
+      "deliverables": "Pengiriman dokumen fisik & perangkat kerja 500 resi",
+      "notice_period_hari": 7,
+      "notice_type_required": "None",
+      "status": "Expired",
+      "internal_notes": "Rekapitulasi resi dikirim tanggal 25 tiap bulan.",
+      "created_at": "2026-01-28T11:00:00.000Z",
+      "updated_at": "2026-09-10T15:20:00.000Z",
+      "sisa_hari": -143
+    },
+    {
+      "io_id": "IO-2026-004",
+      "organizationId": "org-adapundi",
+      "contract_id": "CTR-004",
+      "contract_nomor": "004/LEG/SCG/2026",
+      "nomor_io": "IO/2026/02/004",
+      "judul_io": "Security Audit App Mobile Q1",
+      "partner_id": "PRT-004",
+      "partner_nama": "PT Solusi Cyber Global",
+      "kanal_media": "Mobile App Pen-Test",
+      "tanggal_mulai": "2026-02-15",
+      "tanggal_berakhir": "2026-03-31",
+      "pricing_model": "Fixed Package",
+      "charging_type": "Milestone-based",
+      "currency": "IDR",
+      "nilai_io": 45000000,
+      "deliverables": "Laporan Pen-Test iOS & Android + Remediation Verification",
+      "notice_period_hari": 10,
+      "notice_type_required": "None",
+      "status": "Expired",
+      "internal_notes": "Laporan draft diselesaikan 15 Maret 2026.",
+      "created_at": "2026-02-10T14:00:00.000Z",
+      "updated_at": "2026-09-12T16:00:00.000Z",
+      "sisa_hari": -173
+    },
+    {
+      "io_id": "IO-2026-005",
+      "organizationId": "org-adapundi",
+      "contract_id": "CTR-005",
+      "contract_nomor": "005/LEG/CAA/2026",
+      "nomor_io": "IO/2026/03/005",
+      "judul_io": "Video Commercial Production & Talent Fee",
+      "partner_id": "PRT-005",
+      "partner_nama": "PT Creative Agency Asia",
+      "kanal_media": "Digital Video Commercial",
+      "tanggal_mulai": "2026-03-01",
+      "tanggal_berakhir": "2026-05-31",
+      "pricing_model": "Flat Fee",
+      "charging_type": "Milestone-based",
+      "currency": "IDR",
+      "nilai_io": 120000000,
+      "deliverables": "3 Video Commercial 30 Detik + 10 Visual Assets Instagram",
+      "notice_period_hari": 14,
+      "notice_type_required": "None",
+      "status": "Expired",
+      "internal_notes": "Shooting dilakukan di Jakarta & Bali.",
+      "created_at": "2026-02-25T15:00:00.000Z",
+      "updated_at": "2026-09-15T09:30:00.000Z",
+      "sisa_hari": -112
+    },
+    {
+      "io_id": "IO-2026-006",
+      "organizationId": "org-adapundi",
+      "contract_id": "CTR-006",
+      "contract_nomor": "006/LEG/GAN/2026",
+      "nomor_io": "IO/2026/03/006",
+      "judul_io": "Global Mobile Push Ad Impressions",
+      "partner_id": "PRT-006",
+      "partner_nama": "Global Ad Networks Inc.",
+      "kanal_media": "Mobile In-App Network",
+      "tanggal_mulai": "2026-03-15",
+      "tanggal_berakhir": "2026-06-15",
+      "pricing_model": "CPM",
+      "charging_type": "Prepaid",
+      "currency": "USD",
+      "nilai_io": 12000,
+      "deliverables": "5,000,000 Global Push Impressions (US & SEA)",
+      "notice_period_hari": 14,
+      "notice_type_required": "Termination",
+      "status": "Expired",
+      "internal_notes": "Deposit saldo prepaid awal $12,000 USD.",
+      "created_at": "2026-03-05T10:00:00.000Z",
+      "updated_at": "2026-09-11T13:45:00.000Z",
+      "sisa_hari": -97
+    },
+    {
+      "io_id": "IO-2026-007",
+      "organizationId": "org-adapundi",
+      "contract_id": "CTR-007",
+      "contract_nomor": "007/LEG/TDM/2026",
+      "nomor_io": "IO/2026/04/007",
+      "judul_io": "Upgrading Bandwidth Core Datacenter",
+      "partner_id": "PRT-007",
+      "partner_nama": "PT Telekomunikasi Digital Mandiri",
+      "kanal_media": "Fibre Optic Link 500Mbps",
+      "tanggal_mulai": "2026-04-01",
+      "tanggal_berakhir": "2026-09-30",
+      "pricing_model": "Flat Fee",
+      "charging_type": "Postpaid",
+      "currency": "IDR",
+      "nilai_io": 60000000,
+      "deliverables": "Penyediaan link dedicated internet 500Mbps tanpa quota",
+      "notice_period_hari": 30,
+      "notice_type_required": "Termination",
+      "status": "Akan Berakhir",
+      "internal_notes": "Mendekati akhir masa IO September 2026.",
+      "created_at": "2026-03-25T11:00:00.000Z",
+      "updated_at": "2026-09-10T11:00:00.000Z",
+      "sisa_hari": 10
+    },
+    {
+      "io_id": "IO-2026-008",
+      "organizationId": "org-adapundi",
+      "contract_id": "CTR-008",
+      "contract_nomor": "008/LEG/PKL/2026",
+      "nomor_io": "IO/2026/04/008",
+      "judul_io": "Legal Due Diligence Audit Vendor Baru",
+      "partner_id": "PRT-008",
+      "partner_nama": "PT Prisma Konsultan Legal",
+      "kanal_media": "Legal Audit Services",
+      "tanggal_mulai": "2026-04-10",
+      "tanggal_berakhir": "2026-06-10",
+      "pricing_model": "Fixed Package",
+      "charging_type": "Postpaid",
+      "currency": "IDR",
+      "nilai_io": 35000000,
+      "deliverables": "Pemeriksaan kepatuhan hukum 5 calon vendor utama",
+      "notice_period_hari": 7,
+      "notice_type_required": "None",
+      "status": "Expired",
+      "internal_notes": "Dokumen pendapat hukum diserahkan akhir Mei.",
+      "created_at": "2026-04-05T12:00:00.000Z",
+      "updated_at": "2026-09-14T17:10:00.000Z",
+      "sisa_hari": -102
+    },
+    {
+      "io_id": "IO-2026-009",
+      "organizationId": "org-adapundi",
+      "contract_id": "CTR-009",
+      "contract_nomor": "009/LEG/SAR/2026",
+      "nomor_io": "IO/2026/05/009",
+      "judul_io": "Reseller License Volume 500 Unit",
+      "partner_id": "PRT-009",
+      "partner_nama": "Southeast Asia Reseller Ltd",
+      "kanal_media": "SaaS Software License",
+      "tanggal_mulai": "2026-05-01",
+      "tanggal_berakhir": "2026-11-01",
+      "pricing_model": "Fixed Package",
+      "charging_type": "Prepaid",
+      "currency": "USD",
+      "nilai_io": 15000,
+      "deliverables": "Alokasi 500 lisensi software versi Enterprise",
+      "notice_period_hari": 14,
+      "notice_type_required": "None",
+      "status": "Akan Berakhir",
+      "internal_notes": "Lisensi otomatis diaktifkan di portal admin.",
+      "created_at": "2026-04-20T14:00:00.000Z",
+      "updated_at": "2026-09-13T12:00:00.000Z",
+      "sisa_hari": 42
+    },
+    {
+      "io_id": "IO-2026-010",
+      "organizationId": "org-adapundi",
+      "contract_id": "CTR-010",
+      "contract_nomor": "010/ADD/CTI/2026",
+      "nomor_io": "IO/2026/05/010",
+      "judul_io": "Emergency Disaster Recovery Server Setup",
+      "partner_id": "PRT-002",
+      "partner_nama": "PT Cloud Teknologi Indonesia",
+      "kanal_media": "DR Datacenter Rack",
+      "tanggal_mulai": "2026-05-15",
+      "tanggal_berakhir": "2026-08-15",
+      "pricing_model": "Fixed Package",
+      "charging_type": "Postpaid",
+      "currency": "IDR",
+      "nilai_io": 85000000,
+      "deliverables": "Setup Server Backup Cadangan di Datacenter Bali",
+      "notice_period_hari": 7,
+      "notice_type_required": "None",
+      "status": "Expired",
+      "internal_notes": "Pengujian failover otomatis disimulasikan setiap 2 bulan.",
+      "created_at": "2026-05-10T10:00:00.000Z",
+      "updated_at": "2026-09-15T09:00:00.000Z",
+      "sisa_hari": -36
+    }
+  ],
+  "notifications": [
+    {
+      "notif_id": "NOTIF-001",
+      "organizationId": "org-adapundi",
+      "parent_type": "Contract",
+      "parent_id": "CTR-003",
+      "parent_nomor": "003/LEG/GLU/2026",
+      "parent_judul": "Perjanjian Jasa Pengiriman & Logistik Nasional",
+      "jenis_notifikasi": "Reminder H-30",
+      "tanggal_terkirim": "2026-09-14T08:00:00.000Z",
+      "status_terkirim": true,
+      "penerima": "legal.head@perusahaan.co.id",
+      "pesan": "Peringatan: Kontrak 003/LEG/GLU/2026 akan berakhir dalam 30 hari pada 14 Oktober 2026.",
+      "is_read": false
+    },
+    {
+      "notif_id": "NOTIF-002",
+      "organizationId": "org-adapundi",
+      "parent_type": "Contract",
+      "parent_id": "CTR-007",
+      "parent_nomor": "007/LEG/TDM/2026",
+      "parent_judul": "Sewa Bandwidth & Dedicated Fibre Optic Line",
+      "jenis_notifikasi": "Reminder H-60",
+      "tanggal_terkirim": "2026-09-01T08:00:00.000Z",
+      "status_terkirim": true,
+      "penerima": "procurement@perusahaan.co.id",
+      "pesan": "Peringatan H-60: Masa pengajuan notice perpanjangan untuk Kontrak 007/LEG/TDM/2026 telah dibuka.",
+      "is_read": false
+    },
+    {
+      "notif_id": "NOTIF-003",
+      "organizationId": "org-adapundi",
+      "parent_type": "IO",
+      "parent_id": "IO-2026-007",
+      "parent_nomor": "IO/2026/04/007",
+      "parent_judul": "Upgrading Bandwidth Core Datacenter",
+      "jenis_notifikasi": "Reminder H-30",
+      "tanggal_terkirim": "2026-09-01T09:00:00.000Z",
+      "status_terkirim": true,
+      "penerima": "citra.dewi@perusahaan.co.id",
+      "pesan": "Insertion Order IO/2026/04/007 akan selesai pada 30 September 2026. Mohon cek rekapitulasi deliverable.",
+      "is_read": true
+    },
+    {
+      "notif_id": "NOTIF-004",
+      "organizationId": "org-adapundi",
+      "parent_type": "Contract",
+      "parent_id": "CTR-001",
+      "parent_nomor": "001/LEG/MND/2026",
+      "parent_judul": "Perjanjian Kerjasama Media Placement Digital 2026",
+      "jenis_notifikasi": "Status Change",
+      "tanggal_terkirim": "2026-08-15T10:00:00.000Z",
+      "status_terkirim": true,
+      "penerima": "adhitcl@gmail.com",
+      "pesan": "Status Kontrak 001/LEG/MND/2026 telah diperbarui menjadi Signed & Aktif.",
+      "is_read": true
+    },
+    {
+      "notif_id": "NOTIF-005",
+      "organizationId": "org-adapundi",
+      "parent_type": "Contract",
+      "parent_id": "CTR-010",
+      "parent_nomor": "010/ADD/CTI/2026",
+      "parent_judul": "Addendum 01 - Penambahan Node Server Datacenter",
+      "jenis_notifikasi": "Manual",
+      "tanggal_terkirim": "2026-09-10T11:30:00.000Z",
+      "status_terkirim": true,
+      "penerima": "budi.santoso@perusahaan.co.id",
+      "pesan": "Pengingat manual: Mohon selesaikan proses penandatanganan addendum 010/ADD/CTI/2026.",
+      "is_read": false
+    },
+    {
+      "notif_id": "NOTIF-006",
+      "organizationId": "org-adapundi",
+      "parent_type": "Contract",
+      "parent_id": "CTR-005",
+      "parent_nomor": "005/LEG/CAA/2026",
+      "parent_judul": "Kontrak Branding & Production Campaign Q1-Q4",
+      "jenis_notifikasi": "Reminder H-90",
+      "tanggal_terkirim": "2026-09-02T14:00:00.000Z",
+      "status_terkirim": true,
+      "penerima": "eka.putri@perusahaan.co.id",
+      "pesan": "Peringatan H-90: Kontrak 005/LEG/CAA/2026 akan berakhir pada 31 Desember 2026.",
+      "is_read": true
+    },
+    {
+      "notif_id": "NOTIF-007",
+      "organizationId": "org-adapundi",
+      "parent_type": "IO",
+      "parent_id": "IO-2026-002",
+      "parent_nomor": "IO/2026/01/002",
+      "parent_judul": "Cloud Migration Phase 1 Deployment",
+      "jenis_notifikasi": "Status Change",
+      "tanggal_terkirim": "2026-08-20T16:00:00.000Z",
+      "status_terkirim": true,
+      "penerima": "dwi.hadi@perusahaan.co.id",
+      "pesan": "Milestone 2 Cloud Migration telah diverifikasi dan disetujui pembayaran.",
+      "is_read": true
+    },
+    {
+      "notif_id": "NOTIF-008",
+      "organizationId": "org-adapundi",
+      "parent_type": "Contract",
+      "parent_id": "CTR-008",
+      "parent_nomor": "008/LEG/PKL/2026",
+      "parent_judul": "Perjanjian Retainer Konsultasi Hukum Corporate",
+      "jenis_notifikasi": "Manual",
+      "tanggal_terkirim": "2026-09-12T13:00:00.000Z",
+      "status_terkirim": true,
+      "penerima": "fajar.nugroho@perusahaan.co.id",
+      "pesan": "Laporan evaluasi retainer bulan Agustus telah diterbitkan.",
+      "is_read": false
+    },
+    {
+      "notif_id": "NOTIF-009",
+      "organizationId": "org-adapundi",
+      "parent_type": "IO",
+      "parent_id": "IO-2026-006",
+      "parent_nomor": "IO/2026/03/006",
+      "parent_judul": "Global Mobile Push Ad Impressions",
+      "jenis_notifikasi": "Reminder H-30",
+      "tanggal_terkirim": "2026-09-05T09:15:00.000Z",
+      "status_terkirim": true,
+      "penerima": "finance.team@perusahaan.co.id",
+      "pesan": "Saldo prepaid IO/2026/03/006 tersisa 15%. Harap jadwalkan pengisian top-up.",
+      "is_read": true
+    },
+    {
+      "notif_id": "NOTIF-010",
+      "organizationId": "org-adapundi",
+      "parent_type": "Contract",
+      "parent_id": "CTR-002",
+      "parent_nomor": "002/LEG/CTI/2026",
+      "parent_judul": "Master Service Agreement Cloud Infrastructure & Storage",
+      "jenis_notifikasi": "Status Change",
+      "tanggal_terkirim": "2026-09-15T07:30:00.000Z",
+      "status_terkirim": true,
+      "penerima": "adhitcl@gmail.com",
+      "pesan": "Penambahan addendum 010/ADD/CTI/2026 berhasil ditautkan ke Kontrak 002/LEG/CTI/2026.",
+      "is_read": false
+    }
+  ],
+  "activityLogs": [
+    {
+      "id": "LOG-001",
+      "organizationId": "org-adapundi",
+      "timestamp": "2026-09-15T21:10:00.000Z",
+      "userEmail": "adhitcl@gmail.com",
+      "userName": "Aditya Pratama",
+      "role": "Superuser",
+      "actionType": "LOGIN",
+      "module": "AUTH",
+      "description": "User adhitcl@gmail.com berhasil masuk ke portal manajemen legal.",
+      "ipAddress": "180.252.12.44"
+    },
+    {
+      "id": "LOG-002",
+      "organizationId": "org-adapundi",
+      "timestamp": "2026-09-15T20:45:00.000Z",
+      "userEmail": "budi.santoso@perusahaan.co.id",
+      "userName": "Budi Santoso",
+      "role": "Admin",
+      "actionType": "CREATE",
+      "module": "PARTNER",
+      "description": "Menambahkan partner baru: PT Media Nusantara Digital (PRT-001).",
+      "ipAddress": "180.252.12.45"
+    },
+    {
+      "id": "LOG-003",
+      "organizationId": "org-adapundi",
+      "timestamp": "2026-09-15T20:15:00.000Z",
+      "userEmail": "citra.dewi@perusahaan.co.id",
+      "userName": "Citra Dewi",
+      "role": "Legal",
+      "actionType": "CREATE",
+      "module": "CONTRACT",
+      "description": "Menerbitkan draft kontrak baru 001/LEG/MND/2026 untuk PT Media Nusantara Digital.",
+      "ipAddress": "180.252.12.46"
+    },
+    {
+      "id": "LOG-004",
+      "organizationId": "org-adapundi",
+      "timestamp": "2026-09-15T19:30:00.000Z",
+      "userEmail": "fajar.nugroho@perusahaan.co.id",
+      "userName": "Fajar Nugroho",
+      "role": "Editor",
+      "actionType": "DD_UPDATE",
+      "module": "PARTNER",
+      "description": "Memperbarui berkas Due Diligence NIB & NPWP untuk PT Cloud Teknologi Indonesia.",
+      "ipAddress": "180.252.12.47"
+    },
+    {
+      "id": "LOG-005",
+      "organizationId": "org-adapundi",
+      "timestamp": "2026-09-15T18:50:00.000Z",
+      "userEmail": "eka.putri@perusahaan.co.id",
+      "userName": "Eka Putri",
+      "role": "Manager",
+      "actionType": "CREATE",
+      "module": "IO",
+      "description": "Menerbitkan Insertion Order baru: IO/2026/01/001 (Banner Placement Q1).",
+      "ipAddress": "180.252.12.48"
+    },
+    {
+      "id": "LOG-006",
+      "organizationId": "org-adapundi",
+      "timestamp": "2026-09-15T18:00:00.000Z",
+      "userEmail": "citra.dewi@perusahaan.co.id",
+      "userName": "Citra Dewi",
+      "role": "Legal",
+      "actionType": "UPLOAD_SUCCESS",
+      "module": "CONTRACT",
+      "description": "Mengunggah berkas salinan Kontrak 002/LEG/CTI/2026 ke Google Drive terintegrasi.",
+      "ipAddress": "180.252.12.46"
+    },
+    {
+      "id": "LOG-007",
+      "organizationId": "org-adapundi",
+      "timestamp": "2026-09-15T17:15:00.000Z",
+      "userEmail": "dwi.hadi@perusahaan.co.id",
+      "userName": "Dwi Hadi",
+      "role": "Finance",
+      "actionType": "UPDATE",
+      "module": "CONTRACT",
+      "description": "Memperbarui status Kontrak CTR-003 dari Draft menjadi Akan Berakhir.",
+      "ipAddress": "180.252.12.49"
+    },
+    {
+      "id": "LOG-008",
+      "organizationId": "org-adapundi",
+      "timestamp": "2026-09-15T16:00:00.000Z",
+      "userEmail": "adhitcl@gmail.com",
+      "userName": "Aditya Pratama",
+      "role": "Superuser",
+      "actionType": "ADD_USER",
+      "module": "ADMIN",
+      "description": "Menambahkan pengguna baru: citra.dewi@perusahaan.co.id ke divisi Legal & Compliance.",
+      "ipAddress": "180.252.12.44"
+    },
+    {
+      "id": "LOG-009",
+      "organizationId": "org-adapundi",
+      "timestamp": "2026-09-15T15:30:00.000Z",
+      "userEmail": "system@perusahaan.co.id",
+      "userName": "System Bot",
+      "role": "Admin",
+      "actionType": "NOTIF_SENT",
+      "module": "SYSTEM",
+      "description": "Pengiriman otomatis notifikasi reminder H-30 untuk Kontrak CTR-003.",
+      "ipAddress": "127.0.0.1"
+    },
+    {
+      "id": "LOG-010",
+      "organizationId": "org-adapundi",
+      "timestamp": "2026-09-15T14:20:00.000Z",
+      "userEmail": "adhitcl@gmail.com",
+      "userName": "Aditya Pratama",
+      "role": "Superuser",
+      "actionType": "UPDATE",
+      "module": "SYSTEM",
+      "description": "Melakukan pembaruan foto logo organisasi & konfigurasi divisi Default Org.",
+      "ipAddress": "180.252.12.44"
+    }
+  ],
+  "evaluations": [
+    {
+      "id": "EVAL-001",
+      "organizationId": "org-adapundi",
+      "review_date": "2026-08-15",
+      "year": 2026,
+      "partner_id": "PRT-001",
+      "supplier_name": "PT Media Nusantara Digital",
+      "type_of_work": "Media Placement Digital",
+      "sla_score": 95,
+      "obligation_target": "Sangat baik",
+      "incident_frequency": "Never",
+      "communication": "Sangat baik",
+      "pricing": "Moderate",
+      "final_evaluation": "Recommended",
+      "notes": "Kinerja penayangan iklan sangat memuaskan, perpanjangan kontrak disarankan.",
+      "calculated_score": 95,
+      "evaluator_email": "eka.putri@perusahaan.co.id",
+      "evaluator_name": "Eka Putri",
+      "created_at": "2026-08-15T10:00:00.000Z",
+      "updated_at": "2026-08-15T10:00:00.000Z"
+    },
+    {
+      "id": "EVAL-002",
+      "organizationId": "org-adapundi",
+      "review_date": "2026-08-18",
+      "year": 2026,
+      "partner_id": "PRT-002",
+      "supplier_name": "PT Cloud Teknologi Indonesia",
+      "type_of_work": "Cloud Infrastructure & Storage",
+      "sla_score": 98,
+      "obligation_target": "Sangat baik",
+      "incident_frequency": "Never",
+      "communication": "Sangat baik",
+      "pricing": "Moderate",
+      "final_evaluation": "Recommended",
+      "notes": "Infrastruktur cloud sangat stabil dengan jaminan uptime 99.99%.",
+      "calculated_score": 98,
+      "evaluator_email": "dwi.hadi@perusahaan.co.id",
+      "evaluator_name": "Dwi Hadi",
+      "created_at": "2026-08-18T11:00:00.000Z",
+      "updated_at": "2026-08-18T11:00:00.000Z"
+    },
+    {
+      "id": "EVAL-003",
+      "organizationId": "org-adapundi",
+      "review_date": "2026-08-20",
+      "year": 2026,
+      "partner_id": "PRT-003",
+      "supplier_name": "PT Global Logistics Utama",
+      "type_of_work": "Jasa Pengiriman Logistik",
+      "sla_score": 78,
+      "obligation_target": "Kurang baik",
+      "incident_frequency": "Frequent",
+      "communication": "Baik",
+      "pricing": "Cheap",
+      "final_evaluation": "Recommended with notes",
+      "notes": "Harga sangat kompetitif namun kerap terjadi keterlambatan pengiriman pada akhir bulan.",
+      "calculated_score": 78,
+      "evaluator_email": "gita.gutawa@perusahaan.co.id",
+      "evaluator_name": "Gita Gutawa",
+      "created_at": "2026-08-20T14:00:00.000Z",
+      "updated_at": "2026-08-20T14:00:00.000Z"
+    },
+    {
+      "id": "EVAL-004",
+      "organizationId": "org-adapundi",
+      "review_date": "2026-08-22",
+      "year": 2026,
+      "partner_id": "PRT-004",
+      "supplier_name": "PT Solusi Cyber Global",
+      "type_of_work": "Cyber Security Audit",
+      "sla_score": 92,
+      "obligation_target": "Baik",
+      "incident_frequency": "Never",
+      "communication": "Sangat baik",
+      "pricing": "Moderate",
+      "final_evaluation": "Recommended",
+      "notes": "Tim spesialis pen-test sangat responsif dan rekomendasi perbaikan sangat jelas.",
+      "calculated_score": 92,
+      "evaluator_email": "citra.dewi@perusahaan.co.id",
+      "evaluator_name": "Citra Dewi",
+      "created_at": "2026-08-22T09:30:00.000Z",
+      "updated_at": "2026-08-22T09:30:00.000Z"
+    },
+    {
+      "id": "EVAL-005",
+      "organizationId": "org-adapundi",
+      "review_date": "2026-08-25",
+      "year": 2026,
+      "partner_id": "PRT-005",
+      "supplier_name": "PT Creative Agency Asia",
+      "type_of_work": "Branding & Video Production",
+      "sla_score": 88,
+      "obligation_target": "Baik",
+      "incident_frequency": "Rare",
+      "communication": "Baik",
+      "pricing": "Moderate",
+      "final_evaluation": "Recommended",
+      "notes": "Kualitas hasil video komersial tinggi dan penyelesaian revisi tepat waktu.",
+      "calculated_score": 88,
+      "evaluator_email": "hendra.setiawan@perusahaan.co.id",
+      "evaluator_name": "Hendra Setiawan",
+      "created_at": "2026-08-25T13:00:00.000Z",
+      "updated_at": "2026-08-25T13:00:00.000Z"
+    },
+    {
+      "id": "EVAL-006",
+      "organizationId": "org-adapundi",
+      "review_date": "2026-08-28",
+      "year": 2026,
+      "partner_id": "PRT-006",
+      "supplier_name": "Global Ad Networks Inc.",
+      "type_of_work": "Programmatic Ad Serving",
+      "sla_score": 90,
+      "obligation_target": "Baik",
+      "incident_frequency": "Never",
+      "communication": "Good",
+      "pricing": "Moderate",
+      "final_evaluation": "Recommended",
+      "notes": "Jaringan iklan global bereputasi baik dengan pengisian impresi konsisten.",
+      "calculated_score": 90,
+      "evaluator_email": "eka.putri@perusahaan.co.id",
+      "evaluator_name": "Eka Putri",
+      "created_at": "2026-08-28T15:20:00.000Z",
+      "updated_at": "2026-08-28T15:20:00.000Z"
+    },
+    {
+      "id": "EVAL-007",
+      "organizationId": "org-adapundi",
+      "review_date": "2026-09-01",
+      "year": 2026,
+      "partner_id": "PRT-007",
+      "supplier_name": "PT Telekomunikasi Digital Mandiri",
+      "type_of_work": "Dedicated Fibre Optic Line",
+      "sla_score": 82,
+      "obligation_target": "Baik",
+      "incident_frequency": "Rare",
+      "communication": "Kurang baik",
+      "pricing": "Expensive",
+      "final_evaluation": "Recommended with notes",
+      "notes": "Koneksi jaringan stabil namun respon penanganan tiket troubleshooting relatif lambat.",
+      "calculated_score": 82,
+      "evaluator_email": "dwi.hadi@perusahaan.co.id",
+      "evaluator_name": "Dwi Hadi",
+      "created_at": "2026-09-01T10:00:00.000Z",
+      "updated_at": "2026-09-01T10:00:00.000Z"
+    },
+    {
+      "id": "EVAL-008",
+      "organizationId": "org-adapundi",
+      "review_date": "2026-09-05",
+      "year": 2026,
+      "partner_id": "PRT-008",
+      "supplier_name": "PT Prisma Konsultan Legal",
+      "type_of_work": "Retainer Konsultasi Hukum",
+      "sla_score": 96,
+      "obligation_target": "Sangat baik",
+      "incident_frequency": "Never",
+      "communication": "Sangat baik",
+      "pricing": "Moderate",
+      "final_evaluation": "Recommended",
+      "notes": "Analisis pendapat hukum sangat komprehensif dan responsif.",
+      "calculated_score": 96,
+      "evaluator_email": "citra.dewi@perusahaan.co.id",
+      "evaluator_name": "Citra Dewi",
+      "created_at": "2026-09-05T11:45:00.000Z",
+      "updated_at": "2026-09-05T11:45:00.000Z"
+    },
+    {
+      "id": "EVAL-009",
+      "organizationId": "org-adapundi",
+      "review_date": "2026-09-08",
+      "year": 2026,
+      "partner_id": "PRT-009",
+      "supplier_name": "Southeast Asia Reseller Ltd",
+      "type_of_work": "Software Distribution",
+      "sla_score": 87,
+      "obligation_target": "Baik",
+      "incident_frequency": "Never",
+      "communication": "Good",
+      "pricing": "Cheap",
+      "final_evaluation": "Recommended",
+      "notes": "Sangat akomodatif dalam pengaturan kuota lisensi SaaS.",
+      "calculated_score": 87,
+      "evaluator_email": "budi.santoso@perusahaan.co.id",
+      "evaluator_name": "Budi Santoso",
+      "created_at": "2026-09-08T14:10:00.000Z",
+      "updated_at": "2026-09-08T14:10:00.000Z"
+    },
+    {
+      "id": "EVAL-010",
+      "organizationId": "org-adapundi",
+      "review_date": "2026-09-10",
+      "year": 2026,
+      "partner_id": "PRT-010",
+      "supplier_name": "PT Infrastruktur Data Prima",
+      "type_of_work": "Hardware Datacenter Supply",
+      "sla_score": 65,
+      "obligation_target": "Not met",
+      "incident_frequency": "Frequent",
+      "communication": "Poor/Needs Improvement",
+      "pricing": "Expensive",
+      "final_evaluation": "Not recommended",
+      "notes": "Keterlambatan supply suku cadang dan gagal memenuhi ketentuan SLA.",
+      "calculated_score": 65,
+      "evaluator_email": "fajar.nugroho@perusahaan.co.id",
+      "evaluator_name": "Fajar Nugroho",
+      "created_at": "2026-09-10T16:00:00.000Z",
+      "updated_at": "2026-09-10T16:00:00.000Z"
+    }
+  ],
+  "spendings": [
+    {
+      "id": "SPD-001",
+      "organizationId": "org-adapundi",
+      "vendor_id": "PRT-001",
+      "vendor_name": "PT Media Nusantara Digital",
+      "invoice_number": "INV-2026-MND-01",
+      "invoice_date": "2026-01-15",
+      "invoice_month": [
+        "012026"
+      ],
+      "invoice_description": "Pembayaran Penayangan Banner Ads Digital Januari 2026",
+      "currency": "IDR",
+      "total_amount": 75000000,
+      "payment_status": "Lunas",
+      "bank_name": "BCA",
+      "bank_account_number": "1234567890",
+      "bank_account_holder_name": "PT Media Nusantara Digital",
+      "created_at": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": "SPD-002",
+      "organizationId": "org-adapundi",
+      "vendor_id": "PRT-002",
+      "vendor_name": "PT Cloud Teknologi Indonesia",
+      "invoice_number": "INV-2026-CTI-01",
+      "invoice_date": "2026-01-20",
+      "invoice_month": [
+        "012026"
+      ],
+      "invoice_description": "Termin 1 Pembayaran Migrasi Cloud Infrastructure",
+      "currency": "IDR",
+      "total_amount": 300000000,
+      "payment_status": "Lunas",
+      "bank_name": "Bank Mandiri",
+      "bank_account_number": "0987654321",
+      "bank_account_holder_name": "PT Cloud Teknologi Indonesia",
+      "created_at": "2026-01-20T11:00:00.000Z"
+    },
+    {
+      "id": "SPD-003",
+      "organizationId": "org-adapundi",
+      "vendor_id": "PRT-003",
+      "vendor_name": "PT Global Logistics Utama",
+      "invoice_number": "INV-2026-GLU-02",
+      "invoice_date": "2026-02-10",
+      "invoice_month": [
+        "022026"
+      ],
+      "invoice_description": "Tagihan Biaya Pengiriman Logistik Kurir Februari 2026",
+      "currency": "IDR",
+      "total_amount": 50000000,
+      "payment_status": "Lunas",
+      "bank_name": "BNI",
+      "bank_account_number": "1122334455",
+      "bank_account_holder_name": "PT Global Logistics Utama",
+      "created_at": "2026-02-10T14:00:00.000Z"
+    },
+    {
+      "id": "SPD-004",
+      "organizationId": "org-adapundi",
+      "vendor_id": "PRT-004",
+      "vendor_name": "PT Solusi Cyber Global",
+      "invoice_number": "INV-2026-SCG-02",
+      "invoice_date": "2026-02-18",
+      "invoice_month": [
+        "022026"
+      ],
+      "invoice_description": "Tagihan Jasa Audit Penetrasi Sistem Mobile App Q1",
+      "currency": "IDR",
+      "total_amount": 45000000,
+      "payment_status": "Pending",
+      "bank_name": "BCA",
+      "bank_account_number": "5544332211",
+      "bank_account_holder_name": "PT Solusi Cyber Global",
+      "created_at": "2026-02-18T09:30:00.000Z"
+    },
+    {
+      "id": "SPD-005",
+      "organizationId": "org-adapundi",
+      "vendor_id": "PRT-005",
+      "vendor_name": "PT Creative Agency Asia",
+      "invoice_number": "INV-2026-CAA-03",
+      "invoice_date": "2026-03-05",
+      "invoice_month": [
+        "032026"
+      ],
+      "invoice_description": "Termin 1 Produksi Video Komersial 30 Detik",
+      "currency": "IDR",
+      "total_amount": 120000000,
+      "payment_status": "Lunas",
+      "bank_name": "Bank Permata",
+      "bank_account_number": "9988776655",
+      "bank_account_holder_name": "PT Creative Agency Asia",
+      "created_at": "2026-03-05T13:00:00.000Z"
+    },
+    {
+      "id": "SPD-006",
+      "organizationId": "org-adapundi",
+      "vendor_id": "PRT-006",
+      "vendor_name": "Global Ad Networks Inc.",
+      "invoice_number": "INV-2026-GAN-03",
+      "invoice_date": "2026-03-12",
+      "invoice_month": [
+        "032026"
+      ],
+      "invoice_description": "Prepaid Top Up Deposit Ad Serving USD",
+      "currency": "USD",
+      "total_amount": 12000,
+      "total_amount_usd": 12000,
+      "payment_status": "Lunas",
+      "bank_name": "Citibank N.A.",
+      "bank_account_number": "8877665544",
+      "bank_account_holder_name": "Global Ad Networks Inc",
+      "created_at": "2026-03-12T15:20:00.000Z"
+    },
+    {
+      "id": "SPD-007",
+      "organizationId": "org-adapundi",
+      "vendor_id": "PRT-007",
+      "vendor_name": "PT Telekomunikasi Digital Mandiri",
+      "invoice_number": "INV-2026-TDM-04",
+      "invoice_date": "2026-04-01",
+      "invoice_month": [
+        "042026"
+      ],
+      "invoice_description": "Sewa Jaringan Dedicated Fibre Optic April 2026",
+      "currency": "IDR",
+      "total_amount": 60000000,
+      "payment_status": "Pending",
+      "bank_name": "BRI",
+      "bank_account_number": "3344556677",
+      "bank_account_holder_name": "PT Telekomunikasi Digital Mandiri",
+      "created_at": "2026-04-01T10:00:00.000Z"
+    },
+    {
+      "id": "SPD-008",
+      "organizationId": "org-adapundi",
+      "vendor_id": "PRT-008",
+      "vendor_name": "PT Prisma Konsultan Legal",
+      "invoice_number": "INV-2026-PKL-04",
+      "invoice_date": "2026-04-14",
+      "invoice_month": [
+        "042026"
+      ],
+      "invoice_description": "Jasa Audit Due Diligence Hukum 5 Calon Vendor Utama",
+      "currency": "IDR",
+      "total_amount": 35000000,
+      "payment_status": "Lunas",
+      "bank_name": "BCA",
+      "bank_account_number": "4433221100",
+      "bank_account_holder_name": "PT Prisma Konsultan Legal",
+      "created_at": "2026-04-14T11:45:00.000Z"
+    },
+    {
+      "id": "SPD-009",
+      "organizationId": "org-adapundi",
+      "vendor_id": "PRT-009",
+      "vendor_name": "Southeast Asia Reseller Ltd",
+      "invoice_number": "INV-2026-SAR-05",
+      "invoice_date": "2026-05-02",
+      "invoice_month": [
+        "052026"
+      ],
+      "invoice_description": "Pembelian 500 Unit Lisensi SaaS Enterprise",
+      "currency": "USD",
+      "total_amount": 15000,
+      "total_amount_usd": 15000,
+      "payment_status": "Lunas",
+      "bank_name": "DBS Bank Singapore",
+      "bank_account_number": "6655443322",
+      "bank_account_holder_name": "Southeast Asia Reseller Ltd",
+      "created_at": "2026-05-02T14:10:00.000Z"
+    },
+    {
+      "id": "SPD-010",
+      "organizationId": "org-adapundi",
+      "vendor_id": "PRT-002",
+      "vendor_name": "PT Cloud Teknologi Indonesia",
+      "invoice_number": "INV-2026-CTI-05",
+      "invoice_date": "2026-05-19",
+      "invoice_month": [
+        "052026"
+      ],
+      "invoice_description": "Biaya Setup Disaster Recovery Datacenter Cadangan",
+      "currency": "IDR",
+      "total_amount": 85000000,
+      "payment_status": "Lunas",
+      "bank_name": "Bank Mandiri",
+      "bank_account_number": "0987654321",
+      "bank_account_holder_name": "PT Cloud Teknologi Indonesia",
+      "created_at": "2026-05-19T16:00:00.000Z"
+    }
+  ],
+  "tenants": [
+    {
+      "id": "org_1789905619545_7137a1",
+      "name": "AFPI",
+      "legalEntity": "PT",
+      "brandName": "AFPI",
+      "tagline": "Legal & Commercial Contract Management",
+      "logoUrl": "/favicon.png",
+      "primaryColor": "#06C755",
+      "currency": "IDR",
+      "domainSlug": "afpi",
+      "isDefault": false,
+      "driveFolderId": "1JL4cGLxeV-UtJXFGuYkj7Tbz71sMGlvT",
+      "driveFolderLink": "https://drive.google.com/drive/folders/1JL4cGLxeV-UtJXFGuYkj7Tbz71sMGlvT"
+    },
+    {
+      "id": "org_1789542306289_b3a4f3",
+      "name": "Adapundi",
+      "legalEntity": "PT",
+      "brandName": "Adapundi",
+      "tagline": "Legal & Commercial Contract Management",
+      "logoUrl": "/favicon.png",
+      "primaryColor": "#06C755",
+      "currency": "IDR",
+      "domainSlug": "adapundi",
+      "isDefault": true,
+      "spreadsheetId": "178lap6p6jwuVlbrVp7jmrgvgpAPLYRgpPDkJvgc_EgM",
+      "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/178lap6p6jwuVlbrVp7jmrgvgpAPLYRgpPDkJvgc_EgM/edit",
+      "driveFolderId": "1GZBzLY_1Hmx_7yuC0CiA_gh7Gt8tv9Fb",
+      "driveFolderLink": "https://drive.google.com/drive/folders/1GZBzLY_1Hmx_7yuC0CiA_gh7Gt8tv9Fb"
+    }
+  ],
+  "departments": [],
+  "activeTenantId": "org_1789905619545_7137a1",
+  "branding": {
+    "appName": "LMS - Legal Management System",
+    "logoUrl": "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=250&auto=format&fit=crop&q=80",
+    "primaryColor": "#06C755",
+    "footerText": "© 2026 PT Info Tekno Siaga (Adapundi). All rights reserved.",
+    "loginHeadline": "Portal Manajemen Kontrak, Vendor & Insertion Order"
+  },
+  "googleConfig": {
+    "spreadsheetId": "178lap6p6jwuVlbrVp7jmrgvgpAPLYRgpPDkJvgc_EgM",
+    "driveFolderId": "1xiFIvgWdDtYEzL7IoqVD9d-NaS7XcfYp",
+    "isConnected": true,
+    "lastSyncTime": "2026-09-19T15:56:59.571Z",
+    "autoSync": true,
+    "isLocked": true,
+    "notificationEmails": "legal.head@perusahaan.co.id, finance.team@perusahaan.co.id",
+    "legalNotificationEmail": "legal.head@perusahaan.co.id",
+    "financeNotificationEmail": "finance.team@perusahaan.co.id",
+    "aiModel": "gemini-3.8-flash",
+    "geminiApiKey": "AIzaSyALHs6PwbAcGgymfi0sdmDGlL95ViWsFt0",
+    "refreshToken": ""
+  },
+  "templates": []
+}

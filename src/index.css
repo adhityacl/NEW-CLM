@@ -1,0 +1,441 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+
+  --color-canvas: var(--line-neutral-bg);
+  --color-surface: var(--line-surface-card);
+  --color-hairline: var(--line-neutral-border);
+  --color-ink: var(--line-neutral-dark);
+  --color-ink-soft: var(--line-neutral-sub);
+  --color-ink-faint: var(--line-neutral-placeholder);
+
+  --color-accent: var(--line-brand-green);
+  --color-accent-hover: var(--line-brand-green-hover);
+  --color-accent-soft: var(--line-brand-green-light);
+  --color-accent-dark: var(--line-brand-green-dark);
+
+  --color-blue: var(--line-blue);
+  --color-blue-light: var(--line-blue-light);
+  --color-red: var(--line-red);
+  --color-red-light: var(--line-red-light);
+  --color-yellow: var(--line-yellow);
+  --color-yellow-light: var(--line-yellow-light);
+
+  --shadow-elevated: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+
+  --font-size-2xs: 0.6875rem; /* 11px */
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --line-brand-green: #06C755;
+    --line-brand-green-hover: #05B34C;
+    --line-brand-green-light: #EBFBF0;
+    --line-brand-green-dark: #037436;
+    
+    --line-neutral-dark: #111111;
+    --line-neutral-body: #1E1E1E;
+    --line-neutral-sub: #666666;
+    --line-neutral-placeholder: #9E9E9E;
+    --line-neutral-border: #E5E8EB;
+    --line-neutral-bg: #F7F8FA;
+    --line-surface-card: #FFFFFF;
+
+    --line-blue: #0066FF;
+    --line-blue-light: #EBF3FF;
+    --line-red: #FF3B30;
+    --line-red-light: #FFEBEA;
+    --line-yellow: #FFB800;
+    --line-yellow-light: #FFF9E6;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #F7F8FA;
+    color: #111111;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  input, select, textarea {
+    border-color: #CBD5E1;
+  }
+
+  .dark {
+    --line-brand-green: #06C755;
+    --line-brand-green-hover: #05B34C;
+    --line-brand-green-light: #0d2e1b;
+    --line-brand-green-dark: #34D399;
+    
+    --line-neutral-dark: #F9FAFB;
+    --line-neutral-body: #E5E7EB;
+    --line-neutral-sub: #9CA3AF;
+    --line-neutral-placeholder: #6B7280;
+    --line-neutral-border: #1F2937;
+    --line-neutral-bg: #0B0F19;
+    --line-surface-card: #111827;
+
+    --line-blue: #3B82F6;
+    --line-blue-light: #1E3A5F;
+    --line-red: #EF4444;
+    --line-red-light: #451A1A;
+    --line-yellow: #F59E0B;
+    --line-yellow-light: #422006;
+  }
+
+  .dark body,
+  .dark main,
+  .dark .bg-\[\#F3F4F0\] {
+    background-color: #0B0F19 !important;
+    color: #F9FAFB;
+  }
+
+  /* Global dark mode styling helpers */
+  .dark .bg-white {
+    background-color: #111827 !important;
+  }
+
+  .dark .bg-slate-50,
+  .dark .bg-slate-50\/50,
+  .dark .bg-slate-50\/70,
+  .dark .bg-slate-50\/20,
+  .dark .bg-\[\#F7F8FA\],
+  .dark .bg-\[\#F5F6F6\] {
+    background-color: #161F30 !important;
+  }
+
+  .dark .border-slate-200,
+  .dark .border-slate-200\/90,
+  .dark .border-slate-200\/80,
+  .dark .border-slate-200\/60,
+  .dark .border-slate-200\/40,
+  .dark .border-slate-100,
+  .dark .border-\[\#E5E8EB\],
+  .dark .border-\[\#EBEBEB\] {
+    border-color: #1F2937 !important;
+  }
+
+  .dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-\[\#E5E8EB\] > :not([hidden]) ~ :not([hidden]) {
+    border-color: #1F2937 !important;
+  }
+
+  .dark .text-slate-900,
+  .dark .text-slate-800,
+  .dark .text-\[\#111111\] {
+    color: #F9FAFB !important;
+  }
+
+  .dark .text-slate-700,
+  .dark .text-slate-600,
+  .dark .text-\[\#777777\] {
+    color: #9CA3AF !important;
+  }
+
+  .dark .text-slate-500,
+  .dark .text-slate-400 {
+    color: #6B7280 !important;
+  }
+
+  .dark .hover\:bg-slate-50:hover,
+  .dark .hover\:bg-slate-100:hover,
+  .dark .hover\:bg-\[\#F7F8FA\]:hover,
+  .dark .hover\:bg-\[\#F5F6F6\]:hover {
+    background-color: #1E293B !important;
+  }
+
+  .dark input:not(.bg-transparent):not(.borderless-title):not([type="checkbox"]):not([type="radio"]),
+  .dark select:not(.bg-transparent):not(.borderless-title),
+  .dark textarea:not(.bg-transparent):not(.borderless-title) {
+    background-color: #161F30 !important;
+    border-color: #374151 !important;
+    color: #F9FAFB !important;
+  }
+
+  .dark input.bg-transparent,
+  .dark input.borderless-title,
+  .dark textarea.bg-transparent,
+  .dark textarea.borderless-title {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #6B7280 !important;
+  }
+
+  .dark input:not(.bg-transparent):not(.borderless-title):focus,
+  .dark select:not(.bg-transparent):not(.borderless-title):focus,
+  .dark textarea:not(.bg-transparent):not(.borderless-title):focus {
+    background-color: #1E293B !important;
+    border-color: #06C755 !important;
+  }
+
+  .dark input.bg-transparent:focus,
+  .dark input.borderless-title:focus,
+  .dark textarea.bg-transparent:focus,
+  .dark textarea.borderless-title:focus {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: #374151;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #4B5563;
+  }
+}
+
+/* LINE Design System Custom Helper Classes */
+.bg-line-green {
+  background-color: #06C755;
+}
+
+.hover\:bg-line-green-hover:hover {
+  background-color: #05B34C;
+}
+
+.text-line-green {
+  color: #06C755;
+}
+
+.border-line-green {
+  border-color: #06C755;
+}
+
+.bg-line-green-light {
+  background-color: #EBFBF0;
+}
+
+.border-line-subtle {
+  border-color: #E5E8EB;
+}
+
+.card-ldsm {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E8EB;
+  border-radius: 1rem; /* 16px */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.card-ldsm-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-ldsm-hover:hover {
+  border-color: #06C755;
+  box-shadow: 0 4px 16px rgba(6, 199, 85, 0.12);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D0D5DD;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #98A2B3;
+}
+
+/* Visual Fillable Field Slots (WYSIWYG Interactive Fields matching User Screenshot) */
+.fillable-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  margin: 1px 2px;
+  border-radius: 6px;
+  border: 1.5px solid #3b82f6;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  font-family: inherit;
+  font-size: 0.9em;
+  font-weight: 500;
+  vertical-align: baseline;
+  transition: all 0.15s ease-in-out;
+  user-select: text;
+  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.08);
+}
+
+.fillable-slot:hover {
+  border-color: #1d4ed8;
+  background-color: #dbeafe;
+}
+
+.fillable-slot:focus-within {
+  border-color: #2563eb;
+  background-color: #ffffff;
+  outline: 2px solid rgba(59, 130, 246, 0.35);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.fillable-slot .slot-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background-color: #3b82f6;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.fillable-slot .slot-value {
+  outline: none;
+  min-width: 32px;
+  display: inline-block;
+  cursor: text;
+}
+
+.fillable-slot.slot-empty {
+  border-style: dashed;
+  border-color: #94a3b8;
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.fillable-slot.slot-empty .slot-icon-badge {
+  background-color: #64748b;
+}
+
+/* Dark mode styles for fillable slots */
+.dark .fillable-slot {
+  border-color: #3b82f6;
+  background-color: #1e293b;
+  color: #93c5fd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.dark .fillable-slot:hover {
+  border-color: #60a5fa;
+  background-color: #1e3a8a;
+  color: #dbeafe;
+}
+
+.dark .fillable-slot:focus-within {
+  border-color: #3b82f6;
+  background-color: #0f172a;
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+.dark .fillable-slot.slot-empty {
+  border-color: #475569;
+  background-color: #0f172a;
+  color: #94a3b8;
+}
+
+.dark .fillable-slot.slot-empty .slot-icon-badge {
+  background-color: #475569;
+}
+
+/* Pulsing highlight when Highlight Fillable Fields is Active */
+.highlight-fillable-mode .fillable-slot {
+  animation: slot-pulse 2.2s infinite ease-in-out;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
+  border-color: #f59e0b;
+}
+
+.highlight-fillable-mode .fillable-slot.slot-empty {
+  background-color: #fffbeb;
+  border-color: #d97706;
+  color: #b45309;
+}
+
+.highlight-fillable-mode .fillable-slot.slot-empty .slot-icon-badge {
+  background-color: #d97706;
+}
+
+.dark .highlight-fillable-mode .fillable-slot {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.4);
+  border-color: #f59e0b;
+}
+
+.dark .highlight-fillable-mode .fillable-slot.slot-empty {
+  background-color: #451a03;
+  border-color: #d97706;
+  color: #fde68a;
+}
+
+.dark .highlight-fillable-mode .fillable-slot.slot-empty .slot-icon-badge {
+  background-color: #d97706;
+}
+
+@keyframes slot-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.15);
+  }
+}
+
+/* Dark mode style overrides for notice/address boxes in the editor */
+.dark .notice-box {
+  background-color: #1e293b !important; /* slate-800 */
+  border-color: #334155 !important; /* slate-700 */
+  color: #e2e8f0 !important; /* slate-200 */
+}
+
+/* Print mode styles: clean appearance without editor boxes */
+@media print {
+  .fillable-slot {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    color: inherit !important;
+  }
+  .fillable-slot .slot-icon-badge {
+    display: none !important;
+  }
+}
+
+/* Ensure contenteditable lists show proper bullets and numbers */
+[contenteditable] ul {
+  list-style-type: disc !important;
+  padding-left: 2rem !important;
+  margin: 0.75rem 0 !important;
+}
+[contenteditable] ol {
+  list-style-type: decimal !important;
+  padding-left: 2.2rem !important;
+  margin: 0.75rem 0 !important;
+}
+[contenteditable] li {
+  margin: 0.25rem 0 !important;
+}
+
+/* Added by Focus Mode: Hide the selected element */
+div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-type(1) > section:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > span:nth-of-type(1) {
+  display: none !important;
+}
+
+/* Added by Focus Mode: Hide the selected element */
+div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-type(1) > section:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > h2:nth-of-type(1) > svg:nth-of-type(1) {
+  display: none !important;
+}

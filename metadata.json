@@ -1,0 +1,8 @@
+{
+  "name": "LMS - Legal Management System",
+  "description": "Sistem Manajemen Kontrak, Insertion Order (IO), Partner Due Diligence, Amendment Track-Change, dan Kontrol Akses Admin",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
