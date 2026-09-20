@@ -1,6 +1,6 @@
 # Matriks Peran × Permission (dihasilkan otomatis dari `server/rbac.ts`)
 
-Dihasilkan: 2026-09-20T20:05:26.719Z
+Dihasilkan: 2026-09-20T20:15:13.804Z
 
 Hierarki: superuser(1) > admin(2) > manager(3) > editor(4) > viewer(5)
 
@@ -37,14 +37,14 @@ Hierarki: superuser(1) > admin(2) > manager(3) > editor(4) > viewer(5)
 | `admin.tenant.manage` | admin | ✅ | — | — | — | — |
 | `admin.department.manage` | admin | ✅ | ✅ | — | — | — |
 | `admin.configuration.manage` | admin | ✅ | — | — | — | — |
-| `audit.view` | audit | ✅ | ✅ | — | — | — |
+| `audit.view` | audit | ✅ | — | — | — | — |
 
 ## Ringkasan jumlah permission per peran
 
 | Peran | Level | Scope | Jumlah permission |
 |---|---:|---|---:|
 | superuser | 1 | Global | 32 |
-| admin | 2 | Tenant | 23 |
+| admin | 2 | Tenant | 22 |
 | manager | 3 | Tenant + Department | 17 |
 | editor | 4 | Tenant + Department | 5 |
 | viewer | 5 | Tenant + Department | 1 |

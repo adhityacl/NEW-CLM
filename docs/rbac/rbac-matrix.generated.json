@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T20:05:26.721Z",
+  "generatedAt": "2026-09-20T20:15:13.806Z",
   "hierarchy": [
     {
       "code": "superuser",
@@ -228,7 +228,6 @@
       "admin.access",
       "admin.department.manage",
       "admin.user.manage",
-      "audit.view",
       "department.create",
       "department.edit",
       "department.view",
