@@ -1,14 +1,21 @@
 /* =====================================================================
  * shadcn design tokens — Silegal / LMS
  * ---------------------------------------------------------------------
- * Implements the shadcn / shadcn-svelte token contract
- * (https://shadcn-svelte.com) so components can be written once and
- * themed centrally. The brand accent (LINE green #06C755) is mapped to
- * --primary, so existing brand identity is preserved.
+ * Implements the shadcn / shadcn-svelte *token contract* (the design
+ * standard requested) while preserving the product's brand accent.
+ * Brand accent (LINE green #06C755) is mapped to --primary.
  *
- * Loaded globally from src/main.tsx. Values are plain CSS custom
- * properties, so consumers can use both `var(--token)` and Tailwind
- * arbitrary values such as `bg-[var(--card)]`.
+ * Loaded globally from src/main.tsx (after index.css). Plain CSS custom
+ * properties only, so consumers can use `var(--token)` directly or
+ * Tailwind arbitrary values such as `bg-[var(--card)]`.
+ *
+ * IMPORTANT — namespacing:
+ *   We intentionally DO NOT redefine `--radius-sm/-md/-lg/-xl` here.
+ *   Those names belong to Tailwind v4's built-in theme; overriding them
+ *   at :root would silently change every `rounded-*` utility across the
+ *   whole app. Only `--radius` (new) plus the explicit scale below is
+ *   defined, and the scale lives under the `--shadcn-radius-*` prefix so
+ *   it can never collide with framework defaults.
  * ===================================================================== */
 
 :root {
@@ -59,12 +66,12 @@
   --sidebar-border: #e5e8eb;
   --sidebar-ring: #06c755;
 
+  /* Base radius + a non-colliding scale. */
   --radius: 0.75rem;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
+  --shadcn-radius-sm: calc(var(--radius) - 4px);
+  --shadcn-radius-md: calc(var(--radius) - 2px);
+  --shadcn-radius-lg: var(--radius);
+  --shadcn-radius-xl: calc(var(--radius) + 4px);
 }
 
 .dark {
@@ -115,7 +122,6 @@
   --sidebar-ring: #06c755;
 }
 
-/* Consistent base radius usage across the app. */
 .shadcn-surface {
   background-color: var(--card);
   color: var(--card-foreground);
