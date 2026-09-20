@@ -10,7 +10,7 @@
       "status": "Active",
       "addedBy": "System Core",
       "createdAt": "2026-01-01T08:00:00.000Z",
-      "lastLoginAt": "2026-09-20T13:03:28.734Z"
+      "lastLoginAt": "2026-09-20T20:20:00.246Z"
     }
   ],
   "partners": [
@@ -2120,7 +2120,7 @@
     }
   ],
   "departments": [],
-  "activeTenantId": "org_1789905619545_7137a1",
+  "activeTenantId": "org_1789542306289_b3a4f3",
   "branding": {
     "appName": "LMS - Legal Management System",
     "logoUrl": "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=250&auto=format&fit=crop&q=80",
