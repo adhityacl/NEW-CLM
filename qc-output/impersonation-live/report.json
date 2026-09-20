@@ -1,0 +1,447 @@
+{
+  "base": "http://localhost:3000",
+  "generatedAt": "2026-09-20T22:57:08.031Z",
+  "accountSource": "sqlite:auth.db",
+  "levels": [
+    "superuser",
+    "admin",
+    "manager",
+    "editor",
+    "viewer"
+  ],
+  "scenarios": [
+    {
+      "id": "doc.view",
+      "path": "/api/contracts",
+      "method": "GET",
+      "expect": {
+        "superuser": 1,
+        "admin": 1,
+        "manager": 1,
+        "editor": 1,
+        "viewer": 1
+      }
+    },
+    {
+      "id": "users.list",
+      "path": "/api/auth-console/users",
+      "method": "GET",
+      "expect": {
+        "superuser": 1,
+        "admin": 1,
+        "manager": 1,
+        "editor": 0,
+        "viewer": 0
+      }
+    },
+    {
+      "id": "sessions.list",
+      "path": "/api/auth-console/sessions",
+      "method": "GET",
+      "expect": {
+        "superuser": 1,
+        "admin": 1,
+        "manager": 1,
+        "editor": 0,
+        "viewer": 0
+      }
+    },
+    {
+      "id": "audit.logs",
+      "path": "/api/activity-logs",
+      "method": "GET",
+      "expect": {
+        "superuser": 1,
+        "admin": 1,
+        "manager": 1,
+        "editor": 0,
+        "viewer": 0
+      }
+    },
+    {
+      "id": "partners.list",
+      "path": "/api/partners",
+      "method": "GET",
+      "expect": {
+        "superuser": 1,
+        "admin": 1,
+        "manager": 1,
+        "editor": 1,
+        "viewer": 1
+      }
+    },
+    {
+      "id": "tenant.switch",
+      "path": "/api/tenants/switch",
+      "method": "POST",
+      "expect": {
+        "superuser": 1,
+        "admin": 0,
+        "manager": 0,
+        "editor": 0,
+        "viewer": 0
+      },
+      "body": {
+        "tenantId": "__ORG__"
+      }
+    }
+  ],
+  "tokens": {
+    "superuser": {
+      "token": "0DKgG2xnKdv0jR29wvTvF4QWmfj1SPgh",
+      "source": "superuser-session"
+    },
+    "admin": {
+      "token": null,
+      "source": "none"
+    },
+    "manager": {
+      "token": null,
+      "source": "none"
+    },
+    "editor": {
+      "token": null,
+      "source": "none"
+    },
+    "viewer": {
+      "token": null,
+      "source": "none"
+    }
+  },
+  "results": [
+    {
+      "scenario": "doc.view",
+      "level": "superuser",
+      "method": "GET",
+      "path": "/api/contracts",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "doc.view",
+      "level": "admin",
+      "method": "GET",
+      "path": "/api/contracts",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "doc.view",
+      "level": "manager",
+      "method": "GET",
+      "path": "/api/contracts",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "doc.view",
+      "level": "editor",
+      "method": "GET",
+      "path": "/api/contracts",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "doc.view",
+      "level": "viewer",
+      "method": "GET",
+      "path": "/api/contracts",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "users.list",
+      "level": "superuser",
+      "method": "GET",
+      "path": "/api/auth-console/users",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "users.list",
+      "level": "admin",
+      "method": "GET",
+      "path": "/api/auth-console/users",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "users.list",
+      "level": "manager",
+      "method": "GET",
+      "path": "/api/auth-console/users",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "users.list",
+      "level": "editor",
+      "method": "GET",
+      "path": "/api/auth-console/users",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "DENY",
+      "pass": false
+    },
+    {
+      "scenario": "users.list",
+      "level": "viewer",
+      "method": "GET",
+      "path": "/api/auth-console/users",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "DENY",
+      "pass": false
+    },
+    {
+      "scenario": "sessions.list",
+      "level": "superuser",
+      "method": "GET",
+      "path": "/api/auth-console/sessions",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "sessions.list",
+      "level": "admin",
+      "method": "GET",
+      "path": "/api/auth-console/sessions",
+      "status": 401,
+      "errorCode": "UNAUTHENTICATED",
+      "allowed": false,
+      "expect": "ALLOW",
+      "pass": false
+    },
+    {
+      "scenario": "sessions.list",
+      "level": "manager",
+      "method": "GET",
+      "path": "/api/auth-console/sessions",
+      "status": 401,
+      "errorCode": "UNAUTHENTICATED",
+      "allowed": false,
+      "expect": "ALLOW",
+      "pass": false
+    },
+    {
+      "scenario": "sessions.list",
+      "level": "editor",
+      "method": "GET",
+      "path": "/api/auth-console/sessions",
+      "status": 401,
+      "errorCode": "UNAUTHENTICATED",
+      "allowed": false,
+      "expect": "DENY",
+      "pass": true
+    },
+    {
+      "scenario": "sessions.list",
+      "level": "viewer",
+      "method": "GET",
+      "path": "/api/auth-console/sessions",
+      "status": 401,
+      "errorCode": "UNAUTHENTICATED",
+      "allowed": false,
+      "expect": "DENY",
+      "pass": true
+    },
+    {
+      "scenario": "audit.logs",
+      "level": "superuser",
+      "method": "GET",
+      "path": "/api/activity-logs",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "audit.logs",
+      "level": "admin",
+      "method": "GET",
+      "path": "/api/activity-logs",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "audit.logs",
+      "level": "manager",
+      "method": "GET",
+      "path": "/api/activity-logs",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "audit.logs",
+      "level": "editor",
+      "method": "GET",
+      "path": "/api/activity-logs",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "DENY",
+      "pass": false
+    },
+    {
+      "scenario": "audit.logs",
+      "level": "viewer",
+      "method": "GET",
+      "path": "/api/activity-logs",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "DENY",
+      "pass": false
+    },
+    {
+      "scenario": "partners.list",
+      "level": "superuser",
+      "method": "GET",
+      "path": "/api/partners",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "partners.list",
+      "level": "admin",
+      "method": "GET",
+      "path": "/api/partners",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "partners.list",
+      "level": "manager",
+      "method": "GET",
+      "path": "/api/partners",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "partners.list",
+      "level": "editor",
+      "method": "GET",
+      "path": "/api/partners",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "partners.list",
+      "level": "viewer",
+      "method": "GET",
+      "path": "/api/partners",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "tenant.switch",
+      "level": "superuser",
+      "method": "POST",
+      "path": "/api/tenants/switch",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "ALLOW",
+      "pass": true
+    },
+    {
+      "scenario": "tenant.switch",
+      "level": "admin",
+      "method": "POST",
+      "path": "/api/tenants/switch",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "DENY",
+      "pass": false
+    },
+    {
+      "scenario": "tenant.switch",
+      "level": "manager",
+      "method": "POST",
+      "path": "/api/tenants/switch",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "DENY",
+      "pass": false
+    },
+    {
+      "scenario": "tenant.switch",
+      "level": "editor",
+      "method": "POST",
+      "path": "/api/tenants/switch",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "DENY",
+      "pass": false
+    },
+    {
+      "scenario": "tenant.switch",
+      "level": "viewer",
+      "method": "POST",
+      "path": "/api/tenants/switch",
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
+      "expect": "DENY",
+      "pass": false
+    }
+  ],
+  "notes": [
+    "Database berisi 3 user dan 3 sesi aktif.",
+    "Organisasi aktif terdeteksi: org_1789542306289_b3a4f3."
+  ]
+}
