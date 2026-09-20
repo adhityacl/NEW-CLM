@@ -1,0 +1,193 @@
+/**
+ * RbacMatrixView — halaman matriks peran × permission.
+ *
+ * Memakai:
+ *  - komponen Obsidian UI yang di-vendor (`components/obsidian/table`, `separator`)
+ *  - design token proyek (kelas turunan token: bg-surface, text-ink, border-hairline, …)
+ *  - helper permission frontend (`<Can>`) untuk gating
+ *  - data dari endpoint kanonik `GET /api/rbac/matrix` (dihasilkan dari server/rbac.ts)
+ *
+ * Keadaan yang ditangani: memuat (skeleton), kosong, galat (dengan tombol coba lagi),
+ * dan responsif (tabel bisa di-scroll horizontal di layar sempit).
+ */
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+} from '../obsidian/table';
+import { Separator } from '../obsidian/separator';
+import { Can, usePermissions } from '../../lib/permissions';
+
+interface RoleDef { code: string; name: string; level: number; scope: string; description: string }
+interface PermDef { code: string; resource: string; action: string }
+interface MatrixPayload {
+  roles: RoleDef[];
+  permissions: PermDef[];
+  matrix: Record<string, string[]>;
+}
+
+const ROLE_ORDER = ['superuser', 'admin', 'manager', 'editor', 'viewer'];
+
+function roleBadgeClass(role: string): string {
+  // Memakai token palet data (muted natural) — bukan warna hardcoded.
+  const map: Record<string, string> = {
+    superuser: 'bg-[var(--color-data-5)] text-white',
+    admin: 'bg-[var(--color-data-1)] text-white',
+    manager: 'bg-[var(--color-data-2)] text-white',
+    editor: 'bg-[var(--color-data-3)] text-white',
+    viewer: 'bg-[var(--color-data-4)] text-white',
+  };
+  return map[role] ?? 'bg-surface-2 text-ink-soft';
+}
+
+export default function RbacMatrixView() {
+  const [state, setState] = useState<{ status: 'loading' | 'ok' | 'error'; data?: MatrixPayload; message?: string }>({ status: 'loading' });
+  const { role } = usePermissions();
+
+  const load = useCallback(async () => {
+    setState({ status: 'loading' });
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_session_token') : null;
+      const res = await fetch('/api/rbac/matrix', {
+        headers: {
+          'content-type': 'application/json',
+          ...(token ? { authorization: `Bearer ${token}`, 'x-session-token': token } : {}),
+        },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = (await res.json()) as MatrixPayload;
+      setState({ status: 'ok', data: json });
+    } catch (e) {
+      setState({ status: 'error', message: e instanceof Error ? e.message : 'Gagal memuat matriks.' });
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  /* ---------------- memuat ---------------- */
+  if (state.status === 'loading') {
+    return (
+      <div className="mx-auto w-full max-w-6xl p-4 sm:p-6" aria-busy="true" aria-live="polite">
+        <div className="h-6 w-56 rounded-[var(--radius-xs)] bg-surface-2" />
+        <div className="mt-2 h-3 w-80 rounded-[var(--radius-xs)] bg-surface-2" />
+        <div className="mt-6 space-y-2 rounded-[var(--radius-xl)] border border-hairline bg-surface p-4 shadow-elevated">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-4 rounded-[var(--radius-xs)] bg-surface-2" style={{ width: `${90 - i * 4}%` }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------------- galat ---------------- */
+  if (state.status === 'error') {
+    return (
+      <div className="mx-auto w-full max-w-6xl p-4 sm:p-6">
+        <div role="alert" className="rounded-[var(--radius-lg)] border border-red-300 bg-red-50 p-4 text-ink">
+          <p className="font-semibold">Gagal memuat matriks peran</p>
+          <p className="mt-1 text-sm text-ink-soft">{state.message}</p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="mt-3 rounded-[var(--radius-md)] bg-accent px-3 py-2 text-sm font-semibold text-[var(--color-on-accent)] shadow-sm transition hover:bg-accent-hover focus-visible:shadow-[var(--shadow-focus)]"
+          >
+            Coba lagi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const roles = (state.data?.roles ?? []).slice().sort((a, b) => a.level - b.level);
+  const permissions = state.data?.permissions ?? [];
+  const matrix = state.data?.matrix ?? {};
+
+  /* ---------------- kosong ---------------- */
+  if (!roles.length || !permissions.length) {
+    return (
+      <div className="mx-auto w-full max-w-6xl p-4 sm:p-6">
+        <div className="rounded-[var(--radius-xl)] border border-dashed border-hairline bg-surface p-8 text-center">
+          <p className="font-semibold text-ink">Belum ada data matriks</p>
+          <p className="mt-1 text-sm text-ink-soft">Pastikan endpoint <code className="font-mono text-xs">GET /api/rbac/matrix</code> aktif.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const roleCols = ROLE_ORDER.filter((r) => roles.some((x) => x.code === r));
+
+  return (
+    <div className="mx-auto w-full max-w-6xl p-4 sm:p-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight text-ink sm:text-xl">Matriks Peran × Permission</h1>
+          <p className="mt-1 text-sm text-ink-soft">
+            {permissions.length} permission · {roleCols.length} peran · dihasilkan dari <code className="font-mono text-xs">server/rbac.ts</code>
+          </p>
+        </div>
+        <Can permission="admin.access" fallback={<span className="rounded-full border border-hairline bg-surface-2 px-3 py-1 text-xs text-ink-soft">Hanya baca</span>}>
+          <span className="rounded-full border border-[color-mix(in_srgb,var(--color-accent)_35%,transparent)] bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-text">
+            Akses admin
+          </span>
+        </Can>
+      </header>
+
+      <Separator className="my-4" />
+
+      <section aria-label="Ringkasan peran" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {roles.map((r) => (
+          <div key={r.code} className="rounded-[var(--radius-lg)] border border-hairline bg-surface p-3 shadow-sm transition-shadow hover:shadow-[var(--shadow-md)]">
+            <div className="flex items-center justify-between gap-2">
+              <strong className="text-sm text-ink">{r.name}</strong>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${roleBadgeClass(r.code)}`}>level {r.level}</span>
+            </div>
+            <p className="mt-1 text-xs text-ink-soft">{r.scope}</p>
+            <p className="mt-2 text-xs text-ink-soft">
+              <span className="font-mono">{matrix[r.code]?.length ?? 0}</span> permission
+            </p>
+          </div>
+        ))}
+      </section>
+
+      <section aria-label="Tabel matriks" className="mt-6">
+        <div className="rounded-[var(--radius-xl)] border border-hairline bg-surface shadow-elevated">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Permission</TableHead>
+                <TableHead scope="col">Resource</TableHead>
+                {roleCols.map((r) => (
+                  <TableHead key={r} scope="col" className="text-center">{r.toUpperCase()}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {permissions.map((p) => (
+                <TableRow key={p.code} className="hover:bg-surface-2">
+                  <TableCell><code className="font-mono text-xs text-ink">{p.code}</code></TableCell>
+                  <TableCell className="text-ink-soft">{p.resource}</TableCell>
+                  {roleCols.map((r) => {
+                    const allowed = (matrix[r] ?? []).includes(p.code);
+                    return (
+                      <TableCell key={r} className="text-center">
+                        <span
+                          className={allowed ? 'font-semibold text-accent-text' : 'text-ink-faint'}
+                          aria-label={allowed ? `${r} diizinkan untuk ${p.code}` : `${r} tidak diizinkan untuk ${p.code}`}
+                        >
+                          {allowed ? '✔' : '—'}
+                        </span>
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <p className="mt-3 text-xs text-ink-soft">
+          ✔ = diizinkan · — = ditolak. Matriks ini dibaca dari endpoint server, bukan hardcode di frontend
+          (peran Anda saat ini: <span className="font-mono">{role}</span>).
+        </p>
+      </section>
+    </div>
+  );
+}
