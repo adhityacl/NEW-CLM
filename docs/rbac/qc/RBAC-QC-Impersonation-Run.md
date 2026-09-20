@@ -1,7 +1,7 @@
 # Laporan QC Impersonasi RBAC
 
 - Base URL: `http://localhost:3999`
-- Waktu: 2026-09-20T20:11:15.604Z
+- Waktu: 2026-09-20T20:13:07.767Z
 - Hasil: **30/30 lulus**
 
 ## Ringkasan per level
