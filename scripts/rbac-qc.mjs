@@ -43,6 +43,8 @@ const SCENARIOS = [
   { id: 'users.list',      method: 'GET',    path: '/api/auth-console/users',           perm: 'user.view',       expected: { superuser: true, admin: true, manager: true, editor: false, viewer: false } },
   { id: 'rbac.matrix',     method: 'GET',    path: '/api/rbac/matrix',                  perm: 'admin.access',    expected: { superuser: true, admin: true, manager: true, editor: true, viewer: true } },
   { id: 'invite.simulator',method: 'POST',   path: '/api/rbac/simulate/invite',         perm: 'user.invite',     expected: { superuser: true, admin: true, manager: true, editor: false, viewer: false },
+    body: { targetRole: 'viewer', tenantId: 't1', departmentId: 'd1' } },
+  { id: 'invite.no-scope', method: 'POST',   path: '/api/rbac/simulate/invite',         perm: 'user.invite',     expected: { superuser: true, admin: false, manager: false, editor: false, viewer: false },
     body: { targetRole: 'viewer' } },
   { id: 'invite.as.admin', method: 'POST',   path: '/api/rbac/simulate/invite',         perm: 'user.invite',     expected: { superuser: true, admin: false, manager: false, editor: false, viewer: false },
     body: { targetRole: 'admin' } },

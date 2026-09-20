@@ -1,0 +1,153 @@
+{
+  "base": "http://localhost:3998",
+  "generatedAt": "2026-09-20T20:29:48.405Z",
+  "total": 16,
+  "leaks": 2,
+  "verdict": "BOCOR (2 endpoint)",
+  "results": [
+    {
+      "kind": "protected-get",
+      "path": "/api/contracts",
+      "label": "data kontrak",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"ok\":true,\"count\":3,\"items\":[\"doc-t1-d1\",\"doc-t2-d1\",\"doc-t1-d2\"]}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/partners",
+      "label": "data mitra",
+      "status": 404,
+      "verdict": "tidak ada route",
+      "leak": false,
+      "snippet": "{\"error\":\"NOT_FOUND\",\"message\":\"No route: GET /api/partners\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/ios",
+      "label": "data IO",
+      "status": 404,
+      "verdict": "tidak ada route",
+      "leak": false,
+      "snippet": "{\"error\":\"NOT_FOUND\",\"message\":\"No route: GET /api/ios\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/tenants",
+      "label": "daftar tenant",
+      "status": 404,
+      "verdict": "tidak ada route",
+      "leak": false,
+      "snippet": "{\"error\":\"NOT_FOUND\",\"message\":\"No route: GET /api/tenants\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/activity-logs",
+      "label": "log aktivitas (email/IP)",
+      "status": 404,
+      "verdict": "tidak ada route",
+      "leak": false,
+      "snippet": "{\"error\":\"NOT_FOUND\",\"message\":\"No route: GET /api/activity-logs\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/users",
+      "label": "daftar pengguna (email/role)",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"ok\":true,\"count\":5}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/sessions",
+      "label": "daftar sesi",
+      "status": 404,
+      "verdict": "tidak ada route",
+      "leak": false,
+      "snippet": "{\"error\":\"NOT_FOUND\",\"message\":\"No route: GET /api/auth-console/sessions\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/organizations",
+      "label": "daftar organisasi",
+      "status": 404,
+      "verdict": "tidak ada route",
+      "leak": false,
+      "snippet": "{\"error\":\"NOT_FOUND\",\"message\":\"No route: GET /api/auth-console/organizations\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/invitations",
+      "label": "daftar undangan",
+      "status": 404,
+      "verdict": "tidak ada route",
+      "leak": false,
+      "snippet": "{\"error\":\"NOT_FOUND\",\"message\":\"No route: GET /api/auth-console/invitations\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/teams",
+      "label": "daftar tim/departemen",
+      "status": 404,
+      "verdict": "tidak ada route",
+      "leak": false,
+      "snippet": "{\"error\":\"NOT_FOUND\",\"message\":\"No route: GET /api/auth-console/teams\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/api-keys",
+      "label": "daftar API key",
+      "status": 404,
+      "verdict": "tidak ada route",
+      "leak": false,
+      "snippet": "{\"error\":\"NOT_FOUND\",\"message\":\"No route: GET /api/auth-console/api-keys\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/user/allowed-users",
+      "label": "daftar user diizinkan",
+      "status": 404,
+      "verdict": "tidak ada route",
+      "leak": false,
+      "snippet": "{\"error\":\"NOT_FOUND\",\"message\":\"No route: GET /api/user/allowed-users\"}"
+    },
+    {
+      "kind": "public-get",
+      "path": "/api/exchange-rates",
+      "label": "kurs",
+      "status": 404,
+      "verdict": "lain (404)",
+      "leak": false,
+      "snippet": "{\"error\":\"NOT_FOUND\",\"message\":\"No route: GET /api/exchange-rates\"}"
+    },
+    {
+      "kind": "public-get",
+      "path": "/api/health",
+      "label": "health (opsional)",
+      "status": 200,
+      "verdict": "publik (wajar)",
+      "leak": false,
+      "snippet": "{\"ok\":true}"
+    },
+    {
+      "kind": "write-guard",
+      "path": "/api/__rbac_probe__",
+      "label": "uji gerbang tulis (path tidak ada)",
+      "status": 403,
+      "verdict": "gerbang tulis AKTIF (Viewer diblokir)",
+      "leak": false,
+      "snippet": "{\"status\":403,\"error\":\"INSUFFICIENT_PERMISSION\",\"message\":\"You do not have permission to perform this action.\"}"
+    },
+    {
+      "kind": "write-guard",
+      "path": "/api/contracts/__rbac_probe__",
+      "label": "uji gerbang tulis (path tidak ada)",
+      "status": 403,
+      "verdict": "gerbang tulis AKTIF (Viewer diblokir)",
+      "leak": false,
+      "snippet": "{\"status\":403,\"error\":\"INSUFFICIENT_PERMISSION\",\"message\":\"You do not have permission to perform this action.\"}"
+    }
+  ]
+}

@@ -82,6 +82,19 @@ tenants:    org_1789905619545_7137a1 · org_1789542306289_b3a4f3
 4. Jalankan `node scripts/rbac-qc.mjs --base <url> --super-token <TOKEN>` untuk QC per level setelah token tersedia.
 5. Rotasi sesi/kredensial: email pengguna & superuser sudah terpapar.
 
-## 8. Batas pengujian (transparansi)
+## 8. Bukti A/B bahwa perbaikan menutup kebocoran (dijalankan di sini)
+
+Karena patch belum diterapkan di Codespace, efeknya dibuktikan lewat A/B pada engine yang sama:
+
+| Mode | Cara | Hasil probe anonim |
+|---|---|---|
+| **warisan** (replika middleware lama) | `node tools/rbac-devserver.ts 3998 --legacy` | **BOCOR** — `/api/contracts` & `/api/auth-console/users` → 200 |
+| **strict** (hasil `--tier=strict`) | `node tools/rbac-devserver.ts 3999` | **BERSIH** — 12 endpoint terproteksi → **401** |
+
+Bukti: `qc/ab-anon-legacy.md` vs `qc/ab-anon-strict.md` (lengkap dengan JSON).
+
+Regresi QC impersonasi setelah perubahan: **35/35 lulus** (7 skenario × 5 level) — `qc/RBAC-QC-Impersonation-Final.md`.
+
+## 9. Batas pengujian (transparansi)
 
 Tidak ada operasi tulis/ubah data, tidak ada percobaan eskalasi, tidak ada eksploitasi lanjutan. Semua probe **GET read-only** untuk QA yang diminta pemilik app. Panel browser AutoClaw tidak dapat memuat host tersebut (`ERR_ABORTED`), jadi inspeksi UI berbasis HTTP, bukan tangkapan layar.
