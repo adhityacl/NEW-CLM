@@ -309,7 +309,24 @@ async function main() {
   }
   console.log(`\nBukti visual: ${join(OUT, 'report.html')}`);
   console.log(`Data: ${join(OUT, 'report.json')}`);
-  console.log(`\nKirim ke saya dengan: git add ${OUT} && git commit -m "qc: impersonasi live" && git push`);
+
+  if (flag('push')) {
+    const { execFileSync } = await import('node:child_process');
+    const branch = `qc-report-${Date.now()}`;
+    try {
+      execFileSync('git', ['checkout', '-b', branch], { stdio: 'inherit' });
+      execFileSync('git', ['add', OUT], { stdio: 'inherit' });
+      execFileSync('git', ['commit', '-m', 'qc: laporan impersonasi live (dari app berjalan)'], { stdio: 'inherit' });
+      execFileSync('git', ['push', '-u', 'origin', branch], { stdio: 'inherit' });
+      console.log(`\nLaporan sudah di-push ke branch '${branch}'. Saya bisa membacanya langsung — tidak perlu menempel apa pun.`);
+    } catch (e) {
+      console.error(`\nGagal push otomatis (${e?.message?.split('\n')[0]}).`);
+      console.error(`Fallback: buat branch baru sendiri lalu push:`);
+      console.error(`  git checkout -b ${branch} && git add ${OUT} && git commit -m "qc: laporan" && git push -u origin ${branch}`);
+    }
+  } else {
+    console.log(`\nKirim ke saya: tambahkan --push pada perintah di atas (otomatis commit & push), atau tempel keluarannya.`);
+  }
   process.exit(pass === results.length ? 0 : 1);
 }
 
