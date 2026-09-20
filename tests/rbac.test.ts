@@ -244,6 +244,21 @@ test('§24 buildScopeFilter fail-closed bila actor non-superuser tanpa tenant', 
   assert.throws(() => buildScopeFilter({ id: 'x', role: 'manager', tenantId: null, departmentId: 'd1' }));
 });
 
+test('peran departemen tanpa data departemen diperlakukan tenant-level (kasus app nyata)', () => {
+  const mgrNoDept = { id: 'u-mgr2', role: 'manager' as const, tenantId: 't1', departmentId: null };
+  // guard scope 'tenant' → tidak memblokir hanya karena departemen belum diisi
+  assert.equal(ok(checkScope(mgrNoDept, { tenantId: 't1' }, 'tenant')), true);
+  // tetapi isolasi tenant TETAP ditegakkan
+  assert.equal(err(checkScope(mgrNoDept, { tenantId: 't2' }, 'tenant')), 'TENANT_SCOPE_VIOLATION');
+  // dan bila guard meminta scope departemen secara eksplisit, resource tanpa dept tetap ditolak
+  assert.equal(err(checkScope(mgrNoDept, { tenantId: 't1' }, 'department')), 'DEPARTMENT_SCOPE_VIOLATION');
+});
+
+test('manager yang PUNYA departemen tetap terkunci (fail-closed tidak dilonggarkan)', () => {
+  assert.equal(err(checkScope(MG, { tenantId: 't1', departmentId: 'd2' }, 'tenant')), 'DEPARTMENT_SCOPE_VIOLATION');
+  assert.equal(ok(checkScope(MG, { tenantId: 't1', departmentId: 'd1' }, 'tenant')), true);
+});
+
 test('§12 ADMIN tidak menerima audit.view (tidak ada di PRD)', () => {
   assert.equal(hasPermission('admin', 'audit.view'), false);
   assert.equal(hasPermission('superuser', 'audit.view'), true);

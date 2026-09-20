@@ -239,6 +239,22 @@ export function maxScopeFor(role: RoleCode | string): ScopeKind {
   return 'department';
 }
 
+/**
+ * Scope maksimum berdasarkan AKTOR (bukan hanya peran).
+ *
+ * Aturan tambahan (didokumentasikan): peran ber-scope departemen yang **belum
+ * punya data departemen** (mis. aplikasi yang belum mengisi `department_id`)
+ * diperlakukan setara scope tenant. Alasannya: departemen tak bisa ditegakkan
+ * bila datanya tidak ada, sedangkan isolasi tenant tetap ditegakkan penuh.
+ * Bila `departmentId` terisi, peran tetap terkunci ke departemennya (fail-closed).
+ */
+export function maxScopeForActor(actor: Actor): ScopeKind {
+  const r = normalizeRole(actor.role);
+  if (r === 'superuser') return 'global';
+  if (r === 'admin') return 'tenant';
+  return actor.departmentId ? 'department' : 'tenant';
+}
+
 const SCOPE_WIDTH: Record<ScopeKind, number> = { department: 0, tenant: 1, global: 2 };
 
 /**
@@ -262,7 +278,8 @@ export function checkScope(actor: Actor, resource: ScopedResource, scope: ScopeK
 
   if (role === 'superuser') return { allowed: true };
 
-  const eff = clampScope(role, scope);
+  const max = maxScopeForActor(actor);
+  const eff = SCOPE_WIDTH[scope] <= SCOPE_WIDTH[max] ? scope : max;
 
   if (resource.tenantId && resource.tenantId !== actor.tenantId) {
     return { allowed: false, error: 'TENANT_SCOPE_VIOLATION' };
@@ -274,7 +291,9 @@ export function checkScope(actor: Actor, resource: ScopedResource, scope: ScopeK
     return { allowed: true };
   }
 
-  // MANAGER / EDITOR / VIEWER: wajib departemennya sendiri (fail-closed).
+  // MANAGER / EDITOR / VIEWER: hanya departemennya sendiri — hanya bila scope
+  // departemen ini yang diminta DAN aktor memang punya departemen.
+  if (eff !== 'department') return { allowed: true };
   if (resource.departmentId == null) {
     return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
   }
