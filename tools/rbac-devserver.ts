@@ -8,7 +8,7 @@
  * Jalankan:  npx tsx tools/rbac-devserver.ts [port]
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { decide, canInvite, canChangeRole, buildMatrix, authzError, normalizeRole, type Actor, type ScopeKind } from '../server/rbac';
+import { decide, canInvite, canChangeRole, buildMatrix, authzError, normalizeRole, resolveTrustedScope, type Actor, type ScopeKind } from '../server/rbac';
 
 const PORT = Number(process.argv[2] || 3999);
 
@@ -98,6 +98,11 @@ const server = createServer(async (req, res) => {
     }
 
     /* ---- endpoint terproteksi (PRD �18) ---- */
+    if (req.method === 'GET' && path === '/api/rbac/trusted-scope') {
+      if (!actor) return send(res, 401, authzError('UNAUTHENTICATED'));
+      const requested = { tenantId: url.searchParams.get('tenantId'), departmentId: url.searchParams.get('departmentId') };
+      return send(res, 200, { ok: true, requested, trusted: resolveTrustedScope(actor, requested) });
+    }
     if (req.method === 'GET' && path === '/api/contracts') {
       const e = guard(actor, 'document.view', 'tenant');
       if (e) return send(res, e.status, e);

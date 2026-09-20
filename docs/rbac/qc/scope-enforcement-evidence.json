@@ -1,0 +1,30 @@
+[
+    {
+        "level":  "manager",
+        "requested_tenant":  "t-999",
+        "requested_dept":  "d-9",
+        "trusted_tenant":  "t1",
+        "trusted_dept":  "d1"
+    },
+    {
+        "level":  "editor",
+        "requested_tenant":  "t-999",
+        "requested_dept":  "d-9",
+        "trusted_tenant":  "t1",
+        "trusted_dept":  "d1"
+    },
+    {
+        "level":  "admin",
+        "requested_tenant":  "t-999",
+        "requested_dept":  "d-9",
+        "trusted_tenant":  "t1",
+        "trusted_dept":  "d-9"
+    },
+    {
+        "level":  "superuser",
+        "requested_tenant":  "t-999",
+        "requested_dept":  "d-9",
+        "trusted_tenant":  "t-999",
+        "trusted_dept":  "d-9"
+    }
+]
