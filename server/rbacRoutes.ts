@@ -7,7 +7,7 @@
  *   import { createRbacRouter } from "./server/rbacRoutes";
  *   app.use("/api/rbac", createRbacRouter({ resolveActor }));
  *
- * `resolveActor(req)` diisi aplikasi - cukup mengembalikan Actor dari sesi
+ * `resolveActor(req)` diisi aplikasi — cukup mengembalikan Actor dari sesi
  * yang sudah ada (better-auth `getSession` atau tabel `session` + `user`).
  * Route ini TIDAK menyentuh data user; hanya membaca katalog & keputusan.
  */
@@ -102,9 +102,9 @@ export function createRbacRouter(opts: RbacRouterOptions): Router {
 }
 
 /**
- * Middleware wajib-permission untuk endpoint terproteksi (PRD �17).
+ * Middleware wajib-permission untuk endpoint terproteksi (PRD §17).
  *
- * PRD �25: tenant/department dari client TIDAK dipercaya. Nilai dari
+ * PRD §25: tenant/department dari client TIDAK dipercaya. Nilai dari
  * request hanya dipakai sebagai *permintaan*; `resolveTrustedScope` memaksa
  * scope milik user untuk non-superuser sebelum pengecekan dilakukan.
  */

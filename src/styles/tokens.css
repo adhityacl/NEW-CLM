@@ -1,11 +1,11 @@
 /**
- * Design tokens - penyatuan identitas app (LINE green) dengan estetika
+ * Design tokens — penyatuan identitas app (LINE green) dengan estetika
  * "Obsidian UI" memakai panduan preset 17 Takram (Teknologi Lembut Presisi).
  *
  * Import sekali di `src/index.css` SETELAH `@import "tailwindcss";`:
  *   @import "./styles/tokens.css";
  *
- * Aturan: komponen (termasuk Obsidian UI) HANYA memakai token ini -
+ * Aturan: komponen (termasuk Obsidian UI) HANYA memakai token ini —
  * tidak boleh hex/nama warna Tailwind hardcoded.
  */
 

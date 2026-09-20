@@ -1,8 +1,8 @@
 /**
- * Helper permission sisi klien (PRD �20-�22).
+ * Helper permission sisi klien (PRD §20–§22).
  *
- * Cerminan `server/rbac.ts` - dipakai HANYA untuk visibilitas UI.
- * Backend tetap otoritatif (PRD �22, �28, �32).
+ * Cerminan `server/rbac.ts` — dipakai HANYA untuk visibilitas UI.
+ * Backend tetap otoritatif (PRD §22, §28, §32).
  */
 import { createContext, useContext, type ReactNode } from 'react';
 
@@ -29,7 +29,7 @@ export function normalizeRole(role?: string | null, fallback: RoleCode = 'viewer
 /**
  * Matriks BOOTSTRAP minimal sisi klien.
  *
- * ?? PRD �20 melarang frontend menghardcode logika otorisasi yang kompleks.
+ * ⚠️ PRD §20 melarang frontend menghardcode logika otorisasi yang kompleks.
  * Nilai di sini HANYA untuk render pertama sebelum `GET /api/rbac/me` menjawab.
  * Sumber kebenaran tetap server; setelah respons `/api/rbac/me` masuk,
  * `permissionValueFromMe()` memakai daftar permission dari server.
@@ -79,13 +79,13 @@ export function permissionValueFromMe(me: {
   };
 }
 
-/** PRD �20 - `hasPermission("document.edit")`. */
+/** PRD §20 — `hasPermission("document.edit")`. */
 export function hasPermission(permission: string): boolean {
   const ctx = useContext(PermissionContext);
   return ctx.permissions.includes('*') || ctx.permissions.includes(permission);
 }
 
-/** PRD �20 alternatif - `can("document","edit")`. */
+/** PRD §20 alternatif — `can("document","edit")`. */
 export function can(resource: string, action: string): boolean {
   return hasPermission(`${resource}.${action}`);
 }
@@ -100,7 +100,7 @@ export function usePermissions(): PermissionContextValue & {
 }
 
 /**
- * PRD �22 - wrapper visibilitas.
+ * PRD §22 — wrapper visibilitas.
  *   <Can permission="user.invite"><InviteUserButton /></Can>
  * Hanya mengatur tampilan; TIDAK menggantikan otorisasi backend.
  */
@@ -120,7 +120,7 @@ export function Can({
   return allowed ? (children as any) : (fallback as any);
 }
 
-/** PRD �23 - proteksi route berbasis permission. */
+/** PRD §23 — proteksi route berbasis permission. */
 export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/documents': 'document.view',
   '/admin': 'admin.access',
