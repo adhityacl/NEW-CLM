@@ -1,0 +1,153 @@
+{
+  "base": "https://automatic-umbrella-pw96gr5vjgp36j49-3000.app.github.dev",
+  "generatedAt": "2026-09-20T20:49:08.481Z",
+  "total": 16,
+  "leaks": 5,
+  "verdict": "BOCOR (5 endpoint)",
+  "results": [
+    {
+      "kind": "protected-get",
+      "path": "/api/contracts",
+      "label": "data kontrak",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/partners",
+      "label": "data mitra",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/ios",
+      "label": "data IO",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/tenants",
+      "label": "daftar tenant",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/activity-logs",
+      "label": "log aktivitas (email/IP)",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/users",
+      "label": "daftar pengguna (email/role)",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"status\":401,\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/sessions",
+      "label": "daftar sesi",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"sessions\":[{\"id\":\"sess_1789757494119_6f1173be\",\"token\":\"imp_dddfc9d72d24a4e1ae17edbe87bdf83c3463d4dbaeca083a\",\"createdAt\":\"2026-09-18T18:51:34."
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/organizations",
+      "label": "daftar organisasi",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"organizations\":[{\"id\":\"org_1789905619545_7137a1\",\"name\":\"AFPI\",\"slug\":\"afpi\",\"logo\":\"/favicon.png\",\"createdAt\":\"2026-09-20T12:00:19.545Z\",\"meta"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/invitations",
+      "label": "daftar undangan",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"invitations\":[]}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/teams",
+      "label": "daftar tim/departemen",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"teams\":[]}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/auth-console/api-keys",
+      "label": "daftar API key",
+      "status": 200,
+      "verdict": "LEAK (bocor)",
+      "leak": true,
+      "snippet": "{\"success\":true,\"apiKeys\":[]}"
+    },
+    {
+      "kind": "protected-get",
+      "path": "/api/user/allowed-users",
+      "label": "daftar user diizinkan",
+      "status": 401,
+      "verdict": "DENIED (benar)",
+      "leak": false,
+      "snippet": "{\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "public-get",
+      "path": "/api/exchange-rates",
+      "label": "kurs",
+      "status": 200,
+      "verdict": "publik (wajar)",
+      "leak": false,
+      "snippet": "{\"IDR\":0.00005628146133688732}"
+    },
+    {
+      "kind": "public-get",
+      "path": "/api/health",
+      "label": "health (opsional)",
+      "status": 404,
+      "verdict": "lain (404)",
+      "leak": false,
+      "snippet": "{\"error\":\"API route not found: GET /api/health\"}"
+    },
+    {
+      "kind": "write-guard",
+      "path": "/api/__rbac_probe__",
+      "label": "uji gerbang tulis (path tidak ada)",
+      "status": 401,
+      "verdict": "butuh autentikasi",
+      "leak": false,
+      "snippet": "{\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    },
+    {
+      "kind": "write-guard",
+      "path": "/api/contracts/__rbac_probe__",
+      "label": "uji gerbang tulis (path tidak ada)",
+      "status": 401,
+      "verdict": "butuh autentikasi",
+      "leak": false,
+      "snippet": "{\"error\":\"UNAUTHENTICATED\",\"message\":\"Authentication is required.\"}"
+    }
+  ]
+}

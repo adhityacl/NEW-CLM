@@ -1,5 +1,5 @@
 {
-    "generatedAt":  "2026-09-20T20:27:57.0871887Z",
+    "generatedAt":  "2026-09-20T20:49:54.7410133Z",
     "baselineBytes":  287072,
     "repoBytes":  287072,
     "tiers":  [
@@ -9,8 +9,7 @@
                       "bytesAfter":  288889,
                       "idempotent":  true,
                       "esbuildSyntaxOk":  true,
-                      "diffStat":  "1 file changed, 34 insertions(+)",
-                      "patchBytes":  3086
+                      "diffStat":  "1 file changed, 34 insertions(+)"
                   },
                   {
                       "tier":  "secure",
@@ -18,8 +17,7 @@
                       "bytesAfter":  289174,
                       "idempotent":  true,
                       "esbuildSyntaxOk":  true,
-                      "diffStat":  "1 file changed, 40 insertions(+), 2 deletions(-)",
-                      "patchBytes":  3970
+                      "diffStat":  "1 file changed, 40 insertions(+), 2 deletions(-)"
                   },
                   {
                       "tier":  "strict",
@@ -27,8 +25,15 @@
                       "bytesAfter":  289801,
                       "idempotent":  true,
                       "esbuildSyntaxOk":  true,
-                      "diffStat":  "1 file changed, 57 insertions(+), 7 deletions(-)",
-                      "patchBytes":  5356
+                      "diffStat":  "1 file changed, 57 insertions(+), 7 deletions(-)"
+                  },
+                  {
+                      "tier":  "strict2",
+                      "changes":  8,
+                      "bytesAfter":  289870,
+                      "idempotent":  true,
+                      "esbuildSyntaxOk":  true,
+                      "diffStat":  "1 file changed, 59 insertions(+), 8 deletions(-)"
                   }
               ]
 }
