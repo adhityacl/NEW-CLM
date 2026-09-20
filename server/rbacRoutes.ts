@@ -13,7 +13,7 @@
  */
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import {
-  buildMatrix, decide, canInvite, canChangeRole, authzError,
+  buildMatrix, decide, canInvite, canChangeRole, authzError, resolveTrustedScope,
   type Actor, type ScopeKind,
 } from './rbac';
 
@@ -101,14 +101,22 @@ export function createRbacRouter(opts: RbacRouterOptions): Router {
   return router;
 }
 
-/** Middleware wajib-permission untuk endpoint terproteksi (PRD �17). */
+/**
+ * Middleware wajib-permission untuk endpoint terproteksi (PRD �17).
+ *
+ * PRD �25: tenant/department dari client TIDAK dipercaya. Nilai dari
+ * request hanya dipakai sebagai *permintaan*; `resolveTrustedScope` memaksa
+ * scope milik user untuk non-superuser sebelum pengecekan dilakukan.
+ */
 export function requirePermission(permission: string, scope: ScopeKind = 'department') {
   return (req: Request, res: Response, next: NextFunction) => {
     const actor = (req as any).actor as Actor | null;
-    const resource = {
+    const requested = {
       tenantId: (req.params as any)?.tenantId || (req.body?.tenantId ?? req.query?.tenantId),
       departmentId: (req.params as any)?.departmentId || (req.body?.departmentId ?? req.query?.departmentId),
     };
+    // Paksa ke scope tepercaya (mengabaikan tenant/department palsu dari client).
+    const resource = actor ? resolveTrustedScope(actor, requested) : requested;
     const decision = decide({ actor, permission, resource, scope });
     if (decision.allow) return next();
     return res.status(decision.error.status).json(decision.error);
