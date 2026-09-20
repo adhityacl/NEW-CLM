@@ -64,7 +64,6 @@ async function loadAccounts() {
   let orgId = null;
   try { orgId = db.prepare('SELECT id FROM organization LIMIT 1').get()?.id ?? null; } catch {}
   db.close();
-
   const byRole = {};
   for (const u of users) {
     const r = String(u.role || '').toLowerCase();
@@ -78,9 +77,43 @@ async function loadAccounts() {
     token: token || suSession?.token || '',
     accounts: { admin: byRole.admin?.id, manager: byRole.manager?.id, editor: byRole.editor?.id, viewer: byRole.viewer?.id, superuser: su?.id },
     orgId,
+    dbPath,
     userCount: users.length,
     sessionCount: sessions.length,
   };
+}
+
+/**
+ * Membuat sesi superuser SEMENTARA di DB (opt-in, untuk lingkungan dev/Codespace).
+ * Ditandai `userAgent = 'qc-harness'` agar mudah dibersihkan.
+ */
+async function mintQcSession(dbPath, superUserId) {
+  const { DatabaseSync } = await import('node:sqlite');
+  const { randomBytes } = await import('node:crypto');
+  const db = new DatabaseSync(dbPath);
+  const cols = db.prepare('PRAGMA table_info(session)').all().map((c) => c.name);
+  const now = new Date().toISOString();
+  const vals = {
+    id: `qc_sess_${Date.now()}`,
+    expiresAt: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
+    token: `qc_${randomBytes(24).toString('hex')}`,
+    createdAt: now, updatedAt: now,
+    ipAddress: '127.0.0.1', userAgent: 'qc-harness',
+    userId: superUserId, impersonatedBy: null, activeOrganizationId: null,
+  };
+  const use = Object.keys(vals).filter((k) => cols.includes(k));
+  db.prepare(`INSERT INTO session (${use.join(',')}) VALUES (${use.map(() => '?').join(',')})`).run(...use.map((k) => vals[k]));
+  db.close();
+  return vals.token;
+}
+
+/** Menghapus semua sesi buatan harness QC. */
+async function cleanupQcSessions(dbPath) {
+  const { DatabaseSync } = await import('node:sqlite');
+  const db = new DatabaseSync(dbPath);
+  const info = db.prepare("DELETE FROM session WHERE userAgent = 'qc-harness'").run();
+  db.close();
+  return Number(info.changes ?? 0);
 }
 
 async function call(method, path, token, body) {
@@ -171,7 +204,31 @@ async function main() {
     process.exit(3);
   }
 
-  const { source, accounts, token, userCount, sessionCount, orgId } = await loadAccounts();
+  const { source, accounts, token: tokenFromDb, userCount, sessionCount, orgId, dbPath } = await loadAccounts();
+  let superToken = tokenFromDb;
+
+  /* Pembersihan sesi QC (bila diminta) */
+  if (flag('cleanup-qc-sessions')) {
+    if (!dbPath) { console.error('Tidak ada DB untuk dibersihkan.'); process.exit(1); }
+    const n = await cleanupQcSessions(dbPath);
+    console.log(`Dibersihkan: ${n} sesi buatan harness QC (userAgent='qc-harness').`);
+    process.exit(0);
+  }
+  /* Sesi superuser: dari DB, atau dibuat sementara bila --mint-session */
+  if (!superToken) {
+    if (flag('mint-session') && dbPath && accounts.superuser) {
+      superToken = await mintQcSession(dbPath, accounts.superuser);
+      console.log(`Sesi QC sementara dibuat untuk userId ${accounts.superuser} (berlaku 2 jam).`);
+      console.log('Hapus setelah selesai:  node scripts/rbac-qc-live.mjs --cleanup-qc-sessions');
+    } else {
+      console.error('\u274c Tidak ada sesi superuser aktif di database.');
+      console.error('   \u2192 Pilihan 1: login sebagai superuser di browser, lalu jalankan ulang.');
+      console.error('   \u2192 Pilihan 2: pakai --mint-session (sesi QC sementara; hanya dev/Codespace).');
+      console.error('   \u2192 Cek cepat:  node scripts/get-superuser-token.mjs');
+      process.exit(4);
+    }
+  }
+  const token = superToken;
   const notes = [];
   console.log(`Base            : ${BASE}`);
   console.log(`Sumber akun     : ${source}`);
@@ -179,16 +236,8 @@ async function main() {
   if (orgId) console.log(`Organisasi      : ${orgId}`);
   console.log(`Token superuser : ${token ? 'ditemukan' : 'TIDAK ditemukan'}`);
   console.log('');
-  if (!token) {
-    console.error('❌ Tidak ada sesi superuser aktif di database.');
-    console.error('   → Penyebab paling umum: sesi sudah dicabut/kedaluwarsa (mis. setelah “Revoke all”).');
-    console.error('   → Solusi: buka app di browser dan LOGIN sebagai superuser, lalu jalankan ulang perintah ini.');
-    console.error('   → Cek cepat tanpa QC:  node scripts/get-superuser-token.mjs');
-    process.exit(4);
-  }
   if (userCount != null) notes.push(`Database berisi ${userCount} user dan ${sessionCount} sesi aktif.`);
   if (orgId) notes.push(`Organisasi aktif terdeteksi: ${orgId}.`);
-  if (!token) notes.push('Token superuser tidak ditemukan — bagian impersonasi dilewati (anonim akan 401).');
 
   // Seed user uji bila diminta & level belum punya akun
   if (SEED && token) {
