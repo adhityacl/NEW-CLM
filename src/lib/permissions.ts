@@ -4,7 +4,8 @@
  * Cerminan `server/rbac.ts` — dipakai HANYA untuk visibilitas UI.
  * Backend tetap otoritatif (PRD §22, §28, §32).
  */
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 export type RoleCode = 'superuser' | 'admin' | 'manager' | 'editor' | 'viewer';
 
@@ -61,6 +62,54 @@ export interface PermissionContextValue {
 export const PermissionContext = createContext<PermissionContextValue>({
   role: 'viewer', permissions: BOOTSTRAP_ROLE_PERMISSIONS.viewer as string[],
 });
+
+export function PermissionProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [value, setValue] = useState<PermissionContextValue>(() =>
+    permissionValueFromMe(null, user?.role),
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const token = typeof window !== 'undefined'
+      ? localStorage.getItem('auth_session_token')
+      : null;
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+      headers['x-session-token'] = token;
+    }
+
+    if (!user || !token) {
+      setValue(permissionValueFromMe(null, user?.role));
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    fetch('/api/rbac/me', {
+      headers,
+      credentials: 'include',
+      cache: 'no-store',
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return response.json();
+      })
+      .then((me) => {
+        if (!cancelled) setValue(permissionValueFromMe(me, user.role));
+      })
+      .catch(() => {
+        if (!cancelled) setValue(permissionValueFromMe(null, user.role));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  return createElement(PermissionContext.Provider, { value }, children);
+}
 
 /** Menghasilkan nilai context dari respons `GET /api/rbac/me`. */
 export function permissionValueFromMe(me: {

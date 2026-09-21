@@ -45,6 +45,7 @@ import {
   PartnerSpending,
 } from './types';
 import { getCachedAccessToken, invalidateGoogleToken } from './lib/googleAuthService';
+import { PermissionProvider } from './lib/permissions';
 
 export const getAuthHeaders = () => {
   const token = getCachedAccessToken();
@@ -1058,13 +1059,15 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <LanguageProvider>
-            <TenantProvider>
-              <NavigationProvider>
-                <AppContent />
-              </NavigationProvider>
-            </TenantProvider>
-          </LanguageProvider>
+          <PermissionProvider>
+            <LanguageProvider>
+              <TenantProvider>
+                <NavigationProvider>
+                  <AppContent />
+                </NavigationProvider>
+              </TenantProvider>
+            </LanguageProvider>
+          </PermissionProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

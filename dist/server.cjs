@@ -11866,7 +11866,7 @@ function syncTenantsWithSqlite() {
     );
   }
 }
-app.get("/api/tenants", async (req, res) => {
+app.get("/api/tenants", requirePermission("tenant.view", "tenant"), async (req, res) => {
   syncTenantsWithSqlite();
   if (!db.tenants || !Array.isArray(db.tenants) || db.tenants.length === 0) {
     db.tenants = [DEFAULT_TENANTS[0]];
