@@ -130,7 +130,7 @@ export const ROLE_PERMISSIONS: Record<RoleCode, '*' | string[]> = {
     'department.view', 'department.create', 'department.edit',
     'export.csv', 'export.document',
     'admin.access', 'admin.user.manage', 'admin.department.manage',
-    'tenant.view',
+    'tenant.view', 'workspace.view',
   ],
 
   manager: [
@@ -140,16 +140,16 @@ export const ROLE_PERMISSIONS: Record<RoleCode, '*' | string[]> = {
     'document.export', 'document.download',
     'department.view',
     'export.csv', 'export.document',
-    'admin.access', 'admin.user.manage',
+    'admin.access', 'admin.user.manage', 'workspace.view',
   ],
 
   editor: [
-    'document.view', 'document.create', 'document.edit',
+    'document.view', 'document.create', 'document.edit', 'workspace.view',
     ...(EDITOR_CAN_DELETE_DOCUMENT ? ['document.delete'] : []),
     'document.download',
   ],
 
-  viewer: ['document.view'],
+  viewer: ['document.view', 'workspace.view'],
 };
 
 /** Permission yang secara eksplisit DILARANG meski ada di daftar lain (PRD §12). */

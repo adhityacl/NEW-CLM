@@ -246,7 +246,22 @@ const resolveRbacActor = async (req: any) => {
       const s: any = sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(token);
       if (s?.userId) {
         const u: any = sqliteDb.prepare("SELECT role FROM user WHERE id = ?").get(s.userId);
-        return { id: s.userId, role: String(u?.role || "viewer").toLowerCase(), tenantId: null, departmentId: null };
+        const m: any = sqliteDb.prepare("SELECT organizationId, role FROM member WHERE userId = ? ORDER BY createdAt ASC LIMIT 1").get(s.userId);
+        const tm: any = sqliteDb.prepare(`
+          SELECT t.id
+          FROM teamMember tm
+          JOIN team t ON t.id = tm.teamId
+          WHERE tm.userId = ?
+          ORDER BY tm.createdAt ASC
+          LIMIT 1
+        `).get(s.userId);
+        const rawRole = m?.role === "owner" ? "superuser" : (u?.role || m?.role || "viewer");
+        return {
+          id: s.userId,
+          role: String(rawRole).toLowerCase(),
+          tenantId: m?.organizationId ?? null,
+          departmentId: tm?.id ?? null,
+        };
       }
     }
   } catch { /* tanpa actor */ }
@@ -7448,7 +7463,7 @@ function syncTenantsWithSqlite() {
     );
   }
 }
-app.get("/api/tenants", requirePermission("tenant.view", "tenant"), async (req: express.Request, res: express.Response) => {
+app.get("/api/tenants", requirePermission("workspace.view", "tenant"), async (req: express.Request, res: express.Response) => {
   syncTenantsWithSqlite();
   if (!db.tenants || !Array.isArray(db.tenants) || db.tenants.length === 0) {
     db.tenants = [DEFAULT_TENANTS[0]];

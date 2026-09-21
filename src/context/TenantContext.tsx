@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Tenant, TenantBranding } from '../types';
+import { useAuth } from './AuthContext';
 
 interface TenantContextType {
   tenants: Tenant[];
@@ -76,7 +77,8 @@ const getTenantRequestHeaders = (): Record<string, string> => {
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [tenants, setTenants] = useState<Tenant[]>(DEFAULT_TENANTS);
+  const { user, loading: authLoading } = useAuth();
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [activeTenantId, setActiveTenantId] = useState<string>(() => {
     return localStorage.getItem('activeOrganizationId') || 'org_1789542306289_b3a4f3';
   });
@@ -84,6 +86,12 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [loading, setLoading] = useState<boolean>(true);
 
   const fetchTenantsAndBranding = useCallback(async () => {
+    if (!user) {
+      setTenants([]);
+      setBranding(DEFAULT_BRANDING);
+      setLoading(false);
+      return;
+    }
     try {
       const [tenantsRes, brandingRes] = await Promise.all([
         fetch('/api/tenants', {
@@ -106,6 +114,9 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setActiveTenantId(tData.activeTenantId);
           }
         }
+      } else if (tenantsRes.status === 401 || tenantsRes.status === 403) {
+        setTenants([]);
+        setActiveTenantId('');
       }
 
       if (brandingRes.ok) {
@@ -119,9 +130,10 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
+    if (authLoading) return;
     fetchTenantsAndBranding();
 
     const handleOrgUpdated = () => {
@@ -131,9 +143,9 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => {
       window.removeEventListener('organization-updated', handleOrgUpdated);
     };
-  }, [fetchTenantsAndBranding]);
+  }, [authLoading, fetchTenantsAndBranding]);
 
-  const activeTenant = (tenants || []).find((t) => t.id === activeTenantId) || (tenants || [])[0] || DEFAULT_TENANTS[0];
+  const activeTenant = (tenants || []).find((t) => t.id === activeTenantId) || (tenants || [])[0] || null;
 
   // Apply dynamic document title & favicon
   useEffect(() => {
