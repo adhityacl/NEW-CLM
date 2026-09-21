@@ -40,6 +40,7 @@ import {
   InstancesConfigModal,
 } from './admin/AdminModals';
 import { CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { usePermissions } from '../lib/permissions';
 
 interface AdminUsersViewProps {
   initialTab?: ConsoleSubmenu;
@@ -49,6 +50,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
   const { user: currentUser, refreshUser } = useAuth();
   const { t, language } = useLanguage();
   const { switchTenant } = useTenant();
+  const { hasPermission } = usePermissions();
 
   // Navigation tab state
   const [activeTab, setActiveTab] = useState<ConsoleSubmenu>(initialTab);
@@ -794,6 +796,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
             onOpenCreateTeam={() => setIsCreateTeamOpen(true)}
             onOpenCreateApiKey={() => setIsCreateApiKeyOpen(true)}
             onRevokeSession={handleRevokeSession}
+            canCreateUser={hasPermission('user.create') || hasPermission('user.invite')}
           />
         )}
 
@@ -801,7 +804,12 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
           <AdminUsersTab
             users={users}
             organizations={organizations}
-            onOpenAddUser={() => setIsAddUserOpen(true)}
+            canCreateUser={hasPermission('user.create') || hasPermission('user.invite')}
+            onOpenAddUser={() => {
+              if (hasPermission('user.create') || hasPermission('user.invite')) {
+                setIsAddUserOpen(true);
+              }
+            }}
             onOpenEditUser={(user) => setSelectedUserForEdit(user)}
             onOpenResetPassword={(user) => setSelectedUserForPassword(user)}
             onToggleBan={handleToggleBan}

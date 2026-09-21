@@ -33,6 +33,7 @@ interface AdminDashboardTabProps {
   onOpenCreateTeam: () => void;
   onOpenCreateApiKey: () => void;
   onRevokeSession: (sessionId: string) => void;
+  canCreateUser?: boolean;
 }
 
 export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
@@ -46,6 +47,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
   onOpenCreateTeam,
   onOpenCreateApiKey,
   onRevokeSession,
+  canCreateUser = false,
 }) => {
   const { t, language } = useLanguage();
 
@@ -142,14 +144,16 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
               <Building2 className="w-3.5 h-3.5" />
               {t('admin.btn_manage_org', 'Kelola Organisasi')}
             </button>
-            <button
-              type="button"
-              onClick={onOpenAddUser}
-              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors flex items-center gap-1.5 shadow-xs"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              {t('admin.btn_add_member', 'Tambah Anggota')}
-            </button>
+            {canCreateUser && (
+              <button
+                type="button"
+                onClick={onOpenAddUser}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                {t('admin.btn_add_member', 'Tambah Anggota')}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -274,14 +278,16 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
           {t('admin.quick_actions_title', 'Tindakan Cepat (Quick Actions)')}
         </h4>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <button
-            type="button"
-            onClick={onOpenAddUser}
-            className="flex items-center justify-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-600 bg-slate-50/60 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all text-left"
-          >
-            <UserPlus className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{t('admin.quick_add_user', 'Tambah User Baru')}</span>
-          </button>
+          {canCreateUser && (
+            <button
+              type="button"
+              onClick={onOpenAddUser}
+              className="flex items-center justify-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-600 bg-slate-50/60 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all text-left"
+            >
+              <UserPlus className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{t('admin.quick_add_user', 'Tambah User Baru')}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onOpenCreateOrg}

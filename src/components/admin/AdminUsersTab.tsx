@@ -27,6 +27,7 @@ interface AdminUsersTabProps {
   onImpersonate: (user: ConsoleUser) => void;
   onDeleteUser: (user: ConsoleUser) => void;
   onBulkAction: (action: 'ban' | 'unban' | 'delete', userIds: string[]) => void;
+  canCreateUser?: boolean;
 }
 
 export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
@@ -39,6 +40,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   onImpersonate,
   onDeleteUser,
   onBulkAction,
+  canCreateUser = false,
 }) => {
   const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,14 +133,16 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
         </div>
 
         {/* Add User Action */}
-        <button
-          type="button"
-          onClick={onOpenAddUser}
-          className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors shadow-xs shrink-0"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>{t('admin.add_user_btn', 'Tambah Pengguna Baru')}</span>
-        </button>
+        {canCreateUser && (
+          <button
+            type="button"
+            onClick={onOpenAddUser}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors shadow-xs shrink-0"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>{t('admin.add_user_btn', 'Tambah Pengguna Baru')}</span>
+          </button>
+        )}
       </div>
 
       {/* Bulk Action Bar */}
