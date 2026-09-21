@@ -3,6 +3,7 @@ import { ChevronsUpDown, Check, Building2 } from 'lucide-react';
 import { useTenant } from '../context/TenantContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../lib/permissions';
 
 export interface WorkspaceItem {
   id: string;
@@ -35,12 +36,13 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
 }) => {
   const { tenants, activeTenant, activeTenantId, switchTenant } = useTenant();
   const { t } = useLanguage();
-  const { isAdmin, isSuperuser, user } = useAuth();
+  const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Switch workspace is strictly disabled for non-admin / non-superuser roles (e.g. Manager, Editor, Viewer)
-  const canSwitch = Boolean(isAdmin || isSuperuser);
+  const canSwitch = hasPermission('workspace.switch');
 
   // Close dropdown on click outside
   useEffect(() => {

@@ -7448,7 +7448,7 @@ function syncTenantsWithSqlite() {
     );
   }
 }
-app.get("/api/tenants", async (req: express.Request, res: express.Response) => {
+app.get("/api/tenants", requirePermission("tenant.view", "tenant"), async (req: express.Request, res: express.Response) => {
   syncTenantsWithSqlite();
   if (!db.tenants || !Array.isArray(db.tenants) || db.tenants.length === 0) {
     db.tenants = [DEFAULT_TENANTS[0]];
