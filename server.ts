@@ -7484,10 +7484,16 @@ app.get("/api/tenants", requirePermission("tenant.view", "tenant"), async (req: 
     db.activeTenantId = db.tenants[0]?.id || "org_1789542306289_b3a4f3";
     saveDb();
   }
+  const actor = (req as any).actor;
+  const visibleTenants = actor?.role === "superuser"
+    ? db.tenants
+    : db.tenants.filter((tenant) => tenant.id === actor?.tenantId);
   return res.json({
     success: true,
-    tenants: db.tenants,
-    activeTenantId: db.activeTenantId,
+    tenants: visibleTenants,
+    activeTenantId: visibleTenants.some((tenant) => tenant.id === db.activeTenantId)
+      ? db.activeTenantId
+      : visibleTenants[0]?.id || null,
   });
 });
 app.post("/api/tenants/switch", (req: express.Request, res: express.Response) => {
@@ -7528,7 +7534,7 @@ app.post("/api/tenants/switch", (req: express.Request, res: express.Response) =>
 
   return res.json({ success: true, activeTenantId: targetId });
 });
-app.post("/api/tenants", (req: express.Request, res: express.Response) => {
+app.post("/api/tenants", requirePermission("tenant.create", "global"), (req: express.Request, res: express.Response) => {
   const tenantData = req.body;
   if (!tenantData.name) {
     return res.status(400).json({ error: "Tenant name is required." });
@@ -7554,7 +7560,7 @@ app.post("/api/tenants", (req: express.Request, res: express.Response) => {
   saveDb();
   return res.json({ success: true, tenants: db.tenants, newTenant });
 });
-app.put("/api/tenants/:id", (req: express.Request, res: express.Response) => {
+app.put("/api/tenants/:id", requirePermission("tenant.edit", "global"), (req: express.Request, res: express.Response) => {
   const { id } = req.params;
   const updates = req.body;
   if (!db.tenants) db.tenants = [...DEFAULT_TENANTS];
@@ -7570,7 +7576,7 @@ app.put("/api/tenants/:id", (req: express.Request, res: express.Response) => {
   saveDb();
   return res.json({ success: true, tenants: db.tenants });
 });
-app.delete("/api/tenants/:id", (req: express.Request, res: express.Response) => {
+app.delete("/api/tenants/:id", requirePermission("tenant.delete", "global"), (req: express.Request, res: express.Response) => {
   const { id } = req.params;
   if (!db.tenants) db.tenants = [...DEFAULT_TENANTS];
   const target = db.tenants.find((t) => t.id === id);
