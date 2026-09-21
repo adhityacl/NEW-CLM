@@ -1030,66 +1030,75 @@ const AppContent = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen w-full flex bg-canvas">
-        {/* Editorial panel — brand moment, hidden below lg to keep mobile focused on the form */}
-        <div className="hidden lg:flex lg:w-[44%] xl:w-[40%] relative overflow-hidden border-r border-[var(--border)]">
+      <div className="min-h-screen w-full relative overflow-hidden bg-canvas">
+        {/* Animated grid spans the whole screen now — both the brand panel and the form float on top of it.
+            Wrapped in our own absolutely-positioned div: the component's root hardcodes `relative`,
+            which fights a directly-passed `absolute` class depending on Tailwind's utility ordering. */}
+        <div className="absolute inset-0">
           <InteractiveGridBackground
             gridSize={44}
-            gridColor="#ded4bd"
-            darkGridColor="#35301f"
-            effectColor="rgba(6, 199, 85, 0.45)"
-            darkEffectColor="rgba(31, 219, 110, 0.5)"
-            trailLength={5}
+            gridColor="#c9bc99"
+            darkGridColor="#463f28"
+            effectColor="rgba(6, 199, 85, 0.5)"
+            darkEffectColor="rgba(31, 219, 110, 0.55)"
+            trailLength={6}
+            idleRandomCount={10}
             glow
-            glowRadius={28}
+            glowRadius={32}
             showFade
-            fadeIntensity={30}
-            className="absolute inset-0"
+            fadeIntensity={82}
+            className="w-full h-full"
           />
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="relative z-10 flex flex-col justify-between w-full p-10 xl:p-14"
-          >
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md shadow-[var(--primary)]/20">
-                <Scale className="h-5 w-5" />
-              </span>
-              <span className="font-display text-lg font-semibold tracking-tight">LMS</span>
-            </div>
-
-            <div className="max-w-sm">
-              <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--seal)] mb-4">
-                <ShieldCheck className="h-3.5 w-3.5" /> Legal Management System
-              </p>
-              <h1 className="font-display text-4xl xl:text-[2.75rem] leading-[1.08] font-medium tracking-tight text-[var(--foreground)]">
-                Setiap kontrak, tercatat rapi &amp; siap ditelusuri.
-              </h1>
-              <p className="mt-4 text-sm leading-relaxed text-[var(--muted-foreground)]">
-                Kontrak, Insertion Order, Due Diligence Mitra, dan riwayat perubahan —
-                dalam satu ruang kerja yang tenang.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-              <FileSignature className="h-3.5 w-3.5" />
-              <span>2026 ACL. All rights reserved.</span>
-            </div>
-          </motion.div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-          >
-            <SignInForm
-              onOpenPrivacyPolicy={handleOpenPrivacy}
-              onOpenTermsOfService={handleOpenTerms}
-            />
-          </motion.div>
+        <div className="relative z-10 min-h-screen w-full flex">
+          {/* Editorial panel — brand moment on its own static card, hidden below lg to keep mobile focused on the form */}
+          <div className="hidden lg:flex lg:w-[40%] xl:w-[34%] items-stretch p-6 xl:p-8">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="flex flex-col justify-between w-full rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--card)] shadow-sm p-8 xl:p-10"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md shadow-[var(--primary)]/20">
+                  <Scale className="h-5 w-5" />
+                </span>
+                <span className="font-display text-lg font-semibold tracking-tight">LMS</span>
+              </div>
+
+              <div>
+                <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--seal)] mb-4">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Legal Management System
+                </p>
+                <h1 className="font-display text-4xl xl:text-[2.75rem] leading-[1.08] font-medium tracking-tight text-[var(--foreground)]">
+                  Setiap kontrak, tercatat rapi &amp; siap ditelusuri.
+                </h1>
+                <p className="mt-4 text-sm leading-relaxed text-[var(--muted-foreground)]">
+                  Kontrak, Insertion Order, Due Diligence Mitra, dan riwayat perubahan —
+                  dalam satu ruang kerja yang tenang.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+                <FileSignature className="h-3.5 w-3.5" />
+                <span>2026 ACL. All rights reserved.</span>
+              </div>
+            </motion.div>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+            >
+              <SignInForm
+                onOpenPrivacyPolicy={handleOpenPrivacy}
+                onOpenTermsOfService={handleOpenTerms}
+              />
+            </motion.div>
+          </div>
         </div>
       </div>
     );
