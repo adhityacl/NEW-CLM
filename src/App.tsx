@@ -46,6 +46,7 @@ import {
 } from './types';
 import { getCachedAccessToken, invalidateGoogleToken } from './lib/googleAuthService';
 import { PermissionProvider } from './lib/permissions';
+import { usePermissions } from './lib/permissions';
 
 export const getAuthHeaders = () => {
   const token = getCachedAccessToken();
@@ -101,10 +102,17 @@ export const getAuthHeaders = () => {
 
 const MainApp: React.FC = () => {
   const { user, isAdmin } = useAuth();
+  const { hasPermission } = usePermissions();
   const { activeTenantId, activeTenant } = useTenant();
   const { activeTab, setActiveTab } = useNavigation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (activeTab === 'create-contract' && !hasPermission('document.create')) {
+      setActiveTab('dashboard');
+    }
+  }, [activeTab, hasPermission, setActiveTab]);
 
   // Data States
   const [contracts, setContracts] = useState<Contract[]>([]);

@@ -36,6 +36,7 @@ import { useTheme } from '../context/ThemeContext';
 import { GoogleSheetsConfig } from '../types';
 import { isGoogleTokenValid, getGoogleTokenRemainingMinutes } from '../lib/googleAuthService';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { usePermissions } from '../lib/permissions';
 
 interface SidebarProps {
   activeTab: string;
@@ -55,6 +56,7 @@ interface SidebarNavItem {
   badge?: string | null;
   badgeColor?: string;
   adminOnly?: boolean;
+  permission?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -68,6 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const { isAdmin } = useAuth();
+  const { hasPermission } = usePermissions();
   const { t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
 
@@ -160,6 +163,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'create-contract',
       label: t('nav.create_contract', 'Buat Kontrak'),
       icon: FileSignature,
+      permission: 'document.create',
     },
   ];
 
@@ -193,17 +197,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       id: 'main',
       title: t('nav.main_title', 'Menu Utama'),
-      items: mainNavItems.filter((item) => !item.adminOnly || isAdmin),
+      items: mainNavItems.filter((item) =>
+        (!item.adminOnly || isAdmin) && (!item.permission || hasPermission(item.permission)),
+      ),
     },
     {
       id: 'documents',
       title: t('nav.doc_title', 'Dokumen'),
-      items: docNavItems.filter((item) => !item.adminOnly || isAdmin),
+      items: docNavItems.filter((item) =>
+        (!item.adminOnly || isAdmin) && (!item.permission || hasPermission(item.permission)),
+      ),
     },
     {
       id: 'admin',
       title: t('nav.admin_title', 'Administrasi'),
-      items: adminNavItems.filter((item) => !item.adminOnly || isAdmin),
+      items: adminNavItems.filter((item) =>
+        (!item.adminOnly || isAdmin) && (!item.permission || hasPermission(item.permission)),
+      ),
     },
   ].filter((section) => section.items.length > 0);
 
