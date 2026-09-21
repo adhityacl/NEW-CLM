@@ -6208,6 +6208,16 @@ function isMatchingOrg(entityOrgId, targetTenantId) {
   const isDefaultEntity = !entityOrgId || entityOrgId === "org-adapundi" || defaultTenant && entityOrgId === defaultTenant.id;
   return Boolean(isDefaultTarget && isDefaultEntity);
 }
+function getRequestTenantId(req) {
+  const actor = req.actor;
+  if (actor?.role !== "superuser" && actor?.tenantId) return actor.tenantId;
+  return String(
+    req.headers["x-organization-id"] || req.headers["x-tenant-id"] || req.query.tenantId || db.activeTenantId || "org-adapundi"
+  );
+}
+function canReadAllTenants(req) {
+  return req.actor?.role === "superuser" && req.query.all === "true";
+}
 async function ensureAllPartnersFolders(token, targetTenantId) {
   let localFoldersCreated = 0;
   let driveFoldersCreated = 0;
@@ -7710,8 +7720,8 @@ app.get("/api/activity-logs", (req, res) => {
   res.json(db.activityLogs);
 });
 app.get("/api/partners", (req, res) => {
-  const activeTenantId = req.headers["x-tenant-id"] || req.headers["x-organization-id"] || req.query.tenantId || db.activeTenantId || "org-adapundi";
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
   const partnerList = filterTenant ? (db.partners || []).filter(
     (p) => isMatchingOrg(p.organizationId, activeTenantId)
   ) : db.partners || [];
@@ -8075,8 +8085,8 @@ function computeEvaluationScore(obligationTarget, incidentFreq, comm, pricing) {
   return targetScore + incidentScore + commScore + pricingScore;
 }
 app.get("/api/partner-evaluations", (req, res) => {
-  const activeTenantId = req.headers["x-tenant-id"] || req.headers["x-organization-id"] || req.query.tenantId || db.activeTenantId || "org-adapundi";
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
   const list = filterTenant ? (db.evaluations || []).filter(
     (e) => isMatchingOrg(e.organizationId, activeTenantId)
   ) : db.evaluations || [];
@@ -8273,8 +8283,8 @@ app.get("/api/exchange-rate-historical", async (req, res) => {
   }
 });
 app.get("/api/partner-spendings", (req, res) => {
-  const activeTenantId = req.headers["x-tenant-id"] || req.headers["x-organization-id"] || req.query.tenantId || db.activeTenantId || "org-adapundi";
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
   const spendingsList = filterTenant ? (db.spendings || []).filter(
     (s) => isMatchingOrg(s.organizationId, activeTenantId)
   ) : db.spendings || [];
@@ -9085,8 +9095,8 @@ app.post("/api/contracts/export-google-docs", async (req, res) => {
   }
 });
 app.get("/api/init-data", (req, res) => {
-  const activeTenantId = (req.headers["x-organization-id"] || req.headers["x-tenant-id"] || req.query.tenantId || db.activeTenantId || "org-adapundi").toString();
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
   const contracts = filterTenant ? (db.contracts || []).filter((c) => isMatchingOrg(c.organizationId, activeTenantId)) : db.contracts || [];
   const ios = filterTenant ? (db.ios || []).filter((i) => isMatchingOrg(i.organizationId, activeTenantId)) : db.ios || [];
   const partners = filterTenant ? (db.partners || []).filter((p) => isMatchingOrg(p.organizationId, activeTenantId)) : db.partners || [];
@@ -9108,8 +9118,8 @@ app.get("/api/init-data", (req, res) => {
   });
 });
 app.get("/api/contracts", (req, res) => {
-  const activeTenantId = req.headers["x-tenant-id"] || req.headers["x-organization-id"] || req.query.tenantId || db.activeTenantId || "org-adapundi";
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
   const contractsList = filterTenant ? (db.contracts || []).filter(
     (c) => isMatchingOrg(c.organizationId, activeTenantId)
   ) : db.contracts || [];
@@ -9981,8 +9991,8 @@ app.delete("/api/contracts/:id", async (req, res) => {
   res.json({ success: true });
 });
 app.get("/api/ios", (req, res) => {
-  const activeTenantId = req.headers["x-tenant-id"] || req.headers["x-organization-id"] || req.query.tenantId || db.activeTenantId || "org-adapundi";
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
   const iosList = filterTenant ? (db.ios || []).filter(
     (i) => isMatchingOrg(i.organizationId, activeTenantId)
   ) : db.ios || [];

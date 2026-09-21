@@ -112,6 +112,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           setTenants(tData.tenants);
           if (tData.activeTenantId) {
             setActiveTenantId(tData.activeTenantId);
+            localStorage.setItem('activeOrganizationId', tData.activeTenantId);
           }
         }
       } else if (tenantsRes.status === 401 || tenantsRes.status === 403) {
