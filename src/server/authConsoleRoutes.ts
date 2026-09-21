@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import nodemailer from 'nodemailer';
+import { authzError, buildAuditEvent, canChangeRole, canInvite, type Actor } from '../../server/rbac';
 
 export const authConsoleRouter = Router();
 
@@ -191,14 +192,33 @@ export function syncUsersToDataStoreAndSheet() {
 
 // Helper to get active organization id
 function getActiveOrgId(req: Request): string {
-  const headerOrg = req.headers['x-organization-id'] as string;
-  if (headerOrg) return headerOrg;
+  const actor = (req as any).actor as Actor | null;
+  if (actor && actor.role !== 'superuser') return actor.tenantId || 'org-adapundi';
   
   try {
     const firstOrg = sqliteDb.prepare('SELECT id FROM organization ORDER BY createdAt ASC LIMIT 1').get() as any;
     return firstOrg?.id || 'org-adapundi';
   } catch (err) {
     return 'org-adapundi';
+  }
+
+  function recordRbacAudit(req: Request, actor: Actor | null, action: string, targetType: any, targetId: string, metadata?: Record<string, unknown>) {
+    if (!actor || !globalDbRef) return;
+    const event = buildAuditEvent(actor, action, targetType, targetId, metadata);
+    if (!Array.isArray(globalDbRef.activityLogs)) globalDbRef.activityLogs = [];
+    globalDbRef.activityLogs.unshift({
+      id: `rbac-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+      timestamp: event.timestamp,
+      userEmail: (req as any).user?.email || actor.id,
+      userName: (req as any).user?.name || actor.id,
+      role: actor.role,
+      actionType: event.action,
+      module: 'RBAC',
+      description: `${event.action} on ${event.targetType}:${event.targetId}`,
+      metadata: event.metadata,
+    });
+    globalDbRef.activityLogs = globalDbRef.activityLogs.slice(0, 500);
+    saveDbFnRef?.();
   }
 }
 
@@ -341,6 +361,16 @@ authConsoleRouter.post('/users', async (req: Request, res: Response) => {
     }
 
     const normRole = String(role).toLowerCase();
+    const actor = (req as any).actor as Actor | null;
+    if (!actor) return res.status(401).json(authzError('UNAUTHENTICATED'));
+    const targetOrganizationId = actor.role === 'superuser' ? organizationId : actor.tenantId;
+    const inviteDecision = canInvite(actor, normRole, {
+      tenantId: targetOrganizationId,
+      departmentId: actor.role === 'manager' ? actor.departmentId : undefined,
+    });
+    if (!inviteDecision.allowed) {
+      return res.status(403).json(authzError(inviteDecision.error));
+    }
     // Rule: roles below Superuser and Admin MUST be assigned to 1 tenant/organization
     if (normRole !== 'superuser' && normRole !== 'admin' && !organizationId) {
       return res.status(400).json({ 
@@ -378,7 +408,7 @@ authConsoleRouter.post('/users', async (req: Request, res: Response) => {
     // Below Superuser & Admin: MUST be assigned to specified organizationId
     const targetOrgId = finalRole === 'superuser'
       ? null
-      : (organizationId || (finalRole === 'admin' ? null : (getActiveOrgId(req) || 'org-adapundi')));
+      : (targetOrganizationId || (finalRole === 'admin' ? null : (getActiveOrgId(req) || 'org-adapundi')));
 
     if (targetOrgId) {
       const memberId = `mem_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
@@ -411,6 +441,7 @@ authConsoleRouter.post('/users', async (req: Request, res: Response) => {
     }
 
     syncUsersToDataStoreAndSheet();
+    recordRbacAudit(req, actor, 'user.create', 'USER', userId, { role: finalRole, tenantId: targetOrgId });
     return res.json({
       success: true,
       user: {
@@ -557,6 +588,16 @@ authConsoleRouter.put('/users/:id/role', (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+    const actor = (req as any).actor as Actor | null;
+    if (!actor) return res.status(401).json(authzError('UNAUTHENTICATED'));
+    const currentMember = sqliteDb.prepare('SELECT organizationId FROM member WHERE userId = ?').get(id) as any;
+    const targetTeam = sqliteDb.prepare('SELECT t.id as departmentId, t.organizationId FROM team t JOIN teamMember tm ON tm.teamId = t.id WHERE tm.userId = ? LIMIT 1').get(id) as any;
+    const roleDecision = canChangeRole(actor, {
+      id,
+      tenantId: currentMember?.organizationId,
+      departmentId: targetTeam?.departmentId,
+    }, role);
+    if (!roleDecision.allowed) return res.status(403).json(authzError(roleDecision.error));
 
     if (name) {
       sqliteDb.prepare('UPDATE user SET name = ? WHERE id = ?').run(String(name).trim(), id);
@@ -620,6 +661,7 @@ authConsoleRouter.put('/users/:id/role', (req: Request, res: Response) => {
     }
 
     // Sync data_store.json allowedUsers if exists
+    recordRbacAudit(req, actor, 'user.role.assign', 'USER', id, { newRole: normRole });
     try {
       const dataStorePath = path.join(process.cwd(), 'data_store.json');
       if (fs.existsSync(dataStorePath)) {
