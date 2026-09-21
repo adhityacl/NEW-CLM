@@ -57,6 +57,7 @@ import {
 import { getCachedAccessToken } from '../lib/googleAuthService';
 import { SUPPORTED_CURRENCIES, formatMoney, getDefaultUsdRate, getHistoricalUsdRate, fetchHistoricalRate } from '../lib/currencyUtils';
 import { formatInvoiceFileName, formatBillingFileName } from '../lib/fileNaming';
+import { usePermissions } from '../lib/permissions';
 import {
   parseMonthStr,
   parseAllMonths,
@@ -85,6 +86,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
   userName,
   userRole,
 }) => {
+  const { hasPermission } = usePermissions();
   const { t, language } = useLanguage();
   const { user } = useAuth();
 
@@ -660,15 +662,17 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
         </div>
         
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          <button
-            onClick={handleExportCSV}
-            disabled={sortedSpendings.length === 0}
-            className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Ekspor CSV"
-          >
-            <Download className="w-4 h-4" />
-            <span>Ekspor CSV</span>
-          </button>
+          {hasPermission('export.csv') && (
+            <button
+              onClick={handleExportCSV}
+              disabled={sortedSpendings.length === 0}
+              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Ekspor CSV"
+            >
+              <Download className="w-4 h-4" />
+              <span>Ekspor CSV</span>
+            </button>
+          )}
 
           {user?.department && !isGlobalRole(user?.role) && (
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 text-xs font-semibold">

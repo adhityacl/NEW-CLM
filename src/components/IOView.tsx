@@ -37,6 +37,7 @@ import { getSavedColumnPreferences, saveColumnPreferences } from '../lib/tablePr
 import { Button } from './ui/button';
 import { ActionMenu } from './ui/action-menu';
 import { TablePagination } from './ui/TablePagination';
+import { usePermissions } from '../lib/permissions';
 
 interface IOViewProps {
   ios: InsertionOrder[];
@@ -56,6 +57,7 @@ export const IOView: React.FC<IOViewProps> = ({
   onDeleteIO,
 }) => {
   const { user, isLegal, isAdmin } = useAuth();
+  const { hasPermission } = usePermissions();
   const { t, language } = useLanguage();
 
   // Search & Filters State
@@ -338,15 +340,17 @@ export const IOView: React.FC<IOViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <button
-            onClick={handleExportCSV}
-            disabled={filteredIOs.length === 0}
-            className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-            title={t('io.export_csv', 'Ekspor CSV')}
-          >
-            <Download className="w-4 h-4" />
-            <span>{t('io.export_csv', 'Ekspor CSV')}</span>
-          </button>
+          {hasPermission('export.csv') && (
+            <button
+              onClick={handleExportCSV}
+              disabled={filteredIOs.length === 0}
+              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t('io.export_csv', 'Ekspor CSV')}
+            >
+              <Download className="w-4 h-4" />
+              <span>{t('io.export_csv', 'Ekspor CSV')}</span>
+            </button>
+          )}
 
           {user?.department && !isGlobalRole(user?.role) && (
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 text-xs font-semibold">

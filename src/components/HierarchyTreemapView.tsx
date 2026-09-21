@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePermissions } from '../lib/permissions';
 
 
 export const INITIAL_COLUMNS = [
@@ -155,6 +156,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const { isLegal } = useAuth();
+  const { hasPermission } = usePermissions();
 
   // State
   const [viewMode, setViewMode] = useState<'treemap' | 'audit'>('treemap');
@@ -1232,13 +1234,15 @@ const exportToCSV = () => {
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={exportToCSV}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-[#06C755] text-white font-bold flex items-center gap-1.5 hover:bg-[#048C3B] shadow-sm transition-colors"
-                >
-                  <FileDown className="w-3.5 h-3.5" />
-                  {t('hierarchy.export_csv', 'Ekspor CSV')}
-                </button>
+                {hasPermission('export.csv') && (
+                  <button
+                    onClick={exportToCSV}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-[#06C755] text-white font-bold flex items-center gap-1.5 hover:bg-[#048C3B] shadow-sm transition-colors"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    {t('hierarchy.export_csv', 'Ekspor CSV')}
+                  </button>
+                )}
               </div>
             </div>
             <div className="p-0 overflow-auto flex-1">
