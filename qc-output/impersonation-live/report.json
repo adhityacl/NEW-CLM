@@ -1,6 +1,6 @@
 {
   "base": "http://localhost:3000",
-  "generatedAt": "2026-09-20T22:57:08.031Z",
+  "generatedAt": "2026-09-20T23:09:26.032Z",
   "accountSource": "sqlite:auth.db",
   "levels": [
     "superuser",
@@ -88,24 +88,24 @@
   ],
   "tokens": {
     "superuser": {
-      "token": "0DKgG2xnKdv0jR29wvTvF4QWmfj1SPgh",
+      "token": "r6xfHZVZGMMH1I3Q6VAz6dD3z4J4FODF",
       "source": "superuser-session"
     },
     "admin": {
-      "token": null,
-      "source": "none"
+      "token": "imp_e6cb9d0cdb6f498b04dce44be5f75e89b83aa2a97dd7bf26",
+      "source": "impersonation"
     },
     "manager": {
-      "token": null,
-      "source": "none"
+      "token": "imp_7d6ecbc9d14197faf480453f9c62427515c37b03661f4ceb",
+      "source": "impersonation"
     },
     "editor": {
-      "token": null,
-      "source": "none"
+      "token": "imp_5a5c1a2ac82102a08b8a2ae2797df499b183c5af1fe9d9c1",
+      "source": "impersonation"
     },
     "viewer": {
-      "token": null,
-      "source": "none"
+      "token": "imp_fffc8b4979d937cb58556295e0f54d85df1f9aa1465094f6",
+      "source": "impersonation"
     }
   },
   "results": [
@@ -202,22 +202,22 @@
       "level": "editor",
       "method": "GET",
       "path": "/api/auth-console/users",
-      "status": 200,
-      "errorCode": null,
-      "allowed": true,
+      "status": 403,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "allowed": false,
       "expect": "DENY",
-      "pass": false
+      "pass": true
     },
     {
       "scenario": "users.list",
       "level": "viewer",
       "method": "GET",
       "path": "/api/auth-console/users",
-      "status": 200,
-      "errorCode": null,
-      "allowed": true,
+      "status": 403,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "allowed": false,
       "expect": "DENY",
-      "pass": false
+      "pass": true
     },
     {
       "scenario": "sessions.list",
@@ -235,30 +235,30 @@
       "level": "admin",
       "method": "GET",
       "path": "/api/auth-console/sessions",
-      "status": 401,
-      "errorCode": "UNAUTHENTICATED",
-      "allowed": false,
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
       "expect": "ALLOW",
-      "pass": false
+      "pass": true
     },
     {
       "scenario": "sessions.list",
       "level": "manager",
       "method": "GET",
       "path": "/api/auth-console/sessions",
-      "status": 401,
-      "errorCode": "UNAUTHENTICATED",
-      "allowed": false,
+      "status": 200,
+      "errorCode": null,
+      "allowed": true,
       "expect": "ALLOW",
-      "pass": false
+      "pass": true
     },
     {
       "scenario": "sessions.list",
       "level": "editor",
       "method": "GET",
       "path": "/api/auth-console/sessions",
-      "status": 401,
-      "errorCode": "UNAUTHENTICATED",
+      "status": 403,
+      "errorCode": "INSUFFICIENT_PERMISSION",
       "allowed": false,
       "expect": "DENY",
       "pass": true
@@ -268,8 +268,8 @@
       "level": "viewer",
       "method": "GET",
       "path": "/api/auth-console/sessions",
-      "status": 401,
-      "errorCode": "UNAUTHENTICATED",
+      "status": 403,
+      "errorCode": "INSUFFICIENT_PERMISSION",
       "allowed": false,
       "expect": "DENY",
       "pass": true
@@ -312,22 +312,22 @@
       "level": "editor",
       "method": "GET",
       "path": "/api/activity-logs",
-      "status": 200,
-      "errorCode": null,
-      "allowed": true,
+      "status": 403,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "allowed": false,
       "expect": "DENY",
-      "pass": false
+      "pass": true
     },
     {
       "scenario": "audit.logs",
       "level": "viewer",
       "method": "GET",
       "path": "/api/activity-logs",
-      "status": 200,
-      "errorCode": null,
-      "allowed": true,
+      "status": 403,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "allowed": false,
       "expect": "DENY",
-      "pass": false
+      "pass": true
     },
     {
       "scenario": "partners.list",
@@ -400,48 +400,48 @@
       "level": "admin",
       "method": "POST",
       "path": "/api/tenants/switch",
-      "status": 200,
-      "errorCode": null,
-      "allowed": true,
+      "status": 403,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "allowed": false,
       "expect": "DENY",
-      "pass": false
+      "pass": true
     },
     {
       "scenario": "tenant.switch",
       "level": "manager",
       "method": "POST",
       "path": "/api/tenants/switch",
-      "status": 200,
-      "errorCode": null,
-      "allowed": true,
+      "status": 403,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "allowed": false,
       "expect": "DENY",
-      "pass": false
+      "pass": true
     },
     {
       "scenario": "tenant.switch",
       "level": "editor",
       "method": "POST",
       "path": "/api/tenants/switch",
-      "status": 200,
-      "errorCode": null,
-      "allowed": true,
+      "status": 403,
+      "errorCode": "INSUFFICIENT_PERMISSION",
+      "allowed": false,
       "expect": "DENY",
-      "pass": false
+      "pass": true
     },
     {
       "scenario": "tenant.switch",
       "level": "viewer",
       "method": "POST",
       "path": "/api/tenants/switch",
-      "status": 200,
-      "errorCode": null,
-      "allowed": true,
+      "status": 403,
+      "errorCode": "Forbidden: Viewer role is view-only.",
+      "allowed": false,
       "expect": "DENY",
-      "pass": false
+      "pass": true
     }
   ],
   "notes": [
-    "Database berisi 3 user dan 3 sesi aktif.",
+    "Database berisi 5 user dan 29 sesi aktif.",
     "Organisasi aktif terdeteksi: org_1789542306289_b3a4f3."
   ]
 }
