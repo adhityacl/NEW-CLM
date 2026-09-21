@@ -50,6 +50,29 @@ async function safeJson<T = any>(res: Response): Promise<T | null> {
   }
 }
 
+const getTenantRequestHeaders = (): Record<string, string> => {
+  const token = typeof window !== 'undefined'
+    ? localStorage.getItem('auth_session_token')
+    : null;
+  const activeOrganizationId = typeof window !== 'undefined'
+    ? localStorage.getItem('activeOrganizationId')
+    : null;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+    headers['x-session-token'] = token;
+  }
+  if (activeOrganizationId) {
+    headers['x-organization-id'] = activeOrganizationId;
+    headers['x-tenant-id'] = activeOrganizationId;
+  }
+
+  return headers;
+};
+
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -63,8 +86,16 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const fetchTenantsAndBranding = useCallback(async () => {
     try {
       const [tenantsRes, brandingRes] = await Promise.all([
-        fetch('/api/tenants'),
-        fetch('/api/branding'),
+        fetch('/api/tenants', {
+          headers: getTenantRequestHeaders(),
+          credentials: 'include',
+          cache: 'no-store',
+        }),
+        fetch('/api/branding', {
+          headers: getTenantRequestHeaders(),
+          credentials: 'include',
+          cache: 'no-store',
+        }),
       ]);
 
       if (tenantsRes.ok) {
@@ -122,13 +153,15 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const res = await fetch('/api/tenants/switch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantRequestHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ tenantId }),
       });
       // Also try auth-console endpoint if needed
       fetch(`/api/auth-console/organizations/${tenantId}/set-active`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantRequestHeaders(),
+        credentials: 'include',
       }).catch(() => {});
       
       await fetchTenantsAndBranding();
@@ -144,7 +177,8 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const res = await fetch('/api/tenants', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantRequestHeaders(),
+        credentials: 'include',
         body: JSON.stringify(tenantData),
       });
       if (res.ok) {
@@ -164,7 +198,8 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const res = await fetch(`/api/tenants/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantRequestHeaders(),
+        credentials: 'include',
         body: JSON.stringify(updates),
       });
       if (res.ok) {
@@ -184,6 +219,8 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const res = await fetch(`/api/tenants/${id}`, {
         method: 'DELETE',
+        headers: getTenantRequestHeaders(),
+        credentials: 'include',
       });
       if (res.ok) {
         const data = await safeJson(res);
@@ -205,7 +242,8 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const res = await fetch('/api/branding', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantRequestHeaders(),
+        credentials: 'include',
         body: JSON.stringify(brandingData),
       });
       if (res.ok) {

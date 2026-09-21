@@ -37,12 +37,386 @@ __export(server_exports, {
 });
 module.exports = __toCommonJS(server_exports);
 var dotenv = __toESM(require("dotenv"), 1);
-var import_express2 = __toESM(require("express"), 1);
+var import_express3 = __toESM(require("express"), 1);
 var import_path4 = __toESM(require("path"), 1);
 var import_fs4 = __toESM(require("fs"), 1);
 var import_crypto4 = __toESM(require("crypto"), 1);
 var import_nodemailer2 = __toESM(require("nodemailer"), 1);
 var import_vite = require("vite");
+
+// server/rbacRoutes.ts
+var import_express = require("express");
+
+// server/rbac.ts
+var ROLE_LEVEL = {
+  superuser: 1,
+  admin: 2,
+  manager: 3,
+  editor: 4,
+  viewer: 5
+};
+var ROLES = [
+  { code: "superuser", name: "Superuser", level: 1, scope: "Global", description: "Global owner with access to all tenants" },
+  { code: "admin", name: "Admin", level: 2, scope: "Tenant", description: "Tenant administrator" },
+  { code: "manager", name: "Manager", level: 3, scope: "Tenant + Department", description: "Department-level supervisor" },
+  { code: "editor", name: "Editor", level: 4, scope: "Tenant + Department", description: "Operational user with write access" },
+  { code: "viewer", name: "Viewer", level: 5, scope: "Tenant + Department", description: "Read-only user" }
+];
+var LEGACY_ROLE_MAP = {
+  owner: "superuser",
+  "super admin": "superuser",
+  super_admin: "superuser",
+  legal: "manager",
+  finance: "editor",
+  staff: "viewer",
+  member: "viewer"
+};
+function normalizeRole(role) {
+  const r = (role ?? "").toString().toLowerCase().trim().replace(/[\s-]+/g, "_");
+  if (r in ROLE_LEVEL) return r;
+  const spaced = (role ?? "").toString().toLowerCase().trim();
+  if (spaced in LEGACY_ROLE_MAP) return LEGACY_ROLE_MAP[spaced];
+  if (r in LEGACY_ROLE_MAP) return LEGACY_ROLE_MAP[r];
+  return "viewer";
+}
+function def(code, description = "") {
+  const [resource, action] = code.split(".");
+  return { code, resource, action, description };
+}
+var PERMISSIONS = [
+  // User Management (PRD §10)
+  def("user.view"),
+  def("user.create"),
+  def("user.edit"),
+  def("user.delete"),
+  def("user.invite"),
+  def("user.role.assign"),
+  def("user.status.update"),
+  // Document Management
+  def("document.view"),
+  def("document.create"),
+  def("document.edit"),
+  def("document.delete"),
+  def("document.export"),
+  def("document.download"),
+  // Tenant Management
+  def("tenant.view"),
+  def("tenant.create"),
+  def("tenant.edit"),
+  def("tenant.delete"),
+  // Department Management
+  def("department.view"),
+  def("department.create"),
+  def("department.edit"),
+  def("department.delete"),
+  // Workspace
+  def("workspace.view"),
+  def("workspace.switch"),
+  // Export
+  def("export.csv"),
+  def("export.document"),
+  // Administration
+  def("admin.access"),
+  def("admin.user.manage"),
+  def("admin.role.manage"),
+  def("admin.tenant.manage"),
+  def("admin.department.manage"),
+  def("admin.configuration.manage"),
+  // Audit (PRD §27)
+  def("audit.view")
+];
+var PERMISSION_CODES = PERMISSIONS.map((p) => p.code);
+var EDITOR_CAN_DELETE_DOCUMENT = true;
+var ROLE_PERMISSIONS = {
+  superuser: "*",
+  admin: [
+    "user.view",
+    "user.create",
+    "user.edit",
+    "user.delete",
+    "user.invite",
+    "user.role.assign",
+    "user.status.update",
+    "document.view",
+    "document.create",
+    "document.edit",
+    "document.delete",
+    "document.export",
+    "document.download",
+    "department.view",
+    "department.create",
+    "department.edit",
+    "export.csv",
+    "export.document",
+    "admin.access",
+    "admin.user.manage",
+    "admin.department.manage",
+    "tenant.view"
+  ],
+  manager: [
+    "user.view",
+    "user.create",
+    "user.edit",
+    "user.invite",
+    "user.role.assign",
+    "user.status.update",
+    "document.view",
+    "document.create",
+    "document.edit",
+    "document.delete",
+    "document.export",
+    "document.download",
+    "department.view",
+    "export.csv",
+    "export.document",
+    "admin.access",
+    "admin.user.manage"
+  ],
+  editor: [
+    "document.view",
+    "document.create",
+    "document.edit",
+    ...EDITOR_CAN_DELETE_DOCUMENT ? ["document.delete"] : [],
+    "document.download"
+  ],
+  viewer: ["document.view"]
+};
+var ROLE_DENYLIST = {
+  superuser: [],
+  admin: ["workspace.switch", "tenant.create", "tenant.delete", "admin.configuration.manage"],
+  manager: [
+    "workspace.switch",
+    "tenant.create",
+    "tenant.delete",
+    "admin.role.manage",
+    "admin.department.manage",
+    "admin.configuration.manage",
+    "user.delete"
+  ],
+  editor: [
+    "user.invite",
+    "user.role.assign",
+    "user.delete",
+    "admin.access",
+    "export.csv",
+    "export.document",
+    "workspace.switch",
+    "audit.view"
+  ],
+  viewer: [
+    "document.create",
+    "document.edit",
+    "document.delete",
+    "document.export",
+    "document.download",
+    "user.invite",
+    "admin.access",
+    "export.csv",
+    "export.document",
+    "workspace.switch",
+    "audit.view"
+  ]
+};
+function permissionsFor(role) {
+  const base = ROLE_PERMISSIONS[role];
+  const deny = new Set(ROLE_DENYLIST[role]);
+  const list = base === "*" ? PERMISSION_CODES.slice() : base.slice();
+  return list.filter((p) => !deny.has(p));
+}
+function hasPermission(role, permission) {
+  const r = normalizeRole(typeof role === "string" ? role : role);
+  const deny = new Set(ROLE_DENYLIST[r]);
+  if (deny.has(permission)) return false;
+  const base = ROLE_PERMISSIONS[r];
+  if (base === "*") return true;
+  return base.includes(permission);
+}
+function maxScopeForActor(actor) {
+  const r = normalizeRole(actor.role);
+  if (r === "superuser") return "global";
+  if (r === "admin") return "tenant";
+  return actor.departmentId ? "department" : "tenant";
+}
+var SCOPE_WIDTH = { department: 0, tenant: 1, global: 2 };
+function checkScope(actor, resource, scope = "department") {
+  const role = normalizeRole(actor.role);
+  if (role === "superuser") return { allowed: true };
+  const max = maxScopeForActor(actor);
+  const eff = SCOPE_WIDTH[scope] <= SCOPE_WIDTH[max] ? scope : max;
+  if (resource.tenantId && resource.tenantId !== actor.tenantId) {
+    return { allowed: false, error: "TENANT_SCOPE_VIOLATION" };
+  }
+  if (role === "admin") {
+    if (eff === "global") return { allowed: false, error: "TENANT_SCOPE_VIOLATION" };
+    return { allowed: true };
+  }
+  if (eff !== "department") return { allowed: true };
+  if (resource.departmentId == null) {
+    return { allowed: false, error: "DEPARTMENT_SCOPE_VIOLATION" };
+  }
+  if (resource.departmentId !== actor.departmentId) {
+    return { allowed: false, error: "DEPARTMENT_SCOPE_VIOLATION" };
+  }
+  return { allowed: true };
+}
+function resolveTrustedScope(actor, clientSupplied) {
+  const role = normalizeRole(actor.role);
+  if (role === "superuser") {
+    return { tenantId: clientSupplied?.tenantId ?? null, departmentId: clientSupplied?.departmentId ?? null };
+  }
+  if (role === "admin") {
+    return { tenantId: actor.tenantId ?? null, departmentId: clientSupplied?.departmentId ?? null };
+  }
+  return { tenantId: actor.tenantId ?? null, departmentId: actor.departmentId ?? null };
+}
+function canInvite(actor, targetRole, target) {
+  const actorRole = normalizeRole(actor.role);
+  const tRole = normalizeRole(targetRole);
+  if (!hasPermission(actorRole, "user.invite")) {
+    return { allowed: false, error: "INSUFFICIENT_PERMISSION" };
+  }
+  if (ROLE_LEVEL[tRole] <= ROLE_LEVEL[actorRole]) {
+    return { allowed: false, error: "INVALID_ROLE_ASSIGNMENT" };
+  }
+  if (actorRole === "superuser") return { allowed: true };
+  if (target?.tenantId == null || target.tenantId !== actor.tenantId) {
+    return { allowed: false, error: "TENANT_SCOPE_VIOLATION" };
+  }
+  if (actorRole === "admin") return { allowed: true };
+  if (target?.departmentId == null || target.departmentId !== actor.departmentId) {
+    return { allowed: false, error: "DEPARTMENT_SCOPE_VIOLATION" };
+  }
+  return { allowed: true };
+}
+function canChangeRole(actor, targetUser, newRole) {
+  const actorRole = normalizeRole(actor.role);
+  const nRole = normalizeRole(newRole);
+  if (targetUser.id === actor.id) return { allowed: false, error: "SELF_ROLE_CHANGE_FORBIDDEN" };
+  if (actorRole === "superuser") return { allowed: true };
+  if (!hasPermission(actorRole, "user.role.assign")) {
+    return { allowed: false, error: "INSUFFICIENT_PERMISSION" };
+  }
+  if (ROLE_LEVEL[nRole] <= ROLE_LEVEL[actorRole]) {
+    return { allowed: false, error: "INVALID_ROLE_ASSIGNMENT" };
+  }
+  if (targetUser.tenantId == null || targetUser.tenantId !== actor.tenantId) {
+    return { allowed: false, error: "TENANT_SCOPE_VIOLATION" };
+  }
+  if (actorRole === "manager" && (targetUser.departmentId == null || targetUser.departmentId !== actor.departmentId)) {
+    return { allowed: false, error: "DEPARTMENT_SCOPE_VIOLATION" };
+  }
+  return { allowed: true };
+}
+var AUTHZ_ERRORS = {
+  UNAUTHENTICATED: { status: 401, error: "UNAUTHENTICATED", message: "Authentication is required." },
+  INSUFFICIENT_PERMISSION: { status: 403, error: "INSUFFICIENT_PERMISSION", message: "You do not have permission to perform this action." },
+  INVALID_ROLE_ASSIGNMENT: { status: 403, error: "INVALID_ROLE_ASSIGNMENT", message: "You cannot assign a role equal to or higher than your own." },
+  TENANT_SCOPE_VIOLATION: { status: 403, error: "TENANT_SCOPE_VIOLATION", message: "The resource is outside your assigned tenant." },
+  DEPARTMENT_SCOPE_VIOLATION: { status: 403, error: "DEPARTMENT_SCOPE_VIOLATION", message: "The resource is outside your assigned department." },
+  RESOURCE_SCOPE_VIOLATION: { status: 403, error: "RESOURCE_SCOPE_VIOLATION", message: "The resource is outside your permitted scope." },
+  RESOURCE_NOT_FOUND: { status: 404, error: "RESOURCE_NOT_FOUND", message: "Resource not found." },
+  SELF_ROLE_CHANGE_FORBIDDEN: { status: 403, error: "INVALID_ROLE_ASSIGNMENT", message: "You cannot change your own role." }
+};
+function authzError(code) {
+  return AUTHZ_ERRORS[code] ?? AUTHZ_ERRORS.INSUFFICIENT_PERMISSION;
+}
+function decide({ actor, permission, resource, scope = "department" }) {
+  if (!actor) return { allow: false, error: authzError("UNAUTHENTICATED") };
+  if (!hasPermission(actor.role, permission)) {
+    return { allow: false, error: authzError("INSUFFICIENT_PERMISSION") };
+  }
+  if (!resource) return { allow: true };
+  const scoped = checkScope(actor, resource, scope);
+  if (!scoped.allowed) return { allow: false, error: authzError(scoped.error) };
+  return { allow: true };
+}
+function buildMatrix() {
+  const matrix = {};
+  for (const r of ROLES) matrix[r.code] = permissionsFor(r.code);
+  return { roles: ROLES, permissions: PERMISSIONS, matrix };
+}
+
+// server/rbacRoutes.ts
+function createRbacRouter(opts) {
+  const router = (0, import_express.Router)();
+  const attach = async (req, _res, next) => {
+    try {
+      req.actor = await opts.resolveActor(req);
+    } catch {
+      req.actor = null;
+    }
+    next();
+  };
+  router.use(attach);
+  router.get("/matrix", (_req, res) => {
+    res.json({ ok: true, ...buildMatrix() });
+  });
+  router.get("/roles", (_req, res) => {
+    res.json({ ok: true, roles: buildMatrix().roles });
+  });
+  router.get("/me", (req, res) => {
+    const actor = req.actor;
+    if (!actor) return res.status(401).json(authzError("UNAUTHENTICATED"));
+    const { matrix } = buildMatrix();
+    const role = String(actor.role).toLowerCase();
+    res.json({
+      ok: true,
+      actor: { id: actor.id, role, tenantId: actor.tenantId ?? null, departmentId: actor.departmentId ?? null },
+      permissions: matrix[role] ?? []
+    });
+  });
+  router.post("/check", (req, res) => {
+    const actor = req.actor;
+    const { permission, resource, scope } = req.body ?? {};
+    if (typeof permission !== "string") {
+      return res.status(400).json({ error: "BAD_REQUEST", message: "permission wajib diisi." });
+    }
+    const decision = decide({
+      actor,
+      permission,
+      resource: resource ?? void 0,
+      scope: scope ?? "department"
+    });
+    if (decision.allow) return res.json({ ok: true, allow: true });
+    return res.status(decision.error.status).json({ ok: false, allow: false, ...decision.error });
+  });
+  router.post("/simulate/invite", (req, res) => {
+    const actor = req.actor;
+    if (!actor) return res.status(401).json(authzError("UNAUTHENTICATED"));
+    const { targetRole, tenantId, departmentId } = req.body ?? {};
+    const r = canInvite(actor, targetRole, { tenantId, departmentId });
+    if (r.allowed) return res.json({ ok: true, allowed: true });
+    return res.status(403).json({ ok: false, ...authzError(r.error) });
+  });
+  router.post("/simulate/role-change", (req, res) => {
+    const actor = req.actor;
+    if (!actor) return res.status(401).json(authzError("UNAUTHENTICATED"));
+    const { targetId, targetTenantId, targetDepartmentId, newRole } = req.body ?? {};
+    const r = canChangeRole(actor, {
+      id: String(targetId),
+      tenantId: targetTenantId,
+      departmentId: targetDepartmentId
+    }, newRole);
+    if (r.allowed) return res.json({ ok: true, allowed: true });
+    return res.status(403).json({ ok: false, ...authzError(r.error) });
+  });
+  return router;
+}
+function requirePermission(permission, scope = "department") {
+  return (req, res, next) => {
+    const actor = req.actor;
+    const requested = {
+      tenantId: req.params?.tenantId || (req.body?.tenantId ?? req.query?.tenantId),
+      departmentId: req.params?.departmentId || (req.body?.departmentId ?? req.query?.departmentId)
+    };
+    const resource = actor ? resolveTrustedScope(actor, requested) : requested;
+    const decision = decide({ actor, permission, resource, scope });
+    if (decision.allow) return next();
+    return res.status(decision.error.status).json(decision.error);
+  };
+}
+
+// server.ts
 var import_genai = require("@google/genai");
 var import_google_auth_library = require("google-auth-library");
 var import_node = require("better-auth/node");
@@ -265,6 +639,50 @@ try {
 } catch (err) {
 }
 try {
+  const accountColumns = sqliteDb.prepare("PRAGMA table_info(account)").all();
+  const issuerColumn = accountColumns.find((column) => column.name === "issuer");
+  if (issuerColumn?.notnull === 1) {
+    sqliteDb.transaction(() => {
+      sqliteDb.exec(`
+        ALTER TABLE account RENAME TO account_legacy_schema;
+        CREATE TABLE account (
+          id TEXT NOT NULL PRIMARY KEY,
+          accountId TEXT NOT NULL,
+          providerId TEXT NOT NULL,
+          userId TEXT NOT NULL REFERENCES "user" ("id") ON DELETE CASCADE,
+          accessToken TEXT,
+          refreshToken TEXT,
+          idToken TEXT,
+          accessTokenExpiresAt date,
+          refreshTokenExpiresAt date,
+          scope TEXT,
+          password TEXT,
+          createdAt date NOT NULL,
+          updatedAt date NOT NULL,
+          issuer TEXT
+        );
+        INSERT INTO account (
+          id, accountId, providerId, userId, accessToken, refreshToken, idToken,
+          accessTokenExpiresAt, refreshTokenExpiresAt, scope, password,
+          createdAt, updatedAt, issuer
+        )
+        SELECT
+          id, accountId, providerId, userId, accessToken, refreshToken, idToken,
+          accessTokenExpiresAt, refreshTokenExpiresAt, scope, password,
+          createdAt, updatedAt, issuer
+        FROM account_legacy_schema;
+        DROP TABLE account_legacy_schema;
+        CREATE INDEX account_userId_idx ON account (userId);
+        CREATE UNIQUE INDEX account_issuer_accountId_uidx
+          ON account (issuer, accountId);
+      `);
+    })();
+  }
+} catch (err) {
+  console.error("Could not migrate the Better Auth account schema:", err);
+  throw err;
+}
+try {
   const orgCount = sqliteDb.prepare("SELECT COUNT(*) as count FROM organization").get()?.count || 0;
   if (orgCount === 0) {
     const insertOrg = sqliteDb.prepare(`
@@ -439,13 +857,37 @@ var auth = (0, import_better_auth.betterAuth)({
 });
 
 // src/server/authConsoleRoutes.ts
-var import_express = require("express");
+var import_express2 = require("express");
 var import_crypto = require("better-auth/crypto");
 var import_crypto2 = __toESM(require("crypto"), 1);
 var import_fs2 = __toESM(require("fs"), 1);
 var import_path2 = __toESM(require("path"), 1);
 var import_nodemailer = __toESM(require("nodemailer"), 1);
-var authConsoleRouter = (0, import_express.Router)();
+var authConsoleRouter = (0, import_express2.Router)();
+var _adminAreaRoles = /* @__PURE__ */ new Set(["superuser", "admin", "manager"]);
+authConsoleRouter.use(["/sessions", "/organizations", "/teams", "/invitations", "/api-keys", "/rbac-matrix"], (req, res, next) => {
+  try {
+    const token = ((req.headers["authorization"] || "").toString().replace(/^Bearer\s+/i, "") || (req.headers["x-session-token"] || "").toString()).trim();
+    if (!token || !sqliteDb) {
+      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
+    }
+    const session = sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(token);
+    if (!session?.userId) {
+      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
+    }
+    const user = sqliteDb.prepare("SELECT role, banned FROM user WHERE id = ?").get(session.userId);
+    if (!user || user.banned === 1) {
+      return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "You do not have permission to access this area." });
+    }
+    const role = String(user.role || "").toLowerCase().trim();
+    if (!_adminAreaRoles.has(role)) {
+      return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "You do not have permission to access this area." });
+    }
+    next();
+  } catch {
+    return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
+  }
+});
 var globalDbRef = null;
 var saveDbFnRef = null;
 function setConsoleDbReference(dbStore, saveFn) {
@@ -5066,14 +5508,14 @@ ${cleanedText}`;
 var __defProp2 = Object.defineProperty;
 var __name = (target, value) => __defProp2(target, "name", { value, configurable: true });
 dotenv.config();
-var app = (0, import_express2.default)();
+var app = (0, import_express3.default)();
 var PORT = 3e3;
 var upload = (0, import_multer.default)({
   storage: import_multer.default.memoryStorage(),
   limits: { fileSize: 30 * 1024 * 1024 }
 });
-app.use(import_express2.default.json({ limit: "25mb" }));
-app.use(import_express2.default.urlencoded({ extended: true, limit: "25mb" }));
+app.use(import_express3.default.json({ limit: "25mb" }));
+app.use(import_express3.default.urlencoded({ extended: true, limit: "25mb" }));
 app.all(["/api/auth", "/api/auth/*"], (req, res, next) => {
   if (req.path.startsWith("/api/auth/google")) {
     return next();
@@ -5081,7 +5523,7 @@ app.all(["/api/auth", "/api/auth/*"], (req, res, next) => {
   return (0, import_node.toNodeHandler)(auth)(req, res);
 });
 var rbacAuthMiddleware = (req, res, next) => {
-  if (!req.path.startsWith("/api/") || req.path.startsWith("/api/auth") || req.path === "/api/health" || req.path === "/api/exchange-rates" || req.path === "/api/exchange-rate-historical" || req.path.endsWith("/parse") || req.path === "/api/chat" || req.path === "/api/partners/generate-dd-notes" || req.path.endsWith("/redline-analysis") || req.path === "/api/google/test-connection" || req.path === "/api/export-csv" || req.path === "/api/tenants/switch" || req.path.startsWith("/api/auth-console/organizations/") || req.path === "/api/templates" || req.path.startsWith("/api/templates/") || req.path === "/api/translate-template" || req.path === "/api/audit-logs") {
+  if (!req.path.startsWith("/api/") || req.path === "/api/auth" || req.path.startsWith("/api/auth/") || req.path === "/api/health" || req.path === "/api/exchange-rates" || req.path === "/api/exchange-rate-historical" || req.path.endsWith("/parse") || req.path === "/api/chat" || req.path === "/api/partners/generate-dd-notes" || req.path.endsWith("/redline-analysis") || req.path === "/api/google/test-connection" || req.path === "/api/export-csv" || req.path === "/api/templates" || req.path.startsWith("/api/templates/") || req.path === "/api/translate-template" || req.path === "/api/audit-logs") {
     return next();
   }
   let userEmail = (req.headers["x-user-email"] || req.headers["x-google-user-email"] || req.query?.userEmail || "").toString().toLowerCase().trim();
@@ -5143,6 +5585,20 @@ var rbacAuthMiddleware = (req, res, next) => {
       email: userEmail
     });
   }
+  {
+    let strictSessionOk = false;
+    if (authHeader && sqliteDb) {
+      try {
+        const t = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7).trim() : String(authHeader).trim();
+        strictSessionOk = !!sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(t);
+      } catch {
+        strictSessionOk = false;
+      }
+    }
+    if (!strictSessionOk) {
+      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
+    }
+  }
   const rawRole = (detectedRole || "").toString().toLowerCase().trim();
   let role = "Viewer";
   if (/admin|superuser|owner|super admin/i.test(rawRole)) {
@@ -5152,11 +5608,7 @@ var rbacAuthMiddleware = (req, res, next) => {
   } else if (/viewer|guest|readonly|read/i.test(rawRole)) {
     role = "Viewer";
   } else {
-    if (userEmail === "adhitcl@gmail.com") {
-      role = "Admin";
-    } else {
-      role = "Viewer";
-    }
+    role = "Viewer";
   }
   req.rbacRole = role;
   const method = req.method.toUpperCase();
@@ -5171,6 +5623,42 @@ var rbacAuthMiddleware = (req, res, next) => {
   next();
 };
 app.use(rbacAuthMiddleware);
+var resolveRbacActor = async (req) => {
+  try {
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (session?.user?.id) {
+      const u = sqliteDb.prepare("SELECT role FROM user WHERE id = ?").get(session.user.id);
+      const m = sqliteDb.prepare("SELECT organizationId, role FROM member WHERE userId = ? LIMIT 1").get(session.user.id);
+      const raw = m?.role === "owner" ? "superuser" : u?.role || m?.role || "viewer";
+      return { id: session.user.id, role: String(raw).toLowerCase(), tenantId: m?.organizationId ?? null, departmentId: null };
+    }
+  } catch {
+  }
+  try {
+    const authHeader = req.headers["authorization"] || req.headers["x-session-token"];
+    if (authHeader && sqliteDb) {
+      const token = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7).trim() : String(authHeader).trim();
+      const s = sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(token);
+      if (s?.userId) {
+        const u = sqliteDb.prepare("SELECT role FROM user WHERE id = ?").get(s.userId);
+        return { id: s.userId, role: String(u?.role || "viewer").toLowerCase(), tenantId: null, departmentId: null };
+      }
+    }
+  } catch {
+  }
+  return null;
+};
+var attachRbacActor = async (req, _res, next) => {
+  req.actor = await resolveRbacActor(req);
+  next();
+};
+app.use(attachRbacActor);
+app.use("/api/rbac", createRbacRouter({ resolveActor: (req) => req.actor ?? null }));
+app.use("/api/auth-console/users", requirePermission("admin.user.manage", "tenant"));
+app.use("/api/auth-console/sessions", requirePermission("admin.access", "tenant"));
+app.use("/api/activity-logs", requirePermission("admin.access", "tenant"));
+app.post("/api/tenants/switch", requirePermission("workspace.switch", "global"));
+app.use("/api/tenants/switch", requirePermission("workspace.switch", "global"));
 var requireTenantRole = (requiredRole) => {
   return async (req, res, next) => {
     try {
@@ -5400,7 +5888,7 @@ var uploadsDir = import_path4.default.join(process.cwd(), "uploads");
 if (!import_fs4.default.existsSync(uploadsDir)) {
   import_fs4.default.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use("/uploads", import_express2.default.static(uploadsDir));
+app.use("/uploads", import_express3.default.static(uploadsDir));
 function saveLocalFile(partnerName, category, safeFileName, base64Data, orgName) {
   try {
     const cleanOrg = (orgName || "PT Info Tekno Siaga").replace(/[/\\?%*:|"<>]/g, "_").trim();
@@ -6130,10 +6618,10 @@ function normalizePartnerDDDocs(docs) {
   const existingDocs = (docs || []).filter(
     (d) => !d.nama.toLowerCase().includes("invoice") && !d.nama.toLowerCase().includes("billing")
   );
-  return STANDARD_DD_DOCUMENTS.map((def) => {
-    const isNDA = def.nama.toLowerCase() === "nda";
+  return STANDARD_DD_DOCUMENTS.map((def2) => {
+    const isNDA = def2.nama.toLowerCase() === "nda";
     const matched = existingDocs.find(
-      (d) => d.nama.toLowerCase() === def.nama.toLowerCase() || def.nama === "COR" && d.nama.includes("COR") || def.nama === "DGT" && d.nama.includes("DGT") || def.nama === "NIB/SIUP" && (d.nama.includes("NIB") || d.nama.includes("SIUP")) || def.nama === "NPWP" && d.nama.includes("NPWP") || def.nama === "Akta Pendirian" && d.nama.includes("Akta")
+      (d) => d.nama.toLowerCase() === def2.nama.toLowerCase() || def2.nama === "COR" && d.nama.includes("COR") || def2.nama === "DGT" && d.nama.includes("DGT") || def2.nama === "NIB/SIUP" && (d.nama.includes("NIB") || d.nama.includes("SIUP")) || def2.nama === "NPWP" && d.nama.includes("NPWP") || def2.nama === "Akta Pendirian" && d.nama.includes("Akta")
     );
     if (matched) {
       let files = matched.files || [];
@@ -6149,9 +6637,9 @@ function normalizePartnerDDDocs(docs) {
           }
         ];
       }
-      return { ...matched, nama: def.nama, wajib: isNDA ? true : false, files };
+      return { ...matched, nama: def2.nama, wajib: isNDA ? true : false, files };
     }
-    return { ...def, wajib: isNDA ? true : false, files: [] };
+    return { ...def2, wajib: isNDA ? true : false, files: [] };
   });
 }
 if (import_fs4.default.existsSync(dataFilePath)) {
@@ -11827,7 +12315,7 @@ async function startServer() {
     app.use(viteServer.middlewares);
   } else {
     const distPath = import_path4.default.join(process.cwd(), "dist");
-    app.use(import_express2.default.static(distPath));
+    app.use(import_express3.default.static(distPath));
     app.get("*all", (req, res) => {
       res.sendFile(import_path4.default.join(distPath, "index.html"));
     });
