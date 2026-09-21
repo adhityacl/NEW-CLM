@@ -111,8 +111,12 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
   const filterYear = selectedYear;
 
   const [showFormModal, setShowFormModal] = useState(false);
+  const canCreateEvaluation = hasPermission('document.create');
+  const canEditEvaluation = hasPermission('document.edit');
+  const canDeleteEvaluation = hasPermission('document.delete');
 
   const handleInputNotReviewed = (item: PartnerEvaluation) => {
+    if (!canCreateEvaluation) return;
     const newItem = { ...item, id: '', created_at: '', updated_at: '' };
     setEditingItem(newItem);
     setFormData({
@@ -131,6 +135,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
   };
 
   const handleOpenEditModal = (item: PartnerEvaluation, mode?: any) => {
+    if (!canEditEvaluation) return;
     setEditingItem(item);
     setFormData({
       review_date: item.review_date || new Date().toISOString().split('T')[0],
@@ -459,6 +464,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
   };
 
   const handleDelete = async (id: string | undefined, name?: string) => {
+    if (!canDeleteEvaluation) return;
     if (!id || id.startsWith('NOT_REVIEWED')) return;
     if (window.confirm(t('evaluation.delete_confirm', 'Yakin ingin menghapus evaluasi ini?'))) {
       try {
@@ -498,6 +504,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
   };
 
   const handleAddNew = () => {
+    if (!canCreateEvaluation) return;
     setEditingItem({
       id: '',
       year: new Date().getFullYear(),
@@ -567,13 +574,15 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
             </button>
           )}
           
-          <button
-            onClick={handleAddNew}
-            className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
-          >
-            <Plus className="w-4 h-4 text-white" />
-            <span>{t('eval.add_btn', 'Tambah')}</span>
-          </button>
+          {canCreateEvaluation && (
+            <button
+              onClick={handleAddNew}
+              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
+            >
+              <Plus className="w-4 h-4 text-white" />
+              <span>{t('eval.add_btn', 'Tambah')}</span>
+            </button>
+          )}
         </div>
       </div>
       
@@ -855,14 +864,16 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                       <td className="pl-2 pr-6 py-4 text-right align-middle w-20">
                         <div className="flex items-center justify-end">
                           {isNotReviewed ? (
-                            <button
-                              onClick={() => handleInputNotReviewed(item)}
-                              className="px-3 py-1.5 bg-[#06C755] hover:bg-[#05B34C] text-white rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer shadow-xs whitespace-nowrap"
-                              title={`${t('eval.input_eval')} - ${item.supplier_name}`}
-                            >
-                              <Plus className="w-3.5 h-3.5 text-white" />
-                              <span>{t('eval.input_eval')}</span>
-                            </button>
+                            canCreateEvaluation && (
+                              <button
+                                onClick={() => handleInputNotReviewed(item)}
+                                className="px-3 py-1.5 bg-[#06C755] hover:bg-[#05B34C] text-white rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer shadow-xs whitespace-nowrap"
+                                title={`${t('eval.input_eval')} - ${item.supplier_name}`}
+                              >
+                                <Plus className="w-3.5 h-3.5 text-white" />
+                                <span>{t('eval.input_eval')}</span>
+                              </button>
+                            )
                           ) : (
                             <ActionMenu
                               items={[
@@ -871,19 +882,19 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                                   icon: <Award className="w-3.5 h-3.5" />,
                                   onClick: () => setViewingDetailItem(item),
                                 },
-                                {
+                                canEditEvaluation && {
                                   label: t('eval.action_edit', 'Edit'),
                                   icon: <Edit2 className="w-3.5 h-3.5" />,
                                   onClick: () => handleOpenEditModal(item),
                                 },
-                                {
+                                canDeleteEvaluation && {
                                   label: t('eval.action_delete', 'Hapus'),
                                   icon: <Trash2 className="w-3.5 h-3.5" />,
                                   onClick: () => handleDelete(item.id, item.supplier_name),
                                   variant: 'danger' as const,
                                   dividerBefore: true,
                                 },
-                              ]}
+                              ].filter(Boolean)}
                             />
                           )}
                         </div>
