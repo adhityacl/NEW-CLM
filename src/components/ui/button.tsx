@@ -16,13 +16,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "inline-flex items-center justify-center gap-1.5 font-semibold transition-all cursor-pointer shrink-0 active:translate-y-px",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40",
+          "inline-flex items-center justify-center gap-1.5 font-semibold transition-all duration-200 ease-out cursor-pointer shrink-0 active:translate-y-px active:duration-75",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] focus-visible:ring-[var(--ring)]/50",
           "disabled:pointer-events-none disabled:opacity-50",
           {
-            "bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95 shadow-xs": variant === "default",
-            "bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:brightness-95 shadow-xs": variant === "destructive",
-            "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--muted)] shadow-xs": variant === "outline",
+            "bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95 hover:-translate-y-px shadow-xs hover:shadow-md hover:shadow-[var(--primary)]/20": variant === "default",
+            "bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:brightness-95 hover:-translate-y-px shadow-xs": variant === "destructive",
+            "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--muted)] hover:border-[var(--ring)]/40 shadow-xs": variant === "outline",
             "bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:brightness-95": variant === "secondary",
             "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]": variant === "ghost",
             "text-[var(--primary)] underline-offset-4 hover:underline": variant === "link",

@@ -127,14 +127,14 @@ export const Header: React.FC<HeaderProps> = ({
   const unreadCount = unreadNotifications.length;
 
   return (
-    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 transition-colors z-20">
+    <header className="h-16 bg-[var(--sidebar)] border-b border-[var(--sidebar-border)] px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 transition-colors z-20">
       {/* Left Section: Mobile Menu Trigger + Section Breadcrumb */}
       <div className="flex items-center gap-3 min-w-0">
         {/* Mobile Hamburger Button with 44px touch target */}
         <button
           type="button"
           onClick={onOpenMobileMenu}
-          className="md:hidden min-w-[44px] min-h-[44px] rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+          className="md:hidden min-w-[44px] min-h-[44px] rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 focus-visible:outline-none"
           title="Buka Navigasi"
           aria-label="Buka Menu Navigasi"
         >
@@ -162,7 +162,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={toggleTheme}
-          className="min-w-[44px] min-h-[44px] rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+          className="min-w-[44px] min-h-[44px] rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 focus-visible:outline-none"
           title={theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
           aria-label={theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
         >
@@ -182,9 +182,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setLanguage('ID')}
-            className={`min-w-[44px] min-h-[44px] px-2.5 py-1.5 rounded-full transition-all cursor-pointer text-xs font-bold flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
+            className={`min-w-[44px] min-h-[44px] px-2.5 py-1.5 rounded-full transition-all cursor-pointer text-xs font-bold flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 focus-visible:outline-none ${
               language === 'ID'
-                ? 'bg-[#06C755] text-white shadow-2xs'
+                ? 'bg-[var(--primary)] text-white shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
             title="Bahasa Indonesia"
@@ -195,9 +195,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setLanguage('EN')}
-            className={`min-w-[44px] min-h-[44px] px-2.5 py-1.5 rounded-full transition-all cursor-pointer text-xs font-bold flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
+            className={`min-w-[44px] min-h-[44px] px-2.5 py-1.5 rounded-full transition-all cursor-pointer text-xs font-bold flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 focus-visible:outline-none ${
               language === 'EN'
-                ? 'bg-[#06C755] text-white shadow-2xs'
+                ? 'bg-[var(--primary)] text-white shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
             title="English"
@@ -214,7 +214,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setShowNotifDropdown((prev) => !prev)}
             aria-expanded={showNotifDropdown}
             aria-haspopup="dialog"
-            className="min-w-[44px] min-h-[44px] rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 relative transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+            className="min-w-[44px] min-h-[44px] rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 relative transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 focus-visible:outline-none"
             title="Notifikasi"
             aria-label={`Notifikasi: ${unreadCount} belum dibaca`}
           >
@@ -232,7 +232,7 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Header */}
               <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-[#06C755]" />
+                  <Bell className="w-4 h-4 text-[var(--primary)]" />
                   <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
                     {t('header.notice_notifications', 'Notifikasi')}
                   </span>
@@ -314,7 +314,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setShowUserDropdown((prev) => !prev)}
             aria-expanded={showUserDropdown}
             aria-haspopup="menu"
-            className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800 focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none cursor-pointer transition-colors hover:bg-emerald-200/70 dark:hover:bg-emerald-900"
+            className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800 focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 focus-visible:outline-none cursor-pointer transition-colors hover:bg-emerald-200/70 dark:hover:bg-emerald-900"
             title={user?.name || 'Profil Pengguna'}
             aria-label="Menu Pengguna"
           >

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { Contract, InsertionOrder, Partner, NotificationLog, PartnerSpending } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +40,11 @@ import {
   Cell,
   Legend,
 } from 'recharts';
+
+const statCardVariants = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
+};
 
 interface DashboardViewProps {
   contracts: Contract[];
@@ -369,11 +375,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in-50 duration-200">
+    <div className="space-y-4">
       {/* Top Banner Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 min-h-[84px]">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 min-h-[84px]"
+      >
         <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+          <h2 className="font-display text-xl sm:text-2xl font-medium text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <span>{getGreetingText()}</span>
           </h2>
         </div>
@@ -387,86 +398,99 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span>{t('dashboard.view_all_contracts', 'Lihat Semua Kontrak')}</span>
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* KPI Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={{ show: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } } }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      >
         {/* Stat 1: Partner Aktif */}
-        <div
+        <motion.div
+          variants={statCardVariants}
+          whileHover={{ y: -3 }}
           onClick={() => onNavigateTab('partners')}
-          className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer hover:border-[#06C755]/50 transition-all"
+          className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer hover:border-[var(--primary)]/50 hover:shadow-md transition-[border-color,box-shadow]"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               {t('dashboard.active_partners')}
             </span>
-            <div className="p-2.5 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 rounded-xl border border-[#06C755]/30 shrink-0">
-              <Building2 className="w-5 h-5 text-[#06C755]" />
+            <div className="p-2.5 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-xl border border-[var(--primary)]/30 shrink-0">
+              <Building2 className="w-5 h-5 text-[var(--primary)]" />
             </div>
           </div>
           <div>
-            <div className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <div className="font-display text-4xl font-medium text-slate-900 dark:text-white tracking-tight">
               {activePartnersCount}{' '}
-              <span className="text-xs font-semibold text-slate-400">/ {partners.length} Total</span>
+              <span className="font-sans text-xs font-semibold text-slate-400">/ {partners.length} Total</span>
             </div>
-            <p className="text-xs text-[#048C3B] dark:text-emerald-400 font-bold mt-1">
+            <p className="text-xs text-[var(--success)] font-bold mt-1">
               {t('dashboard.min_one_contract')}
             </p>
           </div>
-        </div>
+        </motion.div>
 
         {/* Stat 2: Kontrak Aktif */}
-        <div
+        <motion.div
+          variants={statCardVariants}
+          whileHover={{ y: -3 }}
           onClick={() => onNavigateTab('contracts')}
-          className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer hover:border-[#06C755]/50 transition-all"
+          className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer hover:border-[var(--primary)]/50 hover:shadow-md transition-[border-color,box-shadow]"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               {t('dashboard.active_contracts')}
             </span>
-            <div className="p-2.5 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 rounded-xl border border-[#06C755]/30 shrink-0">
-              <FileText className="w-5 h-5 text-[#06C755]" />
+            <div className="p-2.5 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-xl border border-[var(--primary)]/30 shrink-0">
+              <FileText className="w-5 h-5 text-[var(--primary)]" />
             </div>
           </div>
           <div>
-            <div className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <div className="font-display text-4xl font-medium text-slate-900 dark:text-white tracking-tight">
               {activeContracts.length}{' '}
-              <span className="text-xs font-semibold text-slate-400">/ {contracts.length} Total</span>
+              <span className="font-sans text-xs font-semibold text-slate-400">/ {contracts.length} Total</span>
             </div>
-            <p className="text-xs text-[#048C3B] dark:text-emerald-400 font-bold mt-1">
+            <p className="text-xs text-[var(--success)] font-bold mt-1">
               {t('dashboard.value')}: {formatRupiah(totalNilaiKontrak)}
             </p>
           </div>
-        </div>
+        </motion.div>
 
         {/* Stat 3: Insertion Orders */}
-        <div
+        <motion.div
+          variants={statCardVariants}
+          whileHover={{ y: -3 }}
           onClick={() => onNavigateTab('ios')}
-          className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer hover:border-[#06C755]/50 transition-all"
+          className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer hover:border-[var(--primary)]/50 hover:shadow-md transition-[border-color,box-shadow]"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               {t('dashboard.insertion_orders', 'Insertion Orders (IO)')}
             </span>
-            <div className="p-2.5 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 rounded-xl border border-[#06C755]/30 shrink-0">
-              <FileSpreadsheet className="w-5 h-5 text-[#06C755]" />
+            <div className="p-2.5 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-xl border border-[var(--primary)]/30 shrink-0">
+              <FileSpreadsheet className="w-5 h-5 text-[var(--primary)]" />
             </div>
           </div>
           <div>
-            <div className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <div className="font-display text-4xl font-medium text-slate-900 dark:text-white tracking-tight">
               {activeIOs.length}{' '}
-              <span className="text-xs font-semibold text-slate-400">/ {ios.length} Total</span>
+              <span className="font-sans text-xs font-semibold text-slate-400">/ {ios.length} Total</span>
             </div>
-            <p className="text-xs text-[#048C3B] dark:text-emerald-400 font-bold mt-1">
+            <p className="text-xs text-[var(--success)] font-bold mt-1">
               {language === 'EN' ? `From ${contracts.length} Contracts` : `Dari ${contracts.length} Kontrak`}
             </p>
           </div>
-        </div>
+        </motion.div>
 
         {/* Stat 4: Kontrak Tenggang / Extension & Termination (Expiring Contracts) */}
-        <div
+        <motion.div
+          variants={statCardVariants}
+          whileHover={{ y: -3 }}
           onClick={() => onNavigateTab('contracts')}
-          className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer hover:border-amber-400 transition-all"
+          className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer hover:border-[var(--seal)] hover:shadow-md transition-[border-color,box-shadow]"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
@@ -477,17 +501,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
           <div>
-            <div className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <div className="font-display text-4xl font-medium text-slate-900 dark:text-white tracking-tight">
               {expiringContracts.length}{' '}
-              <span className="text-xs font-semibold text-slate-400">{t('dashboard.need_notice')}</span>
+              <span className="font-sans text-xs font-semibold text-slate-400">{t('dashboard.need_notice')}</span>
             </div>
             <p className="text-xs text-amber-800 dark:text-amber-400 font-bold mt-1 flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span>Extension / Termination</span>
             </p>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Notice Period Tracker Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'motion/react';
+import { Scale, FileSignature, ShieldCheck } from 'lucide-react';
 import { SignInForm } from './components/SignInForm';
 import InteractiveGridBackground from './components/lightswind/interactive-grid-background';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -618,7 +620,7 @@ const MainApp: React.FC = () => {
   const unreadNotifsCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div className="flex h-screen w-full bg-[#F3F4F0] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden">
+    <div className="flex h-screen w-full bg-canvas text-[var(--foreground)] font-sans overflow-hidden">
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -639,7 +641,7 @@ const MainApp: React.FC = () => {
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
         />
 
-        <main className="flex-1 p-3.5 sm:p-5 md:p-7 overflow-y-auto bg-[#F3F4F0] dark:bg-[#0B0F19]">
+        <main className="flex-1 p-3.5 sm:p-5 md:p-7 overflow-y-auto bg-canvas">
           <section className="w-full space-y-6">
             {activeTab === 'dashboard' && (
             <DashboardView
@@ -1012,8 +1014,8 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F3F4F0] dark:bg-slate-950 text-slate-900 dark:text-white">
-        <p className="text-lg">Memuat...</p>
+      <div className="min-h-screen flex items-center justify-center bg-canvas text-[var(--foreground)]">
+        <p className="font-display text-lg">Memuat...</p>
       </div>
     );
   }
@@ -1028,24 +1030,68 @@ const AppContent = () => {
 
   if (!user) {
     return (
-      <InteractiveGridBackground
-        gridSize={40}
-        gridColor="#d1d5db"
-        darkGridColor="#1f2937"
-        effectColor="rgba(6, 199, 85, 0.45)"
-        darkEffectColor="rgba(6, 199, 85, 0.55)"
-        trailLength={5}
-        glow
-        glowRadius={28}
-        showFade
-        fadeIntensity={25}
-        className="min-h-screen w-full flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950"
-      >
-        <SignInForm
-          onOpenPrivacyPolicy={handleOpenPrivacy}
-          onOpenTermsOfService={handleOpenTerms}
-        />
-      </InteractiveGridBackground>
+      <div className="min-h-screen w-full flex bg-canvas">
+        {/* Editorial panel — brand moment, hidden below lg to keep mobile focused on the form */}
+        <div className="hidden lg:flex lg:w-[44%] xl:w-[40%] relative overflow-hidden border-r border-[var(--border)]">
+          <InteractiveGridBackground
+            gridSize={44}
+            gridColor="#ded4bd"
+            darkGridColor="#35301f"
+            effectColor="rgba(6, 199, 85, 0.45)"
+            darkEffectColor="rgba(31, 219, 110, 0.5)"
+            trailLength={5}
+            glow
+            glowRadius={28}
+            showFade
+            fadeIntensity={30}
+            className="absolute inset-0"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="relative z-10 flex flex-col justify-between w-full p-10 xl:p-14"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md shadow-[var(--primary)]/20">
+                <Scale className="h-5 w-5" />
+              </span>
+              <span className="font-display text-lg font-semibold tracking-tight">LMS</span>
+            </div>
+
+            <div className="max-w-sm">
+              <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--seal)] mb-4">
+                <ShieldCheck className="h-3.5 w-3.5" /> Legal Management System
+              </p>
+              <h1 className="font-display text-4xl xl:text-[2.75rem] leading-[1.08] font-medium tracking-tight text-[var(--foreground)]">
+                Setiap kontrak, tercatat rapi &amp; siap ditelusuri.
+              </h1>
+              <p className="mt-4 text-sm leading-relaxed text-[var(--muted-foreground)]">
+                Kontrak, Insertion Order, Due Diligence Mitra, dan riwayat perubahan —
+                dalam satu ruang kerja yang tenang.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+              <FileSignature className="h-3.5 w-3.5" />
+              <span>2026 ACL. All rights reserved.</span>
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+          >
+            <SignInForm
+              onOpenPrivacyPolicy={handleOpenPrivacy}
+              onOpenTermsOfService={handleOpenTerms}
+            />
+          </motion.div>
+        </div>
+      </div>
     );
   }
 

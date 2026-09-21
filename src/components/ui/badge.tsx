@@ -107,7 +107,7 @@ export function getStatusBadgeClass(status: string): string {
   }
 
   // Default / Neutral / Draft / Module / Update
-  return "bg-slate-500/10 dark:bg-slate-900/60 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200";
+  return "bg-[var(--muted)] border-[var(--border)] text-[var(--foreground)]";
 }
 
 function Badge({ className, variant = "default", size = "md", children, ...props }: BadgeProps) {
@@ -134,14 +134,14 @@ function Badge({ className, variant = "default", size = "md", children, ...props
     case "neutral":
     case "outline":
     default:
-      variantClass = "bg-slate-500/10 dark:bg-slate-900/60 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200";
+      variantClass = "bg-[var(--muted)] border-[var(--border)] text-[var(--foreground)]";
       break;
   }
 
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-full border font-normal transition-colors whitespace-nowrap gap-1.5 select-none",
+        "inline-flex items-center justify-center rounded-full border font-medium transition-colors whitespace-nowrap gap-1.5 select-none",
         size === "sm" ? "px-2.5 py-0.5 text-xs" : "px-3 py-0.5 text-xs",
         variantClass,
         className

@@ -1,9 +1,10 @@
 /* =====================================================================
  * shadcn design tokens — Silegal / LMS
  * ---------------------------------------------------------------------
- * Implements the shadcn / shadcn-svelte *token contract* (the design
- * standard requested) while preserving the product's brand accent.
- * Brand accent (LINE green #06C755) is mapped to --primary.
+ * "Legal paper & ink" — a warm, editorial reinterpretation of the shadcn
+ * token contract. The brand accent (LINE green #06C755) stays the single
+ * decisive accent; a muted gold "seal" accent is added for rare
+ * ceremonial highlights (the kind of mark a stamped document earns).
  *
  * Loaded globally from src/main.tsx (after index.css). Plain CSS custom
  * properties only, so consumers can use `var(--token)` directly or
@@ -19,107 +20,114 @@
  * ===================================================================== */
 
 :root {
-  --background: #f7f8fa;
-  --foreground: #111111;
+  --background: #f5f1e8;
+  --foreground: #201a11;
 
-  --card: #ffffff;
-  --card-foreground: #111111;
+  --card: #fffdf8;
+  --card-foreground: #201a11;
 
-  --popover: #ffffff;
-  --popover-foreground: #111111;
+  --popover: #fffdf8;
+  --popover-foreground: #201a11;
 
   /* Brand accent — LINE green */
   --primary: #06c755;
   --primary-foreground: #ffffff;
 
-  --secondary: #f1f5f9;
-  --secondary-foreground: #1e293b;
+  --secondary: #ece5d4;
+  --secondary-foreground: #2c2415;
 
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
+  --muted: #ece5d4;
+  --muted-foreground: #756b57;
 
-  --accent: #ebfbf0;
-  --accent-foreground: #037436;
+  --accent: #e5f6e9;
+  --accent-foreground: #036437;
 
-  --destructive: #e11d48;
-  --destructive-foreground: #ffffff;
+  /* Seal — a muted gold used sparingly for ceremonial highlights */
+  --seal: #a9720f;
+  --seal-foreground: #fffaf0;
 
-  --success: #0f9d58;
-  --warning: #d97706;
+  --destructive: #a3271f;
+  --destructive-foreground: #fff8f6;
 
-  --border: #e5e8eb;
-  --input: #cbd5e1;
+  --success: #0f7a3d;
+  --warning: #a9720f;
+
+  --border: #ded4bd;
+  --input: #cabf9f;
   --ring: #06c755;
 
   --chart-1: #06c755;
-  --chart-2: #0066ff;
-  --chart-3: #ffb800;
-  --chart-4: #8b5cf6;
-  --chart-5: #ff3b30;
+  --chart-2: #2563eb;
+  --chart-3: #a9720f;
+  --chart-4: #7c4dff;
+  --chart-5: #b3261e;
 
-  --sidebar: #ffffff;
-  --sidebar-foreground: #111111;
+  --sidebar: #fbf8f0;
+  --sidebar-foreground: #201a11;
   --sidebar-primary: #06c755;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ebfbf0;
-  --sidebar-accent-foreground: #037436;
-  --sidebar-border: #e5e8eb;
+  --sidebar-accent: #e5f6e9;
+  --sidebar-accent-foreground: #036437;
+  --sidebar-border: #ded4bd;
   --sidebar-ring: #06c755;
 
   /* Base radius + a non-colliding scale. */
-  --radius: 0.75rem;
+  --radius: 0.625rem;
   --shadcn-radius-sm: calc(var(--radius) - 4px);
   --shadcn-radius-md: calc(var(--radius) - 2px);
   --shadcn-radius-lg: var(--radius);
-  --shadcn-radius-xl: calc(var(--radius) + 4px);
+  --shadcn-radius-xl: calc(var(--radius) + 6px);
 }
 
 .dark {
-  --background: #0b0f19;
-  --foreground: #f9fafb;
+  --background: #16130e;
+  --foreground: #f1ece0;
 
-  --card: #111827;
-  --card-foreground: #f9fafb;
+  --card: #1f1b13;
+  --card-foreground: #f1ece0;
 
-  --popover: #111827;
-  --popover-foreground: #f9fafb;
+  --popover: #1f1b13;
+  --popover-foreground: #f1ece0;
 
-  --primary: #06c755;
-  --primary-foreground: #04210f;
+  --primary: #1fdb6e;
+  --primary-foreground: #052b14;
 
-  --secondary: #1f2937;
-  --secondary-foreground: #f9fafb;
+  --secondary: #2a2418;
+  --secondary-foreground: #f1ece0;
 
-  --muted: #1f2937;
-  --muted-foreground: #9ca3af;
+  --muted: #2a2418;
+  --muted-foreground: #a99d84;
 
-  --accent: #0d2e1b;
-  --accent-foreground: #34d399;
+  --accent: #17301f;
+  --accent-foreground: #5fe0a0;
 
-  --destructive: #f43f5e;
-  --destructive-foreground: #1c0a0f;
+  --seal: #d9a441;
+  --seal-foreground: #241804;
+
+  --destructive: #e5665a;
+  --destructive-foreground: #2a0906;
 
   --success: #34d399;
-  --warning: #fbbf24;
+  --warning: #d9a441;
 
-  --border: #1f2937;
-  --input: #374151;
-  --ring: #06c755;
+  --border: #35301f;
+  --input: #3d3722;
+  --ring: #1fdb6e;
 
-  --chart-1: #06c755;
-  --chart-2: #3b82f6;
-  --chart-3: #f59e0b;
+  --chart-1: #1fdb6e;
+  --chart-2: #5b8def;
+  --chart-3: #d9a441;
   --chart-4: #a78bfa;
-  --chart-5: #ef4444;
+  --chart-5: #f0685c;
 
-  --sidebar: #111827;
-  --sidebar-foreground: #f9fafb;
-  --sidebar-primary: #06c755;
-  --sidebar-primary-foreground: #04210f;
-  --sidebar-accent: #172033;
-  --sidebar-accent-foreground: #34d399;
-  --sidebar-border: #1f2937;
-  --sidebar-ring: #06c755;
+  --sidebar: #1b1710;
+  --sidebar-foreground: #f1ece0;
+  --sidebar-primary: #1fdb6e;
+  --sidebar-primary-foreground: #052b14;
+  --sidebar-accent: #17301f;
+  --sidebar-accent-foreground: #5fe0a0;
+  --sidebar-border: #35301f;
+  --sidebar-ring: #1fdb6e;
 }
 
 .shadcn-surface {
