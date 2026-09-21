@@ -837,6 +837,20 @@ function isMatchingOrg(entityOrgId, targetTenantId) {
     (defaultTenant && entityOrgId === defaultTenant.id);
   return Boolean(isDefaultTarget && isDefaultEntity);
 }
+function getRequestTenantId(req: express.Request): string {
+  const actor = (req as any).actor;
+  if (actor?.role !== "superuser" && actor?.tenantId) return actor.tenantId;
+  return String(
+    req.headers["x-organization-id"] ||
+    req.headers["x-tenant-id"] ||
+    req.query.tenantId ||
+    db.activeTenantId ||
+    "org-adapundi"
+  );
+}
+function canReadAllTenants(req: express.Request): boolean {
+  return (req as any).actor?.role === "superuser" && req.query.all === "true";
+}
 async function ensureAllPartnersFolders(token?: string, targetTenantId?: string) {
   let localFoldersCreated = 0;
   let driveFoldersCreated = 0;
@@ -2572,13 +2586,8 @@ app.get("/api/activity-logs", (req: express.Request, res: express.Response) => {
   res.json(db.activityLogs);
 });
 app.get("/api/partners", (req: express.Request, res: express.Response) => {
-  const activeTenantId =
-    req.headers["x-tenant-id"] ||
-    req.headers["x-organization-id"] ||
-    req.query.tenantId ||
-    db.activeTenantId ||
-    "org-adapundi";
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
   const partnerList = filterTenant
     ? (db.partners || []).filter((p) =>
         isMatchingOrg(p.organizationId, activeTenantId),
@@ -2992,13 +3001,8 @@ function computeEvaluationScore(obligationTarget, incidentFreq, comm, pricing) {
   return targetScore + incidentScore + commScore + pricingScore;
 }
 app.get("/api/partner-evaluations", (req: express.Request, res: express.Response) => {
-  const activeTenantId =
-    req.headers["x-tenant-id"] ||
-    req.headers["x-organization-id"] ||
-    req.query.tenantId ||
-    db.activeTenantId ||
-    "org-adapundi";
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
   const list = filterTenant
     ? (db.evaluations || []).filter((e) =>
         isMatchingOrg(e.organizationId, activeTenantId),
@@ -3221,13 +3225,8 @@ app.get("/api/exchange-rate-historical", async (req: express.Request, res: expre
   }
 });
 app.get("/api/partner-spendings", (req: express.Request, res: express.Response) => {
-  const activeTenantId =
-    req.headers["x-tenant-id"] ||
-    req.headers["x-organization-id"] ||
-    req.query.tenantId ||
-    db.activeTenantId ||
-    "org-adapundi";
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
   const spendingsList = filterTenant
     ? (db.spendings || []).filter((s) =>
         isMatchingOrg(s.organizationId, activeTenantId),
@@ -4137,14 +4136,8 @@ app.post("/api/contracts/export-google-docs", async (req: express.Request, res: 
 
 // Aggregation Endpoint for Fast Initial Data Load (replaces multi-endpoint polling)
 app.get("/api/init-data", (req: express.Request, res: express.Response) => {
-  const activeTenantId = (
-    req.headers["x-organization-id"] ||
-    req.headers["x-tenant-id"] ||
-    req.query.tenantId ||
-    db.activeTenantId ||
-    "org-adapundi"
-  ).toString();
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
 
   const contracts = filterTenant
     ? (db.contracts || []).filter((c: any) => isMatchingOrg(c.organizationId, activeTenantId))
@@ -4186,13 +4179,8 @@ app.get("/api/init-data", (req: express.Request, res: express.Response) => {
 });
 
 app.get("/api/contracts", (req: express.Request, res: express.Response) => {
-  const activeTenantId =
-    req.headers["x-tenant-id"] ||
-    req.headers["x-organization-id"] ||
-    req.query.tenantId ||
-    db.activeTenantId ||
-    "org-adapundi";
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
   const contractsList = filterTenant
     ? (db.contracts || []).filter((c) =>
         isMatchingOrg(c.organizationId, activeTenantId),
@@ -5184,13 +5172,8 @@ app.delete("/api/contracts/:id", async (req: express.Request, res: express.Respo
   res.json({ success: true });
 });
 app.get("/api/ios", (req: express.Request, res: express.Response) => {
-  const activeTenantId =
-    req.headers["x-tenant-id"] ||
-    req.headers["x-organization-id"] ||
-    req.query.tenantId ||
-    db.activeTenantId ||
-    "org-adapundi";
-  const filterTenant = req.query.all !== "true";
+  const activeTenantId = getRequestTenantId(req);
+  const filterTenant = !canReadAllTenants(req);
   const iosList = filterTenant
     ? (db.ios || []).filter((i) =>
         isMatchingOrg(i.organizationId, activeTenantId),
