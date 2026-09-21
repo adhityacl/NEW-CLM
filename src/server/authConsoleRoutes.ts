@@ -201,25 +201,32 @@ function getActiveOrgId(req: Request): string {
   } catch (err) {
     return 'org-adapundi';
   }
+}
 
-  function recordRbacAudit(req: Request, actor: Actor | null, action: string, targetType: any, targetId: string, metadata?: Record<string, unknown>) {
-    if (!actor || !globalDbRef) return;
-    const event = buildAuditEvent(actor, action, targetType, targetId, metadata);
-    if (!Array.isArray(globalDbRef.activityLogs)) globalDbRef.activityLogs = [];
-    globalDbRef.activityLogs.unshift({
-      id: `rbac-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
-      timestamp: event.timestamp,
-      userEmail: (req as any).user?.email || actor.id,
-      userName: (req as any).user?.name || actor.id,
-      role: actor.role,
-      actionType: event.action,
-      module: 'RBAC',
-      description: `${event.action} on ${event.targetType}:${event.targetId}`,
-      metadata: event.metadata,
-    });
-    globalDbRef.activityLogs = globalDbRef.activityLogs.slice(0, 500);
-    saveDbFnRef?.();
-  }
+function recordRbacAudit(
+  req: Request,
+  actor: Actor | null,
+  action: string,
+  targetType: any,
+  targetId: string,
+  metadata?: Record<string, unknown>,
+) {
+  if (!actor || !globalDbRef) return;
+  const event = buildAuditEvent(actor, action, targetType, targetId, metadata);
+  if (!Array.isArray(globalDbRef.activityLogs)) globalDbRef.activityLogs = [];
+  globalDbRef.activityLogs.unshift({
+    id: `rbac-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+    timestamp: event.timestamp,
+    userEmail: (req as any).user?.email || actor.id,
+    userName: (req as any).user?.name || actor.id,
+    role: actor.role,
+    actionType: event.action,
+    module: 'RBAC',
+    description: `${event.action} on ${event.targetType}:${event.targetId}`,
+    metadata: event.metadata,
+  });
+  globalDbRef.activityLogs = globalDbRef.activityLogs.slice(0, 500);
+  saveDbFnRef?.();
 }
 
 // 1. GET /overview - High-level metrics for Console Dashboard

@@ -1050,24 +1050,24 @@ function getActiveOrgId(req) {
   } catch (err) {
     return "org-adapundi";
   }
-  function recordRbacAudit2(req2, actor2, action, targetType, targetId, metadata) {
-    if (!actor2 || !globalDbRef) return;
-    const event = buildAuditEvent(actor2, action, targetType, targetId, metadata);
-    if (!Array.isArray(globalDbRef.activityLogs)) globalDbRef.activityLogs = [];
-    globalDbRef.activityLogs.unshift({
-      id: `rbac-${Date.now()}-${import_crypto2.default.randomBytes(3).toString("hex")}`,
-      timestamp: event.timestamp,
-      userEmail: req2.user?.email || actor2.id,
-      userName: req2.user?.name || actor2.id,
-      role: actor2.role,
-      actionType: event.action,
-      module: "RBAC",
-      description: `${event.action} on ${event.targetType}:${event.targetId}`,
-      metadata: event.metadata
-    });
-    globalDbRef.activityLogs = globalDbRef.activityLogs.slice(0, 500);
-    saveDbFnRef?.();
-  }
+}
+function recordRbacAudit(req, actor, action, targetType, targetId, metadata) {
+  if (!actor || !globalDbRef) return;
+  const event = buildAuditEvent(actor, action, targetType, targetId, metadata);
+  if (!Array.isArray(globalDbRef.activityLogs)) globalDbRef.activityLogs = [];
+  globalDbRef.activityLogs.unshift({
+    id: `rbac-${Date.now()}-${import_crypto2.default.randomBytes(3).toString("hex")}`,
+    timestamp: event.timestamp,
+    userEmail: req.user?.email || actor.id,
+    userName: req.user?.name || actor.id,
+    role: actor.role,
+    actionType: event.action,
+    module: "RBAC",
+    description: `${event.action} on ${event.targetType}:${event.targetId}`,
+    metadata: event.metadata
+  });
+  globalDbRef.activityLogs = globalDbRef.activityLogs.slice(0, 500);
+  saveDbFnRef?.();
 }
 authConsoleRouter.get("/overview", (req, res) => {
   try {
