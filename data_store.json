@@ -10,7 +10,7 @@
       "status": "Active",
       "addedBy": "System Core",
       "createdAt": "2026-01-01T08:00:00.000Z",
-      "lastLoginAt": "2026-09-20T22:55:00.769Z"
+      "lastLoginAt": "2026-09-21T00:38:50.291Z"
     }
   ],
   "partners": [
@@ -897,7 +897,7 @@
       "internal_notes": "Kerjasama mencakup banner placement & artikel sponsor.",
       "created_at": "2026-01-05T09:00:00.000Z",
       "updated_at": "2026-09-15T10:00:00.000Z",
-      "sisa_hari": 102
+      "sisa_hari": 101
     },
     {
       "contract_id": "CTR-002",
@@ -926,7 +926,7 @@
       "internal_notes": "Termasuk SLA ketersediaan 99.99% dan garansi recovery 2 jam.",
       "created_at": "2026-01-10T10:00:00.000Z",
       "updated_at": "2026-09-14T11:30:00.000Z",
-      "sisa_hari": 116
+      "sisa_hari": 115
     },
     {
       "contract_id": "CTR-003",
@@ -955,7 +955,7 @@
       "internal_notes": "Mendekati periode berakhir (H-30), perlu opsi adendum / negosiasi ulang.",
       "created_at": "2025-10-15T11:00:00.000Z",
       "updated_at": "2026-09-15T08:00:00.000Z",
-      "sisa_hari": 24
+      "sisa_hari": 23
     },
     {
       "contract_id": "CTR-004",
@@ -984,7 +984,7 @@
       "internal_notes": "Jadwal pen-test dilakukan 2x setahun (Q2 & Q4).",
       "created_at": "2026-02-01T12:00:00.000Z",
       "updated_at": "2026-09-12T16:00:00.000Z",
-      "sisa_hari": 133
+      "sisa_hari": 132
     },
     {
       "contract_id": "CTR-005",
@@ -1013,7 +1013,7 @@
       "internal_notes": "Termasuk paket video commercial & visual design asset.",
       "created_at": "2026-02-10T15:00:00.000Z",
       "updated_at": "2026-09-15T09:30:00.000Z",
-      "sisa_hari": 102
+      "sisa_hari": 101
     },
     {
       "contract_id": "CTR-006",
@@ -1043,7 +1043,7 @@
       "internal_notes": "Pembayaran dilakukan via transfer valas USD secara triwulanan.",
       "created_at": "2026-02-20T10:00:00.000Z",
       "updated_at": "2026-09-11T13:45:00.000Z",
-      "sisa_hari": 161
+      "sisa_hari": 160
     },
     {
       "contract_id": "CTR-007",
@@ -1072,7 +1072,7 @@
       "internal_notes": "Akan dilakukan koordinasi peningkatan kapasitas jaringan ke 1Gbps.",
       "created_at": "2025-11-01T11:00:00.000Z",
       "updated_at": "2026-09-10T11:00:00.000Z",
-      "sisa_hari": 41
+      "sisa_hari": 40
     },
     {
       "contract_id": "CTR-008",
@@ -1101,7 +1101,7 @@
       "internal_notes": "Mencakup alokasi 20 jam konsultasi hukum per bulan.",
       "created_at": "2026-03-15T12:00:00.000Z",
       "updated_at": "2026-09-14T17:10:00.000Z",
-      "sisa_hari": 192
+      "sisa_hari": 191
     },
     {
       "contract_id": "CTR-009",
@@ -1131,7 +1131,7 @@
       "internal_notes": "Hak distribusi eksklusif untuk wilayah Singapura & Malaysia.",
       "created_at": "2026-04-01T14:00:00.000Z",
       "updated_at": "2026-09-13T12:00:00.000Z",
-      "sisa_hari": 206
+      "sisa_hari": 205
     },
     {
       "contract_id": "CTR-010",
@@ -1162,7 +1162,7 @@
       "internal_notes": "Penambahan 4 unit node server GPU untuk pemrosesan AI.",
       "created_at": "2026-04-25T10:00:00.000Z",
       "updated_at": "2026-09-15T09:00:00.000Z",
-      "sisa_hari": 116
+      "sisa_hari": 115
     }
   ],
   "ios": [
@@ -1189,7 +1189,7 @@
       "internal_notes": "Laporan tayang diserahkan mingguan.",
       "created_at": "2026-01-12T09:00:00.000Z",
       "updated_at": "2026-09-15T10:00:00.000Z",
-      "sisa_hari": -173
+      "sisa_hari": -174
     },
     {
       "io_id": "IO-2026-002",
@@ -1214,7 +1214,7 @@
       "internal_notes": "Termin 1 (30%), Termin 2 (40%), Termin 3 (30%).",
       "created_at": "2026-01-18T10:00:00.000Z",
       "updated_at": "2026-09-14T11:30:00.000Z",
-      "sisa_hari": -153
+      "sisa_hari": -154
     },
     {
       "io_id": "IO-2026-003",
@@ -1239,7 +1239,7 @@
       "internal_notes": "Rekapitulasi resi dikirim tanggal 25 tiap bulan.",
       "created_at": "2026-01-28T11:00:00.000Z",
       "updated_at": "2026-09-10T15:20:00.000Z",
-      "sisa_hari": -143
+      "sisa_hari": -144
     },
     {
       "io_id": "IO-2026-004",
@@ -1264,7 +1264,7 @@
       "internal_notes": "Laporan draft diselesaikan 15 Maret 2026.",
       "created_at": "2026-02-10T14:00:00.000Z",
       "updated_at": "2026-09-12T16:00:00.000Z",
-      "sisa_hari": -173
+      "sisa_hari": -174
     },
     {
       "io_id": "IO-2026-005",
@@ -1289,7 +1289,7 @@
       "internal_notes": "Shooting dilakukan di Jakarta & Bali.",
       "created_at": "2026-02-25T15:00:00.000Z",
       "updated_at": "2026-09-15T09:30:00.000Z",
-      "sisa_hari": -112
+      "sisa_hari": -113
     },
     {
       "io_id": "IO-2026-006",
@@ -1314,7 +1314,7 @@
       "internal_notes": "Deposit saldo prepaid awal $12,000 USD.",
       "created_at": "2026-03-05T10:00:00.000Z",
       "updated_at": "2026-09-11T13:45:00.000Z",
-      "sisa_hari": -97
+      "sisa_hari": -98
     },
     {
       "io_id": "IO-2026-007",
@@ -1339,7 +1339,7 @@
       "internal_notes": "Mendekati akhir masa IO September 2026.",
       "created_at": "2026-03-25T11:00:00.000Z",
       "updated_at": "2026-09-10T11:00:00.000Z",
-      "sisa_hari": 10
+      "sisa_hari": 9
     },
     {
       "io_id": "IO-2026-008",
@@ -1364,7 +1364,7 @@
       "internal_notes": "Dokumen pendapat hukum diserahkan akhir Mei.",
       "created_at": "2026-04-05T12:00:00.000Z",
       "updated_at": "2026-09-14T17:10:00.000Z",
-      "sisa_hari": -102
+      "sisa_hari": -103
     },
     {
       "io_id": "IO-2026-009",
@@ -1389,7 +1389,7 @@
       "internal_notes": "Lisensi otomatis diaktifkan di portal admin.",
       "created_at": "2026-04-20T14:00:00.000Z",
       "updated_at": "2026-09-13T12:00:00.000Z",
-      "sisa_hari": 42
+      "sisa_hari": 41
     },
     {
       "io_id": "IO-2026-010",
@@ -1414,7 +1414,7 @@
       "internal_notes": "Pengujian failover otomatis disimulasikan setiap 2 bulan.",
       "created_at": "2026-05-10T10:00:00.000Z",
       "updated_at": "2026-09-15T09:00:00.000Z",
-      "sisa_hari": -36
+      "sisa_hari": -37
     }
   ],
   "notifications": [
@@ -2120,7 +2120,7 @@
     }
   ],
   "departments": [],
-  "activeTenantId": "org_1789542306289_b3a4f3",
+  "activeTenantId": "org_1789905619545_7137a1",
   "branding": {
     "appName": "LMS - Legal Management System",
     "logoUrl": "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=250&auto=format&fit=crop&q=80",
