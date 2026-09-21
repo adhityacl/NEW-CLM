@@ -13,8 +13,10 @@ import {
 } from 'lucide-react';
 import { ConsoleOrganization, ConsoleSubmenu } from './types';
 import { useLanguage } from '../../context/LanguageContext';
+import { usePermissions } from '../../lib/permissions';
 
 interface AdminConsoleHeaderProps {
+  area: 'system' | 'organization';
   activeTab: ConsoleSubmenu;
   onTabChange: (tab: ConsoleSubmenu) => void;
   organizations: ConsoleOrganization[];
@@ -35,6 +37,7 @@ interface AdminConsoleHeaderProps {
 }
 
 export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
+  area,
   activeTab,
   onTabChange,
   organizations,
@@ -47,6 +50,8 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
   userCounts,
 }) => {
   const { t } = useLanguage();
+  const { hasPermission } = usePermissions();
+  const isSystemArea = area === 'system';
 
   const navItems: Array<{
     id: ConsoleSubmenu;
@@ -65,25 +70,41 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
     { id: 'rbac', label: t('admin.tab_rbac', 'RBAC Matrix'), icon: Shield },
   ];
 
+  const visibleNavItems = navItems.filter((item) => {
+    if (!isSystemArea && ['sessions', 'organizations', 'apikeys', 'rbac'].includes(item.id)) return false;
+    if (!isSystemArea && item.id === 'dashboard') return false;
+    const requiredPermission: Record<ConsoleSubmenu, string> = {
+      dashboard: 'admin.access',
+      users: 'admin.user.manage',
+      accounts: 'admin.access',
+      sessions: 'admin.access',
+      organizations: 'admin.tenant.manage',
+      teams: 'admin.department.manage',
+      invitations: 'user.invite',
+      apikeys: 'admin.configuration.manage',
+      rbac: 'admin.access',
+    };
+    return hasPermission(requiredPermission[item.id]);
+  });
+
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
-      {/* Top Banner: Brand, Active Org Selector, and Instance status */}
-      <div className="px-4 sm:px-6 py-3 border-b border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
-        {/* Left: Better Auth Console Branding & Org Selector */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center text-white shadow-xs font-bold text-xs">
-            BA
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex min-h-14 items-center justify-between gap-4 border-b border-slate-200 px-4 dark:border-slate-800 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-xs dark:bg-emerald-500">
+            {isSystemArea ? <Shield className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-900 dark:text-slate-100 text-sm tracking-tight">
-                Console Admin
-              </span>
-            </div>
+          <div className="min-w-0">
+            <h1 className="truncate text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+              {isSystemArea ? 'System Admin' : 'Organization Admin'}
+            </h1>
+            <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+              {isSystemArea ? 'Global platform controls' : 'Active organization controls'}
+            </p>
           </div>
 
           {/* Org Selector Dropdown */}
-          {organizations.length > 0 && (
+          {isSystemArea && organizations.length > 0 && (
             <div className="hidden sm:flex items-center gap-1.5 ml-2 pl-3 border-l border-slate-200 dark:border-slate-700">
               <Building2 className="w-3.5 h-3.5 text-slate-400" />
               <select
@@ -105,20 +126,15 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
           )}
         </div>
 
-        {/* Right Actions: Instance pill, refresh */}
-        <div className="flex items-center gap-2">
-          {/* Instance Status Pill */}
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={onOpenInstanceModal}
-            title={t('admin.instance_config_btn', 'instances.config.ts')}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors text-slate-700 dark:text-slate-300 cursor-pointer"
+            title={t('admin.instance_config_btn', 'Konfigurasi sistem')}
+            className="hidden rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 sm:inline-flex"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-semibold text-slate-800 dark:text-slate-200">production</span>
+            Konfigurasi
           </button>
-
-          {/* Refresh Button */}
           <button
             type="button"
             onClick={onRefresh}
@@ -131,9 +147,8 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
         </div>
       </div>
 
-      {/* Navigation Submenu Tabs */}
-      <div className="px-4 sm:px-6 py-2 bg-slate-50/50 dark:bg-slate-900/50 flex items-center gap-1 overflow-x-auto no-scrollbar">
-        {navItems.map((item) => {
+      <div className="flex items-center gap-1 overflow-x-auto bg-slate-50/70 px-3 py-2 dark:bg-slate-950/30 sm:px-4">
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (

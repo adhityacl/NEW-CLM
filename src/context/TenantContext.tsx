@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Tenant, TenantBranding } from '../types';
 import { useAuth } from './AuthContext';
+import { authClient } from '../lib/auth-client';
 
 interface TenantContextType {
   tenants: Tenant[];
@@ -80,7 +81,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { user, loading: authLoading } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [activeTenantId, setActiveTenantId] = useState<string>(() => {
-    return localStorage.getItem('activeOrganizationId') || 'org_1789542306289_b3a4f3';
+    return localStorage.getItem('activeOrganizationId') || '';
   });
   const [branding, setBranding] = useState<TenantBranding>(DEFAULT_BRANDING);
   const [loading, setLoading] = useState<boolean>(true);
@@ -164,6 +165,9 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setActiveTenantId(tenantId);
     localStorage.setItem('activeOrganizationId', tenantId);
     try {
+      // Keep Better Auth's active organization in sync with the application
+      // workspace. The server still validates membership before using it.
+      await (authClient.organization as any).setActive({ organizationId: tenantId });
       const res = await fetch('/api/tenants/switch', {
         method: 'POST',
         headers: getTenantRequestHeaders(),

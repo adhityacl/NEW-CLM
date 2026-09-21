@@ -96,7 +96,7 @@ export const PERMISSIONS: PermissionDefinition[] = [
   // Export
   def('export.csv'), def('export.document'),
   // Administration
-  def('admin.access'), def('admin.user.manage'), def('admin.role.manage'),
+  def('admin.access'), def('admin.system.access'), def('admin.user.manage'), def('admin.role.manage'),
   def('admin.tenant.manage'), def('admin.department.manage'), def('admin.configuration.manage'),
   // Audit (PRD §27)
   def('audit.view'),

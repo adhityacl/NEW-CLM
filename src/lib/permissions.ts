@@ -58,36 +58,44 @@ export interface PermissionContextValue {
   permissions: string[];
   tenantId?: string | null;
   departmentId?: string | null;
+  loading: boolean;
 }
 
 export const PermissionContext = createContext<PermissionContextValue>({
-  role: 'viewer', permissions: BOOTSTRAP_ROLE_PERMISSIONS.viewer as string[],
+  role: 'viewer', permissions: BOOTSTRAP_ROLE_PERMISSIONS.viewer as string[], loading: true,
 });
 
 export function PermissionProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const [organizationRevision, setOrganizationRevision] = useState(0);
   const [value, setValue] = useState<PermissionContextValue>(() =>
-    permissionValueFromMe(null, user?.role),
+    ({ ...permissionValueFromMe(null, user?.role), loading: true }),
   );
 
   useEffect(() => {
     let cancelled = false;
-    const token = typeof window !== 'undefined'
-      ? localStorage.getItem('auth_session_token')
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_session_token') : null;
+    const activeOrganizationId = typeof window !== 'undefined'
+      ? localStorage.getItem('activeOrganizationId')
       : null;
     const headers: Record<string, string> = {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;
       headers['x-session-token'] = token;
     }
+    if (activeOrganizationId) {
+      headers['x-organization-id'] = activeOrganizationId;
+      headers['x-tenant-id'] = activeOrganizationId;
+    }
 
     if (!user || !token) {
-      setValue(permissionValueFromMe(null, user?.role));
+      setValue({ ...permissionValueFromMe(null, user?.role), loading: false });
       return () => {
         cancelled = true;
       };
     }
 
+    setValue((previous) => ({ ...previous, loading: true }));
     fetch('/api/rbac/me', {
       headers,
       credentials: 'include',
@@ -98,16 +106,22 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
         return response.json();
       })
       .then((me) => {
-        if (!cancelled) setValue(permissionValueFromMe(me, user.role));
+        if (!cancelled) setValue({ ...permissionValueFromMe(me, user.role), loading: false });
       })
       .catch(() => {
-        if (!cancelled) setValue(permissionValueFromMe(null, user.role));
+        if (!cancelled) setValue({ ...permissionValueFromMe(null, user.role), loading: false });
       });
+
+    const refreshForOrganization = () => {
+      if (!cancelled) setOrganizationRevision((revision) => revision + 1);
+    };
+    window.addEventListener('organization-updated', refreshForOrganization);
 
     return () => {
       cancelled = true;
+      window.removeEventListener('organization-updated', refreshForOrganization);
     };
-  }, [user]);
+  }, [user, organizationRevision]);
 
   return createElement(PermissionContext.Provider, { value }, children);
 }
@@ -126,6 +140,7 @@ export function permissionValueFromMe(me: {
     permissions,
     tenantId: me?.actor?.tenantId ?? null,
     departmentId: me?.actor?.departmentId ?? null,
+    loading: false,
   };
 }
 

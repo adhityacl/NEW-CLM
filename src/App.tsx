@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SignInForm } from './components/SignInForm';
 import InteractiveGridBackground from './components/lightswind/interactive-grid-background';
@@ -101,18 +101,45 @@ export const getAuthHeaders = () => {
 };
 
 const MainApp: React.FC = () => {
-  const { user, isAdmin } = useAuth();
-  const { hasPermission } = usePermissions();
+  const { user, logout } = useAuth();
+  const { hasPermission, role, tenantId, loading: permissionsLoading } = usePermissions();
   const { activeTenantId, activeTenant } = useTenant();
   const { activeTab, setActiveTab } = useNavigation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const superuserLandingApplied = useRef(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
     if (activeTab === 'create-contract' && !hasPermission('document.create')) {
       setActiveTab('dashboard');
     }
-  }, [activeTab, hasPermission, setActiveTab]);
+    if (role === 'superuser' && activeTab === 'dashboard' && !superuserLandingApplied.current) {
+      superuserLandingApplied.current = true;
+      setActiveTab('admin-system-dashboard');
+    }
+    if (activeTab.startsWith('admin-users')) {
+      setActiveTab(role === 'superuser' ? 'admin-system-dashboard' : 'admin-organization-dashboard');
+      return;
+    }
+    if (activeTab.startsWith('admin-system-') && role !== 'superuser') {
+      setActiveTab('admin-organization-dashboard');
+    }
+    if (activeTab.startsWith('admin-organization-') && !hasPermission('admin.access')) {
+      setActiveTab('dashboard');
+    }
+    if (activeTab === 'admin-organization-dashboard') {
+      setActiveTab('admin-organization-users');
+    }
+    if (activeTab === 'bulk-import' && !hasPermission('admin.department.manage')) {
+      setActiveTab('dashboard');
+    }
+    if (activeTab === 'activity-logs' && !hasPermission('audit.view')) {
+      setActiveTab('dashboard');
+    }
+    if (activeTab === 'settings' && !hasPermission('admin.access')) {
+      setActiveTab('dashboard');
+    }
+  }, [activeTab, hasPermission, role, setActiveTab]);
 
   // Data States
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -617,6 +644,26 @@ const MainApp: React.FC = () => {
   const expiringContractsCount = contracts.filter((c) => c.status === 'Akan Berakhir').length;
   const unreadNotifsCount = notifications.filter((n) => !n.is_read).length;
 
+  if (!permissionsLoading && role !== 'superuser' && !tenantId) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F3F4F0] p-6 text-slate-900 dark:bg-[#0B0F19] dark:text-slate-100">
+        <div className="max-w-md space-y-4 text-center">
+          <h1 className="text-xl font-semibold">Pilih organisasi aktif</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Sesi Better Auth Anda belum memiliki active organization yang tervalidasi.
+          </p>
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900"
+          >
+            Kembali ke login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-full bg-[#F3F4F0] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden">
       <Sidebar
@@ -790,17 +837,18 @@ const MainApp: React.FC = () => {
             />
           )}
 
-          {isAdmin && (activeTab === 'admin-users' || activeTab.startsWith('admin-users-')) && (
+          {(activeTab.startsWith('admin-system-') || activeTab.startsWith('admin-organization-')) && (
             <AdminUsersView
+              area={activeTab.startsWith('admin-system-') ? 'system' : 'organization'}
               initialTab={
                 activeTab === 'admin-users'
-                  ? 'dashboard'
-                  : (activeTab.replace('admin-users-', '') as ConsoleSubmenu)
+                  ? (role === 'superuser' ? 'dashboard' : 'users')
+                  : (activeTab.replace(/^admin-(system|organization)-/, '') as ConsoleSubmenu)
               }
             />
           )}
 
-          {activeTab === 'bulk-import' && isAdmin && (
+          {activeTab === 'bulk-import' && hasPermission('admin.department.manage') && (
             <BulkImportView
               partners={partners}
               contracts={contracts}
@@ -812,9 +860,9 @@ const MainApp: React.FC = () => {
             />
           )}
 
-          {activeTab === 'activity-logs' && isAdmin && <ActivityLogsView />}
+          {activeTab === 'activity-logs' && hasPermission('audit.view') && <ActivityLogsView />}
 
-          {(activeTab === 'settings' || activeTab.startsWith('settings-')) && (
+          {hasPermission('admin.access') && (activeTab === 'settings' || activeTab.startsWith('settings-')) && (
             <SettingsView
               config={googleConfig}
               onSaveConfig={handleSaveGoogleConfig}

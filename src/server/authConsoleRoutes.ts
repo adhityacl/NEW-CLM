@@ -8,11 +8,16 @@ import nodemailer from 'nodemailer';
 import { authzError, buildAuditEvent, canChangeRole, canInvite, type Actor } from '../../server/rbac';
 
 export const authConsoleRouter = Router();
+function getConsoleTenantScope(req: Request): string | null {
+  const actor = (req as any).actor as Actor | null;
+  if (!actor || actor.role === 'superuser') return null;
+  return actor.tenantId ?? null;
+}
 
 /* RBAC-ADMIN-AREA-GUARD-V1 */
 // Guard area admin: hanya peran admin ke atas (identitas dari token sesi, bukan header email).
 const _adminAreaRoles = new Set(["superuser", "admin", "manager"]);
-authConsoleRouter.use(["/sessions", "/organizations", "/teams", "/invitations", "/api-keys", "/rbac-matrix"], (req: Request, res: Response, next: any) => {
+authConsoleRouter.use(["/overview", "/accounts", "/sessions", "/organizations", "/teams", "/invitations", "/api-keys", "/rbac-matrix", "/sqlite"], (req: Request, res: Response, next: any) => {
   try {
     const token = ((req.headers["authorization"] || "").toString().replace(/^Bearer\s+/i, "")
       || (req.headers["x-session-token"] || "").toString()).trim();
@@ -30,6 +35,17 @@ authConsoleRouter.use(["/sessions", "/organizations", "/teams", "/invitations", 
     const role = String(user.role || "").toLowerCase().trim();
     if (!_adminAreaRoles.has(role)) {
       return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "You do not have permission to access this area." });
+    }
+    const actor = (req as any).actor as Actor | null;
+    const systemOnly = req.path.startsWith('/overview')
+      || req.path.startsWith('/accounts')
+      || req.path.startsWith('/sessions')
+      || (req.path.startsWith('/organizations') && req.method !== 'GET')
+      || req.path.startsWith('/api-keys')
+      || req.path.startsWith('/rbac-matrix')
+      || req.path.startsWith('/sqlite');
+    if (systemOnly && actor?.role !== 'superuser') {
+      return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "System Admin access is required." });
     }
     next();
   } catch {
@@ -323,6 +339,7 @@ authConsoleRouter.get('/overview', (req: Request, res: Response) => {
 // 2. GET /users - List all users with account info and status
 authConsoleRouter.get('/users', (req: Request, res: Response) => {
   try {
+    const tenantId = getConsoleTenantScope(req);
     const users = sqliteDb.prepare(`
       SELECT 
         u.id, 
@@ -342,8 +359,10 @@ authConsoleRouter.get('/users', (req: Request, res: Response) => {
         (SELECT m.organizationId FROM member m WHERE m.userId = u.id LIMIT 1) as organizationId,
         (SELECT o.name FROM organization o JOIN member m ON m.organizationId = o.id WHERE m.userId = u.id LIMIT 1) as organizationName
       FROM user u
+      LEFT JOIN member scopedMember ON scopedMember.userId = u.id
+      WHERE (? IS NULL OR scopedMember.organizationId = ?)
       ORDER BY u.createdAt DESC
-    `).all();
+    `).all(tenantId, tenantId);
 
     return res.json({
       success: true,
@@ -853,6 +872,7 @@ authConsoleRouter.post('/users/bulk-action', (req: Request, res: Response) => {
 // 3. GET /accounts - List all linked auth provider accounts
 authConsoleRouter.get('/accounts', (req: Request, res: Response) => {
   try {
+    const tenantId = getConsoleTenantScope(req);
     const accounts = sqliteDb.prepare(`
       SELECT 
         a.id, 
@@ -867,8 +887,10 @@ authConsoleRouter.get('/accounts', (req: Request, res: Response) => {
         u.role as userRole
       FROM account a
       LEFT JOIN user u ON a.userId = u.id
+      LEFT JOIN member scopedMember ON scopedMember.userId = a.userId
+      WHERE (? IS NULL OR scopedMember.organizationId = ?)
       ORDER BY a.createdAt DESC
-    `).all();
+    `).all(tenantId, tenantId);
 
     return res.json({
       success: true,
@@ -963,6 +985,7 @@ authConsoleRouter.post('/sessions/revoke-all/:userId', (req: Request, res: Respo
 // 5. GET /organizations - List all organizations
 authConsoleRouter.get('/organizations', (req: Request, res: Response) => {
   try {
+    const tenantId = getConsoleTenantScope(req);
     const orgs = sqliteDb.prepare(`
       SELECT 
         o.id, 
@@ -974,8 +997,9 @@ authConsoleRouter.get('/organizations', (req: Request, res: Response) => {
         (SELECT COUNT(*) FROM member WHERE organizationId = o.id) as memberCount,
         (SELECT COUNT(*) FROM team WHERE organizationId = o.id) as teamCount
       FROM organization o
+      WHERE (? IS NULL OR o.id = ?)
       ORDER BY o.createdAt ASC
-    `).all();
+    `).all(tenantId, tenantId);
 
     return res.json({
       success: true,
@@ -1466,8 +1490,9 @@ authConsoleRouter.get('/invitations', (req: Request, res: Response) => {
       LEFT JOIN organization o ON i.organizationId = o.id
       LEFT JOIN team t ON i.teamId = t.id
       LEFT JOIN user u ON i.inviterId = u.id
+      WHERE (? IS NULL OR i.organizationId = ?)
       ORDER BY i.createdAt DESC
-    `).all();
+    `).all(getConsoleTenantScope(req), getConsoleTenantScope(req));
 
     return res.json({ success: true, invitations });
   } catch (err: any) {

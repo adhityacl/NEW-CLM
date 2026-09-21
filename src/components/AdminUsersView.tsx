@@ -44,13 +44,15 @@ import { usePermissions } from '../lib/permissions';
 
 interface AdminUsersViewProps {
   initialTab?: ConsoleSubmenu;
+  area?: 'system' | 'organization';
 }
 
-export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'dashboard' }) => {
+export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'dashboard', area = 'organization' }) => {
   const { user: currentUser, refreshUser } = useAuth();
   const { t, language } = useLanguage();
   const { switchTenant } = useTenant();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, role } = usePermissions();
+  const isSystemArea = area === 'system';
 
   // Navigation tab state
   const [activeTab, setActiveTab] = useState<ConsoleSubmenu>(initialTab);
@@ -121,18 +123,28 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         apiKeysRes,
         matrixRes,
       ] = await Promise.all([
-        fetch('/api/auth-console/overview', { headers, credentials: 'include' }),
+        isSystemArea
+          ? fetch('/api/auth-console/overview', { headers, credentials: 'include' })
+          : Promise.resolve(null),
         fetch('/api/auth-console/users', { headers, credentials: 'include' }),
-        fetch('/api/auth-console/accounts', { headers, credentials: 'include' }),
-        fetch('/api/auth-console/sessions', { headers, credentials: 'include' }),
+        isSystemArea
+          ? fetch('/api/auth-console/accounts', { headers, credentials: 'include' })
+          : Promise.resolve(null),
+        isSystemArea
+          ? fetch('/api/auth-console/sessions', { headers, credentials: 'include' })
+          : Promise.resolve(null),
         fetch('/api/auth-console/organizations', { headers, credentials: 'include' }),
         fetch('/api/auth-console/teams', { headers, credentials: 'include' }),
         fetch('/api/auth-console/invitations', { headers, credentials: 'include' }),
-        fetch('/api/auth-console/api-keys', { headers, credentials: 'include' }),
-        fetch('/api/auth-console/rbac-matrix', { headers, credentials: 'include' }),
+        isSystemArea
+          ? fetch('/api/auth-console/api-keys', { headers, credentials: 'include' })
+          : Promise.resolve(null),
+        isSystemArea
+          ? fetch('/api/auth-console/rbac-matrix', { headers, credentials: 'include' })
+          : Promise.resolve(null),
       ]);
 
-      if (overviewRes.ok) {
+      if (overviewRes?.ok) {
         const data = await overviewRes.json();
         if (data.success && data.data) {
           setMetrics(data.data.metrics);
@@ -146,14 +158,14 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         }
       }
 
-      if (accountsRes.ok) {
+      if (accountsRes?.ok) {
         const data = await accountsRes.json();
         if (data.success && Array.isArray(data.accounts)) {
           setAccounts(data.accounts);
         }
       }
 
-      if (sessionsRes.ok) {
+      if (sessionsRes?.ok) {
         const data = await sessionsRes.json();
         if (data.success && Array.isArray(data.sessions)) {
           setSessions(data.sessions);
@@ -185,14 +197,14 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         }
       }
 
-      if (apiKeysRes.ok) {
+      if (apiKeysRes?.ok) {
         const data = await apiKeysRes.json();
         if (data.success && Array.isArray(data.apiKeys)) {
           setApiKeys(data.apiKeys);
         }
       }
 
-      if (matrixRes.ok) {
+      if (matrixRes?.ok) {
         const data = await matrixRes.json();
         if (data.success && data.matrix) {
           setMatrixData(data.matrix);
@@ -205,7 +217,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [activeOrg, t]);
+  }, [activeOrg, isSystemArea, t]);
 
   useEffect(() => {
     loadConsoleData();
@@ -763,6 +775,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
 
       {/* Admin Header with integrated Tabs and Org Switcher */}
       <AdminConsoleHeader
+        area={area}
         activeTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab)}
         organizations={organizations}
@@ -878,6 +891,11 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         teams={teams}
         organizations={organizations}
         activeOrgId={activeOrg?.id}
+        allowedRoles={isSystemArea
+          ? ['superuser', 'admin', 'manager', 'editor', 'viewer']
+          : role === 'manager'
+          ? ['editor', 'viewer']
+          : ['manager', 'editor', 'viewer']}
         onClose={() => setIsAddUserOpen(false)}
         onSubmit={handleAddUser}
       />

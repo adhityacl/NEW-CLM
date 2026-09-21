@@ -233,10 +233,60 @@ const resolveRbacActor = async (req: any) => {
   try {
     const session = await betterAuthInstance.api.getSession({ headers: req.headers as any });
     if (session?.user?.id) {
-      const u: any = sqliteDb.prepare("SELECT role FROM user WHERE id = ?").get(session.user.id);
-      const m: any = sqliteDb.prepare("SELECT organizationId, role FROM member WHERE userId = ? LIMIT 1").get(session.user.id);
-      const raw = (m?.role === "owner" ? "superuser" : (u?.role || m?.role || "viewer"));
-      return { id: session.user.id, role: String(raw).toLowerCase(), tenantId: m?.organizationId ?? null, departmentId: null };
+      const u: any = sqliteDb.prepare("SELECT role, banned FROM user WHERE id = ?").get(session.user.id);
+      if (u?.banned === 1) return null;
+
+      // Better Auth stores the active organization on the session. The client
+      // header is only a request for a switch and must still be membership-checked.
+      const sessionData = (session as any).session || {};
+      let requestedOrgId = String(
+        sessionData.activeOrganizationId ||
+        req.headers["x-organization-id"] ||
+        req.headers["x-tenant-id"] ||
+        "",
+      ).trim();
+      const globalRole = String(u?.role || "").toLowerCase().trim();
+      if (globalRole === "superuser") {
+        return { id: session.user.id, role: "superuser", tenantId: requestedOrgId || null, departmentId: null };
+      }
+
+      // Existing users may have sessions created before active organization
+      // support was enabled. Auto-select only when membership is unambiguous.
+      if (!requestedOrgId) {
+        const memberships: any[] = sqliteDb.prepare(
+          "SELECT organizationId FROM member WHERE userId = ? ORDER BY createdAt ASC",
+        ).all(session.user.id);
+        if (memberships.length === 1) {
+          requestedOrgId = memberships[0].organizationId;
+          const token = String(req.headers["x-session-token"] || req.headers.authorization || "").replace(/^Bearer\s+/i, "").trim();
+          if (token) {
+            sqliteDb.prepare("UPDATE session SET activeOrganizationId = ?, updatedAt = ? WHERE token = ?")
+              .run(requestedOrgId, new Date().toISOString(), token);
+          }
+        }
+      }
+      if (!requestedOrgId) return null;
+      const m: any = sqliteDb.prepare(
+        "SELECT organizationId, role FROM member WHERE userId = ? AND organizationId = ? LIMIT 1",
+      ).get(session.user.id, requestedOrgId);
+      if (!m) return null;
+
+      const tm: any = sqliteDb.prepare(`
+        SELECT t.id
+        FROM teamMember tm
+        JOIN team t ON t.id = tm.teamId
+        WHERE tm.userId = ? AND t.organizationId = ?
+        ORDER BY tm.createdAt ASC
+        LIMIT 1
+      `).get(session.user.id, requestedOrgId);
+      const memberRole = String(m.role || "").toLowerCase().trim();
+      const raw = memberRole === "owner" ? "admin" : (memberRole || globalRole || "viewer");
+      return {
+        id: session.user.id,
+        role: raw,
+        tenantId: requestedOrgId,
+        departmentId: tm?.id ?? null,
+      };
     }
   } catch { /* lanjut ke fallback */ }
   try {
@@ -245,21 +295,44 @@ const resolveRbacActor = async (req: any) => {
       const token = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7).trim() : String(authHeader).trim();
       const s: any = sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(token);
       if (s?.userId) {
-        const u: any = sqliteDb.prepare("SELECT role FROM user WHERE id = ?").get(s.userId);
-        const m: any = sqliteDb.prepare("SELECT organizationId, role FROM member WHERE userId = ? ORDER BY createdAt ASC LIMIT 1").get(s.userId);
+        const u: any = sqliteDb.prepare("SELECT role, banned FROM user WHERE id = ?").get(s.userId);
+        if (u?.banned === 1) return null;
+        let requestedOrgId = String(
+          req.headers["x-organization-id"] || req.headers["x-tenant-id"] || "",
+        ).trim();
+        const globalRole = String(u?.role || "").toLowerCase().trim();
+        if (globalRole === "superuser") {
+          return { id: s.userId, role: "superuser", tenantId: requestedOrgId || null, departmentId: null };
+        }
+        if (!requestedOrgId) {
+          const memberships: any[] = sqliteDb.prepare(
+            "SELECT organizationId FROM member WHERE userId = ? ORDER BY createdAt ASC",
+          ).all(s.userId);
+          if (memberships.length === 1) {
+            requestedOrgId = memberships[0].organizationId;
+            sqliteDb.prepare("UPDATE session SET activeOrganizationId = ?, updatedAt = ? WHERE token = ?")
+              .run(requestedOrgId, new Date().toISOString(), token);
+          }
+        }
+        if (!requestedOrgId) return null;
+        const m: any = sqliteDb.prepare(
+          "SELECT organizationId, role FROM member WHERE userId = ? AND organizationId = ? LIMIT 1",
+        ).get(s.userId, requestedOrgId);
+        if (!m) return null;
         const tm: any = sqliteDb.prepare(`
           SELECT t.id
           FROM teamMember tm
           JOIN team t ON t.id = tm.teamId
-          WHERE tm.userId = ?
+          WHERE tm.userId = ? AND t.organizationId = ?
           ORDER BY tm.createdAt ASC
           LIMIT 1
-        `).get(s.userId);
-        const rawRole = m?.role === "owner" ? "superuser" : (u?.role || m?.role || "viewer");
+        `).get(s.userId, requestedOrgId);
+        const memberRole = String(m.role || "").toLowerCase().trim();
+        const rawRole = memberRole === "owner" ? "admin" : (memberRole || globalRole || "viewer");
         return {
           id: s.userId,
           role: String(rawRole).toLowerCase(),
-          tenantId: m?.organizationId ?? null,
+          tenantId: requestedOrgId,
           departmentId: tm?.id ?? null,
         };
       }
