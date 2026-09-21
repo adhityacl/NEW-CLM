@@ -307,6 +307,19 @@ function canChangeRole(actor, targetUser, newRole) {
   }
   return { allowed: true };
 }
+function buildAuditEvent(actor, action, targetType, targetId, metadata, impersonatedBy) {
+  return {
+    actorId: actor.id,
+    action,
+    targetType,
+    targetId,
+    tenantId: actor.tenantId ?? null,
+    departmentId: actor.departmentId ?? null,
+    metadata: metadata ?? {},
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    impersonatedBy: impersonatedBy ?? null
+  };
+}
 var AUTHZ_ERRORS = {
   UNAUTHENTICATED: { status: 401, error: "UNAUTHENTICATED", message: "Authentication is required." },
   INSUFFICIENT_PERMISSION: { status: 403, error: "INSUFFICIENT_PERMISSION", message: "You do not have permission to perform this action." },
@@ -1026,13 +1039,31 @@ function syncUsersToDataStoreAndSheet() {
   }
 }
 function getActiveOrgId(req) {
-  const headerOrg = req.headers["x-organization-id"];
-  if (headerOrg) return headerOrg;
+  const actor = req.actor;
+  if (actor && actor.role !== "superuser") return actor.tenantId || "org-adapundi";
   try {
     const firstOrg = sqliteDb.prepare("SELECT id FROM organization ORDER BY createdAt ASC LIMIT 1").get();
     return firstOrg?.id || "org-adapundi";
   } catch (err) {
     return "org-adapundi";
+  }
+  function recordRbacAudit2(req2, actor2, action, targetType, targetId, metadata) {
+    if (!actor2 || !globalDbRef) return;
+    const event = buildAuditEvent(actor2, action, targetType, targetId, metadata);
+    if (!Array.isArray(globalDbRef.activityLogs)) globalDbRef.activityLogs = [];
+    globalDbRef.activityLogs.unshift({
+      id: `rbac-${Date.now()}-${import_crypto2.default.randomBytes(3).toString("hex")}`,
+      timestamp: event.timestamp,
+      userEmail: req2.user?.email || actor2.id,
+      userName: req2.user?.name || actor2.id,
+      role: actor2.role,
+      actionType: event.action,
+      module: "RBAC",
+      description: `${event.action} on ${event.targetType}:${event.targetId}`,
+      metadata: event.metadata
+    });
+    globalDbRef.activityLogs = globalDbRef.activityLogs.slice(0, 500);
+    saveDbFnRef?.();
   }
 }
 authConsoleRouter.get("/overview", (req, res) => {
@@ -1154,6 +1185,16 @@ authConsoleRouter.post("/users", async (req, res) => {
       return res.status(400).json({ error: "Name and email are required" });
     }
     const normRole = String(role).toLowerCase();
+    const actor = req.actor;
+    if (!actor) return res.status(401).json(authzError("UNAUTHENTICATED"));
+    const targetOrganizationId = actor.role === "superuser" ? organizationId : actor.tenantId;
+    const inviteDecision = canInvite(actor, normRole, {
+      tenantId: targetOrganizationId,
+      departmentId: actor.role === "manager" ? actor.departmentId : void 0
+    });
+    if (!inviteDecision.allowed) {
+      return res.status(403).json(authzError(inviteDecision.error));
+    }
     if (normRole !== "superuser" && normRole !== "admin" && !organizationId) {
       return res.status(400).json({
         error: "Organisasi/Tenant wajib dipilih untuk peran di bawah Superuser dan Admin."
@@ -1178,7 +1219,7 @@ authConsoleRouter.post("/users", async (req, res) => {
         VALUES (?, ?, 'credential', ?, ?, ?, ?, ?)
       `).run(accountId, userId, userId, hashed, now, now, "local:credential");
     }
-    const targetOrgId = finalRole === "superuser" ? null : organizationId || (finalRole === "admin" ? null : getActiveOrgId(req) || "org-adapundi");
+    const targetOrgId = finalRole === "superuser" ? null : targetOrganizationId || (finalRole === "admin" ? null : getActiveOrgId(req) || "org-adapundi");
     if (targetOrgId) {
       const memberId = `mem_${Date.now()}_${import_crypto2.default.randomBytes(4).toString("hex")}`;
       sqliteDb.prepare(`
@@ -1207,6 +1248,7 @@ authConsoleRouter.post("/users", async (req, res) => {
       `).run(`tm_${Date.now()}_${import_crypto2.default.randomBytes(3).toString("hex")}`, teamRow.id, userId, now);
     }
     syncUsersToDataStoreAndSheet();
+    recordRbacAudit(req, actor, "user.create", "USER", userId, { role: finalRole, tenantId: targetOrgId });
     return res.json({
       success: true,
       user: {
@@ -1329,6 +1371,16 @@ authConsoleRouter.put("/users/:id/role", (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+    const actor = req.actor;
+    if (!actor) return res.status(401).json(authzError("UNAUTHENTICATED"));
+    const currentMember = sqliteDb.prepare("SELECT organizationId FROM member WHERE userId = ?").get(id);
+    const targetTeam = sqliteDb.prepare("SELECT t.id as departmentId, t.organizationId FROM team t JOIN teamMember tm ON tm.teamId = t.id WHERE tm.userId = ? LIMIT 1").get(id);
+    const roleDecision = canChangeRole(actor, {
+      id,
+      tenantId: currentMember?.organizationId,
+      departmentId: targetTeam?.departmentId
+    }, role);
+    if (!roleDecision.allowed) return res.status(403).json(authzError(roleDecision.error));
     if (name) {
       sqliteDb.prepare("UPDATE user SET name = ? WHERE id = ?").run(String(name).trim(), id);
     }
@@ -1383,6 +1435,7 @@ authConsoleRouter.put("/users/:id/role", (req, res) => {
         `).run(`tm_${Date.now()}_${import_crypto2.default.randomBytes(3).toString("hex")}`, teamRow.id, id, (/* @__PURE__ */ new Date()).toISOString());
       }
     }
+    recordRbacAudit(req, actor, "user.role.assign", "USER", id, { newRole: normRole });
     try {
       const dataStorePath = import_path2.default.join(process.cwd(), "data_store.json");
       if (import_fs2.default.existsSync(dataStorePath)) {
