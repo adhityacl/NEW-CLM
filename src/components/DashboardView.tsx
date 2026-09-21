@@ -7,7 +7,6 @@ import {
   canViewContract,
   canViewIO,
   canViewSpending,
-  isGlobalRole,
 } from '../lib/rbacScoping';
 import { getSavedCategories } from '../lib/categoryUtils';
 import { ActionMenu } from './ui/action-menu';
@@ -377,17 +376,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <span>{getGreetingText()}</span>
           </h2>
-          {user?.department && !isGlobalRole(user?.role) && (
-            <div className="flex items-center gap-2 mt-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                Cakupan Data: Dept {user.department}
-              </span>
-              <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
-                Peran: <strong className="text-slate-700 dark:text-slate-300 uppercase">{user.role}</strong>
-              </span>
-            </div>
-          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">

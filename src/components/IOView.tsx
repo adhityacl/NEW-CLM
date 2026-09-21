@@ -29,7 +29,6 @@ import {
   canEditIO,
   canCreateIO,
   canDeletePartner,
-  isGlobalRole,
 } from '../lib/rbacScoping';
 import { cn } from '../lib/utils';
 import { getStatusBadgeClass } from './ui/badge';
@@ -350,13 +349,6 @@ export const IOView: React.FC<IOViewProps> = ({
               <Download className="w-4 h-4" />
               <span>{t('io.export_csv', 'Ekspor CSV')}</span>
             </button>
-          )}
-
-          {user?.department && !isGlobalRole(user?.role) && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-              <span>Dept: {user.department}</span>
-            </div>
           )}
 
           {canCreateIO(user) && (
