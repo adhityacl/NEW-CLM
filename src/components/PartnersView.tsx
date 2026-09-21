@@ -43,6 +43,7 @@ import { getStatusBadgeClass } from './ui/badge';
 import { getSavedColumnPreferences, saveColumnPreferences } from '../lib/tablePreferences';
 import { UploadDDModal } from './UploadDDModal';
 import { getAuthHeaders } from '../App';
+import { usePermissions } from '../lib/permissions';
 
 export function getValidPartnerTags(tags?: string[]): string[] {
   if (!tags || !Array.isArray(tags)) return ['Advertising'];
@@ -73,6 +74,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
   onDeletePartner,
   onUploadDDDoc,
 }) => {
+  const { hasPermission } = usePermissions();
   const { isLegal, user } = useAuth();
   const { t } = useLanguage();
   const { departments: ENTERPRISE_DEPARTMENTS } = useDepartments();
@@ -386,15 +388,17 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              <button
-                onClick={handleExportCSV}
-                disabled={filteredPartners.length === 0}
-                className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Ekspor CSV"
-              >
-                <Download className="w-4 h-4" />
-                <span>Ekspor CSV</span>
-              </button>
+              {hasPermission('export.csv') && (
+                <button
+                  onClick={handleExportCSV}
+                  disabled={filteredPartners.length === 0}
+                  className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Ekspor CSV"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Ekspor CSV</span>
+                </button>
+              )}
 
               {canCreatePartner(user) && (
                 <button
@@ -877,4 +881,3 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
     </div>
   );
 };
-

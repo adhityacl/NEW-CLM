@@ -26,6 +26,7 @@ import { getStatusBadgeClass } from './ui/badge';
 import { getSavedColumnPreferences, saveColumnPreferences } from '../lib/tablePreferences';
 import { getCachedAccessToken } from '../lib/googleAuthService';
 import { useLanguage } from '../context/LanguageContext';
+import { usePermissions } from '../lib/permissions';
 
 interface PartnerEvaluationViewProps {
   partners: Partner[];
@@ -75,6 +76,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
   userName,
   userRole,
 }) => {
+  const { hasPermission } = usePermissions();
   const { t } = useLanguage();
   
   const DEFAULT_EVAL_COLUMNS = {
@@ -554,14 +556,16 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
         </div>
         
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          <button
-            onClick={handleExportCSV}
-            className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0"
-            title={t('eval.export_csv', 'Ekspor CSV')}
-          >
-            <Download className="w-4 h-4" />
-            <span>{t('eval.export_csv', 'Ekspor CSV')}</span>
-          </button>
+          {hasPermission('export.csv') && (
+            <button
+              onClick={handleExportCSV}
+              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0"
+              title={t('eval.export_csv', 'Ekspor CSV')}
+            >
+              <Download className="w-4 h-4" />
+              <span>{t('eval.export_csv', 'Ekspor CSV')}</span>
+            </button>
+          )}
           
           <button
             onClick={handleAddNew}
