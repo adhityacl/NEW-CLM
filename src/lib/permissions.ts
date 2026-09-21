@@ -43,13 +43,14 @@ export const BOOTSTRAP_ROLE_PERMISSIONS: Record<RoleCode, '*' | string[]> = {
     'user.status.update', 'document.view', 'document.create', 'document.edit', 'document.delete',
     'document.export', 'document.download', 'department.view', 'department.create', 'department.edit',
     'export.csv', 'export.document', 'admin.access', 'admin.user.manage', 'admin.department.manage',
-    'tenant.view'],
+    'tenant.view', 'workspace.view'],
   manager: ['user.view', 'user.create', 'user.edit', 'user.invite', 'user.role.assign', 'user.status.update',
     'document.view', 'document.create', 'document.edit', 'document.delete', 'document.export',
+    'workspace.view',
     'document.download', 'department.view', 'export.csv', 'export.document', 'admin.access', 'admin.user.manage'],
-  editor: ['document.view', 'document.create', 'document.edit',
+  editor: ['document.view', 'document.create', 'document.edit', 'workspace.view',
     ...(EDITOR_CAN_DELETE_DOCUMENT ? ['document.delete'] : []), 'document.download'],
-  viewer: ['document.view'],
+  viewer: ['document.view', 'workspace.view'],
 };
 
 export interface PermissionContextValue {
