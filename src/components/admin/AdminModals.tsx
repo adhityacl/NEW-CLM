@@ -41,6 +41,7 @@ interface AddUserModalProps {
   teams?: ConsoleTeam[];
   organizations?: ConsoleOrganization[];
   activeOrgId?: string;
+  allowedRoles?: string[];
   onClose: () => void;
   onSubmit: (data: {
     name: string;
@@ -57,6 +58,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
   teams,
   organizations = [],
   activeOrgId,
+  allowedRoles = ['manager', 'editor', 'viewer'],
   onClose,
   onSubmit,
 }) => {
@@ -64,7 +66,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
   const { departments: DEFAULT_DEPARTMENTS } = useDepartments();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('editor');
+  const [role, setRole] = useState(allowedRoles.includes('editor') ? 'editor' : allowedRoles[0] || 'viewer');
   const [department, setDepartment] = useState('');
   const [organizationId, setOrganizationId] = useState('');
   const [password, setPassword] = useState('');
@@ -74,6 +76,9 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       setError('');
+      if (!allowedRoles.includes(role)) {
+        setRole(allowedRoles[0] || 'viewer');
+      }
       // Default to active organization or first available
       if (activeOrgId && organizations?.some((org) => org.id === activeOrgId)) {
         setOrganizationId(activeOrgId);
@@ -83,7 +88,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
         setOrganizationId('');
       }
     }
-  }, [isOpen, activeOrgId, organizations]);
+  }, [isOpen, activeOrgId, organizations, allowedRoles, role]);
 
   React.useEffect(() => {
     if (!department) {
@@ -206,11 +211,11 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                 onChange={(e) => handleRoleChange(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-medium"
               >
-                <option value="superuser">Superuser (System Level)</option>
-                <option value="admin">Admin (Global Level)</option>
-                <option value="manager">Manager (Group Approval)</option>
-                <option value="editor">Editor (Group Draft & Upload)</option>
-                <option value="viewer">Viewer (Read-Only Final)</option>
+                {allowedRoles.includes('superuser') && <option value="superuser">Superuser (System Level)</option>}
+                {allowedRoles.includes('admin') && <option value="admin">Admin (Tenant Level)</option>}
+                {allowedRoles.includes('manager') && <option value="manager">Manager (Group Approval)</option>}
+                {allowedRoles.includes('editor') && <option value="editor">Editor (Group Draft & Upload)</option>}
+                {allowedRoles.includes('viewer') && <option value="viewer">Viewer (Read-Only Final)</option>}
               </select>
             </div>
 

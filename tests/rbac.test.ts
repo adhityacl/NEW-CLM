@@ -63,6 +63,7 @@ test('§33 SUPERUSER = ALL permissions', () => {
   assert.ok(m.includes('document.delete'));
   assert.ok(m.includes('workspace.switch'));
   assert.ok(m.includes('tenant.create'));
+  assert.ok(m.includes('admin.system.access'));
   assert.ok(m.includes('audit.view'));
 });
 
