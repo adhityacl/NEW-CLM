@@ -122,10 +122,7 @@ export const NewsTicker: React.FC = () => {
       role="region"
       aria-label={label}
     >
-      <div
-        className="shrink-0 flex items-center gap-1.5 pl-5 pr-8 bg-linear-to-r from-[#06C755] to-[#048C3B] text-white text-xs sm:text-sm font-bold whitespace-nowrap"
-        style={{ clipPath: 'polygon(0 0, 100% 0, calc(100% - 28px) 100%, 0 100%)' }}
-      >
+      <div className="shrink-0 flex items-center gap-1.5 px-5 bg-[#06C755] text-white text-xs sm:text-sm font-bold whitespace-nowrap">
         <Megaphone className="w-4 h-4 shrink-0" />
         <span>{label}</span>
       </div>
