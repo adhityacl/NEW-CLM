@@ -1,25 +1,37 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Megaphone, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Megaphone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { getAuthHeaders } from '../App';
 
 type TickerStatus = 'loading' | 'ready' | 'empty' | 'error';
 
-const AUTO_ADVANCE_MS = 6000;
+const SCROLL_SPEED_PX_PER_SEC = 45;
+const NUDGE_PX = 220;
 
 /**
  * Dashboard news ticker: 5 short headlines about current Indonesian
  * fintech-lending (Pindar/Pinjol) regulation, generated server-side via
  * Gemini and cached for 7 days (see GET /api/dashboard/news-ticker in
- * server.ts) — this component only fetches once and steps through them.
+ * server.ts).
+ *
+ * Layout/style follows "Style 7" of exclusiveaddons.com's news-ticker demo
+ * (a diagonally-cut label badge + a continuously scrolling marquee + prev/
+ * next controls), recolored to this app's own palette: the reference's
+ * orange-red badge becomes the brand green (#06C755) gradient used
+ * elsewhere on this dashboard, and the reference's dark outer frame is
+ * dropped in favor of this app's own plain white-card convention (every
+ * other dashboard card is a white/bordered box directly on the page
+ * background, not a dark double-frame).
  */
 export const NewsTicker: React.FC = () => {
   const { t } = useLanguage();
   const [status, setStatus] = useState<TickerStatus>('loading');
   const [items, setItems] = useState<string[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const trackRef = useRef<HTMLDivElement>(null);
+  const offsetRef = useRef(0);
+  const pausedRef = useRef(false);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,18 +58,53 @@ export const NewsTicker: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (status !== 'ready' || isPaused || items.length <= 1) return;
-    timerRef.current = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % items.length);
-    }, AUTO_ADVANCE_MS);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [status, isPaused, items.length]);
+  // Rendered twice back-to-back so the track can scroll seamlessly: once it
+  // has moved exactly one copy's width, wrapping the offset back to 0 is
+  // invisible to the eye (the second copy is sitting exactly where the
+  // first one started).
+  const trackItems = useMemo(() => [...items, ...items], [items]);
 
-  const goPrev = () => setActiveIndex((prev) => (prev - 1 + items.length) % items.length);
-  const goNext = () => setActiveIndex((prev) => (prev + 1) % items.length);
+  const wrap = (offset: number, loopWidth: number) => {
+    if (loopWidth <= 0) return offset;
+    const wrapped = offset % loopWidth;
+    return wrapped > 0 ? wrapped - loopWidth : wrapped;
+  };
+
+  const applyOffset = () => {
+    if (trackRef.current) {
+      trackRef.current.style.transform = `translateX(${offsetRef.current}px)`;
+    }
+  };
+
+  useEffect(() => {
+    if (status !== 'ready' || items.length === 0) return;
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    pausedRef.current = !!prefersReducedMotion;
+
+    let lastTime: number | null = null;
+    const step = (time: number) => {
+      if (lastTime === null) lastTime = time;
+      const deltaSeconds = (time - lastTime) / 1000;
+      lastTime = time;
+      const loopWidth = (trackRef.current?.scrollWidth || 0) / 2;
+      if (!pausedRef.current && loopWidth > 0) {
+        offsetRef.current = wrap(offsetRef.current - SCROLL_SPEED_PX_PER_SEC * deltaSeconds, loopWidth);
+        applyOffset();
+      }
+      rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, items.length]);
+
+  const nudge = (direction: 1 | -1) => {
+    const loopWidth = (trackRef.current?.scrollWidth || 0) / 2;
+    offsetRef.current = wrap(offsetRef.current - direction * NUDGE_PX, loopWidth);
+    applyOffset();
+  };
 
   // Nothing meaningful to show and nothing to retry inline (a transient
   // Gemini error or a not-yet-configured API key) — quietly omit the
@@ -67,57 +114,57 @@ export const NewsTicker: React.FC = () => {
     return null;
   }
 
+  const label = t('dashboard.news_ticker_label', 'Info Regulasi Terkini');
+
   return (
     <div
-      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex items-center gap-3 px-3 py-2.5 mb-6"
+      className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mb-6 flex items-stretch overflow-hidden"
       role="region"
-      aria-label={t('dashboard.news_ticker_label', 'Info Regulasi Terkini')}
+      aria-label={label}
     >
-      <span className="shrink-0 inline-flex items-center gap-1.5 bg-[#06C755] text-white text-[11px] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap">
-        <Megaphone className="w-3.5 h-3.5" />
-        {t('dashboard.news_ticker_label', 'Info Regulasi Terkini')}
-      </span>
-
-      <div className="flex-1 min-w-0 overflow-hidden">
-        <p
-          key={activeIndex}
-          className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 truncate animate-in fade-in slide-in-from-right-3 duration-500"
-          title={items[activeIndex]}
-        >
-          {items[activeIndex]}
-        </p>
+      <div
+        className="shrink-0 flex items-center gap-1.5 pl-5 pr-8 bg-linear-to-r from-[#06C755] to-[#048C3B] text-white text-xs sm:text-sm font-bold whitespace-nowrap"
+        style={{ clipPath: 'polygon(0 0, 100% 0, calc(100% - 28px) 100%, 0 100%)' }}
+      >
+        <Megaphone className="w-4 h-4 shrink-0" />
+        <span>{label}</span>
       </div>
 
-      <div className="flex items-center gap-1 shrink-0">
+      <div
+        className="flex-1 min-w-0 overflow-hidden py-3.5"
+        onMouseEnter={() => { pausedRef.current = true; }}
+        onMouseLeave={() => { pausedRef.current = false; }}
+      >
+        <div ref={trackRef} className="flex items-center whitespace-nowrap will-change-transform">
+          {trackItems.map((text, i) => (
+            <span
+              key={i}
+              className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 px-5 border-r border-slate-200 dark:border-slate-700 last:border-r-0"
+            >
+              {text}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="shrink-0 flex items-center gap-0.5 pr-3 pl-1 bg-white dark:bg-slate-900">
         <button
           type="button"
-          onClick={goPrev}
-          disabled={items.length <= 1}
+          onClick={() => nudge(-1)}
           aria-label={t('dashboard.news_ticker_prev', 'Berita Sebelumnya')}
           title={t('dashboard.news_ticker_prev', 'Berita Sebelumnya')}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
         >
-          <ChevronLeft className="w-3.5 h-3.5" />
+          <ChevronLeft className="w-4 h-4" />
         </button>
         <button
           type="button"
-          onClick={() => setIsPaused((p) => !p)}
-          disabled={items.length <= 1}
-          aria-label={isPaused ? t('dashboard.news_ticker_play', 'Putar Otomatis') : t('dashboard.news_ticker_pause', 'Jeda')}
-          title={isPaused ? t('dashboard.news_ticker_play', 'Putar Otomatis') : t('dashboard.news_ticker_pause', 'Jeda')}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
-        >
-          {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-        </button>
-        <button
-          type="button"
-          onClick={goNext}
-          disabled={items.length <= 1}
+          onClick={() => nudge(1)}
           aria-label={t('dashboard.news_ticker_next', 'Berita Berikutnya')}
           title={t('dashboard.news_ticker_next', 'Berita Berikutnya')}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
         >
-          <ChevronRight className="w-3.5 h-3.5" />
+          <ChevronRight className="w-4 h-4" />
         </button>
       </div>
     </div>
