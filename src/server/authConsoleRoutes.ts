@@ -37,13 +37,20 @@ authConsoleRouter.use(["/overview", "/accounts", "/sessions", "/organizations", 
       return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "You do not have permission to access this area." });
     }
     const actor = (req as any).actor as Actor | null;
-    const systemOnly = req.path.startsWith('/overview')
-      || req.path.startsWith('/accounts')
-      || req.path.startsWith('/sessions')
-      || (req.path.startsWith('/organizations') && req.method !== 'GET')
-      || req.path.startsWith('/api-keys')
-      || req.path.startsWith('/rbac-matrix')
-      || req.path.startsWith('/sqlite');
+    // `req.path` is relative to whichever entry in this middleware's path array
+    // matched (Express strips that prefix for `.use(pathsArray, handler)`), so it
+    // can never actually start with the prefix that just matched it — every check
+    // below silently evaluated to false, defeating this gate entirely. Use
+    // `req.originalUrl`, which routing never rewrites, and strip the router's own
+    // fixed mount point (`/api/auth-console`, set in server.ts) instead.
+    const fullPath = req.originalUrl.split('?')[0].replace(/^\/api\/auth-console/, '') || '/';
+    const systemOnly = fullPath.startsWith('/overview')
+      || fullPath.startsWith('/accounts')
+      || fullPath.startsWith('/sessions')
+      || (fullPath.startsWith('/organizations') && req.method !== 'GET')
+      || fullPath.startsWith('/api-keys')
+      || fullPath.startsWith('/rbac-matrix')
+      || fullPath.startsWith('/sqlite');
     if (systemOnly && actor?.role !== 'superuser') {
       return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "System Admin access is required." });
     }

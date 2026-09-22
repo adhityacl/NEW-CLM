@@ -10,6 +10,7 @@ import nodemailer from "nodemailer";
 import { createServer as createViteServer } from "vite";
 /* RBAC-INTEGRATION-V1 */
 import { createRbacRouter, requirePermission } from "./server/rbacRoutes";
+import { hasPermission as rbacHasPermission, normalizeRole as rbacNormalizeRole } from "./server/rbac";
 import { GoogleGenAI, Type } from "@google/genai";
 import { OAuth2Client } from "google-auth-library";
 import { toNodeHandler } from "better-auth/node";
@@ -195,30 +196,34 @@ export const rbacAuthMiddleware = (req: express.Request, res: express.Response, 
     }
   }
 
-  // Determine role based on verified DB/Session role
+  // Determine role based on verified DB/Session role.
+  //
+  // This used to collapse the app's 5 roles into 3 ad-hoc buckets by regex
+  // ("admin|superuser|owner" -> Admin, "editor|manager|legal|finance" ->
+  // Editor, everything else -> Viewer) and only ever blocked the Viewer
+  // bucket from write methods — meaning Editor and Manager were completely
+  // undifferentiated here, as were Admin and Superuser, and any endpoint
+  // that relied solely on this gate (most of them; see QA/QC audit finding
+  // C5) enforced nothing beyond "not a Viewer". `normalizeRole`/
+  // `hasPermission` are the same functions the rest of the RBAC engine
+  // (`server/rbac.ts`) is built on, so this floor now tracks the real
+  // permission matrix instead of a parallel, driftable regex classifier.
   const rawRole = (detectedRole || "").toString().toLowerCase().trim();
-
-  let role: "Admin" | "Editor" | "Viewer" = "Viewer";
-  if (/admin|superuser|owner|super admin/i.test(rawRole)) {
-    role = "Admin";
-  } else if (/editor|manager|legal|finance/i.test(rawRole)) {
-    role = "Editor";
-  } else if (/viewer|guest|readonly|read/i.test(rawRole)) {
-    role = "Viewer";
-  } else {
-    role = "Viewer";
-  }
-
+  const role = rbacNormalizeRole(rawRole);
   (req as any).rbacRole = role;
 
   const method = req.method.toUpperCase();
-  if (role === "Viewer" && ["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
-    return res.status(403).json({
-      error: "Forbidden: Viewer role is view-only.",
-      message: "Peran Viewer hanya memiliki izin baca (view-only). Tindakan perubahan data ditolak.",
-      role: "Viewer",
-      attemptedMethod: method,
-    });
+  if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
+    const requiredPermission =
+      method === "DELETE" ? "document.delete" : method === "POST" ? "document.create" : "document.edit";
+    if (!rbacHasPermission(role, requiredPermission)) {
+      return res.status(403).json({
+        error: "INSUFFICIENT_PERMISSION",
+        message: `Peran ${role} tidak memiliki izin untuk melakukan perubahan data (${method}).`,
+        role,
+        attemptedMethod: method,
+      });
+    }
   }
 
   next();
@@ -908,6 +913,31 @@ function isMatchingOrg(entityOrgId, targetTenantId) {
     entityOrgId === "org-adapundi" ||
     (defaultTenant && entityOrgId === defaultTenant.id);
   return Boolean(isDefaultTarget && isDefaultEntity);
+}
+/**
+ * PUT/DELETE on contracts/partners/ios previously had no tenant check at all,
+ * letting any non-Viewer role edit or delete another tenant's records by ID
+ * (see QA/QC audit finding C4). GET already scopes reads via `isMatchingOrg`;
+ * this mirrors that same tolerant comparison for writes. Superuser bypasses.
+ * Returns null when the write may proceed, or a `{status, body}` pair to send
+ * as-is when it may not — mismatches come back as 404 (not 403) so a caller
+ * probing IDs can't use the response to confirm another tenant's resource
+ * exists (PRD §29 anti-enumeration, mirrored from server/rbac.ts).
+ */
+function assertTenantWriteAccess(
+  req: express.Request,
+  entityOrgId: string | null | undefined,
+): { status: number; body: { error: string; message: string } } | null {
+  const actor = (req as any).actor;
+  if (!actor) {
+    return { status: 401, body: { error: "UNAUTHENTICATED", message: "Authentication is required." } };
+  }
+  if (actor.role === "superuser") return null;
+  if (isMatchingOrg(entityOrgId, actor.tenantId)) return null;
+  return {
+    status: 404,
+    body: { error: "RESOURCE_NOT_FOUND", message: "Resource not found." },
+  };
 }
 function getRequestTenantId(req: express.Request): string {
   const actor = (req as any).actor;
@@ -2048,6 +2078,28 @@ function addActivityLog(
   description,
   req,
 ) {
+  // `userEmail`/`userName`/`role` used to come straight from whatever the
+  // caller passed in, which for several routes was itself lifted verbatim
+  // from the request body/query — any caller could dictate who the audit
+  // log says performed the action (QA/QC audit finding H2). Prefer the
+  // identity of the actually-authenticated actor when one is attached to
+  // the request; the passed-in values remain only as a fallback for the
+  // rare call site made before `attachRbacActor` has run.
+  const actorId = req?.actor?.id;
+  if (actorId && sqliteDb) {
+    try {
+      const actorUser: any = sqliteDb
+        .prepare("SELECT name, email FROM user WHERE id = ?")
+        .get(actorId);
+      if (actorUser) {
+        userEmail = actorUser.email || userEmail;
+        userName = actorUser.name || userName;
+      }
+      if (req.actor.role) {
+        role = String(req.actor.role).replace(/^./, (c: string) => c.toUpperCase());
+      }
+    } catch { /* keep caller-supplied values */ }
+  }
   const log = {
     id: `act-${Date.now()}-${Math.floor(Math.random() * 1e3)}`,
     timestamp: new Date().toISOString(),
@@ -2145,7 +2197,11 @@ app.get("/api/user/my-role", async (req: express.Request, res: express.Response)
       email,
       name: userName,
       role: isFirstUser ? "Admin" : "Staff",
-      department: "Commercial & Marketing",
+      // Superuser/Admin are never tied to a single department (RBAC scope is
+      // Global/Tenant, not Tenant+Department); a real department, when one
+      // applies, is filled in below from the user's team membership. No
+      // hardcoded placeholder here — see QA/QC audit finding H1.
+      department: null,
       status: "Active",
       addedBy: "System (Auto)",
       createdAt: new Date().toISOString(),
@@ -2184,28 +2240,36 @@ app.get("/api/user/my-role", async (req: express.Request, res: express.Response)
         else if (rawRole === "finance") allowed.role = "Editor";
         else if (rawRole === "staff") allowed.role = "Viewer";
       }
-      const teamRow: any = sqliteDb
-        .prepare(
-          `
-        SELECT t.name FROM team t
-        JOIN teamMember tm ON tm.teamId = t.id
-        WHERE tm.userId = ?
-        LIMIT 1
-      `,
-        )
-        .get(userRow.id);
-      if (teamRow?.name) {
-        allowed.department = teamRow.name;
+      const isGlobalRole = allowed.role === "Superuser" || allowed.role === "Admin";
+      if (isGlobalRole) {
+        // Never let a stray teamMember row (legacy data, or a role change that
+        // left one behind) put a department back on a Superuser/Admin profile.
+        allowed.department = null;
+      } else {
+        const teamRow: any = sqliteDb
+          .prepare(
+            `
+          SELECT t.name FROM team t
+          JOIN teamMember tm ON tm.teamId = t.id
+          WHERE tm.userId = ?
+          LIMIT 1
+        `,
+          )
+          .get(userRow.id);
+        if (teamRow?.name) {
+          allowed.department = teamRow.name;
+        }
       }
     }
   } catch (err) {}
   allowed.lastLoginAt = new Date().toISOString();
   saveDb();
+  const isGlobalRole = allowed.role === "Superuser" || allowed.role === "Admin";
   res.json({
     email: allowed.email,
     name: allowed.name,
     role: allowed.role,
-    department: allowed.department || "Commercial & Marketing",
+    department: isGlobalRole ? "Semua Departemen (Akses Global)" : (allowed.department || null),
     loginTime: new Date().toISOString(),
   });
 });
@@ -2946,6 +3010,8 @@ app.put("/api/partners/:id", async (req: express.Request, res: express.Response)
     return res.status(404).json({ error: "Partner tidak ditemukan." });
   }
   const existing = db.partners[partnerIndex];
+  const tenantDenial = assertTenantWriteAccess(req, existing.organizationId);
+  if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
   let status_dd = existing.status_dd;
   if (daftar_dokumen_dd && Array.isArray(daftar_dokumen_dd)) {
     const wajibItems = daftar_dokumen_dd.filter((d) => d.wajib);
@@ -3019,6 +3085,8 @@ app.delete("/api/partners/:id", async (req: express.Request, res: express.Respon
     return res.status(404).json({ error: "Partner tidak ditemukan." });
   }
   const partner = db.partners[partnerIndex];
+  const tenantDenial = assertTenantWriteAccess(req, partner.organizationId);
+  if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
   const partnerContracts = db.contracts.filter((c) => c.partner_id === id);
   const contractIds = partnerContracts.map((c) => c.contract_id);
   const partnerIOs = db.ios.filter(
@@ -5002,6 +5070,9 @@ app.put("/api/contracts/:id", async (req: express.Request, res: express.Response
     return res.status(404).json({ error: "Kontrak tidak ditemukan." });
   }
   const existing = db.contracts[idx];
+  const tenantDenial = assertTenantWriteAccess(req, existing.organizationId);
+  if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
+  if ((req as any).actor?.role !== "superuser") delete (updates as any).organizationId;
   const updated = {
     ...existing,
     ...updates,
@@ -5183,6 +5254,8 @@ app.delete("/api/contracts/:id", async (req: express.Request, res: express.Respo
   const { userEmail, userName, userRole } = req.query;
   const ctr = db.contracts.find((c) => c.contract_id === id);
   if (!ctr) return res.status(404).json({ error: "Kontrak tidak ditemukan." });
+  const tenantDenial = assertTenantWriteAccess(req, ctr.organizationId);
+  if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
   db.contracts = db.contracts.filter((c) => c.contract_id !== id);
   saveDb();
   addActivityLog(
@@ -5629,6 +5702,9 @@ app.put("/api/ios/:id", async (req: express.Request, res: express.Response) => {
   const idx = db.ios.findIndex((i) => i.io_id === id);
   if (idx === -1) return res.status(404).json({ error: "IO tidak ditemukan." });
   const existing = db.ios[idx];
+  const tenantDenial = assertTenantWriteAccess(req, existing.organizationId);
+  if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
+  if ((req as any).actor?.role !== "superuser") delete (updates as any).organizationId;
   const updated = {
     ...existing,
     ...updates,
@@ -5792,6 +5868,8 @@ app.delete("/api/ios/:id", async (req: express.Request, res: express.Response) =
   const { userEmail, userName, userRole } = req.query;
   const item = db.ios.find((i) => i.io_id === id);
   if (!item) return res.status(404).json({ error: "IO tidak ditemukan." });
+  const tenantDenial = assertTenantWriteAccess(req, item.organizationId);
+  if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
   db.ios = db.ios.filter((i) => i.io_id !== id);
   saveDb();
   addActivityLog(
@@ -6738,6 +6816,13 @@ const provisionFoldersHandler = __name(async (req: express.Request, res: express
 app.post("/api/google-integration/provision-folders", provisionFoldersHandler);
 app.post("/api/partners/provision-folders", provisionFoldersHandler);
 app.post("/api/admin/reset-database", async (req: express.Request, res: express.Response) => {
+  const actor = (req as any).actor;
+  if (actor?.role !== "superuser") {
+    return res.status(403).json({
+      error: "INSUFFICIENT_PERMISSION",
+      message: "Hanya Superuser yang dapat mereset seluruh database.",
+    });
+  }
   const { userEmail, userName, userRole, accessToken, confirmKeyword } =
     req.body;
   if (confirmKeyword !== "RESET NOW") {

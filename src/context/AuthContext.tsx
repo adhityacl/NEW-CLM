@@ -57,7 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: data.email,
             name: data.name || data.email.split('@')[0],
             role: data.role || 'Staff',
-            department: data.department || 'Commercial & Marketing',
+            // `/api/user/my-role` already resolves this correctly (a real
+            // department, "Semua Departemen (Akses Global)" for Superuser/
+            // Admin, or null) — no fake department name as a fallback here,
+            // see QA/QC audit finding H1.
+            department: data.department || '',
             organizationId: data.organizationId,
             allowedTenantIds: data.allowedTenantIds,
             isGlobalAdmin: data.isGlobalAdmin,
@@ -131,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: data.user.email,
         name: data.user.name || data.user.email.split('@')[0],
         role: (data.user as any).role === 'admin' ? 'Admin' : 'Staff',
-        department: 'Commercial & Marketing',
+        department: '',
         loginTime: new Date().toISOString(),
       });
     }
