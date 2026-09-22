@@ -12,6 +12,7 @@ import { getSavedCategories } from '../lib/categoryUtils';
 import { ActionMenu } from './ui/action-menu';
 import { getStatusBadgeClass } from './ui/badge';
 import { parseMonthStr, parseAllMonths, formatMonthTagDisplay } from '../lib/monthUtils';
+import { NewsTicker } from './NewsTicker';
 import {
   FileText,
   FileSpreadsheet,
@@ -388,6 +389,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
       </div>
+
+      <NewsTicker />
 
       {/* KPI Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
