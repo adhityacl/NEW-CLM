@@ -186,11 +186,9 @@ export function syncUsersToDataStoreAndSheet() {
     const users = sqliteDb.prepare(`
       SELECT u.id, u.name, u.email, u.role, u.banned, u.createdAt, u.updatedAt,
              m.organizationId,
-             t.name as departmentName
+             (SELECT t.name FROM team t JOIN teamMember tm ON tm.teamId = t.id WHERE tm.userId = u.id ORDER BY tm.createdAt ASC LIMIT 1) as departmentName
       FROM user u
       LEFT JOIN member m ON u.id = m.userId
-      LEFT JOIN teamMember tm ON u.id = tm.userId
-      LEFT JOIN team t ON tm.teamId = t.id
     `).all();
 
     if (globalDbRef) {
@@ -626,11 +624,13 @@ authConsoleRouter.put('/users/:id/role', (req: Request, res: Response) => {
     const actor = (req as any).actor as Actor | null;
     if (!actor) return res.status(401).json(authzError('UNAUTHENTICATED'));
     const currentMember = sqliteDb.prepare('SELECT organizationId FROM member WHERE userId = ?').get(id) as any;
-    const targetTeam = sqliteDb.prepare('SELECT t.id as departmentId, t.organizationId FROM team t JOIN teamMember tm ON tm.teamId = t.id WHERE tm.userId = ? LIMIT 1').get(id) as any;
+    // Every department the target belongs to, not just the first — a Manager
+    // who shares ANY one of them with the target may still act on them.
+    const targetTeams = sqliteDb.prepare('SELECT t.id as departmentId FROM team t JOIN teamMember tm ON tm.teamId = t.id WHERE tm.userId = ? ORDER BY tm.createdAt ASC').all(id) as any[];
     const roleDecision = canChangeRole(actor, {
       id,
       tenantId: currentMember?.organizationId,
-      departmentId: targetTeam?.departmentId,
+      departmentIds: targetTeams.map((t) => t.departmentId),
     }, role);
     if (!roleDecision.allowed) return res.status(403).json(authzError(roleDecision.error));
 
@@ -2123,6 +2123,28 @@ authConsoleRouter.get('/sqlite/tables', (req: Request, res: Response) => {
   }
 });
 
+// Columns that hold live credentials rather than ordinary application data —
+// masked in the raw-row browser below even for Superuser, so this debugging
+// tool can't be used to lift a working session token or a password hash out
+// of the database (QA/QC audit finding L1).
+const SQLITE_BROWSER_REDACTED_COLUMNS: Record<string, string[]> = {
+  session: ['token'],
+  account: ['password', 'accessToken', 'refreshToken', 'idToken'],
+  verification: ['value'],
+  apikey: ['keyHash'],
+};
+function redactSensitiveColumns(tableName: string, rows: any[]): any[] {
+  const columnsToRedact = SQLITE_BROWSER_REDACTED_COLUMNS[tableName];
+  if (!columnsToRedact || columnsToRedact.length === 0) return rows;
+  return rows.map((row) => {
+    const redacted = { ...row };
+    for (const col of columnsToRedact) {
+      if (redacted[col] != null && redacted[col] !== '') redacted[col] = '[redacted]';
+    }
+    return redacted;
+  });
+}
+
 // 12. SQLite Database Table Data & Records Browser
 authConsoleRouter.get('/sqlite/table-data', (req: Request, res: Response) => {
   try {
@@ -2174,7 +2196,7 @@ authConsoleRouter.get('/sqlite/table-data', (req: Request, res: Response) => {
       success: true,
       table: tableName,
       columns,
-      rows,
+      rows: redactSensitiveColumns(tableName, rows),
       total,
       limit,
       offset,

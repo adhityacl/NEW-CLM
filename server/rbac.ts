@@ -194,12 +194,23 @@ export interface Actor {
   id: string;
   role: RoleCode | string;
   tenantId?: string | null;
+  /**
+   * @deprecated Kept for callers built before multi-department support: the
+   * first entry of `departmentIds`, or null. New code should read/set
+   * `departmentIds` instead — every scope check below treats this as
+   * `departmentIds[0]` when `departmentIds` isn't provided, so a caller that
+   * only sets `departmentId` still behaves exactly as before.
+   */
   departmentId?: string | null;
+  /** All departments the actor belongs to. Use `actorDepartmentIds()` to read this (it falls back to `[departmentId]`). */
+  departmentIds?: string[];
 }
 
 export interface ScopedResource {
   tenantId?: string | null;
   departmentId?: string | null;
+  /** A resource that belongs to more than one department at once (rare — most resources have exactly one). */
+  departmentIds?: string[];
   ownerId?: string | null;
 }
 
@@ -207,22 +218,38 @@ export type ScopeKind = 'global' | 'tenant' | 'department';
 
 export const isGlobalRole = (role: RoleCode | string): boolean => normalizeRole(role) === 'superuser';
 
+/**
+ * Normalizes either an Actor or a ScopedResource/invite-target down to the
+ * full set of department ids it's associated with, so every scope check can
+ * compare two SETS (actor's departments ∩ resource's departments) instead of
+ * two single values. Single-department callers (only `departmentId` set)
+ * keep working unchanged — they just resolve to a one-element set.
+ */
+export function actorDepartmentIds(actor: Pick<Actor, 'departmentId' | 'departmentIds'>): string[] {
+  if (actor.departmentIds && actor.departmentIds.length > 0) return actor.departmentIds;
+  return actor.departmentId ? [actor.departmentId] : [];
+}
+function resourceDepartmentIds(resource: Pick<ScopedResource, 'departmentId' | 'departmentIds'>): string[] {
+  if (resource.departmentIds && resource.departmentIds.length > 0) return resource.departmentIds;
+  return resource.departmentId ? [resource.departmentId] : [];
+}
+
 /** Validasi constraint kolom sesuai PRD §6.1. */
 export function validateActorScope(actor: Actor): { ok: boolean; errors: string[] } {
   const role = normalizeRole(actor.role);
   const errors: string[] = [];
   const tenant = actor.tenantId ?? null;
-  const dept = actor.departmentId ?? null;
+  const depts = actorDepartmentIds(actor);
   switch (role) {
     case 'superuser':
       break; // tenant NULL / global
     case 'admin':
       if (!tenant) errors.push('ADMIN wajib punya tenantId');
-      if (dept) errors.push('ADMIN tidak boleh punya departmentId');
+      if (depts.length > 0) errors.push('ADMIN tidak boleh punya departmentId');
       break;
     default: // manager/editor/viewer
       if (!tenant) errors.push(`${role.toUpperCase()} wajib punya tenantId`);
-      if (!dept) errors.push(`${role.toUpperCase()} wajib punya departmentId`);
+      if (depts.length === 0) errors.push(`${role.toUpperCase()} wajib punya departmentId`);
   }
   return { ok: errors.length === 0, errors };
 }
@@ -252,7 +279,7 @@ export function maxScopeForActor(actor: Actor): ScopeKind {
   const r = normalizeRole(actor.role);
   if (r === 'superuser') return 'global';
   if (r === 'admin') return 'tenant';
-  return actor.departmentId ? 'department' : 'tenant';
+  return actorDepartmentIds(actor).length > 0 ? 'department' : 'tenant';
 }
 
 const SCOPE_WIDTH: Record<ScopeKind, number> = { department: 0, tenant: 1, global: 2 };
@@ -291,13 +318,17 @@ export function checkScope(actor: Actor, resource: ScopedResource, scope: ScopeK
     return { allowed: true };
   }
 
-  // MANAGER / EDITOR / VIEWER: hanya departemennya sendiri — hanya bila scope
-  // departemen ini yang diminta DAN aktor memang punya departemen.
+  // MANAGER / EDITOR / VIEWER: hanya departemen-departemennya sendiri (bisa
+  // lebih dari satu) — hanya bila scope departemen ini yang diminta DAN
+  // aktor memang punya departemen. Resource dianggap terjangkau bila
+  // SALAH SATU departemennya cocok dengan salah satu departemen aktor.
   if (eff !== 'department') return { allowed: true };
-  if (resource.departmentId == null) {
+  const resourceDepts = resourceDepartmentIds(resource);
+  if (resourceDepts.length === 0) {
     return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
   }
-  if (resource.departmentId !== actor.departmentId) {
+  const actorDepts = new Set(actorDepartmentIds(actor));
+  if (!resourceDepts.some((d) => actorDepts.has(d))) {
     return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
   }
   return { allowed: true };
@@ -310,17 +341,25 @@ export function checkScope(actor: Actor, resource: ScopedResource, scope: ScopeK
  * null yang bisa disalahartikan konsumen query sebagai "tanpa filter".
  */
 export function buildScopeFilter(actor: Actor, scope: ScopeKind = 'department'):
-  { tenantId: string | null; departmentId: string | null } {
+  { tenantId: string | null; departmentIds: string[] | null } {
   const role = normalizeRole(actor.role);
-  if (role === 'superuser') return { tenantId: null, departmentId: null };
+  if (role === 'superuser') return { tenantId: null, departmentIds: null };
   if (!actor.tenantId) throw new Error('RBAC: actor non-superuser tanpa tenantId (scope wajib).');
   const eff = clampScope(role, scope);
-  if (role === 'admin') return { tenantId: actor.tenantId, departmentId: null };
-  if (!actor.departmentId) throw new Error('RBAC: actor ber-scope departemen tanpa departmentId.');
-  return { tenantId: actor.tenantId, departmentId: eff === 'department' ? actor.departmentId : null };
+  if (role === 'admin') return { tenantId: actor.tenantId, departmentIds: null };
+  const depts = actorDepartmentIds(actor);
+  if (depts.length === 0) throw new Error('RBAC: actor ber-scope departemen tanpa departmentId.');
+  return { tenantId: actor.tenantId, departmentIds: eff === 'department' ? depts : null };
 }
 
-/** PRD §25 — scope dari client TIDAK boleh dipercaya untuk non-superuser. */
+/**
+ * PRD §25 — scope dari client TIDAK boleh dipercaya untuk non-superuser.
+ *
+ * Untuk MANAGER/EDITOR/VIEWER yang membuat resource baru: bila client
+ * meminta `departmentId` tertentu, permintaan itu HANYA dihormati jika
+ * memang salah satu departemen milik aktor sendiri (tidak pernah dipercaya
+ * mentah-mentah) — di luar itu jatuh ke departemen utama (pertama) aktor.
+ */
 export function resolveTrustedScope(actor: Actor, clientSupplied?: Partial<ScopedResource>): ScopedResource {
   const role = normalizeRole(actor.role);
   if (role === 'superuser') {
@@ -329,7 +368,10 @@ export function resolveTrustedScope(actor: Actor, clientSupplied?: Partial<Scope
   if (role === 'admin') {
     return { tenantId: actor.tenantId ?? null, departmentId: clientSupplied?.departmentId ?? null };
   }
-  return { tenantId: actor.tenantId ?? null, departmentId: actor.departmentId ?? null };
+  const depts = actorDepartmentIds(actor);
+  const requested = clientSupplied?.departmentId ?? null;
+  const departmentId = requested && depts.includes(requested) ? requested : (depts[0] ?? null);
+  return { tenantId: actor.tenantId ?? null, departmentId };
 }
 
 /* ------------------------------------------------------------------ */
@@ -350,8 +392,8 @@ export function canEditDocument(actor: Actor | null, document: ScopedResource): 
   if (role === 'superuser') return true;
   if (document.tenantId != null && document.tenantId !== actor.tenantId) return false;
   if (['manager', 'editor', 'viewer'].includes(role)) {
-    if (document.departmentId != null && document.departmentId !== actor.departmentId) return false;
     if (document.departmentId == null) return false; // fail-closed (PRD §32.4)
+    if (!actorDepartmentIds(actor).includes(document.departmentId)) return false;
   }
   return true;
 }
@@ -385,7 +427,7 @@ export type InviteDeny = 'INSUFFICIENT_PERMISSION' | 'INVALID_ROLE_ASSIGNMENT'
 export function canInvite(
   actor: Actor,
   targetRole: RoleCode | string,
-  target?: { tenantId?: string | null; departmentId?: string | null },
+  target?: { tenantId?: string | null; departmentId?: string | null; departmentIds?: string[] },
 ): { allowed: true } | { allowed: false; error: InviteDeny } {
   const actorRole = normalizeRole(actor.role);
   const tRole = normalizeRole(targetRole);
@@ -406,8 +448,11 @@ export function canInvite(
   }
   if (actorRole === 'admin') return { allowed: true };
 
-  // MANAGER: hanya departemennya sendiri (fail-closed)
-  if (target?.departmentId == null || target.departmentId !== actor.departmentId) {
+  // MANAGER: salah satu departemennya sendiri (fail-closed; target bisa
+  // punya lebih dari satu departemen, cukup satu yang beririsan)
+  const targetDepts = target ? resourceDepartmentIds(target as ScopedResource) : [];
+  const actorDepts = new Set(actorDepartmentIds(actor));
+  if (targetDepts.length === 0 || !targetDepts.some((d) => actorDepts.has(d))) {
     return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
   }
   return { allowed: true };
@@ -421,7 +466,7 @@ export type RoleChangeDeny = InviteDeny | 'SELF_ROLE_CHANGE_FORBIDDEN';
 
 export function canChangeRole(
   actor: Actor,
-  targetUser: { id: string; tenantId?: string | null; departmentId?: string | null },
+  targetUser: { id: string; tenantId?: string | null; departmentId?: string | null; departmentIds?: string[] },
   newRole: RoleCode | string,
 ): { allowed: true } | { allowed: false; error: RoleChangeDeny } {
   const actorRole = normalizeRole(actor.role);
@@ -447,8 +492,12 @@ export function canChangeRole(
   if (targetUser.tenantId == null || targetUser.tenantId !== actor.tenantId) {
     return { allowed: false, error: 'TENANT_SCOPE_VIOLATION' };
   }
-  if (actorRole === 'manager' && (targetUser.departmentId == null || targetUser.departmentId !== actor.departmentId)) {
-    return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
+  if (actorRole === 'manager') {
+    const targetDepts = resourceDepartmentIds(targetUser as ScopedResource);
+    const actorDepts = new Set(actorDepartmentIds(actor));
+    if (targetDepts.length === 0 || !targetDepts.some((d) => actorDepts.has(d))) {
+      return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
+    }
   }
   return { allowed: true };
 }
