@@ -1083,6 +1083,7 @@ let db: any = {
   spendings: INITIAL_SPENDINGS || [],
   tenants: DEFAULT_TENANTS,
   departments: [],
+  newsTicker: { items: [] as string[], lastGeneratedAt: null as string | null },
   activeTenantId: "org_1789542306289_b3a4f3",
   branding: DEFAULT_BRANDING,
   googleConfig: {
@@ -2279,6 +2280,63 @@ app.get("/api/user/my-role", async (req: express.Request, res: express.Response)
     loginTime: new Date().toISOString(),
   });
 });
+// Dashboard news ticker: 5 short headlines about current Indonesian
+// fintech-lending (Pindar/Pinjol) regulation, refreshed via Gemini (Google
+// Search grounded, so it isn't just reciting the model's training data) at
+// most once every 7 days — cached in db.newsTicker between refreshes.
+const NEWS_TICKER_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
+const NEWS_TICKER_PROMPT = `Anda adalah asisten riset regulasi keuangan digital Indonesia. Gunakan Google Search untuk mencari peraturan TERKINI (beberapa bulan terakhir) terkait bisnis Pindar (Pinjaman Daring), Pinjol (Pinjaman Online), dan Pinjaman digital di Indonesia — khususnya dari OJK (Otoritas Jasa Keuangan) dan regulasi P2P Lending/Fintech Lending.
+
+Buat TEPAT 5 teks headline newsticker singkat (gaya headline berita, maksimal sekitar 20 kata per teks, Bahasa Indonesia) yang merangkum peraturan/kebijakan terkini paling relevan untuk pelaku bisnis Pindar/Pinjol.
+
+Format output: HANYA 5 teks tersebut, dipisahkan dengan " | " (spasi-pipe-spasi), tanpa penomoran, tanpa markdown, tanpa kalimat pembuka/penutup. Contoh format persis seperti ini:
+OJK Rilis POJK 8/2026: Penyelenggara Pindar Wajib Lapor Data Transaksi Real-Time | Perlindungan Data Diperketat: OJK Tegaskan Larangan Jual Beli Data Pribadi Pengguna | Regulasi Batasan Pinjaman Diperbarui: OJK Hapus Aturan Maksimal Pinjam di 3 Platform P2P Lending | Penyelenggara Pindar Wajib Penuhi Kecukupan Ekuitas Minimum dan Mitigasi Kredit Macet Secara Ketat | Penguatan Tata Kelola P2P Lending: OJK Minta Platform Terapkan Scoring Kredit Adaptif
+
+Pastikan setiap teks akurat berdasarkan hasil pencarian; jangan mengarang nomor atau tanggal peraturan bila tidak yakin dari hasil pencarian.`;
+
+app.get("/api/dashboard/news-ticker", async (req: express.Request, res: express.Response) => {
+  const ticker = db.newsTicker || { items: [], lastGeneratedAt: null };
+  const isStale =
+    !ticker.lastGeneratedAt ||
+    !Array.isArray(ticker.items) ||
+    ticker.items.length === 0 ||
+    Date.now() - new Date(ticker.lastGeneratedAt).getTime() > NEWS_TICKER_REFRESH_MS;
+
+  if (!isStale) {
+    return res.json({ items: ticker.items, lastGeneratedAt: ticker.lastGeneratedAt, cached: true });
+  }
+
+  try {
+    const response = await generateContentWithRetryAndFallback({
+      contents: NEWS_TICKER_PROMPT,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+    const rawText = String((response as any).text || "").trim();
+    const items = rawText
+      .split("|")
+      .map((s: string) => s.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+    if (items.length === 0) {
+      throw new Error("Respons AI kosong, tidak ada teks newsticker yang dihasilkan.");
+    }
+
+    db.newsTicker = { items, lastGeneratedAt: new Date().toISOString() };
+    saveDb();
+    res.json({ items, lastGeneratedAt: db.newsTicker.lastGeneratedAt, cached: false });
+  } catch (err: any) {
+    console.error("Error generating news ticker:", err);
+    // Prefer showing stale cached content over nothing when the AI call fails
+    // (e.g. no Gemini API key configured yet, or a transient outage).
+    if (Array.isArray(ticker.items) && ticker.items.length > 0) {
+      return res.json({ items: ticker.items, lastGeneratedAt: ticker.lastGeneratedAt, cached: true, stale: true });
+    }
+    res.status(500).json({ error: err?.message || "Gagal memuat newsticker." });
+  }
+});
+
 app.get("/api/departments", async (req: express.Request, res: express.Response) => {
   try {
     let tenantId =
