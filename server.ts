@@ -2281,11 +2281,10 @@ app.get("/api/user/my-role", async (req: express.Request, res: express.Response)
   });
 });
 // Dashboard news ticker: 5 short headlines about current Indonesian
-// fintech-lending (Pindar/Pinjol) regulation, refreshed via Gemini (Google
-// Search grounded, so it isn't just reciting the model's training data) at
-// most once every 7 days — cached in db.newsTicker between refreshes.
+// fintech-lending (Pindar/Pinjol) regulation, refreshed via Gemini at most
+// once every 7 days — cached in db.newsTicker between refreshes.
 const NEWS_TICKER_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
-const NEWS_TICKER_PROMPT = `Anda adalah asisten riset regulasi keuangan digital Indonesia. Gunakan Google Search untuk mencari peraturan TERKINI (beberapa bulan terakhir) terkait bisnis Pindar (Pinjaman Daring), Pinjol (Pinjaman Online), dan Pinjaman digital di Indonesia — khususnya dari OJK (Otoritas Jasa Keuangan) dan regulasi P2P Lending/Fintech Lending.
+const NEWS_TICKER_PROMPT_GROUNDED = `Anda adalah asisten riset regulasi keuangan digital Indonesia. Gunakan Google Search untuk mencari peraturan TERKINI (beberapa bulan terakhir) terkait bisnis Pindar (Pinjaman Daring), Pinjol (Pinjaman Online), dan Pinjaman digital di Indonesia — khususnya dari OJK (Otoritas Jasa Keuangan) dan regulasi P2P Lending/Fintech Lending.
 
 Buat TEPAT 5 teks headline newsticker singkat (gaya headline berita, maksimal sekitar 20 kata per teks, Bahasa Indonesia) yang merangkum peraturan/kebijakan terkini paling relevan untuk pelaku bisnis Pindar/Pinjol.
 
@@ -2293,6 +2292,44 @@ Format output: HANYA 5 teks tersebut, dipisahkan dengan " | " (spasi-pipe-spasi)
 OJK Rilis POJK 8/2026: Penyelenggara Pindar Wajib Lapor Data Transaksi Real-Time | Perlindungan Data Diperketat: OJK Tegaskan Larangan Jual Beli Data Pribadi Pengguna | Regulasi Batasan Pinjaman Diperbarui: OJK Hapus Aturan Maksimal Pinjam di 3 Platform P2P Lending | Penyelenggara Pindar Wajib Penuhi Kecukupan Ekuitas Minimum dan Mitigasi Kredit Macet Secara Ketat | Penguatan Tata Kelola P2P Lending: OJK Minta Platform Terapkan Scoring Kredit Adaptif
 
 Pastikan setiap teks akurat berdasarkan hasil pencarian; jangan mengarang nomor atau tanggal peraturan bila tidak yakin dari hasil pencarian.`;
+// Used only if the grounded attempt above fails — no `tools`, so it can't
+// cite a specific regulation number/date it isn't sure of; asked to speak
+// in general terms instead (e.g. "OJK perketat aturan pelaporan transaksi
+// Pindar" rather than inventing a POJK number).
+const NEWS_TICKER_PROMPT_PLAIN = `Anda adalah asisten riset regulasi keuangan digital Indonesia. Berdasarkan pengetahuan Anda tentang arah kebijakan OJK (Otoritas Jasa Keuangan) terkait bisnis Pindar (Pinjaman Daring), Pinjol (Pinjaman Online), dan P2P Lending/Fintech Lending di Indonesia, buat TEPAT 5 teks headline newsticker singkat (gaya headline berita, maksimal sekitar 20 kata per teks, Bahasa Indonesia) tentang tema regulasi yang relevan dan penting bagi pelaku bisnis Pindar/Pinjol (mis. pelaporan transaksi, perlindungan data pengguna, batas bunga/denda, kecukupan ekuitas, tata kelola risiko kredit).
+
+Format output: HANYA 5 teks tersebut, dipisahkan dengan " | " (spasi-pipe-spasi), tanpa penomoran, tanpa markdown, tanpa kalimat pembuka/penutup.
+
+PENTING: jangan menyebut nomor POJK/peraturan atau tanggal spesifik kecuali Anda benar-benar yakin — gunakan kalimat umum yang tetap informatif (mis. "OJK Perketat Kewajiban Pelaporan Transaksi Real-Time Penyelenggara Pindar") daripada mengarang nomor/tanggal yang berisiko salah.`;
+
+/**
+ * The grounded (Google Search-tool) attempt is what QA found always fails
+ * with a quota error on this environment's API key, while every OTHER
+ * Gemini call in this app (e.g. /api/partners/generate-dd-notes) — which
+ * never passes `config.tools` — succeeds reliably. Google's grounding tool
+ * is metered on a separate, much stricter quota from plain generateContent
+ * calls, so cycling through fallback *models* (which
+ * generateContentWithRetryAndFallback already does) doesn't help: the
+ * bottleneck is the tool, not the model. Falls back to a plain, un-grounded
+ * call so the ticker still gets content instead of failing outright.
+ */
+async function generateNewsTickerText(): Promise<string> {
+  try {
+    const response = await generateContentWithRetryAndFallback({
+      contents: NEWS_TICKER_PROMPT_GROUNDED,
+      config: { tools: [{ googleSearch: {} }] },
+    });
+    return String((response as any).text || "").trim();
+  } catch (groundedErr: any) {
+    console.warn(
+      `[News Ticker] Grounded (Google Search) generation failed (${(groundedErr?.message || "").slice(0, 160)}), falling back to a plain (un-grounded) call...`,
+    );
+    const response = await generateContentWithRetryAndFallback({
+      contents: NEWS_TICKER_PROMPT_PLAIN,
+    });
+    return String((response as any).text || "").trim();
+  }
+}
 
 app.get("/api/dashboard/news-ticker", async (req: express.Request, res: express.Response) => {
   const ticker = db.newsTicker || { items: [], lastGeneratedAt: null };
@@ -2307,13 +2344,7 @@ app.get("/api/dashboard/news-ticker", async (req: express.Request, res: express.
   }
 
   try {
-    const response = await generateContentWithRetryAndFallback({
-      contents: NEWS_TICKER_PROMPT,
-      config: {
-        tools: [{ googleSearch: {} }],
-      },
-    });
-    const rawText = String((response as any).text || "").trim();
+    const rawText = await generateNewsTickerText();
     const items = rawText
       .split("|")
       .map((s: string) => s.trim())
