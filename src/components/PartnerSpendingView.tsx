@@ -591,26 +591,24 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
     <th
       scope="col"
       aria-sort={sortField === field ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-      className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle"
+      className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left select-none align-middle"
     >
       <button
         type="button"
         onClick={() => handleSort(field)}
-        className="flex items-center gap-1 cursor-pointer hover:text-slate-900 dark:hover:text-white select-none focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
+        className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
+        title={`Urutkan berdasarkan ${label}`}
       >
         <span>{label}</span>
-        <div className="flex flex-col">
-          <ArrowUp
-            className={`w-2 h-2 ${
-              sortField === field && sortOrder === 'asc' ? 'text-[#06C755]' : 'text-slate-300'
-            }`}
-          />
-          <ArrowDown
-            className={`w-2 h-2 -mt-0.5 ${
-              sortField === field && sortOrder === 'desc' ? 'text-[#06C755]' : 'text-slate-300'
-            }`}
-          />
-        </div>
+        {sortField === field ? (
+          sortOrder === 'asc' ? (
+            <ArrowUp className="w-3.5 h-3.5 text-[#06C755] shrink-0" />
+          ) : (
+            <ArrowDown className="w-3.5 h-3.5 text-[#06C755] shrink-0" />
+          )
+        ) : (
+          <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        )}
       </button>
     </th>
   );
