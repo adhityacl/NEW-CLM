@@ -224,6 +224,11 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isCustomTemplateActive, setIsCustomTemplateActive] = useState(false);
+  // True once the initial template-library fetch has settled (success,
+  // empty, or error) — distinct from `savedTemplates.length === 0`, which
+  // is also true for the split second before the fetch has even started.
+  // The default-template effect below needs to tell those two apart.
+  const [templatesReady, setTemplatesReady] = useState(false);
 
   const fetchTemplates = async () => {
     try {
@@ -245,6 +250,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       console.error('Failed to fetch templates:', err);
     } finally {
       setIsLoadingTemplates(false);
+      setTemplatesReady(true);
     }
   };
 
@@ -451,13 +457,23 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     updateStats();
   };
 
-  // Initial load of the 15-article general cooperation agreement, once the editor is ready
+  // Default template on first load: the first entry in the saved Template
+  // Library (Pustaka Template Terdaftar), not the built-in 15-article
+  // agreement — that template is now only reached via the explicit "Reset
+  // Template" button. Waits for the library fetch to settle (templatesReady)
+  // so it doesn't race the empty `savedTemplates` state that exists before
+  // the request resolves; if the library genuinely has no templates yet,
+  // the editor is left blank rather than falling back to the 15-article one.
   useEffect(() => {
-    if (editor && editor.isEmpty) {
-      renderTemplateToEditor(fieldValues, contractNumber);
+    if (!editor || !editor.isEmpty || !templatesReady) return;
+    const defaultTemplate = savedTemplates[0];
+    if (defaultTemplate) {
+      editor.commands.setContent(defaultTemplate.contentId);
+      setIsCustomTemplateActive(true);
+      updateStats();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, viewMode]);
+  }, [editor, viewMode, templatesReady, savedTemplates]);
 
   const handleLoadTemplate = async (tpl: any) => {
     const confirmMsg = `${t('contract_creator.confirm.use_template_prefix', 'Gunakan template')} "${tpl.name}"${t('contract_creator.confirm.use_template_suffix', '? Teks kontrak saat ini akan diganti.')}`;
