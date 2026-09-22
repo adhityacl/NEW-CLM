@@ -275,21 +275,26 @@ const resolveRbacActor = async (req: any) => {
       ).get(session.user.id, requestedOrgId);
       if (!m) return null;
 
-      const tm: any = sqliteDb.prepare(`
+      // All of this org's teams the user belongs to — not just the first —
+      // so a Manager/Editor/Viewer who covers more than one department is
+      // actually scoped to all of them, not silently locked to whichever
+      // membership happened to be created first.
+      const tms: any[] = sqliteDb.prepare(`
         SELECT t.id
         FROM teamMember tm
         JOIN team t ON t.id = tm.teamId
         WHERE tm.userId = ? AND t.organizationId = ?
         ORDER BY tm.createdAt ASC
-        LIMIT 1
-      `).get(session.user.id, requestedOrgId);
+      `).all(session.user.id, requestedOrgId);
+      const departmentIds = tms.map((r: any) => r.id);
       const memberRole = String(m.role || "").toLowerCase().trim();
       const raw = memberRole === "owner" ? "admin" : (memberRole || globalRole || "viewer");
       return {
         id: session.user.id,
         role: raw,
         tenantId: requestedOrgId,
-        departmentId: tm?.id ?? null,
+        departmentId: departmentIds[0] ?? null,
+        departmentIds,
       };
     }
   } catch { /* lanjut ke fallback */ }
@@ -323,21 +328,22 @@ const resolveRbacActor = async (req: any) => {
           "SELECT organizationId, role FROM member WHERE userId = ? AND organizationId = ? LIMIT 1",
         ).get(s.userId, requestedOrgId);
         if (!m) return null;
-        const tm: any = sqliteDb.prepare(`
+        const tms: any[] = sqliteDb.prepare(`
           SELECT t.id
           FROM teamMember tm
           JOIN team t ON t.id = tm.teamId
           WHERE tm.userId = ? AND t.organizationId = ?
           ORDER BY tm.createdAt ASC
-          LIMIT 1
-        `).get(s.userId, requestedOrgId);
+        `).all(s.userId, requestedOrgId);
+        const departmentIds = tms.map((r: any) => r.id);
         const memberRole = String(m.role || "").toLowerCase().trim();
         const rawRole = memberRole === "owner" ? "admin" : (memberRole || globalRole || "viewer");
         return {
           id: s.userId,
           role: String(rawRole).toLowerCase(),
           tenantId: requestedOrgId,
-          departmentId: tm?.id ?? null,
+          departmentId: departmentIds[0] ?? null,
+          departmentIds,
         };
       }
     }

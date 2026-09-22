@@ -216,11 +216,21 @@ test('§25 bypass: non-superuser tidak bisa memanipulasi tenantId dari client', 
 });
 
 test('§24 buildScopeFilter: filter query wajib per role (scope dipersempit sesuai peran)', () => {
-  assert.deepEqual(buildScopeFilter(SH), { tenantId: null, departmentId: null });
-  assert.deepEqual(buildScopeFilter(AD), { tenantId: 't1', departmentId: null });
-  assert.deepEqual(buildScopeFilter(MG), { tenantId: 't1', departmentId: 'd1' });
+  // Sejak dukungan multi-departemen: filter mengembalikan `departmentIds`
+  // (array) alih-alih satu `departmentId`, karena seorang aktor kini bisa
+  // punya lebih dari satu departemen sekaligus.
+  assert.deepEqual(buildScopeFilter(SH), { tenantId: null, departmentIds: null });
+  assert.deepEqual(buildScopeFilter(AD), { tenantId: 't1', departmentIds: null });
+  assert.deepEqual(buildScopeFilter(MG), { tenantId: 't1', departmentIds: ['d1'] });
   // editor meninta scope 'tenant' → DIPERSEMPIT ke departemennya (tidak boleh melebar)
-  assert.deepEqual(buildScopeFilter(ED, 'tenant'), { tenantId: 't1', departmentId: 'd1' });
+  assert.deepEqual(buildScopeFilter(ED, 'tenant'), { tenantId: 't1', departmentIds: ['d1'] });
+});
+
+test('§24 buildScopeFilter: aktor dengan lebih dari satu departemen', () => {
+  const MG2 = { id: 'u-mgr2', role: 'manager' as const, tenantId: 't1', departmentIds: ['d1', 'd2'] };
+  assert.deepEqual(buildScopeFilter(MG2), { tenantId: 't1', departmentIds: ['d1', 'd2'] });
+  assert.equal(ok(checkScope(MG2, { tenantId: 't1', departmentId: 'd2' })), true);
+  assert.equal(ok(checkScope(MG2, { tenantId: 't1', departmentId: 'd3' })), false);
 });
 
 test('§25/§4 pemanggil tidak bisa memperlebar scope (clamp)', () => {
