@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Calendar } from './ui/calendar';
 
 export interface DateInputProps {
   value: string; // ISO format YYYY-MM-DD or DD/MM/YYYY
@@ -58,6 +60,20 @@ export function formatDdMmYyyyToIso(ddmmStr: string): string {
   return '';
 }
 
+function isoToDate(iso: string): Date | undefined {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return undefined;
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function dateToIso(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export const DateInput: React.FC<DateInputProps> = ({
   value,
   onChange,
@@ -71,19 +87,13 @@ export const DateInput: React.FC<DateInputProps> = ({
   id,
   name,
 }) => {
-  const hiddenPickerRef = useRef<HTMLInputElement>(null);
   const [displayValue, setDisplayValue] = useState<string>(() => formatIsoToDdMmYyyy(value));
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   // Sync internal displayValue when parent value changes
   useEffect(() => {
     setDisplayValue(formatIsoToDdMmYyyy(value));
   }, [value]);
-
-  const getIsoValueForPicker = (val: string): string => {
-    if (!val) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-    return formatDdMmYyyyToIso(val);
-  };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawInput = e.target.value;
@@ -130,27 +140,12 @@ export const DateInput: React.FC<DateInputProps> = ({
     }
   };
 
-  const handlePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const pickedIso = e.target.value; // YYYY-MM-DD
-    if (pickedIso) {
-      setDisplayValue(formatIsoToDdMmYyyy(pickedIso));
-      onChange(pickedIso);
-    }
-  };
-
-  const openCalendarPicker = () => {
-    if (disabled) return;
-    try {
-      if (hiddenPickerRef.current && typeof hiddenPickerRef.current.showPicker === 'function') {
-        hiddenPickerRef.current.showPicker();
-      } else {
-        hiddenPickerRef.current?.focus();
-        hiddenPickerRef.current?.click();
-      }
-    } catch {
-      hiddenPickerRef.current?.focus();
-      hiddenPickerRef.current?.click();
-    }
+  const handleCalendarSelect = (date: Date | undefined) => {
+    if (!date) return;
+    const iso = dateToIso(date);
+    setDisplayValue(formatIsoToDdMmYyyy(iso));
+    onChange(iso);
+    setPopoverOpen(false);
   };
 
   const focusBorderClass =
@@ -159,6 +154,10 @@ export const DateInput: React.FC<DateInputProps> = ({
       : focusColor === 'slate'
       ? 'focus-within:border-slate-500 focus:border-slate-500'
       : 'focus-within:border-[#06C755] focus:border-[#06C755]';
+
+  const selectedDate = isoToDate(formatDdMmYyyyToIso(value) || value);
+  const minDate = min ? isoToDate(min) : undefined;
+  const maxDate = max ? isoToDate(max) : undefined;
 
   return (
     <div className={`relative flex items-center ${className}`}>
@@ -177,30 +176,37 @@ export const DateInput: React.FC<DateInputProps> = ({
           disabled ? 'opacity-60 cursor-not-allowed' : ''
         }`}
       />
-      <button
-        type="button"
-        tabIndex={-1}
-        disabled={disabled}
-        onClick={openCalendarPicker}
-        title="Buka Kalender"
-        className="absolute right-2.5 text-slate-400 hover:text-[#06C755] dark:hover:text-emerald-400 transition-colors cursor-pointer disabled:cursor-not-allowed p-0.5"
-      >
-        <Calendar className="w-4 h-4" />
-      </button>
-
-      {/* Hidden Native Date Input for Calendar Picker Popup */}
-      <input
-        ref={hiddenPickerRef}
-        type="date"
-        tabIndex={-1}
-        aria-hidden="true"
-        disabled={disabled}
-        min={min}
-        max={max}
-        value={getIsoValueForPicker(value)}
-        onChange={handlePickerChange}
-        className="sr-only absolute pointer-events-none opacity-0 w-0 h-0"
-      />
+      <Popover open={popoverOpen} onOpenChange={(open) => !disabled && setPopoverOpen(open)}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            tabIndex={-1}
+            disabled={disabled}
+            title="Buka Kalender"
+            aria-label="Buka Kalender"
+            className="absolute right-2.5 text-slate-400 hover:text-[#06C755] dark:hover:text-emerald-400 transition-colors cursor-pointer disabled:cursor-not-allowed p-0.5"
+          >
+            <CalendarIcon className="w-4 h-4" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={handleCalendarSelect}
+            disabled={
+              minDate || maxDate
+                ? [
+                    ...(minDate ? [{ before: minDate }] : []),
+                    ...(maxDate ? [{ after: maxDate }] : []),
+                  ]
+                : undefined
+            }
+            defaultMonth={selectedDate}
+            autoFocus
+          />
+        </PopoverContent>
+      </Popover>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useLanguage, Language } from '../context/LanguageContext';
+import { useConfirm } from '../context/ConfirmDialogContext';
 import {
   Download,
   Upload,
@@ -33,6 +34,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
     resetCustomTranslations,
     updateSingleTranslation,
   } = useLanguage();
+  const confirmDialog = useConfirm();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModule, setSelectedModule] = useState<string>('ALL');
@@ -132,8 +134,13 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
     }
   };
 
-  const handleReset = () => {
-    if (window.confirm('Apakah Anda yakin ingin MERESET seluruh teks UI kembali ke pengaturan awal pabrik?')) {
+  const handleReset = async () => {
+    const ok = await confirmDialog({
+      description: 'Reset seluruh teks UI ke pengaturan awal pabrik?',
+      tone: 'danger',
+      confirmLabel: 'Reset',
+    });
+    if (ok) {
       resetCustomTranslations();
       setNotice({ type: 'success', message: 'Seluruh teks UI berhasil direset ke standar sistem.' });
     }

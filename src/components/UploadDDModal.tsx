@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, X, AlertCircle, Calendar, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/ConfirmDialogContext';
 import { Partner, DDDokumenItem, DDFileItem } from '../types';
 import { formatDueDiligenceFileName } from '../lib/fileNaming';
+import { DateInput } from './DateInput';
 
 interface UploadDDModalProps {
   partner: Partner;
@@ -28,6 +30,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
   userRole,
 }) => {
   const { t } = useLanguage();
+  const confirmDialog = useConfirm();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const existingDoc: DDDokumenItem | undefined = (partner.daftar_dokumen_dd || []).find((d) => d.nama === docName);
@@ -101,7 +104,8 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
   };
 
   const handleDeleteExistingFile = async (fileId: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus file ini?')) return;
+    const ok = await confirmDialog({ description: 'Hapus file dokumen ini?', tone: 'danger', confirmLabel: 'Hapus' });
+    if (!ok) return;
     setIsDeletingFileId(fileId);
     setError(null);
     try {
@@ -343,9 +347,6 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                   <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                     {t('partners.drag_file', 'Pilih atau drag file dokumen ke sini')}
                   </p>
-                  <p className="text-[10px] text-slate-400">
-                    {t('partners.supported_formats', 'Mendukung PDF, DOC, DOCX, PNG, JPG, XLSX, CSV (Maks 25MB)')}
-                  </p>
                 </div>
               )}
             </div>
@@ -375,11 +376,10 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                   {t('partners.expiry_date_label', 'Tanggal Kadaluarsa (Opsional)')}
                 </span>
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={tanggalKadaluarsa}
-                onChange={(e) => setTanggalKadaluarsa(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#06C755]/30 focus:border-[#06C755]"
+                onChange={setTanggalKadaluarsa}
+                focusColor="emerald"
               />
             </div>
           </div>

@@ -46,6 +46,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/ConfirmDialogContext';
+import { useAlertToast } from '../context/AlertToastContext';
 import { useAuth } from '../context/AuthContext';
 import {
   canViewSpending,
@@ -56,6 +58,7 @@ import {
 import { getCachedAccessToken } from '../lib/googleAuthService';
 import { SUPPORTED_CURRENCIES, formatMoney, getDefaultUsdRate, getHistoricalUsdRate, fetchHistoricalRate } from '../lib/currencyUtils';
 import { formatInvoiceFileName, formatBillingFileName } from '../lib/fileNaming';
+import { DateInput } from './DateInput';
 import { usePermissions } from '../lib/permissions';
 import {
   parseMonthStr,
@@ -87,6 +90,8 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
 }) => {
   const { hasPermission } = usePermissions();
   const { t, language } = useLanguage();
+  const confirmDialog = useConfirm();
+  const showAlert = useAlertToast();
   const { user } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -525,13 +530,14 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
   }, [filteredSpendings, sortField, sortOrder]);
 
   const handleDeleteClick = async (id: string) => {
-    if (!confirm('Hapus data spending ini?')) return;
+    const ok = await confirmDialog({ description: 'Hapus data spending ini?', tone: 'danger', confirmLabel: 'Hapus' });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/partner-spendings/${id}?userEmail=${encodeURIComponent(userEmail || '')}&userName=${encodeURIComponent(userName || '')}&userRole=${encodeURIComponent(userRole || '')}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Gagal menghapus');
       onRefreshData();
     } catch (e) {
-      alert((e as Error).message);
+      showAlert({ title: 'Gagal menghapus data spending', description: (e as Error).message, variant: 'destructive' });
     }
   };
 
@@ -1056,13 +1062,9 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                     onChange={(e) => setFormInvoiceNumber(e.target.value)}
                     className="w-full px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800"
                   />
-                  {formInvoiceNumber.trim() && spendings.some(s => s.invoice_number.toLowerCase() === formInvoiceNumber.trim().toLowerCase() && (!editingSpending || s.id !== editingSpending.id)) ? (
+                  {formInvoiceNumber.trim() && spendings.some(s => s.invoice_number.toLowerCase() === formInvoiceNumber.trim().toLowerCase() && (!editingSpending || s.id !== editingSpending.id)) && (
                     <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-1 flex items-center gap-1">
                       <span>💡 Nomor invoice ini sudah dicatat sebelumnya. Diizinkan menginput nomor invoice sama untuk bulan/amount berbeda.</span>
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-normal mt-1">
-                      Dapat menggunakan nomor invoice yang sama untuk billing/bulan yang berbeda.
                     </p>
                   )}
                 </div>
@@ -1071,11 +1073,10 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t('spending.invoice_date_label', 'Invoice Date')}
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={formInvoiceDate}
-                    onChange={(e) => setFormInvoiceDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800 cursor-pointer"
+                    onChange={setFormInvoiceDate}
+                    focusColor="emerald"
                   />
                 </div>
               </div>

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/ConfirmDialogContext';
 import { useDepartments } from '../hooks/useDepartments';
 import {
   canViewPartner,
@@ -77,6 +78,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
   const { hasPermission } = usePermissions();
   const { isLegal, user } = useAuth();
   const { t } = useLanguage();
+  const confirmDialog = useConfirm();
   const { departments: ENTERPRISE_DEPARTMENTS } = useDepartments();
   const [subTab, setSubTab] = useState<'list' | 'evaluation'>(initialSubTab);
 
@@ -342,7 +344,8 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
   };
 
   const handleDeleteDDFile = async (partnerId: string, docName: string, fileId: string) => {
-    if (!confirm(`Hapus file ini dari dokumen ${docName}?`)) return;
+    const ok = await confirmDialog({ description: `Hapus file ini dari dokumen ${docName}?`, tone: 'danger', confirmLabel: 'Hapus' });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/partners/${partnerId}/dd-file`, {
         method: 'DELETE',

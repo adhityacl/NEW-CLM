@@ -152,7 +152,8 @@ export function hydrateAuthConsoleFromDataStore(dbStore: any) {
           VALUES (?, ?, ?, ?, ?)
         `).run(`mem_${userId}`, orgId, userId, finalRole, u.createdAt || now);
 
-        if (u.department) {
+        // Superuser and Admin span every department by design — never tie them to just one.
+        if (u.department && finalRole !== 'superuser' && finalRole !== 'admin') {
           const deptName = u.department.trim();
           let teamRow = sqliteDb.prepare('SELECT id FROM team WHERE LOWER(name) = LOWER(?)').get(deptName) as any;
           if (!teamRow) {
@@ -444,8 +445,9 @@ authConsoleRouter.post('/users', async (req: Request, res: Response) => {
       `).run(memberId, targetOrgId, userId, finalRole, now);
     }
 
-    // Assign to department / team if provided
-    if (department && department.trim()) {
+    // Assign to department / team if provided — Superuser and Admin span every
+    // department by design, so they're never tied to just one.
+    if (finalRole !== 'superuser' && finalRole !== 'admin' && department && department.trim()) {
       const deptName = department.trim();
       const teamOrgId = targetOrgId || getActiveOrgId(req) || 'org-adapundi';
       let teamRow = sqliteDb.prepare('SELECT id FROM team WHERE LOWER(name) = LOWER(?) AND organizationId = ?').get(deptName, teamOrgId) as any;
@@ -663,8 +665,12 @@ authConsoleRouter.put('/users/:id/role', (req: Request, res: Response) => {
       sqliteDb.prepare('UPDATE member SET role = ? WHERE userId = ?').run(normRole, id);
     }
 
-    // If department was passed, update user's team membership
-    if (department !== undefined) {
+    // Superuser and Admin operate across every department by design — never tie
+    // them to a single team/department, and drop any membership they already had.
+    if (normRole === 'superuser' || normRole === 'admin') {
+      sqliteDb.prepare('DELETE FROM teamMember WHERE userId = ?').run(id);
+    } else if (department !== undefined) {
+      // If department was passed, update user's team membership
       const activeOrgId = organizationId || getActiveOrgId(req) || 'org-adapundi';
       const deptName = String(department).trim();
       if (deptName) {
@@ -699,7 +705,9 @@ authConsoleRouter.put('/users/:id/role', (req: Request, res: Response) => {
           );
           if (target) {
             target.role = normRole.charAt(0).toUpperCase() + normRole.slice(1);
-            if (department !== undefined && String(department).trim()) {
+            if (normRole === 'superuser' || normRole === 'admin') {
+              target.department = null;
+            } else if (department !== undefined && String(department).trim()) {
               target.department = String(department).trim();
             }
             fs.writeFileSync(dataStorePath, JSON.stringify(ds, null, 2), 'utf-8');
@@ -1240,28 +1248,37 @@ authConsoleRouter.delete('/organizations/:id', (req: Request, res: Response) => 
 // 6. GET /teams - List teams for active org
 authConsoleRouter.get('/teams', (req: Request, res: Response) => {
   try {
-    const orgId = getActiveOrgId(req);
+    // System Admin (superuser) sees departments across every organization —
+    // getConsoleTenantScope returns null for superuser, matching /users and
+    // /invitations. Only the seeding fallback below needs one concrete org.
+    const tenantScope = getConsoleTenantScope(req);
     let teams = sqliteDb.prepare(`
-      SELECT 
-        t.id, 
-        t.name, 
-        t.organizationId, 
-        t.createdAt, 
+      SELECT
+        t.id,
+        t.name,
+        t.organizationId,
+        t.createdAt,
         t.updatedAt,
         (SELECT COUNT(*) FROM teamMember WHERE teamId = t.id) as memberCount,
         o.name as organizationName
       FROM team t
       LEFT JOIN organization o ON t.organizationId = o.id
-      WHERE t.organizationId = ? OR ? = 'ALL'
+      WHERE (? IS NULL OR t.organizationId = ?)
       ORDER BY t.createdAt ASC
-    `).all(orgId, orgId);
+    `).all(tenantScope, tenantScope);
 
-    // If SQLite has no teams for this org, check if globalDbRef.departments has any to populate
+    // If SQLite has no teams for this org, check if globalDbRef.departments has any to populate.
+    // Seeding always needs one concrete organization id — a department can't be filed under "ALL".
     if (teams.length === 0 && globalDbRef && globalDbRef.departments && globalDbRef.departments.length > 0) {
+      const seedOrgId = getActiveOrgId(req);
       const now = new Date().toISOString();
       for (const dept of globalDbRef.departments) {
-        const dOrgId = dept.organizationId || orgId;
-        if (dOrgId === orgId || orgId === 'ALL') {
+        // Only trust dept.organizationId when it's an org that actually exists — legacy
+        // records have been seen with the department's own name stored in this field.
+        const deptOrgIsValid = dept.organizationId
+          && (sqliteDb.prepare('SELECT 1 FROM organization WHERE id = ?').get(dept.organizationId) as any);
+        const dOrgId = deptOrgIsValid ? dept.organizationId : seedOrgId;
+        if (tenantScope === null || dOrgId === tenantScope) {
           try {
             sqliteDb.prepare(`
               INSERT OR IGNORE INTO team (id, name, memberCount, organizationId, createdAt, updatedAt)
@@ -1271,19 +1288,19 @@ authConsoleRouter.get('/teams', (req: Request, res: Response) => {
         }
       }
       teams = sqliteDb.prepare(`
-        SELECT 
-          t.id, 
-          t.name, 
-          t.organizationId, 
-          t.createdAt, 
+        SELECT
+          t.id,
+          t.name,
+          t.organizationId,
+          t.createdAt,
           t.updatedAt,
           (SELECT COUNT(*) FROM teamMember WHERE teamId = t.id) as memberCount,
           o.name as organizationName
         FROM team t
         LEFT JOIN organization o ON t.organizationId = o.id
-        WHERE t.organizationId = ? OR ? = 'ALL'
+        WHERE (? IS NULL OR t.organizationId = ?)
         ORDER BY t.createdAt ASC
-      `).all(orgId, orgId);
+      `).all(tenantScope, tenantScope);
     }
 
     // Fetch members for each team

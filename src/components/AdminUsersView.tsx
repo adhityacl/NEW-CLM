@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/ConfirmDialogContext';
 import { useTenant } from '../context/TenantContext';
 import { getAuthHeaders } from '../App';
 import {
@@ -50,6 +51,7 @@ interface AdminUsersViewProps {
 export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'dashboard', area = 'organization' }) => {
   const { user: currentUser, refreshUser } = useAuth();
   const { t, language } = useLanguage();
+  const confirmDialog = useConfirm();
   const { switchTenant } = useTenant();
   const { hasPermission, role } = usePermissions();
   const isSystemArea = area === 'system';
@@ -355,7 +357,12 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
 
   // Handler: Delete User
   const handleDeleteUser = async (user: ConsoleUser) => {
-    if (!window.confirm(`${t('admin.confirm.delete_user', 'Are you sure you want to delete the user')} "${user.name}" (${user.email})?`)) {
+    const ok = await confirmDialog({
+      description: `Hapus pengguna "${user.name}"? Akun ini akan dihapus permanen.`,
+      tone: 'danger',
+      confirmLabel: t('admin.action_delete', 'Hapus'),
+    });
+    if (!ok) {
       return;
     }
     const headers = getAuthHeaders();
@@ -382,17 +389,21 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
     
     // Confirmation for bulk action
     if (action === 'delete') {
-      const confirmMsg = language === 'ID'
-        ? `Apakah Anda yakin ingin menghapus secara permanen ${userIds.length} pengguna terpilih?`
-        : `Are you sure you want to permanently delete the ${userIds.length} selected users?`;
-      if (!window.confirm(confirmMsg)) {
+      const ok = await confirmDialog({
+        description: `Hapus ${userIds.length} pengguna terpilih secara permanen?`,
+        tone: 'danger',
+        confirmLabel: t('admin.action_delete', 'Hapus'),
+      });
+      if (!ok) {
         return;
       }
     } else {
-      const confirmMsg = action === 'ban'
-        ? (language === 'ID' ? `Apakah Anda yakin ingin mencekal secara massal ${userIds.length} pengguna terpilih?` : `Are you sure you want to bulk ban the ${userIds.length} selected users?`)
-        : (language === 'ID' ? `Apakah Anda yakin ingin membatalkan cekal secara massal ${userIds.length} pengguna terpilih?` : `Are you sure you want to bulk unban the ${userIds.length} selected users?`);
-      if (!window.confirm(confirmMsg)) {
+      const confirmMsg =
+        action === 'ban'
+          ? `Cekal ${userIds.length} pengguna terpilih?`
+          : `Batalkan cekal ${userIds.length} pengguna terpilih?`;
+      const ok = await confirmDialog({ description: confirmMsg, tone: action === 'ban' ? 'danger' : 'default' });
+      if (!ok) {
         return;
       }
     }
@@ -727,7 +738,12 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
 
   // Handler: Delete API Key
   const handleDeleteApiKey = async (keyId: string) => {
-    if (!window.confirm(t('admin.confirm.delete_key', 'Are you sure you want to delete this API Key?'))) return;
+    const ok = await confirmDialog({
+      description: t('admin.confirm.delete_key', 'Hapus API Key ini? Aplikasi yang memakainya akan berhenti berfungsi.'),
+      tone: 'danger',
+      confirmLabel: t('admin.action_delete', 'Hapus'),
+    });
+    if (!ok) return;
     const headers = getAuthHeaders();
     try {
       const res = await fetch(`/api/auth-console/api-keys/${keyId}`, {
@@ -751,6 +767,8 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
       {/* Toast Banner */}
       {toast && (
         <div
+          role="status"
+          aria-live="polite"
           className={`fixed top-4 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl shadow-lg border text-xs font-medium animate-in fade-in slide-in-from-top-4 ${
             toast.type === 'success'
               ? 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/90 dark:border-emerald-800 dark:text-emerald-200'
@@ -766,6 +784,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
           <button
             type="button"
             onClick={() => setToast(null)}
+            aria-label={t('admin.toast.dismiss', 'Tutup notifikasi')}
             className="p-1 hover:bg-slate-200/50 rounded-md ml-2"
           >
             <X className="w-3.5 h-3.5" />
@@ -778,9 +797,6 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         area={area}
         activeTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab)}
-        organizations={organizations}
-        activeOrg={activeOrg}
-        onSelectOrg={handleSelectOrg}
         onCreateOrgClick={() => setIsCreateOrgOpen(true)}
         onRefresh={() => loadConsoleData(true)}
         isRefreshing={isRefreshing}

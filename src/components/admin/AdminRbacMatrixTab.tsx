@@ -427,15 +427,12 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
 
       {/* Interactive Live Policy Tester */}
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-4">
           <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
             {t('admin.rbac_tester_title', 'Uji Evaluasi Izin Akses (Live Permission Policy Checker)')}
           </h4>
         </div>
-        <p className="text-xs text-slate-500 mb-4">
-          {t('admin.rbac_tester_desc', 'Pilih peran pengguna, sumber daya, dan aksi untuk memverifikasi apakah Better Auth Access Control mengizinkan atau menolak tindakan tersebut.')}
-        </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end mb-4">
           <div>

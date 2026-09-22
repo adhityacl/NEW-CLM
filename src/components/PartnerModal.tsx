@@ -435,9 +435,6 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                         <option key={dept} value={dept} />
                       ))}
                     </datalist>
-                    <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight">
-                      * Terisi otomatis sesuai <strong>Department</strong> user terdaftar (<strong>{userDept}</strong>). Menjadi acuan pembatasan akses data mitra, kontrak, IO, dan invoice.
-                    </p>
                   </div>
                 )}
               </div>

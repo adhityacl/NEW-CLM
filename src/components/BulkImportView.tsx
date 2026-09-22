@@ -298,9 +298,6 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               {t('import.title', 'Import Data Massal (Excel / CSV)')}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-              {t('import.subtitle', 'Buat banyak data sekaligus dengan mengunggah file CSV. Hanya tersedia untuk Admin.')}
-            </p>
           </div>
         </div>
       </div>
@@ -348,9 +345,6 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                   {t('import.download_template', 'Unduh Template CSV')}
                 </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  {t('import.template_hint', 'Unduh template, isi data, lalu unggah kembali.')}
-                </p>
               </div>
             </div>
 
@@ -396,9 +390,6 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                   {t('import.upload_label', 'Unggah File CSV')}
                 </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  {t('import.upload_hint', 'Pilih file CSV yang sudah diisi sesuai template.')}
-                </p>
               </div>
             </div>
 
@@ -515,9 +506,6 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                 {t('import.result_title', 'Laporan Hasil Import')}
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {t('import.result_desc', 'Ringkasan proses impor per baris data.')}
-              </p>
             </div>
           </div>
 

@@ -430,6 +430,156 @@
   margin: 0.25rem 0 !important;
 }
 
+/* Tiptap table styling: without this, inserted tables have no borders/padding
+   and render as an invisible block (empty cells collapse to near-zero height). */
+.ProseMirror .tableWrapper {
+  margin: 1.25rem 0;
+  overflow-x: auto;
+}
+
+.ProseMirror table {
+  border-collapse: collapse;
+  margin: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.ProseMirror table td,
+.ProseMirror table th {
+  border: 1px solid #cbd5e1;
+  box-sizing: border-box;
+  min-width: 1em;
+  padding: 8px 12px;
+  position: relative;
+  vertical-align: top;
+}
+
+.ProseMirror table th {
+  background-color: #f8fafc;
+  color: #0f172a;
+  font-weight: bold;
+  text-align: left;
+}
+
+.ProseMirror table p {
+  margin: 0;
+}
+
+.ProseMirror table .selectedCell:after {
+  background: rgba(59, 130, 246, 0.15);
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.ProseMirror table .column-resize-handle {
+  background-color: #3b82f6;
+  bottom: -2px;
+  pointer-events: none;
+  position: absolute;
+  right: -2px;
+  top: 0;
+  width: 4px;
+}
+
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+.dark .ProseMirror table td,
+.dark .ProseMirror table th {
+  border-color: #334155;
+}
+
+.dark .ProseMirror table th {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
+/* Block-type styling for the contract editor. Tailwind's preflight resets
+   h1-h6/blockquote/pre/code to plain inherited text, so toggling a heading,
+   quote or code block from the toolbar was changing the underlying HTML but
+   looked like nothing happened. */
+.ProseMirror h1 {
+  font-size: 1.875rem !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  margin: 1.5rem 0 0.75rem !important;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  margin: 1.25rem 0 0.5rem !important;
+}
+
+.ProseMirror h3 {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  margin: 1rem 0 0.5rem !important;
+}
+
+.ProseMirror p {
+  margin: 0 0 0.75rem !important;
+}
+
+.ProseMirror blockquote {
+  border-left: 3px solid #cbd5e1 !important;
+  padding-left: 1rem !important;
+  margin: 1rem 0 !important;
+  color: #475569 !important;
+  font-style: italic !important;
+}
+
+.dark .ProseMirror blockquote {
+  border-left-color: #475569 !important;
+  color: #94a3b8 !important;
+}
+
+.ProseMirror pre {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace !important;
+  padding: 0.75rem 1rem !important;
+  border-radius: 8px !important;
+  overflow-x: auto !important;
+  margin: 1rem 0 !important;
+  white-space: pre-wrap !important;
+}
+
+.ProseMirror pre code {
+  background: none !important;
+  color: inherit !important;
+  padding: 0 !important;
+  font-size: 0.85em !important;
+}
+
+.ProseMirror code {
+  background: #f1f5f9 !important;
+  padding: 0.15em 0.4em !important;
+  border-radius: 4px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 0.85em !important;
+}
+
+.dark .ProseMirror code {
+  background: #1e293b !important;
+}
+
+.ProseMirror hr {
+  border: none !important;
+  border-top: 2px solid #e2e8f0 !important;
+  margin: 1.5rem 0 !important;
+}
+
+.dark .ProseMirror hr {
+  border-top-color: #334155 !important;
+}
+
 /* Added by Focus Mode: Hide the selected element */
 div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-type(1) > section:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > span:nth-of-type(1) {
   display: none !important;

@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SignInForm } from './components/SignInForm';
 import InteractiveGridBackground from './components/lightswind/interactive-grid-background';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { ConfirmDialogProvider, useConfirm } from './context/ConfirmDialogContext';
+import { AlertToastProvider, useAlertToast } from './context/AlertToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { TenantProvider, useTenant } from './context/TenantContext';
 import { NavigationProvider, useNavigation } from './context/NavigationContext';
@@ -106,16 +108,12 @@ const MainApp: React.FC = () => {
   const { activeTenantId, activeTenant } = useTenant();
   const { activeTab, setActiveTab } = useNavigation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const superuserLandingApplied = useRef(false);
   const queryClient = useQueryClient();
+  const confirmDialog = useConfirm();
 
   useEffect(() => {
     if (activeTab === 'create-contract' && !hasPermission('document.create')) {
       setActiveTab('dashboard');
-    }
-    if (role === 'superuser' && activeTab === 'dashboard' && !superuserLandingApplied.current) {
-      superuserLandingApplied.current = true;
-      setActiveTab('admin-system-dashboard');
     }
     if (activeTab.startsWith('admin-users')) {
       setActiveTab(role === 'superuser' ? 'admin-system-dashboard' : 'admin-organization-dashboard');
@@ -283,7 +281,13 @@ const MainApp: React.FC = () => {
   };
 
   const handleDeleteContract = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus data kontrak ini?')) {
+    if (
+      await confirmDialog({
+        description: 'Hapus data kontrak ini?',
+        tone: 'danger',
+        confirmLabel: 'Hapus',
+      })
+    ) {
       // 1. Optimistic UI update
       setContracts((prev) => prev.filter((c) => c.contract_id !== id));
 
@@ -372,7 +376,13 @@ const MainApp: React.FC = () => {
   };
 
   const handleDeleteIO = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus IO ini?')) {
+    if (
+      await confirmDialog({
+        description: 'Hapus data Insertion Order (IO) ini?',
+        tone: 'danger',
+        confirmLabel: 'Hapus',
+      })
+    ) {
       setIos((prev) => prev.filter((i) => i.io_id !== id));
 
       const headers = getAuthHeaders();
@@ -452,9 +462,11 @@ const MainApp: React.FC = () => {
 
   const handleDeletePartner = async (id: string, name: string) => {
     if (
-      confirm(
-        `PERINGATAN: Menghapus Partner "${name}" akan MENGHAPUS SEMUA dokumen penunjang seperti Kontrak, Insertion Order (IO), Adendum, dan Notifikasi terkait!\n\nApakah Anda yakin ingin melanjutkan penghapusan?`
-      )
+      await confirmDialog({
+        description: `Hapus partner "${name}"? Kontrak, IO, Adendum & Notifikasi terkait ikut terhapus.`,
+        tone: 'danger',
+        confirmLabel: 'Hapus Permanen',
+      })
     ) {
       // Optimistic delete
       setPartners((prev) => prev.filter((p) => p.partner_id !== id));
@@ -1117,11 +1129,15 @@ export default function App() {
         <AuthProvider>
           <PermissionProvider>
             <LanguageProvider>
-              <TenantProvider>
-                <NavigationProvider>
-                  <AppContent />
-                </NavigationProvider>
-              </TenantProvider>
+              <ConfirmDialogProvider>
+                <AlertToastProvider>
+                  <TenantProvider>
+                    <NavigationProvider>
+                      <AppContent />
+                    </NavigationProvider>
+                  </TenantProvider>
+                </AlertToastProvider>
+              </ConfirmDialogProvider>
             </LanguageProvider>
           </PermissionProvider>
         </AuthProvider>

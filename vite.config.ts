@@ -20,7 +20,17 @@ export default defineConfig(() => {
 
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      watch: process.env.DISABLE_HMR === 'true' ? null : {
+        // SQLite writes to its -wal/-shm files (and the app rewrites
+        // data_store.json) continuously during normal use — none of that is
+        // source code, so it must never trigger a client page reload.
+        ignored: [
+          '**/*.db',
+          '**/*.db-wal',
+          '**/*.db-shm',
+          '**/data_store.json',
+        ],
+      },
     },
   };
 });

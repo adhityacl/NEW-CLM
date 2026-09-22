@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/ConfirmDialogContext';
 import { Tenant, TenantBranding } from '../types';
 import {
   Building2,
@@ -19,7 +20,7 @@ import {
   Layers,
   X,
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 
@@ -35,6 +36,7 @@ const PRESET_COLORS = [
 export const MultiTenancySettingsTab: React.FC = () => {
   const { isAdmin } = useAuth();
   const { t } = useLanguage();
+  const confirmDialog = useConfirm();
   const {
     tenants,
     activeTenant,
@@ -148,7 +150,12 @@ export const MultiTenancySettingsTab: React.FC = () => {
   };
 
   const handleDeleteTenant = async (id: string, name: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus entitas '${name}'?`)) return;
+    const confirmed = await confirmDialog({
+      description: `Hapus entitas "${name}"?`,
+      tone: 'danger',
+      confirmLabel: 'Hapus',
+    });
+    if (!confirmed) return;
     const ok = await deleteTenant(id);
     if (ok) {
       setTenantSuccess(`Entitas '${name}' berhasil dihapus.`);
@@ -206,12 +213,6 @@ export const MultiTenancySettingsTab: React.FC = () => {
               <CardTitle className="text-base font-extrabold text-slate-900 dark:text-white">
                 {t('settings.tenant_management_title', 'Manajemen Entitas Bisnis & Multi-Tenancy')}
               </CardTitle>
-              <CardDescription className="text-xs text-slate-500 mt-0.5">
-                {t(
-                  'settings.tenant_management_desc',
-                  'Kelola entitas anak perusahaan, workspace, atau unit bisnis yang terdaftar dalam sistem CLM.'
-                )}
-              </CardDescription>
             </div>
           </div>
 
@@ -342,12 +343,6 @@ export const MultiTenancySettingsTab: React.FC = () => {
               <CardTitle className="text-base font-extrabold text-slate-900 dark:text-white">
                 {t('settings.branding_title', 'Kustomisasi Branding & Identitas Visual (White-Labeling)')}
               </CardTitle>
-              <CardDescription className="text-xs text-slate-500 mt-0.5">
-                {t(
-                  'settings.branding_desc',
-                  'Sesuaikan nama aplikasi, logo portal, dan palet warna tema untuk klien atau organisasi Anda.'
-                )}
-              </CardDescription>
             </div>
           </div>
         </CardHeader>
