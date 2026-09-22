@@ -1415,7 +1415,6 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                           }`}
                         >
                           {tab.label}
-                          {tab.id === 'custom' && customFields.length > 0 && ` (${customFields.length})`}
                         </button>
                       ))}
                     </div>
