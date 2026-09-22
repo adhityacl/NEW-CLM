@@ -638,27 +638,36 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 </xml>
 <![endif]-->
 <style>
+  /* Normal margin (Word preset): 1 inch on every side. */
   @page {
     size: A4 portrait;
-    margin: 1.27cm 1.27cm 1.27cm 1.27cm; /* Narrow margin: 0.5 in / 1.27 cm */
+    margin: 1in 1in 1in 1in;
     mso-page-orientation: portrait;
   }
   @page Section1 {
     size: 21.0cm 29.7cm;
-    margin: 1.27cm 1.27cm 1.27cm 1.27cm;
-    mso-header-margin: 0.8cm;
-    mso-footer-margin: 0.8cm;
+    margin: 1in 1in 1in 1in;
+    mso-header-margin: 0.5in;
+    mso-footer-margin: 0.5in;
     mso-paper-source: 0;
   }
   div.Section1 {
     page: Section1;
   }
-  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; font-size: 10.5pt; line-height: 1.5; color: #111827; margin: 0; padding: 0; }
-  h1 { font-size: 18pt; text-align: center; margin-bottom: 6px; }
-  h2 { font-size: 12pt; margin-top: 16px; border-bottom: 1px solid #CCCCCC; padding-bottom: 3px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 12px; table-layout: fixed; }
-  td { padding: 6px 10px; vertical-align: top; }
-  p { margin: 0 0 6px 0; text-align: justify; line-height: 1.5; }
+  /* Mirrors the ".ProseMirror" rules in src/index.css (the same typography
+     the live editor and the Pratinjau tab render with) so the downloaded
+     file reads as the same document, not a re-styled copy. Px values there
+     are converted 1:1 to pt (16px = 12pt) since Word documents are pt-based. */
+  body { font-family: 'Plus Jakarta Sans', 'Inter', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.625; color: #0f172a; margin: 0; padding: 0; }
+  h1 { font-size: 22.5pt; font-weight: bold; line-height: 1.25; margin: 18pt 0 9pt 0; }
+  h2 { font-size: 18pt; font-weight: bold; line-height: 1.3; margin: 15pt 0 6pt 0; }
+  h3 { font-size: 15pt; font-weight: bold; line-height: 1.35; margin: 12pt 0 6pt 0; }
+  p { margin: 0 0 9pt 0; line-height: 1.625; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 12pt 0; }
+  td, th { border: 1px solid #cbd5e1; padding: 6pt 9pt; vertical-align: top; }
+  th { background-color: #f8fafc; font-weight: bold; text-align: left; }
+  blockquote { border-left: 3px solid #cbd5e1; padding-left: 12pt; margin: 12pt 0; color: #475569; font-style: italic; }
+  hr { border: none; border-top: 1.5pt solid #e2e8f0; margin: 18pt 0; }
 </style>
 </head>
 <body>
