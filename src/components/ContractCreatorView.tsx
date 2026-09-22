@@ -1,25 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import TextAlign from '@tiptap/extension-text-align';
+import Superscript from '@tiptap/extension-superscript';
+import Subscript from '@tiptap/extension-subscript';
+import { TextStyle } from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import Highlight from '@tiptap/extension-highlight';
+import { TableKit } from '@tiptap/extension-table';
+import { CustomTableCell, CustomTableHeader } from '../lib/tiptapTableCellBackground';
 import {
   FileSignature,
   FileDown,
   Save,
   Printer,
-  Undo2,
-  Redo2,
-  Bold,
-  Italic,
-  Underline,
-  Strikethrough,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
-  List,
-  ListOrdered,
-  Heading1,
-  Heading2,
   RotateCcw,
-  Sparkles,
   CheckCircle2,
   AlertCircle,
   RefreshCw,
@@ -32,7 +27,6 @@ import {
   Edit3,
   Download,
   Building2,
-  ArrowRightLeft,
   Calendar,
   DollarSign,
   PlusCircle,
@@ -41,26 +35,27 @@ import {
   ExternalLink,
   Target,
   Trash2,
-  Table,
-  Superscript,
-  Subscript,
-  Eraser,
+  MapPin,
+  User,
+  Briefcase,
+  FolderOpen,
+  ListChecks,
 } from 'lucide-react';
 import { Partner, Contract } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/ConfirmDialogContext';
+import { useAlertToast } from '../context/AlertToastContext';
 import { useTenant } from '../context/TenantContext';
 import { getAuthHeaders } from '../App';
 import {
   buildIndonesianAgreementHtml,
-  buildBilingualExportHtml,
-  COOPERATION_AGREEMENT_ARTICLES,
-  COOPERATION_AGREEMENT_PREAMBLE,
-  COOPERATION_AGREEMENT_SIGNATURES,
   COOPERATION_AGREEMENT_FIELDS,
-  COOPERATION_AGREEMENT_HEADER,
   renderFillableSlot,
   stripFillableSlotsToPlainText,
 } from '../data/cooperationAgreementTemplate';
+import { FillableSlot, setFillableSlotValue, focusFillableSlot } from '../lib/tiptapFillableSlot';
+import { ContractEditorToolbar } from './editor/ContractEditorToolbar';
+import { TableSelectionOverlay } from './editor/TableSelectionOverlay';
 
 interface ContractCreatorViewProps {
   partners: Partner[];
@@ -75,9 +70,11 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   onSaveToSystem,
   onNavigateToContracts,
 }) => {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
+  const confirmDialog = useConfirm();
+  const showAlert = useAlertToast();
   const { activeTenant } = useTenant();
-  const editorRef = useRef<HTMLDivElement>(null);
+  const paperSheetRef = useRef<HTMLDivElement>(null);
 
   // Compute First Party details dynamically from activeTenant
   const tenantEntityName = activeTenant
@@ -99,10 +96,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const [sidebarTab, setSidebarTab] = useState<'fields' | 'partners' | 'templates'>('fields');
   const [highlightFillable, setHighlightFillable] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [showTableModal, setShowTableModal] = useState(false);
-  const [tableRows, setTableRows] = useState(3);
-  const [tableCols, setTableCols] = useState(3);
-  const [viewMode, setViewMode] = useState<'editor' | 'bilingual_preview'>('editor');
+  const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
 
@@ -132,6 +126,25 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     partnerEmail: '',
   });
 
+  // Kept in sync with fieldValues via effect below; lets the editor's drop handler
+  // (created once by useEditor) always read the latest values without forcing a
+  // full editor re-creation whenever a field changes.
+  const fieldValuesRef = useRef(fieldValues);
+  useEffect(() => {
+    fieldValuesRef.current = fieldValues;
+  }, [fieldValues]);
+
+  // Debounces the word/char counter so typing doesn't re-render this whole
+  // (large) component on every keystroke: `getText()` walks the entire
+  // document, and for a long contract that plus the resulting re-render was
+  // the actual source of the input lag reported while formatting text.
+  const statsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (statsDebounceRef.current) clearTimeout(statsDebounceRef.current);
+    };
+  }, []);
+
   // Custom fields state with local persistence
   const [customFields, setCustomFields] = useState<any[]>(() => {
     try {
@@ -157,7 +170,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
   const handleCreateCustomField = () => {
     if (!newFieldLabel.trim()) {
-      alert('Silakan masukkan nama kolom isian.');
+      showAlert({ title: t('contract_creator.msg.custom_field_name_required', 'Nama kolom isian belum diisi'), variant: 'warning' });
       return;
     }
     const safeKey = `custom_${newFieldLabel.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Math.random().toString(36).substring(2, 7)}`;
@@ -211,8 +224,6 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isCustomTemplateActive, setIsCustomTemplateActive] = useState(false);
-  const [translatedCustomEnglishHtml, setTranslatedCustomEnglishHtml] = useState('');
-  const [isTranslating, setIsTranslating] = useState(false);
 
   const fetchTemplates = async () => {
     try {
@@ -243,12 +254,12 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
   const handleSaveTemplate = async () => {
     if (!newTemplateName.trim()) {
-      alert('Silakan masukkan nama template terlebih dahulu.');
+      showAlert({ title: t('contract_creator.msg.template_name_required', 'Nama template belum diisi'), variant: 'warning' });
       return;
     }
-    const content = editorRef.current?.innerHTML || '';
+    const content = editor?.getHTML() || '';
     if (!content.trim()) {
-      alert('Konten template masih kosong.');
+      showAlert({ title: t('contract_creator.msg.template_content_empty', 'Konten template masih kosong'), variant: 'warning' });
       return;
     }
 
@@ -275,21 +286,30 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
       if (res.ok && data.success) {
         setNewTemplateName('');
-        alert('Template kerjasama berhasil disimpan!');
+        showAlert({ title: t('contract_creator.msg.template_saved', 'Template kerjasama berhasil disimpan'), variant: 'success' });
         fetchTemplates();
       } else {
-        alert(data.error || data.message || `Gagal menyimpan template (Status ${res.status}).`);
+        showAlert({
+          title: t('contract_creator.msg.template_save_failed', 'Gagal menyimpan template'),
+          description: data.error || data.message || `Status ${res.status}.`,
+          variant: 'destructive',
+        });
       }
     } catch (err) {
       console.error('Save template error:', err);
-      alert('Terjadi kesalahan saat menyimpan template.');
+      showAlert({ title: t('contract_creator.msg.template_save_error', 'Terjadi kesalahan saat menyimpan template'), variant: 'destructive' });
     } finally {
       setIsSavingTemplate(false);
     }
   };
 
   const handleDeleteTemplate = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus template kerjasama ini?')) {
+    const ok = await confirmDialog({
+      description: t('contract_creator.confirm.delete_template_desc', 'Hapus template kerjasama ini?'),
+      tone: 'danger',
+      confirmLabel: t('contract_creator.confirm.delete_label', 'Hapus'),
+    });
+    if (!ok) {
       return;
     }
     try {
@@ -306,93 +326,104 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       }
 
       if (res.ok && data.success) {
-        alert('Template kerjasama berhasil dihapus.');
+        showAlert({ title: t('contract_creator.msg.template_deleted', 'Template kerjasama berhasil dihapus'), variant: 'success' });
         fetchTemplates();
       } else {
-        alert(data.error || data.message || `Gagal menghapus template (Status ${res.status}).`);
+        showAlert({
+          title: t('contract_creator.msg.template_delete_failed', 'Gagal menghapus template'),
+          description: data.error || data.message || `Status ${res.status}.`,
+          variant: 'destructive',
+        });
       }
     } catch (err) {
       console.error('Delete template error:', err);
-      alert('Terjadi kesalahan saat menghapus template.');
+      showAlert({ title: t('contract_creator.msg.template_delete_error', 'Terjadi kesalahan saat menghapus template'), variant: 'destructive' });
     }
   };
 
-  const handleLoadTemplate = (tpl: any) => {
-    if (window.confirm(`Gunakan template "${tpl.name}"? Teks kontrak saat ini akan diganti.`)) {
-      if (editorRef.current) {
-        editorRef.current.innerHTML = tpl.contentId;
-        setIsCustomTemplateActive(true);
-        setTranslatedCustomEnglishHtml(''); // Reset translation
-        updateStats();
-        setExportMessage({
-          type: 'info',
-          text: `Template "${tpl.name}" berhasil dimuat ke editor.`,
-        });
-      }
-    }
-  };
-
-  const handleTranslateDocument = async () => {
-    const content = editorRef.current?.innerHTML || '';
-    if (!content.trim()) {
-      alert('Konten kontrak kosong, tidak ada yang bisa diterjemahkan.');
-      return;
-    }
-
-    try {
-      setIsTranslating(true);
-      const res = await fetch('/api/translate-template', {
-        method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        link: {
+          openOnClick: false,
+          autolink: true,
         },
-        body: JSON.stringify({ contentId: content }),
-      });
-      const text = await res.text();
-      let data: any = {};
-      try {
-        data = text && !text.trim().startsWith('<') ? JSON.parse(text) : { error: `Server error (Status ${res.status})` };
-      } catch {
-        data = { error: 'Gagal memproses respon server.' };
-      }
+      }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Superscript,
+      Subscript,
+      TextStyle,
+      Color,
+      Highlight.configure({ multicolor: false }),
+      TableKit.configure({
+        table: { resizable: true },
+        tableCell: false,
+        tableHeader: false,
+      }),
+      CustomTableCell,
+      CustomTableHeader,
+      FillableSlot,
+    ],
+    content: '',
+    onUpdate: ({ editor: instance }) => {
+      if (statsDebounceRef.current) clearTimeout(statsDebounceRef.current);
+      statsDebounceRef.current = setTimeout(() => {
+        const text = instance.getText() || '';
+        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+        setWordCount(words);
+        setCharCount(text.length);
+      }, 300);
+    },
+    editorProps: {
+      // Handles fields dragged in from the "Kolom Isian Drag & Drop" sidebar palette
+      // (plain HTML5 dataTransfer JSON, not a ProseMirror-native drag). Moving an
+      // existing fillableSlot node around inside the document is handled natively by
+      // ProseMirror itself (the node spec declares `draggable: true`), so this only
+      // needs to cover inserting a brand-new slot from outside the editor.
+      handleDrop: (view, event, _slice, moved) => {
+        if (moved) return false;
+        const dataStr = event.dataTransfer?.getData('text/plain');
+        if (!dataStr) return false;
 
-      if (res.ok && data.success) {
-        setTranslatedCustomEnglishHtml(data.translatedHtml);
-        setExportMessage({
-          type: 'success',
-          text: 'Kontrak berhasil diterjemahkan menjadi bilingual Bahasa Inggris & Indonesia berdampingan!',
-        });
-      } else {
-        alert(data.error || data.message || 'Gagal menerjemahkan kontrak.');
-      }
-    } catch (err) {
-      console.error('Translation error:', err);
-      alert('Terjadi kesalahan saat menerjemahkan kontrak.');
-    } finally {
-      setIsTranslating(false);
-    }
-  };
+        let data: { type?: string; key?: string; placeholder?: string } = {};
+        try {
+          data = JSON.parse(dataStr);
+        } catch {
+          return false;
+        }
+        if (!data.type || !data.key) return false;
 
-  // Initial load or restore of the 15 articles general cooperation agreement
-  useEffect(() => {
-    if (editorRef.current && !editorRef.current.innerHTML.trim()) {
-      renderTemplateToEditor(fieldValues, contractNumber);
-    }
-  }, [viewMode]);
+        event.preventDefault();
+        const coords = { left: event.clientX, top: event.clientY };
+        const pos = view.posAtCoords(coords)?.pos ?? view.state.selection.from;
+        const currentVal = fieldValuesRef.current[data.key] || '';
 
-  // Word & Character counter
+        view.dispatch(
+          view.state.tr.insert(
+            pos,
+            view.state.schema.nodes.fillableSlot.create(
+              { slotKey: data.key, slotType: data.type },
+              view.state.schema.text(currentVal.trim() ? currentVal : '...')
+            )
+          )
+        );
+        return true;
+      },
+    },
+  });
+
+  // Word & Character counter (for use after programmatic content/command changes)
   const updateStats = () => {
-    if (!editorRef.current) return;
-    const text = editorRef.current.innerText || '';
+    if (!editor) return;
+    const text = editor.getText() || '';
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     setWordCount(words);
     setCharCount(text.length);
   };
 
-  // Render or re-render template to editor
+  // Render or re-render the 15-article template into the editor
   const renderTemplateToEditor = (vals: Record<string, string>, cNo: string) => {
-    if (!editorRef.current) return;
+    if (!editor) return;
     const initialHtml = buildIndonesianAgreementHtml({
       contractNo: cNo,
       firstPartyName: vals.firstPartyName,
@@ -416,8 +447,30 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       bankHolder: vals.bankHolder,
       partnerEmail: vals.partnerEmail,
     });
-    editorRef.current.innerHTML = initialHtml;
+    editor.commands.setContent(initialHtml);
     updateStats();
+  };
+
+  // Initial load of the 15-article general cooperation agreement, once the editor is ready
+  useEffect(() => {
+    if (editor && editor.isEmpty) {
+      renderTemplateToEditor(fieldValues, contractNumber);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, viewMode]);
+
+  const handleLoadTemplate = async (tpl: any) => {
+    const confirmMsg = `${t('contract_creator.confirm.use_template_prefix', 'Gunakan template')} "${tpl.name}"${t('contract_creator.confirm.use_template_suffix', '? Teks kontrak saat ini akan diganti.')}`;
+    if (await confirmDialog(confirmMsg)) {
+      if (editor) {
+        editor.commands.setContent(tpl.contentId);
+        setIsCustomTemplateActive(true);
+        setExportMessage({
+          type: 'info',
+          text: `${t('contract_creator.msg.template_loaded_prefix', 'Template')} "${tpl.name}" ${t('contract_creator.msg.template_loaded_suffix', 'berhasil dimuat ke editor.')}`,
+        });
+      }
+    }
   };
 
   // Sync a single field from sidebar to all matching editor slots
@@ -432,189 +485,27 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       setDocTitle(`PERJANJIAN KERJASAMA - ${p1} & ${p2}`);
     }
 
-    // Direct DOM replacement for live updating without destroying editor selection if possible
-    if (editorRef.current) {
-      const slots = editorRef.current.querySelectorAll(`[data-slot-key="${key}"]`);
-      if (slots && slots.length > 0) {
-        slots.forEach((slot) => {
-          const textSpan = slot.querySelector('.slot-text');
-          if (textSpan) {
-            textSpan.textContent = value || '...';
-          } else {
-            slot.textContent = value || '...';
-          }
-          // toggle border color class
-          if (value && value.trim() && value !== '...') {
-            (slot as HTMLElement).style.borderColor = '#3b82f6';
-            (slot as HTMLElement).style.backgroundColor = '#eff6ff';
-            (slot as HTMLElement).style.color = '#1d4ed8';
-          } else {
-            (slot as HTMLElement).style.borderColor = '#94a3b8';
-            (slot as HTMLElement).style.backgroundColor = '#f8fafc';
-            (slot as HTMLElement).style.color = '#475569';
-          }
-        });
-        updateStats();
-      } else {
-        // Fallback: re-render whole template
-        renderTemplateToEditor(updated, contractNumber);
-      }
+    if (!editor) return;
+    // Sync via a ProseMirror transaction (not direct DOM mutation) so editor state never desyncs
+    const didUpdateExistingSlots = setFillableSlotValue(editor, key, value);
+    if (didUpdateExistingSlots) {
+      updateStats();
+    } else {
+      // Fallback: re-render whole template
+      renderTemplateToEditor(updated, contractNumber);
     }
   };
 
   // Focus directly on a slot inside the editor canvas
   const handleFocusSlot = (key: string) => {
-    if (!editorRef.current) return;
-    const targetSlot = editorRef.current.querySelector(`[data-slot-key="${key}"]`) as HTMLElement;
-    if (targetSlot) {
-      targetSlot.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      targetSlot.focus();
-      // Flash highlight
-      targetSlot.style.transition = 'outline 0.2s ease';
-      targetSlot.style.outline = '3px solid #f59e0b';
-      setTimeout(() => {
-        targetSlot.style.outline = '';
-      }, 1500);
-    }
+    focusFillableSlot(editor, key);
   };
 
-  // WYSIWYG command executor
-  const executeCommand = (command: string, value: string | undefined = undefined) => {
-    if (!editorRef.current) return;
-    editorRef.current.focus();
-    document.execCommand(command, false, value);
-    updateStats();
-  };
-
-  // Insert HTML at cursor position
+  // Insert raw HTML at the current cursor position
   const insertHTMLAtCursor = (html: string) => {
-    if (!editorRef.current) return;
-    editorRef.current.focus();
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      editorRef.current.innerHTML += html;
-      updateStats();
-      return;
-    }
-
-    const range = selection.getRangeAt(0);
-    range.deleteContents();
-    const el = document.createElement('div');
-    el.innerHTML = html;
-    const frag = document.createDocumentFragment();
-    let node: ChildNode | null;
-    let lastNode: ChildNode | null = null;
-    while ((node = el.firstChild)) {
-      lastNode = frag.appendChild(node);
-    }
-    range.insertNode(frag);
-    if (lastNode) {
-      range.setStartAfter(lastNode);
-      range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
+    if (!editor) return;
+    editor.chain().focus().insertContent(html).run();
     updateStats();
-  };
-
-  // Open Table Customization Modal
-  const insertTable = () => {
-    setShowTableModal(true);
-  };
-
-  // Insert Custom Table based on rows and cols
-  const handleInsertCustomTable = () => {
-    if (!editorRef.current) return;
-    editorRef.current.focus();
-    const r = Math.max(1, Math.min(20, Number(tableRows) || 3));
-    const c = Math.max(1, Math.min(10, Number(tableCols) || 3));
-
-    let headerHtml = `<tr style="background-color: #f8fafc;">`;
-    for (let j = 1; j <= c; j++) {
-      headerHtml += `<th style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; font-weight: bold; color: #0f172a;">Kolom ${j}</th>`;
-    }
-    headerHtml += `</tr>`;
-
-    let bodyHtml = ``;
-    for (let i = 1; i <= r; i++) {
-      bodyHtml += `<tr>`;
-      for (let j = 1; j <= c; j++) {
-        bodyHtml += `<td style="border: 1px solid #cbd5e1; padding: 8px 12px; color: #334155;">Data ${i}-${j}</td>`;
-      }
-      bodyHtml += `</tr>`;
-    }
-
-    const tableHtml = `
-      <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 10pt;">
-        <thead>${headerHtml}</thead>
-        <tbody>${bodyHtml}</tbody>
-      </table>
-      <p><br></p>
-    `;
-    insertHTMLAtCursor(tableHtml);
-    setShowTableModal(false);
-  };
-
-  // Handle table row/column operations on active table
-  const handleTableAction = (action: 'addRow' | 'addCol' | 'deleteRow' | 'deleteTable') => {
-    if (!editorRef.current) return;
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    let node: Node | null = selection.anchorNode;
-    while (node && node !== editorRef.current) {
-      if (node.nodeName === 'TABLE') {
-        const table = node as HTMLTableElement;
-        const row = selection.anchorNode ? (selection.anchorNode.parentElement?.closest('tr') as HTMLTableRowElement) : null;
-
-        if (action === 'deleteTable') {
-          table.remove();
-          updateStats();
-          return;
-        }
-
-        if (action === 'addRow' && table) {
-          const colCount = table.rows[0]?.cells.length || 3;
-          const newRow = table.insertRow();
-          for (let i = 0; i < colCount; i++) {
-            const newCell = newRow.insertCell();
-            newCell.style.border = '1px solid #cbd5e1';
-            newCell.style.padding = '8px 12px';
-            newCell.style.color = '#334155';
-            newCell.innerHTML = 'Data Baru';
-          }
-          updateStats();
-          return;
-        }
-
-        if (action === 'addCol' && table) {
-          for (let i = 0; i < table.rows.length; i++) {
-            const r = table.rows[i];
-            const newCell = r.insertCell();
-            newCell.style.border = '1px solid #cbd5e1';
-            newCell.style.padding = '8px 12px';
-            if (i === 0) {
-              newCell.style.fontWeight = 'bold';
-              newCell.style.backgroundColor = '#f8fafc';
-              newCell.style.color = '#0f172a';
-              newCell.innerHTML = `Kolom Baru`;
-            } else {
-              newCell.style.color = '#334155';
-              newCell.innerHTML = `Data`;
-            }
-          }
-          updateStats();
-          return;
-        }
-
-        if (action === 'deleteRow' && row && table.rows.length > 1) {
-          row.remove();
-          updateStats();
-          return;
-        }
-        break;
-      }
-      node = node.parentNode;
-    }
   };
 
   // Apply registered partner into fields & editor
@@ -643,7 +534,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
     setExportMessage({
       type: 'success',
-      text: `Data mitra "${pName}" berhasil disinkronkan ke dalam 15 pasal Perjanjian Kerjasama!`,
+      text: `${t('contract_creator.msg.partner_synced_prefix', 'Data mitra')} "${pName}" ${t('contract_creator.msg.partner_synced_suffix', 'berhasil disinkronkan ke dalam 15 pasal Perjanjian Kerjasama!')}`,
     });
   };
 
@@ -709,81 +600,20 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   };
 
   // Reset document to default template
-  const handleResetDocument = () => {
+  const handleResetDocument = async () => {
     if (
-      window.confirm(
-        'Reset dokumen kembali ke template awal 15 pasal PERJANJIAN KERJASAMA (Versi Bahasa Indonesia)? Perubahan kustom yang belum disimpan akan direset.'
-      )
+      await confirmDialog({
+        description: t('contract_creator.confirm.reset_desc', 'Reset dokumen ke template awal? Perubahan yang belum disimpan akan hilang.'),
+        tone: 'danger',
+        confirmLabel: t('contract_creator.confirm.reset_label', 'Reset'),
+      })
     ) {
       renderTemplateToEditor(fieldValues, contractNumber);
       setIsCustomTemplateActive(false);
-      setTranslatedCustomEnglishHtml('');
       setExportMessage({
         type: 'info',
-        text: 'Template 15 Pasal Perjanjian Kerjasama berhasil direset ke kondisi awal.',
+        text: t('contract_creator.msg.reset_done', 'Template 15 Pasal Perjanjian Kerjasama berhasil direset ke kondisi awal.'),
       });
-    }
-  };
-
-  // Download DOCX in Bilingual 2-Column Format (English Left | Indonesian Right)
-  const handleDownloadBilingualDocx = () => {
-    setIsDownloadingDocx(true);
-    try {
-      const bilingualHtml = buildBilingualExportHtml({
-        contractNo: contractNumber,
-        firstPartyName: fieldValues.firstPartyName || tenantEntityName,
-        firstPartyAlias: fieldValues.firstPartyAlias || tenantBrand,
-        firstPartyAddress: fieldValues.firstPartyAddress,
-        firstPartyPic: fieldValues.firstPartyPic,
-        firstPartyPosition: fieldValues.firstPartyPosition,
-        firstPartyEmail: fieldValues.firstPartyEmail,
-        firstPartyBusinessDesc: fieldValues.firstPartyBusinessDesc,
-        partnerName: fieldValues.partnerName || 'Mitra Usaha',
-        partnerAddress: fieldValues.partnerAddress || 'Alamat Mitra',
-        partnerPic: fieldValues.partnerPic || 'Penandatangan Mitra',
-        partnerPosition: fieldValues.partnerPosition || 'Direktur Utama',
-        dateStr: fieldValues.dateStr,
-        startDate: fieldValues.startDate,
-        endDate: fieldValues.endDate,
-        scopeDescId: fieldValues.scopeDescId,
-        scopeDescEn: fieldValues.scopeDescEn,
-        feeAmountId: fieldValues.feeAmountId,
-        feeAmountEn: fieldValues.feeAmountEn,
-        bankName: fieldValues.bankName,
-        bankAccount: fieldValues.bankAccount,
-        bankHolder: fieldValues.bankHolder || fieldValues.firstPartyName || tenantEntityName,
-        partnerEmail: fieldValues.partnerEmail,
-      });
-
-      const blob = new Blob(['\ufeff', bilingualHtml], {
-        type: 'application/msword',
-      });
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      const safePartnerName = (fieldValues.partnerName || 'Mitra')
-        .replace(/[^\w\s-]/gi, '')
-        .replace(/\s+/g, '_');
-      const safeContractNo = contractNumber.replace(/\//g, '-');
-      link.download = `PKS_Bilingual_${safePartnerName}_${safeContractNo}.doc`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      setExportMessage({
-        type: 'success',
-        text: 'File Kontrak Bilingual (.doc) 2-kolom (Inggris - Indonesia) berhasil diunduh!',
-      });
-    } catch (err: any) {
-      console.error('Download bilingual error:', err);
-      setExportMessage({
-        type: 'error',
-        text: `Gagal mengunduh dokumen bilingual: ${err?.message || 'Kesalahan format'}`,
-      });
-    } finally {
-      setIsDownloadingDocx(false);
     }
   };
 
@@ -791,7 +621,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const handleDownloadIndonesianDocx = () => {
     setIsDownloadingDocx(true);
     try {
-      const rawHtml = editorRef.current?.innerHTML || '';
+      const rawHtml = editor?.getHTML() || '';
       const contentHtml = stripFillableSlotsToPlainText(rawHtml);
       const docHtml = `<!DOCTYPE html>
 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -853,13 +683,13 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
       setExportMessage({
         type: 'success',
-        text: 'File dokumen Word (.doc) versi Bahasa Indonesia berhasil diunduh!',
+        text: t('contract_creator.msg.docx_downloaded', 'File dokumen Word (.doc) versi Bahasa Indonesia berhasil diunduh!'),
       });
     } catch (err: any) {
       console.error('Download error:', err);
       setExportMessage({
         type: 'error',
-        text: `Gagal mengunduh dokumen: ${err?.message || 'Kesalahan file'}`,
+        text: `${t('contract_creator.msg.docx_download_failed', 'Gagal mengunduh dokumen')}: ${err?.message || 'Kesalahan file'}`,
       });
     } finally {
       setIsDownloadingDocx(false);
@@ -895,7 +725,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
         notice_period_hari: 30,
         notice_type_required: 'Both',
         pic_internal: p1Pic,
-        internal_notes: `Perjanjian Kerjasama (General Cooperation Agreement) bilingual antara ${p1Name} dengan ${pName}. Memuat 15 pasal lengkap sesuai standar hukum Indonesia dan pengesampingan 1266 KUHPerdata. Dibuat via WYSIWYG Editor Kontrak SILEGAL.`,
+        internal_notes: `Perjanjian Kerjasama (General Cooperation Agreement) antara ${p1Name} dengan ${pName}. Memuat 15 pasal lengkap sesuai standar hukum Indonesia dan pengesampingan 1266 KUHPerdata. Dibuat via WYSIWYG Editor Kontrak SILEGAL.`,
       };
 
       await onSaveToSystem(newContractPayload);
@@ -942,8 +772,8 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                 outline: 'none',
                 boxShadow: 'none',
               }}
-              title="Klik untuk mengubah judul dokumen"
-              placeholder="Judul Dokumen Perjanjian"
+              title={t('contract_creator.title_input_title', 'Klik untuk mengubah judul dokumen')}
+              placeholder={t('contract_creator.title_input_placeholder', 'Judul Dokumen Perjanjian')}
             />
           </div>
         </div>
@@ -961,36 +791,36 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                   ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
-              title="Sunting langsung teks kontrak dalam Bahasa Indonesia"
+              title={t('contract_creator.mode_edit_title', 'Sunting langsung teks kontrak dalam Bahasa Indonesia')}
             >
               <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit</span>
+              <span>{t('contract_creator.mode_edit_label', 'Edit')}</span>
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('bilingual_preview')}
+              onClick={() => setViewMode('preview')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                viewMode === 'bilingual_preview'
+                viewMode === 'preview'
                   ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
-              title="Pratinjau tampilan bilingual berdampingan (Inggris kiri, Indonesia kanan)"
+              title={t('contract_creator.mode_preview_title', 'Pratinjau tampilan dokumen final')}
             >
-              <ArrowRightLeft className="w-3.5 h-3.5" />
-              <span>Pratinjau</span>
+              <FileText className="w-3.5 h-3.5" />
+              <span>{t('contract_creator.mode_preview_label', 'Pratinjau')}</span>
             </button>
           </div>
 
-          {/* Primary Export: Download Bilingual DOCX */}
+          {/* Primary Export: Download DOCX */}
           <button
             type="button"
-            onClick={handleDownloadBilingualDocx}
+            onClick={handleDownloadIndonesianDocx}
             disabled={isDownloadingDocx}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#06C755] hover:bg-[#05a847] text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-            title="Download file Word (.DOC) bilingual 2-kolom (Inggris - Indonesia)"
+            title={t('contract_creator.download_title', 'Download file Word (.doc)')}
           >
             {isDownloadingDocx ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
-            <span>Download</span>
+            <span>{t('contract_creator.download_label', 'Download')}</span>
           </button>
 
           {/* Sidebar Toggle */}
@@ -1002,7 +832,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                 ? 'bg-emerald-50 dark:bg-emerald-950/40 text-[#06C755] border-emerald-300 dark:border-emerald-800'
                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
             }`}
-            title="Buka / Tutup Panel Pintasan Form &amp; Klausul"
+            title={t('contract_creator.sidebar_toggle_title', 'Buka / Tutup Panel Pintasan Form & Klausul')}
           >
             <SlidersHorizontal className="w-4 h-4" />
           </button>
@@ -1042,194 +872,19 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
       {/* 2. WYSIWYG FORMATTING TOOLBAR (Only shown in Editor Mode) */}
       {viewMode === 'editor' && (
-        <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 py-1.5 flex flex-wrap items-center gap-1 shrink-0 z-10 shadow-xs">
-          
-          {/* History: Undo / Redo */}
-          <div className="flex items-center border-r border-slate-200 dark:border-slate-800 pr-1.5 mr-1 gap-0.5">
-            <button
-              type="button"
-              onClick={() => executeCommand('undo')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Undo (Ctrl+Z)"
-            >
-              <Undo2 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('redo')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Redo (Ctrl+Y)"
-            >
-              <Redo2 className="w-3.5 h-3.5" />
-            </button>
+        <div className="flex items-stretch">
+          <div className="flex-1 min-w-0">
+            <ContractEditorToolbar editor={editor} />
           </div>
-
-          {/* Headings */}
-          <div className="flex items-center border-r border-slate-200 dark:border-slate-800 pr-1.5 mr-1 gap-0.5">
-            <button
-              type="button"
-              onClick={() => executeCommand('formatBlock', '<h1>')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold"
-              title="Heading 1 (Judul Utama)"
-            >
-              <Heading1 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('formatBlock', '<h2>')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold"
-              title="Heading 2 (Judul Pasal)"
-            >
-              <Heading2 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('formatBlock', '<p>')}
-              className="px-1.5 py-1 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium"
-              title="Teks Normal Paragraf"
-            >
-              P
-            </button>
-          </div>
-
-          {/* Text Styling: Bold, Italic, Underline */}
-          <div className="flex items-center border-r border-slate-200 dark:border-slate-800 pr-1.5 mr-1 gap-0.5">
-            <button
-              type="button"
-              onClick={() => executeCommand('bold')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Tebal (Ctrl+B)"
-            >
-              <Bold className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('italic')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Miring (Ctrl+I)"
-            >
-              <Italic className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('underline')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Garis Bawah (Ctrl+U)"
-            >
-              <Underline className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('strikeThrough')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Coret (Strikethrough)"
-            >
-              <Strikethrough className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Text Alignment */}
-          <div className="flex items-center border-r border-slate-200 dark:border-slate-800 pr-1.5 mr-1 gap-0.5">
-            <button
-              type="button"
-              onClick={() => executeCommand('justifyLeft')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Rata Kiri"
-            >
-              <AlignLeft className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('justifyCenter')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Rata Tengah"
-            >
-              <AlignCenter className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('justifyRight')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Rata Kanan"
-            >
-              <AlignRight className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('justifyFull')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Rata Kanan-Kiri (Justify)"
-            >
-              <AlignJustify className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Lists */}
-          <div className="flex items-center border-r border-slate-200 dark:border-slate-800 pr-1.5 mr-1 gap-0.5">
-            <button
-              type="button"
-              onClick={() => executeCommand('insertUnorderedList')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Bullet List"
-            >
-              <List className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('insertOrderedList')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Numbered List"
-            >
-              <ListOrdered className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Table & Formatting Tools */}
-          <div className="flex items-center border-r border-slate-200 dark:border-slate-800 pr-1.5 mr-1 gap-0.5">
-            <button
-              type="button"
-              onClick={insertTable}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1"
-              title="Sisipkan Tabel"
-            >
-              <Table className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('superscript')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Superscript (Pangkat Atas)"
-            >
-              <Superscript className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('subscript')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Subscript (Pangkat Bawah)"
-            >
-              <Subscript className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => executeCommand('removeFormat')}
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Hapus Format Teks"
-            >
-              <Eraser className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Reset Template */}
-          <div className="flex items-center ml-auto">
+          <div className="flex items-center bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 pr-3 pl-1 shrink-0">
             <button
               type="button"
               onClick={handleResetDocument}
               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-              title="Kembalikan isi ke template awal 15 pasal Perjanjian Kerjasama"
+              title={t('contract_creator.reset_template_title', 'Kembalikan isi ke template awal 15 pasal Perjanjian Kerjasama')}
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Template</span>
+              <span>{t('contract_creator.reset_template_label', 'Reset Template')}</span>
             </button>
           </div>
         </div>
@@ -1250,386 +905,125 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
           >
             {/* White Paper Sheet */}
             <div
+              ref={paperSheetRef}
               className={`bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl rounded-sm border border-slate-300/80 dark:border-slate-800 min-h-[1150px] p-10 sm:p-16 md:p-20 relative ${
                 highlightFillable ? 'highlight-fillable-mode' : ''
               }`}
             >
-              
+
               {/* Editable WYSIWYG Content Canvas */}
-              <div
-                ref={editorRef}
-                contentEditable={true}
-                suppressContentEditableWarning={true}
-                onInput={updateStats}
-                onDragStart={(e) => {
-                  const target = (e.target as HTMLElement).closest('.fillable-slot');
-                  if (target) {
-                    const slotKey = target.getAttribute('data-slot-key');
-                    const slotType = target.getAttribute('data-slot-type') || 'text';
-                    const slotTextEl = target.querySelector('.slot-text');
-                    const slotVal = slotTextEl ? slotTextEl.textContent : '';
-                    
-                    e.dataTransfer.setData('text/plain', JSON.stringify({
-                      type: slotType,
-                      key: slotKey,
-                      placeholder: slotKey,
-                      value: slotVal,
-                      isInternalMove: true,
-                    }));
-                    e.dataTransfer.effectAllowed = 'move';
-                    (window as any).__draggedSlotElement = target;
-                  }
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = e.dataTransfer.effectAllowed === 'move' ? 'move' : 'copy';
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  try {
-                    const dataStr = e.dataTransfer.getData('text/plain');
-                    if (!dataStr) return;
-                    const data = JSON.parse(dataStr);
-                    if (data.type && data.key) {
-                      // If internal move, remove original element first
-                      if (data.isInternalMove && (window as any).__draggedSlotElement) {
-                        try {
-                          (window as any).__draggedSlotElement.remove();
-                        } catch (err) {}
-                        (window as any).__draggedSlotElement = null;
-                      }
-
-                      // Find drop range
-                      let range: Range | null = null;
-                      if (document.caretRangeFromPoint) {
-                        range = document.caretRangeFromPoint(e.clientX, e.clientY);
-                      } else if ((e as any).rangeParent) {
-                        // Firefox fallback
-                        range = document.createRange();
-                        range.setStart((e as any).rangeParent, (e as any).rangeOffset);
-                      }
-
-                      const currentVal = fieldValues[data.key] !== undefined ? fieldValues[data.key] : (data.value || '');
-                      const slotHtml = renderFillableSlot(
-                        data.type,
-                        data.key,
-                        data.placeholder || data.key,
-                        currentVal !== '...' ? currentVal : ''
-                      );
-
-                      if (range) {
-                        const selection = window.getSelection();
-                        if (selection) {
-                          selection.removeAllRanges();
-                          selection.addRange(range);
-                        }
-                        insertHTMLAtCursor(slotHtml);
-                      } else {
-                        if (editorRef.current) {
-                          editorRef.current.innerHTML += slotHtml;
-                        }
-                      }
-                      updateStats();
-                    }
-                  } catch (err) {
-                    console.error('Error handling drop:', err);
-                  }
-                }}
-                className="outline-none min-h-[900px] font-sans leading-relaxed text-slate-900 dark:text-slate-100 focus:outline-none selection:bg-emerald-200 dark:selection:bg-emerald-950"
+              <EditorContent
+                editor={editor}
+                className="outline-none min-h-[900px] font-sans leading-relaxed text-slate-900 dark:text-slate-100 focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[900px] selection:bg-emerald-200 dark:selection:bg-emerald-950"
               />
+              <TableSelectionOverlay editor={editor} containerRef={paperSheetRef} />
             </div>
           </div>
         </div>
 
-        {/* VIEW MODE B: BILINGUAL 2-COLUMN SIDE-BY-SIDE PREVIEW */}
+        {/* VIEW MODE B: READ-ONLY DOCUMENT PREVIEW (mirrors the editor paper, slots as plain text) */}
         <div
-          className={`flex-1 overflow-y-auto p-4 sm:p-8 md:p-10 bg-slate-200/60 dark:bg-slate-950/80 justify-center items-start ${
-            viewMode === 'bilingual_preview' ? 'flex' : 'hidden'
+          className={`flex-1 overflow-y-auto p-4 sm:p-8 md:p-12 justify-center items-start bg-slate-200/70 dark:bg-slate-950/80 ${
+            viewMode === 'preview' ? 'flex' : 'hidden'
           }`}
         >
-          <div className="w-full max-w-6xl bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-300/70 dark:border-slate-800 p-6 sm:p-10 space-y-6 h-fit mb-16">
-
-            {/* Side-by-Side Bilingual Table */}
-            <div
-              className={`border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs bg-white dark:bg-slate-900 ${
-                highlightFillable ? 'highlight-fillable-mode' : ''
-              }`}
-            >
-              <table className="w-full border-collapse">
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-xs sm:text-sm">
-                  
-                  {/* Document Header Title Row */}
-                  <tr className="bg-slate-50/50 dark:bg-slate-800/30">
-                    <td className="p-4 border-r border-slate-200 dark:border-slate-700 text-center">
-                      <h2 className="font-bold text-base text-slate-900 dark:text-white uppercase">COOPERATION AGREEMENT</h2>
-                      <p className="text-xs font-semibold text-slate-500 mt-1">No. {fieldValues.firstPartyName || tenantEntityName}: {contractNumber || '...'}</p>
-                    </td>
-                    <td className="p-4 text-center">
-                      <h2 className="font-bold text-base text-slate-900 dark:text-white uppercase">PERJANJIAN KERJASAMA</h2>
-                      <p className="text-xs font-semibold text-slate-500 mt-1">No. {fieldValues.firstPartyName || tenantEntityName}: {contractNumber || '...'}</p>
-                    </td>
-                  </tr>
-
-                  {isCustomTemplateActive ? (
-                    <>
-                      {translatedCustomEnglishHtml ? (
-                        <tr>
-                          <td className="p-6 border-r border-slate-200 dark:border-slate-700 align-top w-1/2">
-                            <h3 className="font-bold text-xs uppercase text-emerald-700 dark:text-emerald-400 mb-4 tracking-wider">
-                              ENGLISH TRANSLATION (AI GENERATED)
-                            </h3>
-                            <div
-                              className="prose prose-sm dark:prose-invert max-w-none text-xs sm:text-sm leading-relaxed"
-                              dangerouslySetInnerHTML={{ __html: translatedCustomEnglishHtml }}
-                            />
-                          </td>
-                          <td className="p-6 align-top w-1/2">
-                            <h3 className="font-bold text-xs uppercase text-emerald-700 dark:text-emerald-400 mb-4 tracking-wider">
-                              BAHASA INDONESIA (DRAF EDITOR)
-                            </h3>
-                            <div
-                              className="prose prose-sm dark:prose-invert max-w-none text-xs sm:text-sm leading-relaxed"
-                              dangerouslySetInnerHTML={{ __html: editorRef.current?.innerHTML || '' }}
-                            />
-                          </td>
-                        </tr>
-                      ) : (
-                        <tr>
-                          <td colSpan={2} className="p-8 text-center bg-slate-50/50 dark:bg-slate-800/10">
-                            <div className="max-w-md mx-auto space-y-4 py-8">
-                              <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
-                                <Sparkles className="w-6 h-6" />
-                              </div>
-                              <div className="space-y-1">
-                                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                                  Terjemahkan Kontrak Menjadi Bilingual
-                                </h3>
-                                <p className="text-xs text-slate-500 leading-relaxed">
-                                  Template kustom ini menggunakan teks Bahasa Indonesia bebas. Klik tombol di bawah ini untuk menerjemahkan draf menjadi bilingual Bahasa Inggris & Indonesia secara instan menggunakan AI.
-                                </p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={handleTranslateDocument}
-                                disabled={isTranslating}
-                                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-all disabled:opacity-60 cursor-pointer"
-                              >
-                                {isTranslating ? (
-                                  <>
-                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                    <span>Menerjemahkan dengan AI...</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-3.5 h-3.5" />
-                                    <span>Terjemahkan Sekarang (Bilingual)</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {/* Preamble Row */}
-                      <tr>
-                        <td className="p-4 border-r border-slate-200 dark:border-slate-700 align-top">
-                          <div
-                            className="prose prose-sm dark:prose-invert max-w-none text-xs sm:text-sm leading-relaxed"
-                            dangerouslySetInnerHTML={{
-                              __html: COOPERATION_AGREEMENT_PREAMBLE.en(fieldValues, 'plain'),
-                            }}
-                          />
-                        </td>
-                        <td className="p-4 align-top">
-                          <div
-                            className="prose prose-sm dark:prose-invert max-w-none text-xs sm:text-sm leading-relaxed"
-                            dangerouslySetInnerHTML={{
-                              __html: COOPERATION_AGREEMENT_PREAMBLE.id(fieldValues, 'plain'),
-                            }}
-                          />
-                        </td>
-                      </tr>
-
-                      {/* 15 Articles Rows */}
-                      {COOPERATION_AGREEMENT_ARTICLES(fieldValues, 'plain').map((article) => (
-                        <tr key={article.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="p-4 border-r border-slate-200 dark:border-slate-700 align-top">
-                            <h3 className="font-bold text-xs uppercase text-emerald-700 dark:text-emerald-400 mb-2">
-                              {article.titleEn}
-                            </h3>
-                            <div
-                              className="prose prose-sm dark:prose-invert max-w-none text-xs sm:text-sm leading-relaxed"
-                              dangerouslySetInnerHTML={{ __html: article.contentEn }}
-                            />
-                          </td>
-                          <td className="p-4 align-top">
-                            <h3 className="font-bold text-xs uppercase text-emerald-700 dark:text-emerald-400 mb-2">
-                              {article.titleId}
-                            </h3>
-                            <div
-                              className="prose prose-sm dark:prose-invert max-w-none text-xs sm:text-sm leading-relaxed"
-                              dangerouslySetInnerHTML={{ __html: article.contentId }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-
-                      {/* Signatures Row */}
-                      <tr className="bg-slate-50/50 dark:bg-slate-800/30">
-                        <td className="p-4 border-r border-slate-200 dark:border-slate-700 align-top">
-                          <div
-                            dangerouslySetInnerHTML={{
-                              __html: COOPERATION_AGREEMENT_SIGNATURES.en(fieldValues, 'plain'),
-                            }}
-                          />
-                        </td>
-                        <td className="p-4 align-top">
-                          <div
-                            dangerouslySetInnerHTML={{
-                              __html: COOPERATION_AGREEMENT_SIGNATURES.id(fieldValues, 'plain'),
-                            }}
-                          />
-                        </td>
-                      </tr>
-                    </>
-                  )}
-                </tbody>
-              </table>
+          <div className="w-full max-w-[850px] h-fit mb-16">
+            {/* White Paper Sheet */}
+            <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl rounded-sm border border-slate-300/80 dark:border-slate-800 min-h-[1150px] p-10 sm:p-16 md:p-20 relative">
+              <div className="min-h-[900px] font-sans leading-relaxed text-slate-900 dark:text-slate-100">
+                {/* "ProseMirror" class reused so this read-only preview picks up the exact
+                    same heading/paragraph/table typography rules as the live editor content. */}
+                <div
+                  className="ProseMirror"
+                  dangerouslySetInnerHTML={{ __html: stripFillableSlotsToPlainText(editor?.getHTML() || '') }}
+                />
+              </div>
             </div>
           </div>
         </div>
 
         {/* 4. RIGHT SIDEBAR: QUICK FILL FORM & CLAUSE INSERTER */}
         {sidebarOpen && (
-          <aside className="w-80 sm:w-96 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col shrink-0 z-10 shadow-sm overflow-hidden">
-            
+          <aside className="w-72 sm:w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col shrink-0 z-10 shadow-sm overflow-hidden">
+
             {/* Sidebar Header & Tabs */}
             <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80">
-              <div className="p-3 pb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#06C755]" />
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                    Panel Asisten Kontrak
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSidebarOpen(false)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs p-1 cursor-pointer"
-                  title="Tutup Panel"
-                >
-                  &times;
-                </button>
+              <div className="px-3 py-2.5">
+                <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  {t('contract_creator.panel_title', 'Panel Asisten Kontrak')}
+                </h2>
               </div>
 
               {/* 3 Sub-tabs */}
-              <div className="grid grid-cols-3 px-2 pb-2 gap-1 text-[11px] font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setSidebarTab('fields')}
-                  className={`py-1.5 px-1 rounded-lg transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
-                    sidebarTab === 'fields'
-                      ? 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs font-bold border border-slate-200 dark:border-slate-700'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="Formulir pengisian cepat seluruh baris wajib diisi"
-                >
-                  <span>📝</span>
-                  <span>Kolom Isian</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSidebarTab('partners')}
-                  className={`py-1.5 px-1 rounded-lg transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
-                    sidebarTab === 'partners'
-                      ? 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs font-bold border border-slate-200 dark:border-slate-700'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="Pilih mitra terdaftar untuk mengisi otomatis"
-                >
-                  <span>🏢</span>
-                  <span>Pilih Mitra</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSidebarTab('templates')}
-                  className={`py-1.5 px-1 rounded-lg transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
-                    sidebarTab === 'templates'
-                      ? 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs font-bold border border-slate-200 dark:border-slate-700'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="Buat, simpan, dan muat template kerjasama kustom Anda"
-                >
-                  <span>📁</span>
-                  <span>Template</span>
-                </button>
+              <div role="tablist" aria-label={t('contract_creator.panel_title', 'Panel Asisten Kontrak')} className="grid grid-cols-3 gap-1 px-2 pb-2">
+                {(
+                  [
+                    { id: 'fields', label: t('contract_creator.tab.fields', 'Kolom Isian'), icon: ListChecks },
+                    { id: 'partners', label: t('contract_creator.tab.partners', 'Mitra'), icon: Building2 },
+                    { id: 'templates', label: t('contract_creator.tab.templates', 'Template'), icon: FolderOpen },
+                  ] as const
+                ).map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = sidebarTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => setSidebarTab(tab.id)}
+                      className={`flex flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-semibold transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
               
               {/* TAB 1: QUICK FILL FORM (Baris yang harus diisi) */}
               {sidebarTab === 'fields' && (
-                <div className="space-y-4">
+                <div className="space-y-2.5">
                   {/* Contract Number Field */}
-                  <div className="space-y-1 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-colors bg-white dark:bg-slate-900">
+                  <div
+                    className="space-y-1 p-2 rounded-lg border border-slate-200/80 dark:border-slate-800 hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-colors bg-white dark:bg-slate-900"
+                    title={t('contract_creator.field.contract_no.title', 'Nomor referensi atau nomor surat resmi perjanjian kerjasama')}
+                  >
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span className="text-sm">#️⃣</span>
-                        <span>Nomor Perjanjian Kerjasama</span>
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        {t('contract_creator.field.contract_no.label', 'Nomor Perjanjian Kerjasama')}
                       </label>
                       <div className="flex items-center gap-1">
                         {contractNumber && contractNumber.trim() && !contractNumber.startsWith('[') && (
                           <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
-                            <Check className="w-3 h-3" /> Terisi
+                            <Check className="w-3 h-3" /> {t('contract_creator.filled_badge', 'Terisi')}
                           </span>
                         )}
                         <button
                           type="button"
                           onClick={() => handleFocusSlot('contractNo')}
                           className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
-                          title="Lompat ke posisi isian di dokumen"
+                          aria-label={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
+                          title={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
                         >
                           <Target className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-400 leading-tight">
-                      Nomor referensi atau nomor surat resmi perjanjian kerjasama
-                    </p>
                     <input
                       type="text"
                       value={contractNumber}
                       onChange={(e) => {
                         const val = e.target.value;
                         setContractNumber(val);
-                        if (editorRef.current) {
-                          const slot = editorRef.current.querySelector('[data-slot-key="contractNo"] .slot-text');
-                          if (slot) {
-                            slot.textContent = val || '...';
-                            const parentSlot = slot.closest('.fillable-slot');
-                            if (parentSlot) {
-                              if (val && val.trim() && val !== '...') {
-                                (parentSlot as HTMLElement).style.borderColor = '#3b82f6';
-                                (parentSlot as HTMLElement).style.backgroundColor = '#eff6ff';
-                                (parentSlot as HTMLElement).style.color = '#1d4ed8';
-                                parentSlot.classList.remove('slot-empty');
-                                parentSlot.classList.add('slot-filled');
-                              } else {
-                                (parentSlot as HTMLElement).style.borderColor = '#94a3b8';
-                                (parentSlot as HTMLElement).style.backgroundColor = '#f8fafc';
-                                (parentSlot as HTMLElement).style.color = '#475569';
-                                parentSlot.classList.remove('slot-filled');
-                                parentSlot.classList.add('slot-empty');
-                              }
-                            }
-                          }
-                        }
+                        setFillableSlotValue(editor, 'contractNo', val);
                       }}
                       className="w-full text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       placeholder={defaultContractNo || "ITS/PKS/2026/09/001"}
@@ -1640,44 +1034,44 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                   {COOPERATION_AGREEMENT_FIELDS.map((field) => {
                     const currentVal = fieldValues[field.key] || '';
                     const isFilled = currentVal && currentVal.trim() && !currentVal.startsWith('[');
+                    const fieldLabel = t(`contract_creator.field.${field.key}.label`, field.label);
+                    const fieldPlaceholder = t(`contract_creator.field.${field.key}.placeholder`, field.placeholder);
+                    const fieldDescription = t(`contract_creator.field.${field.key}.description`, field.description);
 
                     return (
                       <div
                         key={field.key}
-                        className="space-y-1 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-colors bg-white dark:bg-slate-900"
+                        className="space-y-1 p-2 rounded-lg border border-slate-200/80 dark:border-slate-800 hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-colors bg-white dark:bg-slate-900"
+                        title={fieldDescription}
                       >
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                            <span className="text-sm">{field.icon}</span>
-                            <span>{field.label}</span>
+                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                            {fieldLabel}
                           </label>
                           <div className="flex items-center gap-1">
                             {isFilled && (
                               <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
-                                <Check className="w-3 h-3" /> Terisi
+                                <Check className="w-3 h-3" /> {t('contract_creator.filled_badge', 'Terisi')}
                               </span>
                             )}
                             <button
                               type="button"
                               onClick={() => handleFocusSlot(field.key)}
                               className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
-                              title="Lompat ke posisi isian di dokumen"
+                              aria-label={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
+                              title={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
                             >
                               <Target className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
 
-                        <p className="text-[10px] text-slate-400 leading-tight">
-                          {field.description}
-                        </p>
-
                         {field.type === 'textarea' ? (
                           <textarea
                             rows={2}
                             value={currentVal}
                             onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
-                            placeholder={field.placeholder}
+                            placeholder={fieldPlaceholder}
                             className="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         ) : (
@@ -1685,7 +1079,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                             type="text"
                             value={currentVal}
                             onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
-                            placeholder={field.placeholder}
+                            placeholder={fieldPlaceholder}
                             className="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         )}
@@ -1695,11 +1089,11 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
                   {/* Render Custom Fields in Fields tab */}
                   {customFields.length > 0 && (
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
                       <div className="flex items-center justify-between px-1">
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Kolom Isian Kustom Anda</span>
+                        <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">{t('contract_creator.custom_fields_section_title', 'Kolom Isian Kustom Anda')}</span>
                         <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded uppercase">
-                          Kustom ({customFields.length})
+                          {t('contract_creator.custom_badge', 'Kustom')} ({customFields.length})
                         </span>
                       </div>
 
@@ -1710,35 +1104,41 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                         return (
                           <div
                             key={field.key}
-                            className="space-y-1 p-2.5 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-800 hover:border-emerald-500 transition-colors bg-emerald-50/5 dark:bg-emerald-950/5"
+                            className="space-y-1 p-2 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-800 hover:border-emerald-500 transition-colors bg-emerald-50/5 dark:bg-emerald-950/5"
+                            title={field.description}
                           >
                             <div className="flex items-center justify-between">
-                              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                                <span className="text-sm">{field.icon}</span>
-                                <span className="truncate max-w-[140px]">{field.label}</span>
+                              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate max-w-[150px]">
+                                {field.label}
                               </label>
                               <div className="flex items-center gap-1">
                                 {isFilled ? (
                                   <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
-                                    <Check className="w-3 h-3" /> Terisi
+                                    <Check className="w-3 h-3" /> {t('contract_creator.filled_badge', 'Terisi')}
                                   </span>
                                 ) : (
                                   <span className="text-[10px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.5 rounded">
-                                    Opsional
+                                    {t('contract_creator.optional_badge', 'Opsional')}
                                   </span>
                                 )}
                                 <button
                                   type="button"
                                   onClick={() => handleFocusSlot(field.key)}
                                   className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
-                                  title="Lompat ke posisi isian di dokumen"
+                                  aria-label={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
+                                  title={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
                                 >
                                   <Target className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    if (window.confirm(`Hapus kolom isian kustom "${field.label}"?`)) {
+                                  onClick={async () => {
+                                    const ok = await confirmDialog({
+                                      description: `${t('contract_creator.delete_custom_field_title', 'Hapus kolom isian kustom')} "${field.label}"?`,
+                                      tone: 'danger',
+                                      confirmLabel: t('contract_creator.confirm.delete_label', 'Hapus'),
+                                    });
+                                    if (ok) {
                                       setCustomFields((prev) => prev.filter((f) => f.key !== field.key));
                                       setFieldValues((prev) => {
                                         const next = { ...prev };
@@ -1748,16 +1148,13 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                                     }
                                   }}
                                   className="p-1 text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer"
-                                  title="Hapus kolom isian kustom"
+                                  aria-label={t('contract_creator.delete_custom_field_title', 'Hapus kolom isian kustom')}
+                                  title={t('contract_creator.delete_custom_field_title', 'Hapus kolom isian kustom')}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             </div>
-
-                            <p className="text-[10px] text-slate-400 leading-tight">
-                              {field.description}
-                            </p>
 
                             {field.type === 'textarea' ? (
                               <textarea
@@ -1786,15 +1183,15 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
               {/* TAB 2: PARTNERS AUTO-FILL */}
               {sidebarTab === 'partners' && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label
+                      className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5"
+                      title={t('contract_creator.partners.select_label_title', 'Mengisi otomatis nama badan hukum, domisili kantor, direktur penandatangan, dan email resmi ke seluruh pasal perjanjian')}
+                    >
                       <UserCheck className="w-3.5 h-3.5 text-[#06C755]" />
-                      Pilih Mitra Terdaftar (Auto-Fill)
+                      {t('contract_creator.partners.select_label', 'Pilih Mitra Terdaftar (Auto-Fill)')}
                     </label>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Pilih mitra dari database untuk mengisi otomatis nama badan hukum, domisili kantor, direktur penandatangan, dan email resmi ke dalam seluruh pasal perjanjian:
-                    </p>
 
                     <select
                       value={selectedPartnerId}
@@ -1804,9 +1201,9 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                         const p = partners.find((item) => item.partner_id === id);
                         if (p) handleApplyPartner(p);
                       }}
-                      className="w-full text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      className="w-full text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     >
-                      <option value="">-- Pilih dari Mitra Terdaftar --</option>
+                      <option value="">{t('contract_creator.partners.select_placeholder', '-- Pilih dari Mitra Terdaftar --')}</option>
                       {partners.map((p) => (
                         <option key={p.partner_id} value={p.partner_id}>
                           {p.nama_partner} ({p.partner_id})
@@ -1816,57 +1213,53 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                   </div>
 
                   {selectedPartner && (
-                    <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-300 space-y-2">
+                    <div className="p-3 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-300 space-y-1.5">
                       <div className="font-bold text-sm">{selectedPartner.nama_partner}</div>
-                      <div className="text-[11px] text-slate-600 dark:text-slate-300">
-                        📍 {selectedPartner.alamat_pic || (selectedPartner as any).alamat || 'Alamat Terdaftar'}
+                      <div className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                        <MapPin className="w-3 h-3 mt-0.5 shrink-0 text-slate-400" />
+                        <span>{selectedPartner.alamat_pic || (selectedPartner as any).alamat || t('contract_creator.partners.default_address', 'Alamat Terdaftar')}</span>
                       </div>
-                      <div className="text-[11px] text-slate-600 dark:text-slate-300">
-                        👤 Penandatangan: <strong>{selectedPartner.nama_pic || selectedPartner.pic_partner}</strong>
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                        <User className="w-3 h-3 shrink-0 text-slate-400" />
+                        <span><strong>{selectedPartner.nama_pic || selectedPartner.pic_partner}</strong></span>
                       </div>
-                      <div className="text-[11px] text-slate-600 dark:text-slate-300">
-                        💼 Jabatan: <strong>{(selectedPartner as any).pic_position || 'Direktur'}</strong>
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                        <Briefcase className="w-3 h-3 shrink-0 text-slate-400" />
+                        <span><strong>{(selectedPartner as any).pic_position || t('contract_creator.partners.default_position', 'Direktur')}</strong></span>
                       </div>
-                      <div className="pt-2">
+                      <div className="pt-1.5">
                         <button
                           type="button"
                           onClick={() => handleApplyPartner(selectedPartner)}
                           className="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
                         >
-                          Sinkronkan Ulang ke Dokumen
+                          {t('contract_creator.partners.resync_button', 'Sinkronkan Ulang ke Dokumen')}
                         </button>
                       </div>
                     </div>
                   )}
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 text-[11px] text-slate-500 space-y-1.5">
-                    <div className="font-bold text-slate-700 dark:text-slate-300">Tips Integrasi Mitra:</div>
-                    <p className="text-slate-500 text-[10px] leading-relaxed">
-                      Menyinkronkan mitra otomatis memperbarui Preamble (Komparisi Para Pihak), Pasal 13 (Alamat Korespondensi), dan Blok Tanda Tangan resmi di bagian akhir perjanjian.
-                    </p>
-                  </div>
                 </div>
               )}
 
               {/* TAB 3: CUSTOM TEMPLATE LIBRARY & DRAG-AND-DROP BUILDER */}
               {sidebarTab === 'templates' && (
-                <div className="space-y-5">
-                  
+                <div className="space-y-4">
+
                   {/* 1. SAVE DRAFT AS TEMPLATE */}
-                  <div className="space-y-2 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
-                    <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <span>💾</span>
-                      <span>Simpan Draf Sebagai Template</span>
+                  <div
+                    className="space-y-2 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20"
+                    title={t('contract_creator.templates.save_section_title_attr', 'Simpan seluruh teks kontrak kustom saat ini sebagai master template yang siap dipakai ulang')}
+                  >
+                    <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Save className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{t('contract_creator.templates.save_section_title', 'Simpan Draf Sebagai Template')}</span>
                     </h3>
-                    <p className="text-[10px] text-slate-400 leading-relaxed">
-                      Simpan seluruh teks kontrak kustom Bahasa Indonesia Anda saat ini sebagai master template kerjasama yang siap dipakai ulang kapan saja.
-                    </p>
-                    <div className="space-y-2 mt-2">
+                    <div className="space-y-2">
                       <input
                         type="text"
                         value={newTemplateName}
                         onChange={(e) => setNewTemplateName(e.target.value)}
-                        placeholder="Nama template (misal: Template Sewa Server)"
+                        placeholder={t('contract_creator.templates.name_placeholder', 'Nama template (misal: Template Sewa Server)')}
                         className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
                       <button
@@ -1878,12 +1271,12 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                         {isSavingTemplate ? (
                           <>
                             <RefreshCw className="w-3 h-3 animate-spin" />
-                            <span>Menyimpan...</span>
+                            <span>{t('contract_creator.templates.saving', 'Menyimpan...')}</span>
                           </>
                         ) : (
                           <>
                             <Save className="w-3.5 h-3.5" />
-                            <span>Simpan Template</span>
+                            <span>{t('contract_creator.templates.save_button', 'Simpan Template')}</span>
                           </>
                         )}
                       </button>
@@ -1891,78 +1284,66 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                   </div>
 
                   {/* 2. OPTION TO ADD CUSTOM DRAG & DROP FIELDS */}
-                  <div className="space-y-2 p-3.5 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/10 dark:bg-emerald-950/5">
+                  <div className="space-y-2 p-3 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/10 dark:bg-emerald-950/5">
                     <button
                       type="button"
                       onClick={() => setShowAddCustomField(!showAddCustomField)}
-                      className="w-full flex items-center justify-between text-xs font-bold text-emerald-800 dark:text-emerald-400 focus:outline-none cursor-pointer"
+                      className="w-full flex items-center justify-between text-[11px] font-bold text-emerald-800 dark:text-emerald-400 focus:outline-none cursor-pointer"
                     >
                       <span className="flex items-center gap-1.5">
                         <PlusCircle className="w-4 h-4 text-[#06C755]" />
-                        <span>Buat Kolom Isian Kustom Baru</span>
+                        <span>{t('contract_creator.custom_field_builder.create_button', 'Buat Kolom Isian Kustom Baru')}</span>
                       </span>
                       <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-lg">
-                        {showAddCustomField ? 'Tutup' : 'Tambah'}
+                        {showAddCustomField ? t('contract_creator.custom_field_builder.close', 'Tutup') : t('contract_creator.custom_field_builder.add', 'Tambah')}
                       </span>
                     </button>
 
                     {showAddCustomField && (
                       <div className="space-y-3 pt-2 border-t border-emerald-100 dark:border-emerald-900/60 transition-all">
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Nama Kolom Isian</label>
+                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.name_label', 'Nama Kolom Isian')}</label>
                           <input
                             type="text"
                             value={newFieldLabel}
                             onChange={(e) => setNewFieldLabel(e.target.value)}
-                            placeholder="Contoh: Kompensasi Tambahan"
+                            placeholder={t('contract_creator.custom_field_builder.name_placeholder', 'Contoh: Kompensasi Tambahan')}
                             className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Tipe Isian</label>
-                            <select
-                              value={newFieldType}
-                              onChange={(e: any) => setNewFieldType(e.target.value)}
-                              className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            >
-                              <option value="text">Teks biasa</option>
-                              <option value="date">Tanggal</option>
-                              <option value="currency">Mata Uang</option>
-                              <option value="textarea">Paragraf / Textarea</option>
-                            </select>
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Emoji / Ikon</label>
-                            <input
-                              type="text"
-                              value={newFieldIcon}
-                              onChange={(e) => setNewFieldIcon(e.target.value)}
-                              placeholder="⭐"
-                              className="w-full text-xs text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            />
-                          </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.type_label', 'Tipe Isian')}</label>
+                          <select
+                            value={newFieldType}
+                            onChange={(e: any) => setNewFieldType(e.target.value)}
+                            className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          >
+                            <option value="text">{t('contract_creator.custom_field_builder.type_text', 'Teks biasa')}</option>
+                            <option value="date">{t('contract_creator.custom_field_builder.type_date', 'Tanggal')}</option>
+                            <option value="currency">{t('contract_creator.custom_field_builder.type_currency', 'Mata Uang')}</option>
+                            <option value="textarea">{t('contract_creator.custom_field_builder.type_textarea', 'Paragraf / Textarea')}</option>
+                          </select>
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Placeholder Default</label>
+                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.placeholder_label', 'Placeholder Default')}</label>
                           <input
                             type="text"
                             value={newFieldPlaceholder}
                             onChange={(e) => setNewFieldPlaceholder(e.target.value)}
-                            placeholder="Contoh: Rp 50.000.000 (Lima Puluh Juta)"
+                            placeholder={t('contract_creator.custom_field_builder.placeholder_placeholder', 'Contoh: Rp 50.000.000 (Lima Puluh Juta)')}
                             className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Keterangan / Deskripsi</label>
+                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.description_label', 'Keterangan / Deskripsi')}</label>
                           <input
                             type="text"
                             value={newFieldDescription}
                             onChange={(e) => setNewFieldDescription(e.target.value)}
-                            placeholder="Deskripsi singkat fungsi kolom isian ini"
+                            placeholder={t('contract_creator.custom_field_builder.description_placeholder', 'Deskripsi singkat fungsi kolom isian ini')}
                             className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         </div>
@@ -1973,36 +1354,30 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                           className="w-full py-2 px-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                         >
                           <PlusCircle className="w-3.5 h-3.5" />
-                          <span>Buat Kolom Isian Baru</span>
+                          <span>{t('contract_creator.custom_field_builder.submit_button', 'Buat Kolom Isian Baru')}</span>
                         </button>
                       </div>
                     )}
                   </div>
 
                   {/* 3. DRAG AND DROP FIELDS SYSTEM */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                        <span>🎯</span>
-                        <span>Kolom Isian Drag &amp; Drop</span>
-                      </h3>
-                      <span className="text-[9px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded uppercase">
-                        Seret &amp; Lepas
-                      </span>
-                    </div>
-                    
-                    <div className="p-2.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/50 text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed">
-                      Seret elemen di bawah ini dan jatuhkan pada posisi kursor di lembar dokumen Bahasa Indonesia Anda untuk menempatkan kolom isian dinamis:
-                    </div>
+                  <div className="space-y-2.5">
+                    <h3
+                      className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"
+                      title={t('contract_creator.dragdrop.section_title_attr', 'Seret elemen ke posisi kursor di dokumen untuk menempatkan kolom isian dinamis')}
+                    >
+                      <Target className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{t('contract_creator.dragdrop.section_title', 'Kolom Isian Drag & Drop')}</span>
+                    </h3>
 
                     {/* Category Switcher Tabs */}
                     <div className="flex flex-wrap gap-1 pb-1">
                       {[
-                        { id: 'all', label: 'Semua' },
-                        { id: 'firstParty', label: 'Pihak I' },
-                        { id: 'partner', label: 'Pihak II' },
-                        { id: 'operational', label: 'Ketentuan' },
-                        { id: 'custom', label: 'Kustom' },
+                        { id: 'all', label: t('contract_creator.dragdrop.cat_all', 'Semua') },
+                        { id: 'firstParty', label: t('contract_creator.dragdrop.cat_first_party', 'Pihak I') },
+                        { id: 'partner', label: t('contract_creator.dragdrop.cat_partner', 'Pihak II') },
+                        { id: 'operational', label: t('contract_creator.dragdrop.cat_operational', 'Ketentuan') },
+                        { id: 'custom', label: t('contract_creator.custom_badge', 'Kustom') },
                       ].map((tab) => (
                         <button
                           key={tab.id}
@@ -2037,12 +1412,14 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                         if (filteredDragFields.length === 0) {
                           return (
                             <div className="text-center py-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-[10px] text-slate-400">
-                              Tidak ada kolom isian di kategori ini.
+                              {t('contract_creator.dragdrop.empty_category', 'Tidak ada kolom isian di kategori ini.')}
                             </div>
                           );
                         }
 
-                        return filteredDragFields.map((item) => (
+                        return filteredDragFields.map((item) => {
+                          const itemLabel = item.isCustom ? item.label : t(`contract_creator.field.${item.key}.label`, item.label);
+                          return (
                           <div
                             key={item.key}
                             draggable={true}
@@ -2052,25 +1429,24 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                                 JSON.stringify({
                                   type: item.type,
                                   key: item.key,
-                                  label: item.label,
+                                  label: itemLabel,
                                   placeholder: item.placeholder,
                                 })
                               );
                               e.dataTransfer.effectAllowed = 'copy';
                             }}
-                            className={`flex items-center justify-between p-2.5 bg-white dark:bg-slate-900 border rounded-xl cursor-grab active:cursor-grabbing transition-all shadow-2xs group ${
-                              item.isCustom 
+                            className={`flex items-center justify-between p-2 bg-white dark:bg-slate-900 border rounded-lg cursor-grab active:cursor-grabbing transition-all shadow-2xs group ${
+                              item.isCustom
                                 ? 'border-emerald-200 dark:border-emerald-800 hover:border-emerald-500 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10'
                                 : 'border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10'
                             }`}
-                            title="Seret elemen ini ke editor"
+                            title={t('contract_creator.dragdrop.item_title_attr', 'Seret elemen ini ke editor')}
                           >
                             <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 truncate max-w-[200px]">
-                              <span>{item.icon}</span>
-                              <span className="truncate">{item.label}</span>
+                              <span className="truncate">{itemLabel}</span>
                               {item.isCustom && (
                                 <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.2 rounded uppercase">
-                                  Kustom
+                                  {t('contract_creator.custom_badge', 'Kustom')}
                                 </span>
                               )}
                             </span>
@@ -2078,26 +1454,27 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                               DRAG
                             </span>
                           </div>
-                        ));
+                          );
+                        });
                       })()}
                     </div>
                   </div>
 
                   {/* 3. SAVED TEMPLATES LIBRARY */}
-                  <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                    <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <span>📁</span>
-                      <span>Pustaka Template Terdaftar</span>
+                  <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{t('contract_creator.templates.library_title', 'Pustaka Template Terdaftar')}</span>
                     </h3>
-                    
+
                     {isLoadingTemplates ? (
                       <div className="text-center py-4 text-xs text-slate-400 flex items-center justify-center gap-1.5">
                         <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#06C755]" />
-                        <span>Memuat pustaka...</span>
+                        <span>{t('contract_creator.templates.loading', 'Memuat pustaka...')}</span>
                       </div>
                     ) : savedTemplates.length === 0 ? (
                       <div className="text-center py-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-400">
-                        Belum ada template yang disimpan.
+                        {t('contract_creator.templates.empty', 'Belum ada template yang disimpan.')}
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -2120,13 +1497,13 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                                 onClick={() => handleLoadTemplate(tpl)}
                                 className="px-2.5 py-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-lg transition-colors cursor-pointer"
                               >
-                                Gunakan
+                                {t('contract_creator.templates.use_button', 'Gunakan')}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteTemplate(tpl.id)}
                                 className="p-1 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors cursor-pointer"
-                                title="Hapus Template"
+                                title={t('contract_creator.templates.delete_title', 'Hapus Template')}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -2147,14 +1524,14 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       {/* 5. BOTTOM STATUS BAR */}
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 py-2 flex items-center justify-between text-xs text-slate-500 shrink-0 z-20">
         <div className="flex items-center gap-4">
-          <span>{wordCount} kata</span>
+          <span>{wordCount} {t('contract_creator.footer.words', 'kata')}</span>
           <span className="hidden sm:inline">&bull;</span>
-          <span className="hidden sm:inline">{charCount} karakter</span>
+          <span className="hidden sm:inline">{charCount} {t('contract_creator.footer.chars', 'karakter')}</span>
           <span className="hidden md:inline">&bull;</span>
-          <span className="hidden md:inline">Estimasi baca ~{Math.max(1, Math.round(wordCount / 200))} menit</span>
+          <span className="hidden md:inline">{t('contract_creator.footer.read_estimate', 'Estimasi baca')} ~{Math.max(1, Math.round(wordCount / 200))} {t('contract_creator.footer.minutes', 'menit')}</span>
           <span className="hidden lg:inline">&bull;</span>
           <span className="hidden lg:inline text-emerald-600 dark:text-emerald-400 font-medium">
-            {isCustomTemplateActive ? 'Template Kerjasama Kustom Aktif' : '15 Pasal Perjanjian Kerjasama'}
+            {isCustomTemplateActive ? t('contract_creator.footer.custom_template_active', 'Template Kerjasama Kustom Aktif') : t('contract_creator.footer.default_template_active', '15 Pasal Perjanjian Kerjasama')}
           </span>
         </div>
 
@@ -2164,7 +1541,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
             type="button"
             onClick={() => setZoomLevel(Math.max(70, zoomLevel - 10))}
             className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 cursor-pointer"
-            title="Zoom Out"
+            title={t('contract_creator.footer.zoom_out', 'Zoom Out')}
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
@@ -2173,7 +1550,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
             type="button"
             onClick={() => setZoomLevel(Math.min(150, zoomLevel + 10))}
             className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 cursor-pointer"
-            title="Zoom In"
+            title={t('contract_creator.footer.zoom_in', 'Zoom In')}
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
@@ -2181,76 +1558,12 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
             type="button"
             onClick={() => setZoomLevel(100)}
             className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 ml-1 cursor-pointer"
-            title="Reset Zoom 100%"
+            title={t('contract_creator.footer.zoom_reset', 'Reset Zoom 100%')}
           >
             100%
           </button>
         </div>
       </footer>
-
-      {/* Table Customization Modal */}
-      {showTableModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Table className="w-5 h-5 text-emerald-600" />
-                <span>Sisipkan Tabel Kustom</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowTableModal(false)}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-lg leading-none"
-              >
-                &times;
-              </button>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Tentukan jumlah baris dan kolom sesuai kebutuhan data kontrak Anda.
-            </p>
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Jumlah Baris (Rows)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={tableRows}
-                  onChange={(e) => setTableRows(parseInt(e.target.value) || 1)}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Jumlah Kolom (Cols)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={tableCols}
-                  onChange={(e) => setTableCols(parseInt(e.target.value) || 1)}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setShowTableModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleInsertCustomTable}
-                className="px-4 py-2 text-xs font-bold text-white bg-[#06C755] hover:bg-[#05b34c] rounded-xl shadow-xs transition-colors cursor-pointer"
-              >
-                Buat & Sisipkan Tabel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

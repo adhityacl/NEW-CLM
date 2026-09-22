@@ -39,6 +39,22 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
     t.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Group departments by organization so each org's cards sit under their own
+  // divider — otherwise teams from different organizations blend into one grid.
+  const teamsByOrg: Array<{ orgKey: string; orgName: string; teams: ConsoleTeam[] }> = [];
+  const orgIndex = new Map<string, number>();
+  for (const team of filteredTeams) {
+    const orgKey = team.organizationId || 'unknown';
+    const orgName = team.organizationName || (language === 'ID' ? 'Organisasi Aktif' : 'Active Organization');
+    let idx = orgIndex.get(orgKey);
+    if (idx === undefined) {
+      idx = teamsByOrg.length;
+      orgIndex.set(orgKey, idx);
+      teamsByOrg.push({ orgKey, orgName, teams: [] });
+    }
+    teamsByOrg[idx].teams.push(team);
+  }
+
   return (
     <div className="space-y-4">
       {/* Controls Bar */}
@@ -66,14 +82,24 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
         </div>
       </div>
 
-      {/* Teams Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTeams.length === 0 ? (
-          <div className="col-span-full p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs">
-            {t('admin.no_teams_found', 'Belum ada tim atau departemen yang dibuat untuk organisasi ini.')}
-          </div>
-        ) : (
-          filteredTeams.map((team) => (
+      {/* Teams Grid, grouped by organization */}
+      {filteredTeams.length === 0 ? (
+        <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs">
+          {t('admin.no_teams_found', 'Belum ada tim atau departemen yang dibuat untuk organisasi ini.')}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {teamsByOrg.map((group) => (
+            <div key={group.orgKey} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+                  {group.orgName}
+                </h3>
+                <div className="flex-1 border-t border-slate-200 dark:border-slate-800" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {group.teams.map((team) => (
             <div
               key={team.id}
               className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs flex flex-col justify-between"
@@ -174,9 +200,12 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
                 </span>
               </div>
             </div>
-          ))
-        )}
-      </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

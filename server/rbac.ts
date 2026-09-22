@@ -427,7 +427,14 @@ export function canChangeRole(
   const actorRole = normalizeRole(actor.role);
   const nRole = normalizeRole(newRole);
 
-  if (targetUser.id === actor.id) return { allowed: false, error: 'SELF_ROLE_CHANGE_FORBIDDEN' };
+  if (targetUser.id === actor.id) {
+    // A no-op role resubmission (e.g. editing your own name/email while the role
+    // field still holds your current, unchanged role) isn't a role change — allow
+    // it without running the "assign to someone else" hierarchy checks below, which
+    // would otherwise reject it (a role is never strictly higher than itself).
+    // An actual attempt to change your own role (up or down) is always forbidden.
+    return nRole === actorRole ? { allowed: true } : { allowed: false, error: 'SELF_ROLE_CHANGE_FORBIDDEN' };
+  }
 
   if (actorRole === 'superuser') return { allowed: true };
 

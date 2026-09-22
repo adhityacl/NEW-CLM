@@ -266,13 +266,10 @@ export function TenantDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Form Buat Tenant Baru */}
         <section className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-2">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
             <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             Buat Tenant Baru
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-            Daftarkan organisasi atau unit bisnis baru ke dalam sistem multi-tenant.
-          </p>
 
           <form onSubmit={handleCreateOrg} className="space-y-3">
             <div>

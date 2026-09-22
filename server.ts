@@ -100,7 +100,6 @@ export const rbacAuthMiddleware = (req: express.Request, res: express.Response, 
     req.path === "/api/export-csv" ||
     req.path === "/api/templates" ||
     req.path.startsWith("/api/templates/") ||
-    req.path === "/api/translate-template" ||
     req.path === "/api/audit-logs"
   ) {
     return next();
@@ -2171,7 +2170,7 @@ app.get("/api/user/my-role", async (req: express.Request, res: express.Response)
       )
       .get(email);
     if (userRow) {
-      if (userRow.name && !allowed.name) {
+      if (userRow.name) {
         allowed.name = userRow.name;
       }
       if (userRow.role) {
@@ -4742,52 +4741,6 @@ app.delete("/api/templates/:id", (req, res) => {
   }
 });
 
-app.post("/api/translate-template", async (req, res) => {
-  try {
-    const { contentId } = req.body;
-    if (!contentId) {
-      return res.status(400).json({ error: "Content to translate is required." });
-    }
-
-    const client = getGenAIClient();
-    const model = "gemini-3.8-flash";
-
-    const prompt = `You are an expert bilingual legal counsel and professional legal translator specializing in Indonesian and English commercial contracts.
-
-Translate the following Indonesian contract HTML content into professional, precise English.
-
-CRITICAL INSTRUCTIONS:
-1. You MUST preserve all HTML tags and structures exactly as they are.
-2. Specifically, you MUST preserve all elements with class 'fillable-slot' (e.g., <span class="fillable-slot" data-slot-key="..." ...><span class="slot-text">...</span></span>) exactly as they are in the translated HTML.
-3. Do NOT translate or modify any attributes of HTML tags (like data-slot-key, data-slot-type, contenteditable, style, class, id, etc.). Keep them exactly identical.
-4. Keep the inner content of <span class="slot-text">...</span> untouched so that the form variables map perfectly.
-5. Translate the rest of the surrounding Indonesian legal text into formal English suitable for a side-by-side bilingual commercial agreement.
-6. Return ONLY the translated HTML content. Do NOT wrap the output in markdown code blocks like \`\`\`html or \`\`\`. Do NOT include any introductory or concluding remarks. Just output the clean HTML string.
-
-Indonesian HTML to translate:
-${contentId}`;
-
-    const response = await client.models.generateContent({
-      model,
-      contents: prompt,
-    });
-
-    let translatedHtml = response.text || "";
-
-    // Clean up any markdown code blocks if the model ignored instructions
-    if (translatedHtml.includes("```html")) {
-      translatedHtml = translatedHtml.split("```html")[1].split("```")[0];
-    } else if (translatedHtml.includes("```")) {
-      translatedHtml = translatedHtml.split("```")[1].split("```")[0];
-    }
-
-    res.json({ success: true, translatedHtml: translatedHtml.trim() });
-  } catch (err: any) {
-    console.error("Translation error:", err);
-    res.status(500).json({ error: err?.message || "Gagal menerjemahkan template menggunakan AI." });
-  }
-});
-
 app.post("/api/contracts", async (req: express.Request, res: express.Response) => {
   const {
     nomor_kontrak,
@@ -6087,10 +6040,13 @@ app.post(
         }
       } else {
         try {
+          // Never overwrite an existing account's name from the Google profile here —
+          // the display name may have been customized via the admin "Edit User" flow,
+          // and every Google sign-in/re-auth must not silently revert it.
           sqliteDb.prepare(`
-            UPDATE user SET name = COALESCE(?, name), image = COALESCE(?, image), updatedAt = ?
+            UPDATE user SET image = COALESCE(?, image), updatedAt = ?
             WHERE id = ?
-          `).run(userName, photoURL || null, now, userId);
+          `).run(photoURL || null, now, userId);
         } catch (e) {}
       }
 

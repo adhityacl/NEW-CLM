@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GoogleSheetsConfig, Tenant } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/ConfirmDialogContext';
 import { useTenant } from '../context/TenantContext';
 import { getAuthHeaders } from '../App';
 import { UITextManagerModal } from './UITextManagerModal';
@@ -89,6 +90,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const { user, isAdmin } = useAuth();
   const { language, t, exportToCSV, importFromCSV, resetCustomTranslations } = useLanguage();
+  const confirmDialog = useConfirm();
 
   // Active Settings Section / Group Tab
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection || 'google');
@@ -1155,9 +1157,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </Badge>
                     )}
                   </CardTitle>
-                  <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.google_auth_desc', 'Koneksi OAuth 2.0 resmi untuk membaca & menulis Google Spreadsheet serta mengunggah berkas ke Google Drive.')}
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 text-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-[#F5F6F6] dark:bg-slate-800/50 rounded-2xl border border-[#EBEBEB] dark:border-slate-700">
@@ -1227,9 +1226,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         <Folder className="w-5 h-5 text-[#06C755]" />
                         <span>Penyimpanan File Dokumen (Google Drive)</span>
                       </CardTitle>
-                      <CardDescription className="text-xs">
-                        Folder induk Google Drive untuk menampung lampiran PDF, file dokumen, dan bukti pengeluaran.
-                      </CardDescription>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
                       {driveFolderId ? (
@@ -1578,9 +1574,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <Key className="w-5 h-5 text-[#06C755]" />
                       <span>{t('settings.gemini_api_key_title', 'Google Gemini API Key')}</span>
                     </CardTitle>
-                    <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-                      {t('settings.gemini_api_key_desc', 'API Key yang digunakan untuk auto-fill data dari dokumen PDF kontrak dan invoice melalui Google Gemini.')}
-                    </CardDescription>
                   </div>
                   <div>
                     {geminiApiKey ? (
@@ -1681,9 +1674,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <Bot className="w-5 h-5 text-[#06C755]" />
                     <span>{t('settings.ai_config_title', 'Pilihan Model Google Gemini')}</span>
                   </CardTitle>
-                  <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.ai_config_desc', 'Model AI multimodal yang digunakan untuk mengekstrak data dari berkas PDF kontrak dan invoice secara otomatis.')}
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 text-xs">
                   <div className="space-y-3">
@@ -1772,9 +1762,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <Mail className="w-5 h-5 text-[#06C755]" />
                       <span>{t('settings.smtp_card_title', 'Konfigurasi SMTP Relay Server (Email Nyata)')}</span>
                     </CardTitle>
-                    <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-                      {t('settings.smtp_card_desc', 'Kirim email notifikasi dan alert notice period secara nyata ke kotak masuk (inbox) Google Workspace, Gmail, atau Outlook.')}
-                    </CardDescription>
                   </div>
                   <div>
                     {smtpEnabled ? (
@@ -1981,9 +1968,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <Bell className="w-5 h-5 text-[#06C755]" />
                     <span>{t('settings.notif_recipients_title', 'Daftar Email Penerima Alert Notice Period')}</span>
                   </CardTitle>
-                  <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.notif_recipients_desc', 'Email yang akan menerima notifikasi otomatis sebelum kontrak berakhir (H-90, H-60, H-30, H-14).')}
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="text-xs">
                   <form onSubmit={handleSaveNotificationEmails} className="space-y-4">
@@ -2043,9 +2027,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <Languages className="w-5 h-5 text-[#06C755]" />
                   <span>{t('settings.ui_customization_title', 'Kustomisasi Teks UI & Kamus Antarmuka')}</span>
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-                  {t('settings.ui_customization_desc', 'Ubah kata, label tombol, atau istilah pada aplikasi sesuai dengan standar legal perusahaan Anda.')}
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 text-xs">
                 <div className="p-4 bg-[#F5F6F6] dark:bg-slate-800/50 rounded-2xl border border-[#EBEBEB] dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -2095,8 +2076,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      if (confirm('Reset seluruh kamus teks ke bahasa bawaan sistem?')) {
+                    onClick={async () => {
+                      const ok = await confirmDialog({
+                        description: 'Reset seluruh kamus teks ke bahasa bawaan sistem?',
+                        tone: 'danger',
+                        confirmLabel: 'Reset',
+                      });
+                      if (ok) {
                         resetCustomTranslations();
                         setSuccessMsg('Kamus teks UI dikembalikan ke pengaturan awal.');
                       }
@@ -2410,9 +2396,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     placeholder="Contoh: 1vX8Z..."
                     className="w-full bg-[#F5F6F6] dark:bg-slate-800/60 border border-[#EBEBEB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-[#06C755]/20"
                   />
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Folder spesifik organisasi ini yang terletak di dalam Master Root Drive untuk menyimpan dokumen kontrak, IO, vendor, dan billing.
-                  </p>
                 </div>
               </div>
 

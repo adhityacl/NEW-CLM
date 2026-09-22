@@ -15,7 +15,7 @@ import {
   Maximize2,
   X,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { cn } from '../lib/utils';
@@ -203,9 +203,6 @@ export const SQLiteDatabaseCard: React.FC = () => {
             <Database className="w-5 h-5 text-[#06C755]" />
             <span>SQLite Database</span>
           </CardTitle>
-          <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Engine & Browser
-          </CardDescription>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">

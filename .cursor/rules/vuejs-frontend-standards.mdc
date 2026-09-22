@@ -1,0 +1,68 @@
+---
+description: Frontend engineering standards for Vue.js 3 (Composition API, Vite-based SPA) projects — <script setup> component structure, composable design, WCAG 2.1 AA accessibility, and Core Web Vitals performance (LCP, CLS, INP) per https://pagespeed.web.dev/. Use this skill whenever setting up contributor rules for a Vue.js project, writing or reviewing components/composables/Pinia stores, deciding between ref and reactive, auditing a Vue app's PageSpeed/Lighthouse score, or generating a CLAUDE.md/.cursor/AGENTS.md rules file for a Vue codebase. For Nuxt projects, use the separate `nuxt` skill instead.
+globs: **/*.{vue,js,ts}
+alwaysApply: true
+---
+
+# Frontend Contributor Rules — Vue.js
+
+Applies to every change under `src/components`, `src/composables`, `src/views`, `src/stores`, `src/router`, and related directories in this Vue 3 (Composition API, Vite SPA) project. Self-contained — includes the framework-agnostic baseline plus Vue-specific practice.
+
+## 1. Component model
+
+- **`<script setup lang="ts">` for every new SFC.** No Options API, no runtime-only `defineProps`/`defineEmits` in new code.
+- `ref` for primitives and anything that may be reassigned or destructured; `reactive` only for a cohesive object you'll never reassign whole. `shallowRef`/`shallowReactive` for large data (API result sets, chart data) that doesn't need deep reactivity.
+- `computed` instead of a manually-synced `ref` + `watch` for any derived value.
+- Never mutate a prop directly — emit an event and let the parent own the update.
+- Route-level components are lazy: `{ path: "/x", component: () => import("../views/XView.vue") }` — never a static top-level import for a route.
+
+## 2. Accessibility (WCAG 2.1 AA)
+
+- Real semantic HTML inside templates (`<button>`, `<nav>`, `<main>`, real `<label for>` + `<input>`) — no `<div @click>`.
+- Every `<img>` has descriptive, context-specific `alt`, or `alt=""` if decorative, plus explicit `width`/`height`.
+- Move focus via template refs (`ref="..."`, `await nextTick()` before touching a freshly `v-if`'d ref) on dialog open/close and route change; restore focus to the trigger on close.
+- Bind `:aria-*`/`:class` reactively to the same state driving the visual change — never toggle ARIA attributes imperatively via `document.querySelector`.
+- Custom modals implement `role="dialog"` + `aria-modal` + focus trap + `Escape`-to-close + focus restore — prefer a maintained headless primitive (Radix Vue, Headless UI for Vue) over hand-rolling.
+- `v-html` only for sanitized (e.g. `DOMPurify`) content; never for interactive markup (buttons/links) — render real components instead.
+- Keep `eslint-plugin-vuejs-accessibility` enabled and build-breaking in CI.
+- Color contrast ≥ 4.5:1 body / ≥ 3:1 large text; never convey state by color alone; respect `prefers-reduced-motion`; text sizing in `rem`/`em`.
+
+## 3. Core Web Vitals (target: LCP < 2.5s · CLS < 0.1 · INP < 200ms, per https://pagespeed.web.dev/)
+
+- No built-in image component — every `<img>` gets explicit `width`/`height`, modern format, correct sizing, and `loading="lazy"` unless it's the LCP image (never lazy-load the LCP image; use `fetchpriority="high"` and preload if known at build time).
+- `defineAsyncComponent` + `<Suspense>` for heavy, non-critical components (editors, charts, large modals) so their JS isn't in the initial bundle.
+- `v-memo` for expensive `v-for` list items, only after Vue DevTools profiling shows a real re-render cost — not by default.
+- Scope `ref`/`reactive` state as locally as possible; debounce high-frequency handlers; avoid deep reactivity on large, rarely-mutated data via `shallowRef`/`shallowReactive`.
+- Measure against `vite build && vite preview`, never `vite dev`. Use `rollup-plugin-visualizer` when a dependency looks heavy; use Vue DevTools to confirm a re-render fix actually helped.
+
+## 4. Component & file conventions
+
+- Folder structure: `src/components/ui` (shared), `src/components/<feature>` (feature-scoped), `src/composables`, `src/views` (routed components), `src/stores` (Pinia), `src/router`.
+- Component files: `PascalCase.vue`. Composables: `useX.ts` camelCase, one concern per composable. Everything else: `camelCase.ts`.
+- `defineProps<T>()`/`defineEmits<T>()` with a generic type — no runtime-only prop declarations, no `any`. `withDefaults` for default prop values.
+- Pinia (setup-style store) for state crossing 3+ component levels or living outside one component tree — one store per domain, not a single monolith store.
+- DRY: markup/logic/values repeated 3+ times get extracted to a shared component, composable, or design token — not copy-pasted.
+- Avoid deeply nested `v-if`/`v-else-if` chains — use a `computed` view-state or extracted subcomponents instead.
+
+## 5. UX consistency
+
+- Every view with async data implements loading, empty, and error states — loading skeletons approximate the loaded layout's dimensions (no CLS on swap-in).
+- Mobile-first CSS, ≥ 44×44px touch targets, immediate (~100ms) feedback on every interactive action.
+
+## 6. Tooling & CI (build-breaking gates)
+
+- `eslint-plugin-vue` + `eslint-plugin-vuejs-accessibility` + Prettier on every commit/CI run.
+- Vitest + `@testing-library/vue` for units/components (query by role/label, not implementation detail); Playwright (+ `@axe-core/playwright`) for e2e and accessibility on critical paths.
+- Lighthouse CI against a real `vite build && vite preview`, with LCP/CLS/performance-score budgets as `error`-level assertions.
+- `web-vitals` (`onLCP`/`onCLS`/`onINP`) wired to analytics for real-user field data.
+- `README.md` updated in the same PR whenever setup, env vars, scripts, or folder conventions change.
+
+## 7. Before opening a PR
+
+- [ ] Every new component uses `<script setup lang="ts">`; no `any` in props/emits.
+- [ ] Keyboard-only walkthrough of the changed flow; zero new `vuejs-accessibility`/axe violations.
+- [ ] New images have explicit dimensions and descriptive `alt`; LCP image is never lazy-loaded.
+- [ ] Loading/empty/error states cover new async UI.
+- [ ] No hardcoded design value duplicating an existing token; no logic duplicated 3+ times.
+- [ ] Vite bundle checked for unexpected growth if a new dependency was added; PageSpeed checked if images/fonts/data-fetching changed.
+- [ ] README updated if setup/config/scripts changed.

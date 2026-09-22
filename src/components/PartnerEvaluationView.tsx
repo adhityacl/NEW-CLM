@@ -26,6 +26,8 @@ import { getStatusBadgeClass } from './ui/badge';
 import { getSavedColumnPreferences, saveColumnPreferences } from '../lib/tablePreferences';
 import { getCachedAccessToken } from '../lib/googleAuthService';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/ConfirmDialogContext';
+import { useAlertToast } from '../context/AlertToastContext';
 import { usePermissions } from '../lib/permissions';
 
 interface PartnerEvaluationViewProps {
@@ -78,6 +80,8 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
 }) => {
   const { hasPermission } = usePermissions();
   const { t } = useLanguage();
+  const confirmDialog = useConfirm();
+  const showAlert = useAlertToast();
   
   const DEFAULT_EVAL_COLUMNS = {
     vendor: true,
@@ -466,13 +470,18 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
   const handleDelete = async (id: string | undefined, name?: string) => {
     if (!canDeleteEvaluation) return;
     if (!id || id.startsWith('NOT_REVIEWED')) return;
-    if (window.confirm(t('evaluation.delete_confirm', 'Yakin ingin menghapus evaluasi ini?'))) {
+    if (
+      await confirmDialog({
+        description: t('evaluation.delete_confirm', 'Hapus evaluasi ini?'),
+        tone: 'danger',
+      })
+    ) {
       try {
         const res = await fetch(`/api/partner-evaluations/${id}?userEmail=${encodeURIComponent(userEmail || '')}&userName=${encodeURIComponent(userName || '')}&userRole=${encodeURIComponent(userRole || '')}`, { method: 'DELETE' });
         if (res.ok) {
           onRefreshData();
         } else {
-          alert('Gagal menghapus data.');
+          showAlert({ title: 'Gagal menghapus data evaluasi', variant: 'destructive' });
         }
       } catch (err) {
         console.warn(err);

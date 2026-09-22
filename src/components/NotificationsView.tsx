@@ -13,6 +13,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/ConfirmDialogContext';
 import { getStatusBadgeClass } from './ui/badge';
 import { TablePagination } from './ui/TablePagination';
 
@@ -30,6 +31,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
   onDeleteNotif,
 }) => {
   const { t, language } = useLanguage();
+  const confirmDialog = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterType, setFilterType] = useState<string>('ALL');
@@ -85,7 +87,11 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
 
   const handleDeleteSingle = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm(t('notifications.confirm_delete', 'Apakah Anda yakin ingin menghapus notifikasi ini?'))) {
+    const ok = await confirmDialog({
+      description: t('notifications.confirm_delete', 'Hapus notifikasi ini?'),
+      tone: 'danger',
+    });
+    if (ok) {
       if (onDeleteNotif) {
         await onDeleteNotif(id);
         setSelectedIds((prev) => prev.filter((item) => item !== id));
@@ -95,7 +101,11 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
-    if (window.confirm(t('notifications.confirm_delete_selected', 'Apakah Anda yakin ingin menghapus notifikasi yang dipilih?'))) {
+    const ok = await confirmDialog({
+      description: t('notifications.confirm_delete_selected', 'Hapus notifikasi yang dipilih?'),
+      tone: 'danger',
+    });
+    if (ok) {
       if (onDeleteNotif) {
         await onDeleteNotif(undefined, selectedIds);
         setSelectedIds([]);

@@ -622,9 +622,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
                 {t('dashboard.spending_title', 'Analisis Spending')}
               </h3>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                {t('dashboard.spending_subtitle', 'Visualisasi tumpukan pengeluaran bulanan berdasarkan kategori kerjasama & vendor')}
-              </p>
             </div>
           </div>
 

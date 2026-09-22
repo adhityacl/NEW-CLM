@@ -32,6 +32,7 @@ import {
   ConsoleTeam,
 } from './types';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAlertToast } from '../../context/AlertToastContext';
 import { useDepartments } from '../../hooks/useDepartments';
 
 // Add user modal
@@ -137,7 +138,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
         email: email.trim().toLowerCase(),
         role,
         password: password ? password : undefined,
-        department: department.trim(),
+        department: role === 'superuser' || role === 'admin' ? undefined : department.trim(),
         organizationId: role === 'superuser' ? undefined : (organizationId || undefined),
       });
       setName('');
@@ -161,7 +162,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               {t('admin.modal_add_user', 'Tambah Pengguna Sistem Baru')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -201,44 +202,22 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                {t('admin.role_label', 'Role Hak Akses Aplikasi *')}
-              </label>
-              <select
-                value={role}
-                onChange={(e) => handleRoleChange(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-medium"
-              >
-                {allowedRoles.includes('superuser') && <option value="superuser">Superuser (System Level)</option>}
-                {allowedRoles.includes('admin') && <option value="admin">Admin (Tenant Level)</option>}
-                {allowedRoles.includes('manager') && <option value="manager">Manager (Group Approval)</option>}
-                {allowedRoles.includes('editor') && <option value="editor">Editor (Group Draft & Upload)</option>}
-                {allowedRoles.includes('viewer') && <option value="viewer">Viewer (Read-Only Final)</option>}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                {t('admin.tab_teams', 'Departemen')}
-              </label>
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-medium"
-              >
-                {deptOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              {t('admin.role_label', 'Role Hak Akses Aplikasi *')}
+            </label>
+            <select
+              value={role}
+              onChange={(e) => handleRoleChange(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-medium"
+            >
+              {allowedRoles.includes('superuser') && <option value="superuser">Superuser</option>}
+              {allowedRoles.includes('admin') && <option value="admin">Admin</option>}
+              {allowedRoles.includes('manager') && <option value="manager">Manager</option>}
+              {allowedRoles.includes('editor') && <option value="editor">Editor</option>}
+              {allowedRoles.includes('viewer') && <option value="viewer">Viewer</option>}
+            </select>
           </div>
-          <p className="text-[10px] text-slate-500">
-            * Pilihan Departmens akan otomatis menjadi <strong>Internal PIC default</strong> saat user menambahkan mitra baru dan menentukan cakupan file.
-          </p>
 
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -280,19 +259,28 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                 </>
               )}
             </select>
-            {role === 'superuser' ? (
-              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">
-                * Superuser secara otomatis memiliki akses sistem penuh ke seluruh tenant/organisasi.
-              </p>
-            ) : role === 'admin' ? (
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                * Admin dapat mengelola semua tenant (Akses Global) atau dibatasi pada satu tenant terpilih.
-              </p>
-            ) : (
-              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
-                * Role di bawah Superuser dan Admin harus masuk ke 1 tenant.
-              </p>
-            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              {t('admin.tab_teams', 'Departemen')}
+            </label>
+            <select
+              value={role === 'superuser' || role === 'admin' ? '' : department}
+              onChange={(e) => setDepartment(e.target.value)}
+              disabled={role === 'superuser' || role === 'admin'}
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-medium disabled:opacity-60"
+            >
+              {role === 'superuser' || role === 'admin' ? (
+                <option value="">{t('admin.all_departments', 'Semua Departemen (Akses Global)')}</option>
+              ) : (
+                deptOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))
+              )}
+            </select>
           </div>
 
           <div>
@@ -306,9 +294,6 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               placeholder="Kosongkan jika menggunakan Google Login SSO"
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
             />
-            <p className="text-[10px] text-slate-400 mt-1">
-              {t('admin.pwd_init_hint', 'Jika diisi, user dapat langsung login dengan email dan kata sandi ini.')}
-            </p>
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-2">
@@ -391,7 +376,14 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
     setIsSubmitting(true);
     setError('');
     try {
-      await onSubmit(user.id, role, department, role === 'superuser' ? undefined : (organizationId || undefined), name, email);
+      await onSubmit(
+        user.id,
+        role,
+        role === 'superuser' || role === 'admin' ? undefined : department,
+        role === 'superuser' ? undefined : (organizationId || undefined),
+        name,
+        email
+      );
       onClose();
     } catch (err: any) {
       setError(err.message || 'Gagal mengubah user');
@@ -410,7 +402,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               {t('admin.modal_edit_user', 'Ubah Informasi & Hak Akses Pengguna')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -506,19 +498,6 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                 </>
               )}
             </select>
-            {role === 'superuser' ? (
-              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">
-                * Superuser secara otomatis memiliki akses ke semua tenant/organisasi.
-              </p>
-            ) : role === 'admin' ? (
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                * Admin dapat mengelola semua tenant (Akses Global) atau dibatasi pada satu tenant terpilih.
-              </p>
-            ) : (
-              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
-                * Role di bawah Superuser dan Admin harus masuk ke 1 tenant.
-              </p>
-            )}
           </div>
 
           <div>
@@ -526,15 +505,20 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               {t('admin.tab_teams', 'Departmens / Tim')}
             </label>
             <select
-              value={department}
+              value={role === 'superuser' || role === 'admin' ? '' : department}
               onChange={(e) => setDepartment(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium"
+              disabled={role === 'superuser' || role === 'admin'}
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium disabled:opacity-60"
             >
-              {deptOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
+              {role === 'superuser' || role === 'admin' ? (
+                <option value="">{t('admin.all_departments', 'Semua Departemen (Akses Global)')}</option>
+              ) : (
+                deptOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -609,7 +593,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
               {t('admin.modal_reset_pwd', 'Reset Kata Sandi Pengguna')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -679,6 +663,7 @@ export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
   label,
 }) => {
   const { t } = useLanguage();
+  const showAlert = useAlertToast();
   const [isUrlMode, setIsUrlMode] = useState(false);
   const [urlInput, setUrlInput] = useState(logo || '');
   const [isDragging, setIsDragging] = useState(false);
@@ -689,11 +674,11 @@ export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
   const handleFileChange = (file?: File | null) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert(t('admin.err_image_type', 'Harap pilih file gambar (PNG, JPG, SVG, WebP).'));
+      showAlert({ title: t('admin.err_image_type', 'Harap pilih file gambar (PNG, JPG, SVG, WebP).'), variant: 'warning' });
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      alert(t('admin.err_image_size', 'Ukuran file gambar maksimal 2MB.'));
+      showAlert({ title: t('admin.err_image_size', 'Ukuran file gambar maksimal 2MB.'), variant: 'warning' });
       return;
     }
 
@@ -809,9 +794,6 @@ export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
                 <Upload className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>{t('admin.logo_upload_cta', 'Pilih atau Tarik Logo')}</span>
               </div>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-                PNG, JPG, SVG, WebP (Maks. 2MB)
-              </p>
             </div>
           ) : (
             <div className="space-y-1.5">
@@ -831,9 +813,6 @@ export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
                   {t('admin.btn_apply', 'Terapkan')}
                 </button>
               </div>
-              <p className="text-[10px] text-slate-400">
-                {t('admin.logo_url_hint', 'Masukkan tautan gambar langsung (HTTPS).')}
-              </p>
             </div>
           )}
         </div>
@@ -910,7 +889,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
               {t('admin.modal_create_org', 'Buat Organisasi Enterprise Baru')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1098,12 +1077,9 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
               <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                 {t('admin.modal_edit_org_title', 'Edit Profil & Pengaturan Organisasi')}
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {t('admin.modal_edit_org_desc', 'Sesuaikan nama legal, slug, logo, dan metadata tenant')}
-              </p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1292,7 +1268,7 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
               </p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1793,7 +1769,7 @@ export const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
               {t('admin.modal_add_team_member', 'Tambah Anggota ke Tim')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1898,7 +1874,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               {t('admin.modal_create_inv', 'Undang Anggota Organisasi')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -2061,7 +2037,7 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
                 : t('admin.modal_gen_key', 'Generate API Key Baru')}
             </h3>
           </div>
-          <button type="button" onClick={handleFinish} className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={handleFinish} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -2224,7 +2200,7 @@ export default [
               {t('admin.instances_config_title', 'Better Auth Console Instances Configuration')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
