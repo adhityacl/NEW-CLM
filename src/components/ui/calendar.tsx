@@ -33,7 +33,7 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
-        "group/calendar bg-white dark:bg-slate-900 p-3 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
+        "group/calendar bg-white dark:bg-slate-900 p-3 [--cell-size:--spacing(7)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className
@@ -208,7 +208,12 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-[var(--ring)] group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-[var(--ring)]/50 data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-end=true]:bg-[var(--primary)] data-[range-end=true]:text-[var(--primary-foreground)] data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-[var(--accent)] data-[range-middle=true]:text-[var(--accent-foreground)] data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md data-[range-start=true]:bg-[var(--primary)] data-[range-start=true]:text-[var(--primary-foreground)] data-[selected-single=true]:bg-[var(--primary)] data-[selected-single=true]:text-[var(--primary-foreground)] dark:hover:text-[var(--accent-foreground)] [&>span]:text-xs [&>span]:opacity-70",
+        // `size="icon"` (buttonVariants) sets no text-size utility of its own,
+        // so without an explicit one here the day number just inherited
+        // whatever font-size was ambient at the portal root — visibly larger
+        // than the rest of this compact UI (and than the calendar's own
+        // caption/weekday labels, which do set one).
+        "flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 text-xs leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-[var(--ring)] group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-[var(--ring)]/50 data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-end=true]:bg-[var(--primary)] data-[range-end=true]:text-[var(--primary-foreground)] data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-[var(--accent)] data-[range-middle=true]:text-[var(--accent-foreground)] data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md data-[range-start=true]:bg-[var(--primary)] data-[range-start=true]:text-[var(--primary-foreground)] data-[selected-single=true]:bg-[var(--primary)] data-[selected-single=true]:text-[var(--primary-foreground)] dark:hover:text-[var(--accent-foreground)] [&>span]:text-xs [&>span]:opacity-70",
         defaultClassNames.day,
         className
       )}
