@@ -154,8 +154,18 @@ sqliteDb.pragma("journal_mode = WAL");
 sqliteDb.pragma("synchronous = NORMAL");
 sqliteDb.pragma("busy_timeout = 5000");
 
-// Initialize Better Auth & Organization / Console tables if not exist
+// Initialize Better Auth & Organization / Console tables if not exist.
+// The core Better Auth tables (user/session/account/verification) are created
+// here too, so a fresh clone boots without running `npm run auth:migrate`
+// first — Better Auth refuses to start on a schema mismatch.
 sqliteDb.exec(`
+CREATE TABLE IF NOT EXISTS "user" ("id" text not null primary key, "name" text not null, "email" text not null unique, "emailVerified" integer not null, "image" text, "createdAt" date not null, "updatedAt" date not null, "role" text, "banned" integer, "banReason" text, "banExpires" date);
+CREATE TABLE IF NOT EXISTS "session" ("id" text not null primary key, "expiresAt" date not null, "token" text not null unique, "createdAt" date not null, "updatedAt" date not null, "ipAddress" text, "userAgent" text, "userId" text not null references "user" ("id") on delete cascade, "impersonatedBy" text, "activeOrganizationId" text, "activeTeamId" text);
+CREATE TABLE IF NOT EXISTS "account" ("id" text not null primary key, "accountId" text not null, "providerId" text not null, "userId" text not null references "user" ("id") on delete cascade, "accessToken" text, "refreshToken" text, "idToken" text, "accessTokenExpiresAt" date, "refreshTokenExpiresAt" date, "scope" text, "password" text, "createdAt" date not null, "updatedAt" date not null, "issuer" text);
+CREATE TABLE IF NOT EXISTS "verification" ("id" text not null primary key, "identifier" text not null, "value" text not null, "expiresAt" date not null, "createdAt" date not null, "updatedAt" date not null);
+CREATE INDEX IF NOT EXISTS "session_userId_idx" on "session" ("userId");
+CREATE INDEX IF NOT EXISTS "account_userId_idx" on "account" ("userId");
+CREATE INDEX IF NOT EXISTS "verification_identifier_idx" on "verification" ("identifier");
 CREATE TABLE IF NOT EXISTS organization (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -231,7 +241,11 @@ try {
   }>;
   const issuerColumn = accountColumns.find((column) => column.name === "issuer");
 
-  if (issuerColumn?.notnull === 1) {
+  // `npm run auth:migrate` on Better Auth 1.7.x creates account without issuer,
+  // but ensureUserAccountsExist() still writes it — add it back as nullable.
+  if (!issuerColumn) {
+    sqliteDb.exec("ALTER TABLE account ADD COLUMN issuer TEXT");
+  } else if (issuerColumn.notnull === 1) {
     sqliteDb.transaction(() => {
       sqliteDb.exec(`
         ALTER TABLE account RENAME TO account_legacy_schema;

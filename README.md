@@ -43,7 +43,7 @@ A multi-tenant Contract Lifecycle Management (CLM) application: contract, partne
 
 ## Prerequisites
 
-- Node.js v18 or higher
+- Node.js v20.19 or higher (v22 LTS recommended — see `.nvmrc`). Older versions crash at startup: the PDF parser needs `process.getBuiltinModule`.
 - `npm`
 
 ## Getting Started
@@ -92,6 +92,14 @@ npm run dev
 ```
 
 This starts a single Express server (with Vite mounted in middleware mode for the frontend) on **http://localhost:3000**.
+
+On first start the server creates `auth.db` (including the Better Auth tables — no `auth:migrate` step needed) and `data_store.json`, and seeds a superuser account:
+
+| Email | Password |
+| --- | --- |
+| `adhitcl@gmail.com` | `123456789` |
+
+Change this password right after your first sign-in. For local use, set `BETTER_AUTH_URL=http://localhost:3000`.
 
 ## Testing
 
