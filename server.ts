@@ -1111,8 +1111,6 @@ setInvalidTokenCallback((badToken) => {
     saveDb();
   }
 });
-setConsoleDbReference(db, saveDb);
-ensureUserAccountsExist();
 async function getFreshGoogleAccessToken() {
   const currentToken = db.googleConfig?.accessToken;
   const refreshToken = db.googleConfig?.refreshToken;
@@ -1624,6 +1622,17 @@ if (fs.existsSync(dataFilePath)) {
   }
   saveDb();
 }
+// Hydrate the Better Auth SQLite tables (user/organization/team/member) from
+// the just-loaded `db` — this MUST run after data_store.json has been read
+// above, not before. It used to run right after `db`'s hardcoded seed-default
+// literal (before this file's disk contents were merged in), so every server
+// restart silently blew away any name/role/department a user had actually
+// been given, back to the seed defaults in src/data/initialData.ts. This is
+// what caused the "my name keeps reverting" report — hydrateAuthConsoleFromDataStore
+// does `INSERT OR REPLACE INTO user` keyed on whatever `db.allowedUsers` held
+// at the moment it ran.
+setConsoleDbReference(db, saveDb);
+ensureUserAccountsExist();
 ensureAllPartnersFolders().catch((err) =>
   console.error("Startup category folder provisioning error:", err),
 );
