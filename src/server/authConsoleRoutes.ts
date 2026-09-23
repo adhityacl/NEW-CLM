@@ -764,42 +764,6 @@ authConsoleRouter.post('/users/:id/ban', (req: Request, res: Response) => {
   }
 });
 
-// POST /users/:id/impersonate - Create an impersonation session
-authConsoleRouter.post('/users/:id/impersonate', (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const user = sqliteDb.prepare('SELECT * FROM user WHERE id = ?').get(id) as any;
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const token = `imp_${crypto.randomBytes(24).toString('hex')}`;
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours
-    const sessionId = `sess_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-
-    sqliteDb.prepare(`
-      INSERT INTO session (id, expiresAt, token, createdAt, updatedAt, ipAddress, userAgent, userId, activeOrganizationId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(sessionId, expiresAt.toISOString(), token, now.toISOString(), now.toISOString(), req.ip || '127.0.0.1', 'Impersonated by Enterprise Superadmin', id, null);
-
-    return res.json({
-      success: true,
-      message: `Berhasil login sebagai ${user.name} (${user.email})`,
-      sessionToken: token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (err: any) {
-    console.error('Error impersonating user:', err);
-    return res.status(500).json({ error: err.message || 'Failed to impersonate user' });
-  }
-});
-
 // DELETE /users/:id - Delete user and associated records
 authConsoleRouter.delete('/users/:id', (req: Request, res: Response) => {
   try {
@@ -1912,7 +1876,7 @@ authConsoleRouter.get('/rbac-matrix', (req: Request, res: Response) => {
           scope: 'System Level',
           description: 'Akses tertinggi: Kelola akun pengguna, peran (role), audit sistem, konfigurasi enterprise, serta memiliki seluruh kontrol dan approval dokumen operasional (seperti Admin) secara global.',
           permissions: {
-            user: ['create', 'list', 'set-role', 'ban', 'impersonate', 'delete', 'set-password', 'set-email', 'get', 'update', 'read'],
+            user: ['create', 'list', 'set-role', 'ban', 'delete', 'set-password', 'set-email', 'get', 'update', 'read'],
             session: ['list', 'revoke', 'delete'],
             organization: ['create', 'read', 'update', 'delete', 'set-active'],
             team: ['create', 'read', 'update', 'delete'],

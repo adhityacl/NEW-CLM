@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Trash2,
   UserCheck,
-  Sparkles,
   Building2,
 } from 'lucide-react';
 import { ConsoleUser, ConsoleOrganization } from './types';
@@ -27,7 +26,6 @@ interface AdminUsersTabProps {
   onOpenEditUser: (user: ConsoleUser) => void;
   onOpenResetPassword: (user: ConsoleUser) => void;
   onToggleBan: (user: ConsoleUser) => void;
-  onImpersonate: (user: ConsoleUser) => void;
   onDeleteUser: (user: ConsoleUser) => void;
   onBulkAction: (action: 'ban' | 'unban' | 'delete', userIds: string[]) => void;
   canCreateUser?: boolean;
@@ -49,7 +47,6 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   onOpenEditUser,
   onOpenResetPassword,
   onToggleBan,
-  onImpersonate,
   onDeleteUser,
   onBulkAction,
   canCreateUser = false,
@@ -394,17 +391,6 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                   {/* Actions */}
                   <td className="pl-2 pr-6 py-4 text-right align-middle w-20">
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onImpersonate(user)}
-                        aria-label={t('admin.action_impersonate', 'Login Sebagai Pengguna (Impersonate)')}
-                        title={t('admin.action_impersonate', 'Login Sebagai Pengguna (Impersonate)')}
-                        className="h-7 w-7 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                      </Button>
                       <Button
                         type="button"
                         variant="ghost"

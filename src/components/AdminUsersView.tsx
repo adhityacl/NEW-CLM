@@ -336,25 +336,6 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
     }
   };
 
-  // Handler: Impersonate
-  const handleImpersonate = async (user: ConsoleUser) => {
-    const headers = getAuthHeaders();
-    try {
-      const res = await fetch(`/api/auth-console/users/${user.id}/impersonate`, {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-      });
-      const result = await res.json();
-      if (result.success) {
-        showToast(`${t('admin.toast.impersonating', 'Switched session to:')} ${user.name}`);
-        window.location.reload();
-      }
-    } catch (e: any) {
-      showToast(e.message, 'error');
-    }
-  };
-
   // Handler: Delete User
   const handleDeleteUser = async (user: ConsoleUser) => {
     const ok = await confirmDialog({
@@ -842,7 +823,6 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
             onOpenEditUser={(user) => setSelectedUserForEdit(user)}
             onOpenResetPassword={(user) => setSelectedUserForPassword(user)}
             onToggleBan={handleToggleBan}
-            onImpersonate={handleImpersonate}
             onDeleteUser={handleDeleteUser}
             onBulkAction={handleBulkAction}
           />
