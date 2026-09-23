@@ -1651,6 +1651,7 @@ const translations: Record<Language, Record<string, string>> = {
     'contract_creator.custom_fields_section_title': 'Kolom Isian Kustom Anda',
     'contract_creator.custom_badge': 'Kustom',
     'contract_creator.optional_badge': 'Opsional',
+    'contract_creator.custom_field_recovered_desc': 'Kolom kustom dipulihkan otomatis dari dokumen (label asli tidak tersimpan).',
     'contract_creator.delete_custom_field_title': 'Hapus kolom isian kustom',
 
     'contract_creator.partners.select_label_title': 'Mengisi otomatis nama badan hukum, domisili kantor, direktur penandatangan, dan email resmi ke seluruh pasal perjanjian',
@@ -3405,6 +3406,7 @@ const translations: Record<Language, Record<string, string>> = {
     'contract_creator.custom_fields_section_title': 'Your Custom Fields',
     'contract_creator.custom_badge': 'Custom',
     'contract_creator.optional_badge': 'Optional',
+    'contract_creator.custom_field_recovered_desc': 'Custom field recovered automatically from the document (original label was not saved).',
     'contract_creator.delete_custom_field_title': 'Delete custom field',
 
     'contract_creator.partners.select_label_title': 'Automatically fills in the legal entity name, office domicile, signing director, and official email across all agreement articles',

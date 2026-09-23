@@ -4850,7 +4850,7 @@ app.get("/api/templates", (req, res) => {
 
 app.post("/api/templates", (req, res) => {
   try {
-    const { id, name, contentId } = req.body;
+    const { id, name, contentId, customFields } = req.body;
     if (!name || !contentId) {
       return res.status(400).json({ error: "Name and content are required." });
     }
@@ -4867,6 +4867,7 @@ app.post("/api/templates", (req, res) => {
       id: templateId,
       name,
       contentId,
+      customFields: Array.isArray(customFields) ? customFields : [],
       createdAt: existingIndex >= 0 ? db.templates[existingIndex].createdAt : nowIso,
       updatedAt: nowIso,
     };
