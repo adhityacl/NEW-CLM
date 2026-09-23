@@ -1,6 +1,6 @@
 # Silegal — Pengelola Kontrak & Insertion Order
 
-<img width="958" height="440" alt="image" src="https://i.ibb.co.com/S7v5TqfZ/Screenshot-2026-09-23-151943.png" />
+<img width="958" height="340" alt="image" src="https://i.ibb.co.com/S7v5TqfZ/Screenshot-2026-09-23-151943.png" />
 
 A multi-tenant Contract Lifecycle Management (CLM) application: contract, partner, Insertion Order (IO), and Due Diligence management with role-based access control (RBAC) and AI-assisted document workflows.
 
