@@ -888,12 +888,12 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         organizations={organizations}
         activeOrgId={activeOrg?.id}
         allowedRoles={isSystemArea
-          // Per server/rbac.ts assignableRoles(): the hierarchy rule
-          // (target level strictly greater than actor level) applies to
-          // Superuser too, so Superuser can create Admin down to Viewer but
-          // never another Superuser via this form — the backend rejects it
-          // with INVALID_ROLE_ASSIGNMENT if attempted.
-          ? ['admin', 'manager', 'editor', 'viewer']
+          // Per server/rbac.ts assignableRoles(): Superuser is the one
+          // exception to "target role must be strictly lower" — there's no
+          // role above it, so it may also create another Superuser. This
+          // area is only reachable by an actual Superuser actor (see
+          // App.tsx's admin-system-* guard), so offering it here is safe.
+          ? ['superuser', 'admin', 'manager', 'editor', 'viewer']
           : role === 'manager'
           ? ['editor', 'viewer']
           : ['manager', 'editor', 'viewer']}

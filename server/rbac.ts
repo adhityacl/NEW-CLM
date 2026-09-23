@@ -435,12 +435,16 @@ export function canInvite(
   if (!hasPermission(actorRole, 'user.invite')) {
     return { allowed: false, error: 'INSUFFICIENT_PERMISSION' };
   }
+  // Superuser is the top of the hierarchy — there is no role above it to
+  // require, so unlike every other role it MAY create a peer Superuser.
+  // Checked before the strictly-lower-level rule below, which still applies
+  // unchanged to Admin/Manager/etc (Admin still can't create Admin/Superuser).
+  if (actorRole === 'superuser') return { allowed: true };
+
   // hierarki: target harus level lebih rendah (angka lebih besar)
   if (ROLE_LEVEL[tRole] <= ROLE_LEVEL[actorRole]) {
     return { allowed: false, error: 'INVALID_ROLE_ASSIGNMENT' };
   }
-
-  if (actorRole === 'superuser') return { allowed: true };
 
   // sama tenant untuk semua di bawah superuser (fail-closed bila tak diketahui)
   if (target?.tenantId == null || target.tenantId !== actor.tenantId) {
@@ -504,8 +508,11 @@ export function canChangeRole(
 
 /**
  * Daftar role yang boleh di-assign oleh actor (untuk dropdown UI).
- * Aturan tunggal PRD §3.1: hanya role dengan level LEBIH BESAR (otoritas lebih rendah).
- * Berlaku juga untuk SUPERUSER — target tetap harus `target_level > actor_level`.
+ * Aturan PRD §3.1: hanya role dengan level LEBIH BESAR (otoritas lebih rendah).
+ * Pengecualian tunggal: SUPERUSER juga boleh assign SUPERUSER — tidak ada
+ * role di atasnya untuk dijadikan syarat "lebih besar". Admin dan role di
+ * bawahnya tetap mengikuti aturan `target_level > actor_level` tanpa
+ * pengecualian (Admin tidak bisa assign Admin/Superuser, dst).
  */
 export function assignableRoles(actor: Actor): RoleCode[] {
   const actorRole = normalizeRole(actor.role);
@@ -513,7 +520,9 @@ export function assignableRoles(actor: Actor): RoleCode[] {
     || hasPermission(actorRole, 'user.invite')
     || hasPermission(actorRole, 'user.role.assign');
   if (!canAssign) return [];
-  return (Object.keys(ROLE_LEVEL) as RoleCode[]).filter((r) => ROLE_LEVEL[r] > ROLE_LEVEL[actorRole]);
+  return (Object.keys(ROLE_LEVEL) as RoleCode[]).filter((r) =>
+    ROLE_LEVEL[r] > ROLE_LEVEL[actorRole] || (actorRole === 'superuser' && r === 'superuser'),
+  );
 }
 
 /* ------------------------------------------------------------------ */
