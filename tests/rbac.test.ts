@@ -114,10 +114,13 @@ test('§32 deny by default: permission tak dikenal ditolak', () => {
 
 /* ------------------ §30 Invitation role tests -------------------- */
 
-test('§30 SUPERUSER dapat mengundang semua role di bawahnya', () => {
+test('§30 SUPERUSER dapat mengundang semua role di bawahnya, dan sesama Superuser', () => {
   for (const t of ['admin', 'manager', 'editor', 'viewer'] as const) {
     assert.equal(ok(canInvite(SH, t, { tenantId: 't9', departmentId: 'd9' })), true, `superuser→${t}`);
   }
+  // Pengecualian tunggal ke aturan "target harus lebih rendah": Superuser
+  // tidak punya role di atasnya, jadi ia boleh membuat Superuser lain.
+  assert.equal(ok(canInvite(SH, 'superuser', { tenantId: 't9', departmentId: 'd9' })), true, 'superuser→superuser');
 });
 
 test('§30 ADMIN dapat mengundang manager/editor/viewer, tidak admin/superuser', () => {
@@ -149,7 +152,9 @@ test('§14 invitation scope: lintas tenant & lintas departemen ditolak', () => {
 });
 
 test('§13 assignableRoles sesuai hierarki', () => {
-  assert.deepEqual(assignableRoles(SH).sort(), ['admin', 'editor', 'manager', 'viewer']);
+  // Superuser's own list includes 'superuser' itself — the one exception to
+  // "strictly lower level only" (see assignableRoles()'s doc comment).
+  assert.deepEqual(assignableRoles(SH).sort(), ['admin', 'editor', 'manager', 'superuser', 'viewer']);
   assert.deepEqual(assignableRoles(AD).sort(), ['editor', 'manager', 'viewer']);
   assert.deepEqual(assignableRoles(MG).sort(), ['editor', 'viewer']);
   assert.deepEqual(assignableRoles(ED), []);
