@@ -46,7 +46,7 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
         ? 'Akses tingkat sistem tertinggi: Kelola akun, peran, konfigurasi platform enterprise, serta memiliki seluruh hak akses operasional & persetujuan dokumen (seperti Admin) di semua divisi secara global.'
         : 'Highest system level: Manage user accounts, roles, audit logs, and possesses all administrative, operational, and approval authorities globally.',
       permissions: {
-        user: ['create', 'read', 'update', 'delete', 'ban', 'impersonate', 'set-role', 'set-password'],
+        user: ['create', 'read', 'update', 'delete', 'ban', 'set-role', 'set-password'],
         session: ['list', 'revoke', 'delete'],
         organization: ['create', 'read', 'update', 'delete', 'set-active'],
         team: ['create', 'read', 'update', 'delete'],
