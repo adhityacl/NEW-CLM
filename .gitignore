@@ -3,3 +3,18 @@ test-results
 playwright-report
 blob-report
 playwright/.cache
+
+# Secrets & runtime data — never tracked. See the credential remediation
+# plan: these used to be committed (a real Firebase/GCP service account key,
+# a live Gemini API key inside data_store.json, and password hashes/session
+# tokens in auth.db). Untracked going forward with `git rm --cached`; the
+# files themselves stay on disk and the app keeps reading/writing them
+# exactly as before.
+.env
+.env.*
+!.env.example
+credentials.json
+data_store.json
+auth.db
+auth.db-shm
+auth.db-wal
