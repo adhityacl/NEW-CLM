@@ -64,6 +64,107 @@ interface ContractCreatorViewProps {
   onNavigateToContracts: () => void;
 }
 
+/**
+ * Custom field *definitions* (label/type/icon/description — everything the
+ * Fields tab and the Template tab's "Kustom" filter need to show and manage
+ * one) used to live only in `localStorage`, never in the saved template
+ * itself. A saved template's HTML always kept the actual fillable-slot
+ * markup (so the value show up fine, just as an unlabeled "T ..." badge),
+ * but logging in on another device/browser, or simply having localStorage
+ * cleared, wiped the matching definition — the slot became orphaned: it
+ * still holds a value, but nothing in the sidebar can label or manage it
+ * anymore. These two helpers are the fix: custom field definitions now
+ * travel WITH the template (see handleSaveTemplate/handleLoadTemplate), and
+ * `recoverCustomFieldsFromContent` is a backstop for templates saved before
+ * this fix — it reconstructs a usable (if generically-labeled) definition
+ * for any fillable-slot found in the content that isn't otherwise known.
+ */
+function extractSlotKeysFromHtml(html: string): Array<{ key: string; type: string }> {
+  const results: Array<{ key: string; type: string }> = [];
+  const seen = new Set<string>();
+  const tagRegex = /<span[^>]*class="[^"]*\bfillable-slot\b[^"]*"[^>]*>/g;
+  let match: RegExpExecArray | null;
+  while ((match = tagRegex.exec(html))) {
+    const tag = match[0];
+    const key = tag.match(/data-slot-key="([^"]*)"/)?.[1];
+    const type = tag.match(/data-slot-type="([^"]*)"/)?.[1] || 'text';
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      results.push({ key, type });
+    }
+  }
+  return results;
+}
+
+const SLOT_TYPE_TO_FIELD_TYPE: Record<string, 'text' | 'date' | 'currency' | 'textarea'> = {
+  date: 'date',
+  currency: 'currency',
+};
+const SLOT_TYPE_ICON: Record<string, string> = {
+  text: '🏷️',
+  date: '📅',
+  currency: '💰',
+  entity: '🏢',
+  person: '👤',
+  location: '📍',
+  number: '#️⃣',
+};
+
+function humanizeSlotKey(key: string): string {
+  const base = key
+    .replace(/^custom_/, '')
+    .replace(/_[a-z0-9]{4,8}$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .trim();
+  if (!base) return 'Kolom Kustom';
+  return base.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function recoverCustomFieldsFromContent(
+  contentHtml: string,
+  knownKeys: Set<string>,
+  recoveredDescription: string,
+): any[] {
+  return extractSlotKeysFromHtml(contentHtml)
+    .filter(({ key }) => !knownKeys.has(key))
+    .map(({ key, type }) => ({
+      key,
+      label: humanizeSlotKey(key),
+      type: SLOT_TYPE_TO_FIELD_TYPE[type] || 'text',
+      icon: SLOT_TYPE_ICON[type] || '🏷️',
+      placeholder: '',
+      description: recoveredDescription,
+      isCustom: true,
+    }));
+}
+
+/** Merges a template's own saved custom fields (if any) plus a recovery
+ * pass over its content into whatever custom fields are already loaded,
+ * without duplicating by key. `builtInKeys` (COOPERATION_AGREEMENT_FIELDS'
+ * keys) must be passed in so the recovery pass doesn't mistake a *built-in*
+ * field's own fillable-slot for an orphaned custom one. */
+function mergeTemplateCustomFields(
+  currentCustomFields: any[],
+  templateCustomFields: any[] | undefined,
+  contentHtml: string,
+  builtInKeys: Set<string>,
+  recoveredDescription: string,
+): any[] {
+  const merged = [...currentCustomFields];
+  const knownKeys = new Set([...builtInKeys, ...merged.map((f) => f.key)]);
+  for (const f of Array.isArray(templateCustomFields) ? templateCustomFields : []) {
+    if (f?.key && !knownKeys.has(f.key)) {
+      merged.push(f);
+      knownKeys.add(f.key);
+    }
+  }
+  for (const f of recoverCustomFieldsFromContent(contentHtml, knownKeys, recoveredDescription)) {
+    merged.push(f);
+    knownKeys.add(f.key);
+  }
+  return merged;
+}
+
 export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   partners,
   contracts,
@@ -271,6 +372,10 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
     try {
       setIsSavingTemplate(true);
+      // Only the custom fields this document actually uses travel with it —
+      // not every custom field the user has ever defined in this session.
+      const usedKeys = new Set(extractSlotKeysFromHtml(content).map((s) => s.key));
+      const templateCustomFields = customFields.filter((f) => usedKeys.has(f.key));
       const res = await fetch('/api/templates', {
         method: 'POST',
         headers: {
@@ -280,6 +385,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
         body: JSON.stringify({
           name: newTemplateName.trim(),
           contentId: content,
+          customFields: templateCustomFields,
         }),
       });
       const text = await res.text();
@@ -470,6 +576,18 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     if (defaultTemplate) {
       editor.commands.setContent(defaultTemplate.contentId);
       setIsCustomTemplateActive(true);
+      // Same recovery as handleLoadTemplate — this auto-load path hits the
+      // exact same "custom fields lost on fresh login" bug otherwise.
+      const builtInKeys = new Set(COOPERATION_AGREEMENT_FIELDS.map((f) => f.key));
+      setCustomFields((prev) =>
+        mergeTemplateCustomFields(
+          prev,
+          defaultTemplate.customFields,
+          defaultTemplate.contentId,
+          builtInKeys,
+          t('contract_creator.custom_field_recovered_desc', 'Kolom kustom dipulihkan otomatis dari dokumen (label asli tidak tersimpan).'),
+        ),
+      );
       updateStats();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -481,6 +599,20 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       if (editor) {
         editor.commands.setContent(tpl.contentId);
         setIsCustomTemplateActive(true);
+        // Bring this template's own custom field definitions along (and, for
+        // templates saved before this existed, recover a generic definition
+        // for any fillable-slot the content has that isn't otherwise known) —
+        // see the comment on mergeTemplateCustomFields for why this exists.
+        const builtInKeys = new Set(COOPERATION_AGREEMENT_FIELDS.map((f) => f.key));
+        setCustomFields((prev) =>
+          mergeTemplateCustomFields(
+            prev,
+            tpl.customFields,
+            tpl.contentId,
+            builtInKeys,
+            t('contract_creator.custom_field_recovered_desc', 'Kolom kustom dipulihkan otomatis dari dokumen (label asli tidak tersimpan).'),
+          ),
+        );
         setExportMessage({
           type: 'info',
           text: `${t('contract_creator.msg.template_loaded_prefix', 'Template')} "${tpl.name}" ${t('contract_creator.msg.template_loaded_suffix', 'berhasil dimuat ke editor.')}`,
