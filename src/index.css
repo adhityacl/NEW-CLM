@@ -430,12 +430,7 @@
   margin: 0.25rem 0 !important;
 }
 
-/* Added by Focus Mode: Hide the selected element */
-div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-type(1) > section:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > span:nth-of-type(1) {
-  display: none !important;
-}
-
-/* Added by Focus Mode: Hide the selected element */
-div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-type(1) > section:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > h2:nth-of-type(1) > svg:nth-of-type(1) {
-  display: none !important;
-}
+/* NOTE: two "Focus Mode" rules that hid real content via fragile
+   nth-of-type paths (div#root > ... > span:nth-of-type(1) and h2 > svg:nth-of-type(1),
+   both display:none !important) were removed — they silently deleted a heading icon
+   and a label and made layouts look broken/overlapping. */

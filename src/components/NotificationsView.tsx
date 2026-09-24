@@ -413,12 +413,12 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
 
                 {/* 3. Subject */}
                 {visibleColumns.subject && (
-                  <th className="p-4 align-middle">{t('notifications.col_subject', 'Subject')}</th>
+                  <th className="p-4 align-middle">{t('notifications.col_subject', 'Subjek')}</th>
                 )}
 
                 {/* 4. Message */}
                 {visibleColumns.message && (
-                  <th className="p-4 align-middle">{t('notifications.col_message', 'Message')}</th>
+                  <th className="p-4 align-middle">{t('notifications.col_message', 'Pesan')}</th>
                 )}
 
                 {/* 5. Recipient */}

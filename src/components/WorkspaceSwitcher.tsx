@@ -189,7 +189,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
           aria-label="Pilih Ruang Kerja"
           className={`absolute z-50 mt-1.5 ${
             isCollapsed ? 'left-14 top-0' : 'left-0 right-0'
-          } min-w-[240px] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 animate-in fade-in zoom-in-95 duration-150`}
+          } bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 animate-in fade-in zoom-in-95 duration-150`}
           style={{ transformOrigin: 'top left' }}
         >
           {/* Popover Header */}
