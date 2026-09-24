@@ -93,10 +93,7 @@ npm run dev
 
 This starts a single Express server (with Vite mounted in middleware mode for the frontend) on **http://localhost:3000**.
 
-On first start the server creates `auth.db` (including the Better Auth tables — no `auth:migrate` step needed) and `data_store.json`, and seeds a superuser account:
-
-
-Change this password right after your first sign-in. For local use, set `BETTER_AUTH_URL=http://localhost:3000`.
+On first start the server creates `auth.db` (including the Better Auth tables — no `auth:migrate` step needed) and `data_store.json`, and seeds a superuser account.
 
 ## Testing
 
