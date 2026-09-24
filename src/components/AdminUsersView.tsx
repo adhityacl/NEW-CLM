@@ -737,7 +737,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
       {/* Toast Banner */}
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl shadow-lg border text-xs font-medium animate-in fade-in slide-in-from-top-4 ${
+          className={`fixed top-20 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl shadow-lg border text-xs font-medium animate-in fade-in slide-in-from-top-4 ${
             toast.type === 'success'
               ? 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/90 dark:border-emerald-800 dark:text-emerald-200'
               : 'bg-red-50 border-red-300 text-red-900 dark:bg-red-950/90 dark:border-red-800 dark:text-red-200'

@@ -390,15 +390,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <button
-            onClick={() => onNavigateTab('contracts')}
-            className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center transition-all shrink-0"
-          >
-            <FileText className="w-4 h-4 text-slate-500" />
-            <span>{t('dashboard.view_all_contracts', 'Lihat Semua Kontrak')}</span>
-          </button>
-        </div>
+        {/* Removed duplicate "Lihat Semua Kontrak" CTA — the expiring-contracts card
+            on this same page already exposes the identical action. */}
       </div>
 
       {/* KPI Stat Cards */}
