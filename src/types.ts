@@ -1,14 +1,21 @@
+import type {
+  ContractStatus,
+  ApprovalStatus,
+  DueDiligenceStatus,
+  DocumentEvidenceStatus,
+} from './lib/domainStatus';
+import type { TenantSettings } from './lib/policy/types';
+
+export type { ContractStatus, ApprovalStatus, DocumentEvidenceStatus, TenantSettings };
+
+/** @deprecated Legacy Indonesian legal-status flag; superseded by `Partner.country`. */
 export type BadanHukum = 'BHI' | 'BHA';
 
-export type PartnerJenis = 'Vendor' | 'Klien' | 'Reseller' | 'Media Partner' | 'Supplier';
+export type PartnerJenis = 'Vendor' | 'Klien' | 'Reseller' | 'Media Partner' | 'Supplier' | string;
 
-export type StatusDD = 'Lengkap' | 'Belum Lengkap' | 'Kadaluarsa';
+export type StatusDD = DueDiligenceStatus;
 
 export type NoticeType = 'Termination' | 'Extension' | 'Both' | 'None';
-
-export type ContractStatus = 'Aktif' | 'Akan Berakhir' | 'Expired' | 'Terminated';
-
-export type ApprovalStatus = 'Draft' | 'Review' | 'Signed' | 'Aktif';
 
 export type PricingModel = 'CPM' | 'CPC' | 'Flat Fee' | 'Revenue Share' | 'Fixed Package' | string;
 
@@ -36,9 +43,12 @@ export interface DDFileItem {
 }
 
 export interface DDDokumenItem {
+  /** Stable requirement key from the policy pack (absent for ad-hoc items). */
+  key?: string;
   nama: string;
   wajib: boolean;
-  status: 'Ada' | 'Belum' | 'Kadaluarsa';
+  expires?: boolean;
+  status: DocumentEvidenceStatus;
   nomorDokumen?: string;
   tanggalKadaluarsa?: string;
   linkDrive?: string;
@@ -48,10 +58,24 @@ export interface DDDokumenItem {
   files?: DDFileItem[];
 }
 
+/** A tax, registration or other identifier issued to a party (PRD §3.2.2). */
+export interface PartyIdentifier {
+  /** Scheme key from a country pack, e.g. `sg_uen`, or `other`. */
+  scheme: string;
+  value: string;
+  /** ISO 3166-1 alpha-2 issuing country. */
+  country: string;
+}
+
 export interface Partner {
   partner_id: string;
   organizationId?: string;
   nama_partner: string;
+  /** ISO 3166-1 alpha-2 country of incorporation ('' when unknown). */
+  country?: string;
+  /** Legal form as registered, e.g. "Private Limited (Pte. Ltd.)". */
+  entity_type?: string;
+  identifiers?: PartyIdentifier[];
   jenis_partner?: PartnerJenis;
   pic_partner: string; // nama & kontak (email / phone)
   nama_pic?: string;
@@ -160,7 +184,8 @@ export interface NotificationLog {
   parent_id: string;
   parent_nomor?: string;
   parent_judul?: string;
-  jenis_notifikasi: 'Reminder H-90' | 'Reminder H-60' | 'Reminder H-30' | 'Manual' | 'Status Change';
+  /** e.g. "Reminder 30d", "Manual", "Status Change" (legacy: "Reminder H-30"). */
+  jenis_notifikasi: string;
   tanggal_terkirim: string;
   status_terkirim: boolean;
   penerima: string;
@@ -222,8 +247,8 @@ export interface PartnerSpending {
   vendor_id?: string;
   vendor_name: string;
   invoice_number: string;
-  invoice_date: string; // DDMMYYYY format or ISO format
-  invoice_month: string[]; // array of MMYYYY e.g. ["082026", "092026"]
+  invoice_date: string; // ISO 8601 date (legacy rows may be DDMMYYYY)
+  invoice_month: string[]; // end-of-month ISO dates, e.g. ["2026-08-31"] (legacy: MMYYYY)
   invoice_description?: string;
   currency: string;
   total_amount: number;
@@ -303,6 +328,8 @@ export interface TenantBranding {
 export interface Tenant {
   id: string;
   name: string;
+  /** Country, industry, locale, currency, lifecycle and module configuration. */
+  settings?: TenantSettings;
   legalEntity?: string;
   brandName?: string;
   tagline?: string;

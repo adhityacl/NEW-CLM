@@ -225,7 +225,7 @@ export const AIChatWidget: React.FC = () => {
                   {msg.role === 'user' ? (
                     <div className="whitespace-pre-wrap font-medium">{msg.text}</div>
                   ) : (
-                    <div className="break-words space-y-1">
+                    <div className="wrap-break-word space-y-1">
                       <ReactMarkdown
                         components={{
                           ul: ({ node, ...props }) => <ul className="list-disc pl-4 my-1 space-y-0.5" {...props} />,

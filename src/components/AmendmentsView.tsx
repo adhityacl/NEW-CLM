@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { Contract, InsertionOrder } from '../types';
 import {
   GitCommit,
@@ -117,7 +118,7 @@ export const AmendmentsView: React.FC<AmendmentsViewProps> = ({
 
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-slate-400 dark:text-slate-500 font-mono text-[11px]">
-                    {t('amendments.date')} {new Date(add.tanggal_mulai || add.tanggal_addendum).toLocaleDateString(language === 'EN' ? 'en-US' : 'id-ID')}
+                    {t('amendments.date')} {new Date(add.tanggal_mulai || add.tanggal_addendum).toLocaleDateString(getActiveFormattingLocale())}
                   </span>
                   {(add.link_file_kontrak || add.link_file_addendum) && (
                     <a

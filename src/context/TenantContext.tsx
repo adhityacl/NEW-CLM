@@ -18,29 +18,12 @@ interface TenantContextType {
 }
 
 const DEFAULT_BRANDING: TenantBranding = {
-  appName: 'LMS - Legal Management System',
-  logoUrl: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=250&auto=format&fit=crop&q=80',
+  appName: 'Silegal CLM',
+  logoUrl: '/favicon.png',
   primaryColor: '#06C755',
-  footerText: '© 2026 PT Info Tekno Siaga (Adapundi). All rights reserved.',
-  loginHeadline: 'Portal Manajemen Kontrak, Partner & Insertion Order',
+  footerText: 'Silegal — open-source contract lifecycle management.',
+  loginHeadline: 'Contract, partner and commercial document management',
 };
-
-const DEFAULT_TENANTS: Tenant[] = [
-  {
-    id: 'org_1789542306289_b3a4f3',
-    name: 'Adapundi',
-    legalEntity: 'PT',
-    brandName: 'Adapundi',
-    tagline: 'Legal & Commercial Contract Management',
-    logoUrl: '/favicon.png',
-    primaryColor: '#06C755',
-    currency: 'IDR',
-    domainSlug: 'adapundi',
-    isDefault: true,
-    driveFolderId: '1FpW5eMbZ-4LAvR2k_sC39VcKmnTDaopY',
-    driveFolderLink: 'https://drive.google.com/drive/folders/1FpW5eMbZ-4LAvR2k_sC39VcKmnTDaopY',
-  },
-];
 
 async function safeJson<T = any>(res: Response): Promise<T | null> {
   try {

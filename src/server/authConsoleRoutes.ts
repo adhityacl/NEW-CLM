@@ -6,6 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import nodemailer from 'nodemailer';
 import { authzError, buildAuditEvent, canChangeRole, canInvite, type Actor } from '../../server/rbac';
+import { getDefaultTenantId } from '../../server/tenantPolicy';
+import { resolveTenantSettings } from '../lib/policy';
 
 export const authConsoleRouter = Router();
 function getConsoleTenantScope(req: Request): string | null {
@@ -73,7 +75,7 @@ export function setConsoleDbReference(dbStore: any, saveFn: () => void) {
 }
 
 
-export async function ensureUserAccountsExist(defaultPassword = '123456789') {
+export async function ensureUserAccountsExist(defaultPassword = process.env.DEMO_ADMIN_PASSWORD || '123456789') {
   try {
     const users = sqliteDb.prepare('SELECT id, email FROM user').all() as any[];
     if (!users || users.length === 0) return;
@@ -110,10 +112,12 @@ export function hydrateAuthConsoleFromDataStore(dbStore: any) {
       try {
         const slug = t.domainSlug || (t.name ? t.name.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'org');
         const metadata = JSON.stringify({
-          legalEntity: t.legalEntity || 'PT',
+          legalEntity: t.legalEntity || '',
           brandName: t.brandName || t.name,
           primaryColor: t.primaryColor || '#06C755',
-          currency: t.currency || 'IDR',
+          currency: t.currency || resolveTenantSettings(t).defaultCurrency,
+          settings: resolveTenantSettings(t),
+          isDefault: Boolean(t.isDefault),
           spreadsheetId: t.spreadsheetId,
           spreadsheetUrl: t.spreadsheetUrl,
           driveFolderId: t.driveFolderId,
@@ -134,7 +138,7 @@ export function hydrateAuthConsoleFromDataStore(dbStore: any) {
         sqliteDb.prepare(`
           INSERT OR REPLACE INTO team (id, name, memberCount, organizationId, createdAt, updatedAt)
           VALUES (?, ?, 0, ?, ?, ?)
-        `).run(dept.id || `team_${Date.now()}`, dept.name, dept.organizationId || 'org-adapundi', dept.created_at || now, dept.updated_at || now);
+        `).run(dept.id || `team_${Date.now()}`, dept.name, dept.organizationId || getDefaultTenantId(), dept.created_at || now, dept.updated_at || now);
       } catch (e) {}
     }
   }
@@ -147,7 +151,7 @@ export function hydrateAuthConsoleFromDataStore(dbStore: any) {
         const userId = u.id || `usr_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
         const finalRole = (u.role || 'staff').toLowerCase();
         const banned = u.status === 'Inactive' || u.status === 'Banned' ? 1 : 0;
-        const orgId = u.organizationId || 'org-adapundi';
+        const orgId = u.organizationId || getDefaultTenantId();
 
         sqliteDb.prepare(`
           INSERT OR REPLACE INTO user (id, name, email, emailVerified, role, banned, createdAt, updatedAt)
@@ -194,11 +198,11 @@ export function syncUsersToDataStoreAndSheet() {
     if (globalDbRef) {
       const allowed = users.map((u: any) => ({
         id: u.id,
-        organizationId: u.organizationId || 'org-adapundi',
+        organizationId: u.organizationId || getDefaultTenantId(),
         email: u.email ? u.email.toLowerCase() : '',
         name: u.name || 'User',
         role: (u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1) : 'Staff') as any,
-        department: u.departmentName || 'Umum',
+        department: u.departmentName || '',
         status: u.banned ? 'Inactive' : 'Active',
         addedBy: 'Admin',
         createdAt: u.createdAt || new Date().toISOString(),
@@ -215,13 +219,13 @@ export function syncUsersToDataStoreAndSheet() {
 // Helper to get active organization id
 function getActiveOrgId(req: Request): string {
   const actor = (req as any).actor as Actor | null;
-  if (actor && actor.role !== 'superuser') return actor.tenantId || 'org-adapundi';
+  if (actor && actor.role !== 'superuser') return actor.tenantId || getDefaultTenantId();
   
   try {
     const firstOrg = sqliteDb.prepare('SELECT id FROM organization ORDER BY createdAt ASC LIMIT 1').get() as any;
-    return firstOrg?.id || 'org-adapundi';
+    return firstOrg?.id || getDefaultTenantId();
   } catch (err) {
-    return 'org-adapundi';
+    return getDefaultTenantId();
   }
 }
 
@@ -307,7 +311,7 @@ authConsoleRouter.get('/overview', (req: Request, res: Response) => {
       data: {
         instance: {
           id: 'production',
-          name: 'Production (Adapundi Enterprise)',
+          name: 'Production',
           env: 'production',
           adapter: 'Better-Auth Native (SQLite)',
           plugins: ['admin', 'organization', 'teams', 'accessControl'],
@@ -400,7 +404,7 @@ authConsoleRouter.post('/users', async (req: Request, res: Response) => {
       tenantId: targetOrganizationId,
       departmentId: actor.role === 'manager' ? actor.departmentId : undefined,
     });
-    if (!inviteDecision.allowed) {
+    if ('error' in inviteDecision) {
       return res.status(403).json(authzError(inviteDecision.error));
     }
     // Rule: roles below Superuser and Admin MUST be assigned to 1 tenant/organization
@@ -440,7 +444,7 @@ authConsoleRouter.post('/users', async (req: Request, res: Response) => {
     // Below Superuser & Admin: MUST be assigned to specified organizationId
     const targetOrgId = finalRole === 'superuser'
       ? null
-      : (targetOrganizationId || (finalRole === 'admin' ? null : (getActiveOrgId(req) || 'org-adapundi')));
+      : (targetOrganizationId || (finalRole === 'admin' ? null : getActiveOrgId(req)));
 
     if (targetOrgId) {
       const memberId = `mem_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
@@ -454,7 +458,7 @@ authConsoleRouter.post('/users', async (req: Request, res: Response) => {
     // department by design, so they're never tied to just one.
     if (finalRole !== 'superuser' && finalRole !== 'admin' && department && department.trim()) {
       const deptName = department.trim();
-      const teamOrgId = targetOrgId || getActiveOrgId(req) || 'org-adapundi';
+      const teamOrgId = targetOrgId || getActiveOrgId(req);
       let teamRow = sqliteDb.prepare('SELECT id FROM team WHERE LOWER(name) = LOWER(?) AND organizationId = ?').get(deptName, teamOrgId) as any;
       if (!teamRow) {
         teamRow = sqliteDb.prepare('SELECT id FROM team WHERE LOWER(name) = LOWER(?)').get(deptName) as any;
@@ -632,7 +636,7 @@ authConsoleRouter.put('/users/:id/role', (req: Request, res: Response) => {
       tenantId: currentMember?.organizationId,
       departmentIds: targetTeams.map((t) => t.departmentId),
     }, role);
-    if (!roleDecision.allowed) return res.status(403).json(authzError(roleDecision.error));
+    if ('error' in roleDecision) return res.status(403).json(authzError(roleDecision.error));
 
     if (name) {
       sqliteDb.prepare('UPDATE user SET name = ? WHERE id = ?').run(String(name).trim(), id);
@@ -678,7 +682,7 @@ authConsoleRouter.put('/users/:id/role', (req: Request, res: Response) => {
       sqliteDb.prepare('DELETE FROM teamMember WHERE userId = ?').run(id);
     } else if (department !== undefined) {
       // If department was passed, update user's team membership
-      const activeOrgId = organizationId || getActiveOrgId(req) || 'org-adapundi';
+      const activeOrgId = organizationId || getActiveOrgId(req);
       const deptName = String(department).trim();
       if (deptName) {
         let teamRow = sqliteDb.prepare('SELECT id FROM team WHERE LOWER(name) = LOWER(?)').get(deptName) as any;
@@ -988,27 +992,32 @@ function syncTenantsToDataStore(): void {
         } catch {}
 
         const existing = (globalDbRef.tenants || []).find((t: any) => t.id === org.id || t.domainSlug === org.slug);
+        const settings = resolveTenantSettings({ settings: existing?.settings || meta.settings, currency: existing?.currency || meta.currency });
+        const isDefault = Boolean(existing?.isDefault);
+        const spreadsheetId = existing?.spreadsheetId || meta.spreadsheetId || (isDefault ? globalDbRef.googleConfig?.spreadsheetId : undefined);
+        const driveFolderId = existing?.driveFolderId || meta.driveFolderId || (isDefault ? globalDbRef.googleConfig?.driveFolderId : undefined);
         return {
           id: org.id,
           name: org.name,
-          legalEntity: existing?.legalEntity || meta.legalEntity || 'PT',
+          legalEntity: existing?.legalEntity || meta.legalEntity || '',
           brandName: org.name,
-          tagline: meta.tagline || existing?.tagline || 'Legal & Commercial Contract Management',
+          tagline: meta.tagline || existing?.tagline || 'Contract Lifecycle Management',
           logoUrl: org.logo || existing?.logoUrl || '/favicon.png',
           primaryColor: meta.primaryColor || existing?.primaryColor || '#06C755',
-          currency: meta.currency || existing?.currency || 'IDR',
+          currency: settings.defaultCurrency,
+          settings,
           domainSlug: org.slug,
-          isDefault: org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' || Boolean(existing?.isDefault),
-          spreadsheetId: existing?.spreadsheetId || meta.spreadsheetId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? globalDbRef.googleConfig?.spreadsheetId : undefined),
-          spreadsheetUrl: existing?.spreadsheetUrl || meta.spreadsheetUrl || ((existing?.spreadsheetId || meta.spreadsheetId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? globalDbRef.googleConfig?.spreadsheetId : undefined)) ? `https://docs.google.com/spreadsheets/d/${existing?.spreadsheetId || meta.spreadsheetId || globalDbRef.googleConfig?.spreadsheetId}/edit` : undefined),
-          driveFolderId: existing?.driveFolderId || meta.driveFolderId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? globalDbRef.googleConfig?.driveFolderId : undefined),
-          driveFolderLink: existing?.driveFolderLink || meta.driveFolderLink || ((existing?.driveFolderId || meta.driveFolderId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? globalDbRef.googleConfig?.driveFolderId : undefined)) ? `https://drive.google.com/drive/folders/${existing?.driveFolderId || meta.driveFolderId || globalDbRef.googleConfig?.driveFolderId}` : undefined),
+          isDefault,
+          spreadsheetId,
+          spreadsheetUrl: existing?.spreadsheetUrl || meta.spreadsheetUrl || (spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit` : undefined),
+          driveFolderId,
+          driveFolderLink: existing?.driveFolderLink || meta.driveFolderLink || (driveFolderId ? `https://drive.google.com/drive/folders/${driveFolderId}` : undefined),
         };
       });
 
       globalDbRef.tenants = updatedTenants;
       if (!globalDbRef.tenants.some((t: any) => t.id === globalDbRef.activeTenantId)) {
-        globalDbRef.activeTenantId = globalDbRef.tenants[0]?.id || 'org_1789542306289_b3a4f3';
+        globalDbRef.activeTenantId = globalDbRef.tenants[0]?.id || getDefaultTenantId();
       }
       if (saveDbFnRef) saveDbFnRef();
     }
@@ -1152,8 +1161,8 @@ authConsoleRouter.delete('/organizations/:id', (req: Request, res: Response) => 
       return res.status(400).json({ error: 'Tidak dapat menghapus satu-satunya organisasi yang tersisa' });
     }
 
-    const org = sqliteDb.prepare('SELECT * FROM organization WHERE id = ?').get(id) as any;
-    if (org?.slug === 'adapundi') {
+    const isDefaultTenant = Boolean((globalDbRef?.tenants || []).find((t: any) => t.id === id)?.isDefault);
+    if (isDefaultTenant) {
       return res.status(400).json({ error: 'Organisasi default sistem tidak dapat dihapus' });
     }
 
@@ -1460,7 +1469,7 @@ async function dispatchInvitationEmail(
   const baseUrl = `${protocol}://${host}`;
   const inviteUrl = `${baseUrl}/?accept_invite=${inv.id}&email=${encodeURIComponent(inv.email)}`;
 
-  let orgName = 'Adapundi Legal System';
+  let orgName = 'Silegal';
   if (inv.organizationId) {
     try {
       const org = sqliteDb.prepare('SELECT name FROM organization WHERE id = ?').get(inv.organizationId) as any;
@@ -1486,34 +1495,32 @@ async function dispatchInvitationEmail(
       const fromName = smtpConfig.smtpFromName || `${orgName} Admin Console`;
       const inviter = inv.inviterName || 'Administrator';
 
-      const subject = `[Undangan Resmi] Anda Diundang Bergabung ke ${orgName} (${inv.role.toUpperCase()})`;
+      const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+      const role = esc(String(inv.role || '').toUpperCase());
+      const subject = `Invitation to join ${orgName} on Silegal (${String(inv.role || '').toUpperCase()})`;
       const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
           <div style="text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #06C755;">
-            <h2 style="color: #0f172a; margin: 0; font-size: 20px;">Undangan Anggota Organisasi</h2>
-            <p style="color: #64748b; font-size: 13px; margin-top: 4px;">${orgName}</p>
+            <h2 style="color: #0f172a; margin: 0; font-size: 20px;">You're invited</h2>
+            <p style="color: #475569; font-size: 13px; margin-top: 4px;">${esc(orgName)}</p>
           </div>
-          <p style="color: #334155; font-size: 14px; line-height: 1.6;">Halo,</p>
+          <p style="color: #334155; font-size: 14px; line-height: 1.6;">Hello,</p>
           <p style="color: #334155; font-size: 14px; line-height: 1.6;">
-            <strong>${inviter}</strong> telah mengundang Anda untuk bergabung dengan <strong>${orgName}</strong> sebagai <strong>${inv.role.toUpperCase()}</strong> di platform Adapundi Legal & Operations Console.
+            <strong>${esc(inviter)}</strong> invited you to join <strong>${esc(orgName)}</strong> as <strong>${role}</strong> on Silegal.
           </p>
           <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #cbd5e1;">
-            <p style="margin: 0; font-size: 13px; color: #475569;"><strong>Email Tujuan:</strong> ${inv.email}</p>
-            <p style="margin: 6px 0 0 0; font-size: 13px; color: #475569;"><strong>Peran / Akses:</strong> ${inv.role.toUpperCase()}</p>
-            <p style="margin: 6px 0 0 0; font-size: 13px; color: #475569;"><strong>Masa Berlaku:</strong> s.d ${new Date(inv.expiresAt).toLocaleDateString('id-ID')}</p>
+            <p style="margin: 0; font-size: 13px; color: #475569;"><strong>E-mail:</strong> ${esc(inv.email)}</p>
+            <p style="margin: 6px 0 0 0; font-size: 13px; color: #475569;"><strong>Role:</strong> ${role}</p>
+            <p style="margin: 6px 0 0 0; font-size: 13px; color: #475569;"><strong>Valid until:</strong> ${esc(new Date(inv.expiresAt).toISOString().slice(0, 10))}</p>
           </div>
           <div style="text-align: center; margin: 28px 0;">
-            <a href="${inviteUrl}" style="background-color: #06C755; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">
-              Konfirmasi & Terima Undangan
+            <a href="${esc(inviteUrl)}" style="background-color: #06C755; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">
+              Accept invitation
             </a>
           </div>
-          <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; text-align: center;">
-            Atau salin tautan berikut ke browser Anda:<br>
-            <a href="${inviteUrl}" style="color: #0284c7; word-break: break-all;">${inviteUrl}</a>
-          </p>
-          <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;">
-          <p style="color: #cbd5e1; font-size: 11px; text-align: center;">
-            Email ini dikirim otomatis oleh Sistem Undangan ${orgName} via SMTP Relay (${fromAddress}).
+          <p style="color: #64748b; font-size: 12px; margin-top: 24px; text-align: center;">
+            Or copy this link into your browser:<br>
+            <a href="${esc(inviteUrl)}" style="color: #0284c7; word-break: break-all;">${esc(inviteUrl)}</a>
           </p>
         </div>
       `;

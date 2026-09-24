@@ -28,6 +28,8 @@ export function getStatusBadgeClass(status: string): string {
     s === "aktif" ||
     s === "active" ||
     s === "lengkap" ||
+    s === "complete" ||
+    s === "available" ||
     s === "recommended" ||
     s === "berjalan" ||
     s === "signed" ||
@@ -43,8 +45,11 @@ export function getStatusBadgeClass(status: string): string {
   // Warning / Akan Berakhir / Belum Lengkap / Recommended with notes / Review / Fair / Moderate / Rare / Sisa Waktu
   if (
     s === "akan berakhir" ||
+    s === "expiring" ||
     s === "warning" ||
     s === "belum lengkap" ||
+    s === "incomplete" ||
+    s === "missing" ||
     s === "recommended with notes" ||
     s === "review" ||
     s === "fair" ||

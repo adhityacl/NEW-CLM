@@ -1,7 +1,5 @@
 # Silegal — Pengelola Kontrak & Insertion Order
 
-<img width="1918" height="680" alt="image" src="https://raw.githubusercontent.com/adhityacl/NEW-CLM/refs/heads/main/preview.png" />
-
 A multi-tenant Contract Lifecycle Management (CLM) application: contract, partner, Insertion Order (IO), and Due Diligence management with role-based access control (RBAC) and AI-assisted document workflows.
 
 ## Features
@@ -84,7 +82,15 @@ GOOGLE_PRIVATE_KEY=
 GOOGLE_APPLICATION_CREDENTIALS=
 ```
 
-Most of these can also be set later from the in-app Settings screens; `GEMINI_API_KEY` and the Better Auth variables are the minimum needed to sign in and use AI features.
+For a local development login, keep these values in `.env`:
+
+```env
+SEED_DEMO_ADMIN=true
+DEMO_ADMIN_EMAIL=admin@silegal.com
+DEMO_ADMIN_PASSWORD=123456789
+```
+
+The demo account is seeded only outside production and has Superuser access. Change `DEMO_ADMIN_PASSWORD` before sharing a development environment. Set `SEED_DEMO_ADMIN=false` in production. Most integration variables can also be set later from the in-app Settings screens; `GEMINI_API_KEY` is only needed for AI features.
 
 ### 4. Run the development server
 
@@ -93,6 +99,8 @@ npm run dev
 ```
 
 This starts a single Express server (with Vite mounted in middleware mode for the frontend) on **http://localhost:3000**.
+
+Open **http://localhost:3000** and sign in with `admin@silegal.com` / `123456789` when the development demo settings above are enabled.
 
 On first start the server creates `auth.db`, including the Better Auth and core application tables, and seeds the default organization and application data. If an existing `data_store.json` is present while the SQLite core tables are empty, it is imported once into SQLite. The JSON file is not used as the runtime write target.
 

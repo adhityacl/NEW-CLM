@@ -14,7 +14,7 @@ import { hasPermission as rbacHasPermission, normalizeRole as rbacNormalizeRole 
 import { GoogleGenAI, Type } from "@google/genai";
 import { OAuth2Client } from "google-auth-library";
 import { toNodeHandler } from "better-auth/node";
-import { hashPassword } from "better-auth/crypto";
+import { hashPassword, verifyPassword } from "better-auth/crypto";
 import {
   auth as betterAuthInstance,
   sqliteDb,
@@ -30,16 +30,6 @@ import {
 } from "./src/server/authConsoleRoutes";
 import Database from "better-sqlite3";
 import {
-  INITIAL_ALLOWED_USERS,
-  INITIAL_PARTNERS,
-  INITIAL_CONTRACTS,
-  INITIAL_IOS,
-  INITIAL_NOTIFICATIONS,
-  INITIAL_ACTIVITY_LOGS,
-  INITIAL_EVALUATIONS,
-  INITIAL_SPENDINGS,
-} from "./src/data/initialData";
-import {
   formatContractFileName,
   formatIOFileName,
   formatInvoiceFileName,
@@ -49,6 +39,7 @@ import {
 import {
   getExchangeRates,
   getHistoricalExchangeRate,
+  getUsdRate,
 } from "./src/lib/currencyRates";
 import {
   createDriveFolder,
@@ -69,13 +60,48 @@ import {
 } from "./src/lib/googleServiceAccountAuth";
 import multer from "multer";
 import {
+  bindTenantStore,
+  getDefaultTenantId,
+  getTenantSettings,
+  tenantDefaultCurrency,
+  tenantDisplayName,
+  computeLifecycle,
+  normalizePartnerDocuments,
+  computeDueDiligenceStatus,
+  aiPolicyContext,
+  findTenant,
+  isLegacyDefaultAlias,
+} from "./server/tenantPolicy";
+import {
+  resolveTenantSettings,
+  todayInTimezone,
+  listCountryPacks,
+  listIndustryPacks,
+  buildDueDiligenceChecklist,
+  getCountryPack,
+  getIndustryPack,
+  localize,
+} from "./src/lib/policy";
+import {
+  normalizeContractStatus,
+  normalizeApprovalStatus,
+  normalizeDueDiligenceStatus,
+  normalizeDocumentStatus,
+} from "./src/lib/domainStatus";
+import {
+  convertToUsdWithFallback,
+  getDefaultUsdRate,
+  normalizeCurrencyCode,
+} from "./src/lib/currencyUtils";
+import { buildDemoDataset, DEMO_TENANTS } from "./src/data/demoDataset";
+import {
   buildCheapOcrContents,
   globalOcrCache,
   computeInputSha256,
 } from "./src/lib/cheapOcrPipeline";
 
 const app = express();
-const PORT = 3e3;
+const PORT = Number(process.env.PORT) || 3000;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 30 * 1024 * 1024 },
@@ -92,22 +118,28 @@ app.all(["/api/auth", "/api/auth/*"], (req: express.Request, res: express.Respon
 
 // Strict RBAC Middleware with 1-word roles: Admin, Editor, Viewer
 // Viewer is strictly view-only: permits GET / HEAD / OPTIONS, rejects database write mutations (POST/PUT/DELETE/PATCH) on resource entities with 403.
+/** Session token from the Better Auth cookie (`<token>.<signature>`), if any. */
+function readSessionCookieToken(req: express.Request): string {
+  const cookie = String(req.headers.cookie || "");
+  const match = cookie.match(/(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=([^;]+)/);
+  if (!match) return "";
+  try {
+    return decodeURIComponent(match[1]).split(".")[0];
+  } catch {
+    return "";
+  }
+}
 export const rbacAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // Only authentication itself, health checks, public reference data and the
+  // unauthenticated first-run status probe are reachable without a session.
+  // Every data or AI endpoint requires one (PRD §5.2, §6.3).
   if (
     !req.path.startsWith("/api/") ||
     req.path === "/api/auth" || req.path.startsWith("/api/auth/") ||
     req.path === "/api/health" ||
+    req.path === "/api/system/public-status" ||
     req.path === "/api/exchange-rates" ||
-    req.path === "/api/exchange-rate-historical" ||
-    req.path.endsWith("/parse") ||
-    req.path === "/api/chat" ||
-    req.path === "/api/partners/generate-dd-notes" ||
-    req.path.endsWith("/redline-analysis") ||
-    req.path === "/api/google/test-connection" ||
-    req.path === "/api/export-csv" ||
-    req.path === "/api/templates" ||
-    req.path.startsWith("/api/templates/") ||
-    req.path === "/api/audit-logs"
+    req.path === "/api/exchange-rate-historical"
   ) {
     return next();
   }
@@ -123,8 +155,9 @@ export const rbacAuthMiddleware = (req: express.Request, res: express.Response, 
   let detectedRole: string | null = null;
   let isBanned = false;
 
-  // Check session token in SQLite auth database
-  const authHeader = req.headers["authorization"] || req.headers["x-session-token"];
+  // Check session token in SQLite auth database (Bearer header, or the
+  // Better Auth session cookie for plain browser requests).
+  const authHeader = req.headers["authorization"] || req.headers["x-session-token"] || readSessionCookieToken(req);
   if (authHeader && sqliteDb) {
     try {
       const token = typeof authHeader === "string" && authHeader.startsWith("Bearer ")
@@ -219,7 +252,9 @@ export const rbacAuthMiddleware = (req: express.Request, res: express.Response, 
   (req as any).rbacRole = role;
 
   const method = req.method.toUpperCase();
-  if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
+  // POST endpoints that only read data (AI Q&A over the viewer's own tenant).
+  const READ_ONLY_POSTS = new Set(["/api/chat"]);
+  if (["POST", "PUT", "DELETE", "PATCH"].includes(method) && !READ_ONLY_POSTS.has(req.path)) {
     const requiredPermission =
       method === "DELETE" ? "document.delete" : method === "POST" ? "document.create" : "document.edit";
     if (!rbacHasPermission(role, requiredPermission)) {
@@ -239,121 +274,88 @@ app.use(rbacAuthMiddleware);
 
 /* RBAC-INTEGRATION-V1 */
 // Actor RBAC diambil dari sesi terverifikasi (better-auth / token sesi), bukan header yang bisa dipalsukan.
+/**
+ * Resolve the tenant-scoped actor for a verified user.
+ *
+ * A non-superuser always operates inside one of THEIR memberships: the
+ * session's active organization first, then the client-requested one, then
+ * their first membership. A requested organization they do not belong to is
+ * ignored (never trusted), so headers cannot widen tenant scope.
+ */
+function resolveMembershipActor(userId: string, globalRole: string, sessionActiveOrgId: string, requestedOrgId: string, token: string) {
+  if (globalRole === "superuser") {
+    return { id: userId, role: "superuser", tenantId: requestedOrgId || sessionActiveOrgId || null, departmentId: null };
+  }
+  const memberships: any[] = sqliteDb.prepare(
+    "SELECT organizationId, role FROM member WHERE userId = ? ORDER BY createdAt ASC",
+  ).all(userId);
+  if (memberships.length === 0) return null;
+  const m =
+    memberships.find((r) => sessionActiveOrgId && r.organizationId === sessionActiveOrgId) ||
+    memberships.find((r) => requestedOrgId && r.organizationId === requestedOrgId) ||
+    memberships[0];
+  if (token && m.organizationId !== sessionActiveOrgId) {
+    try {
+      sqliteDb.prepare("UPDATE session SET activeOrganizationId = ?, updatedAt = ? WHERE token = ?")
+        .run(m.organizationId, new Date().toISOString(), token);
+    } catch { /* best effort */ }
+  }
+  // All of this org's teams the user belongs to, so Managers/Editors/Viewers
+  // covering several departments are scoped to all of them.
+  const tms: any[] = sqliteDb.prepare(`
+    SELECT t.id
+    FROM teamMember tm
+    JOIN team t ON t.id = tm.teamId
+    WHERE tm.userId = ? AND t.organizationId = ?
+    ORDER BY tm.createdAt ASC
+  `).all(userId, m.organizationId);
+  const departmentIds = tms.map((r: any) => r.id);
+  const memberRole = String(m.role || "").toLowerCase().trim();
+  const raw = memberRole === "owner" ? "admin" : (memberRole || globalRole || "viewer");
+  return {
+    id: userId,
+    role: String(raw).toLowerCase(),
+    tenantId: m.organizationId,
+    departmentId: departmentIds[0] ?? null,
+    departmentIds,
+  };
+}
+
 const resolveRbacActor = async (req: any) => {
+  const requestedOrgId = String(req.headers["x-organization-id"] || req.headers["x-tenant-id"] || "").trim();
+  const rawToken = req.headers["authorization"] || req.headers["x-session-token"] || readSessionCookieToken(req);
+  const token = typeof rawToken === "string" && rawToken.startsWith("Bearer ") ? rawToken.substring(7).trim() : String(rawToken || "").trim();
   try {
     const session = await betterAuthInstance.api.getSession({ headers: req.headers as any });
     if (session?.user?.id) {
       const u: any = sqliteDb.prepare("SELECT role, banned FROM user WHERE id = ?").get(session.user.id);
       if (u?.banned === 1) return null;
-
-      // Better Auth stores the active organization on the session. The client
-      // header is only a request for a switch and must still be membership-checked.
       const sessionData = (session as any).session || {};
-      let requestedOrgId = String(
-        sessionData.activeOrganizationId ||
-        req.headers["x-organization-id"] ||
-        req.headers["x-tenant-id"] ||
-        "",
-      ).trim();
-      const globalRole = String(u?.role || "").toLowerCase().trim();
-      if (globalRole === "superuser") {
-        return { id: session.user.id, role: "superuser", tenantId: requestedOrgId || null, departmentId: null };
-      }
-
-      // Existing users may have sessions created before active organization
-      // support was enabled. Auto-select only when membership is unambiguous.
-      if (!requestedOrgId) {
-        const memberships: any[] = sqliteDb.prepare(
-          "SELECT organizationId FROM member WHERE userId = ? ORDER BY createdAt ASC",
-        ).all(session.user.id);
-        if (memberships.length === 1) {
-          requestedOrgId = memberships[0].organizationId;
-          const token = String(req.headers["x-session-token"] || req.headers.authorization || "").replace(/^Bearer\s+/i, "").trim();
-          if (token) {
-            sqliteDb.prepare("UPDATE session SET activeOrganizationId = ?, updatedAt = ? WHERE token = ?")
-              .run(requestedOrgId, new Date().toISOString(), token);
-          }
-        }
-      }
-      if (!requestedOrgId) return null;
-      const m: any = sqliteDb.prepare(
-        "SELECT organizationId, role FROM member WHERE userId = ? AND organizationId = ? LIMIT 1",
-      ).get(session.user.id, requestedOrgId);
-      if (!m) return null;
-
-      // All of this org's teams the user belongs to — not just the first —
-      // so a Manager/Editor/Viewer who covers more than one department is
-      // actually scoped to all of them, not silently locked to whichever
-      // membership happened to be created first.
-      const tms: any[] = sqliteDb.prepare(`
-        SELECT t.id
-        FROM teamMember tm
-        JOIN team t ON t.id = tm.teamId
-        WHERE tm.userId = ? AND t.organizationId = ?
-        ORDER BY tm.createdAt ASC
-      `).all(session.user.id, requestedOrgId);
-      const departmentIds = tms.map((r: any) => r.id);
-      const memberRole = String(m.role || "").toLowerCase().trim();
-      const raw = memberRole === "owner" ? "admin" : (memberRole || globalRole || "viewer");
-      return {
-        id: session.user.id,
-        role: raw,
-        tenantId: requestedOrgId,
-        departmentId: departmentIds[0] ?? null,
-        departmentIds,
-      };
+      return resolveMembershipActor(
+        session.user.id,
+        String(u?.role || "").toLowerCase().trim(),
+        String(sessionData.activeOrganizationId || "").trim(),
+        requestedOrgId,
+        token,
+      );
     }
-  } catch { /* lanjut ke fallback */ }
+  } catch { /* fall back to the raw session table */ }
   try {
-    const authHeader = req.headers["authorization"] || req.headers["x-session-token"];
-    if (authHeader && sqliteDb) {
-      const token = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7).trim() : String(authHeader).trim();
-      const s: any = sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(token);
-      if (s?.userId) {
+    if (token && sqliteDb) {
+      const s: any = sqliteDb.prepare("SELECT userId, activeOrganizationId, expiresAt FROM session WHERE token = ?").get(token);
+      if (s?.userId && (!s.expiresAt || new Date(s.expiresAt).getTime() > Date.now())) {
         const u: any = sqliteDb.prepare("SELECT role, banned FROM user WHERE id = ?").get(s.userId);
         if (u?.banned === 1) return null;
-        let requestedOrgId = String(
-          req.headers["x-organization-id"] || req.headers["x-tenant-id"] || "",
-        ).trim();
-        const globalRole = String(u?.role || "").toLowerCase().trim();
-        if (globalRole === "superuser") {
-          return { id: s.userId, role: "superuser", tenantId: requestedOrgId || null, departmentId: null };
-        }
-        if (!requestedOrgId) {
-          const memberships: any[] = sqliteDb.prepare(
-            "SELECT organizationId FROM member WHERE userId = ? ORDER BY createdAt ASC",
-          ).all(s.userId);
-          if (memberships.length === 1) {
-            requestedOrgId = memberships[0].organizationId;
-            sqliteDb.prepare("UPDATE session SET activeOrganizationId = ?, updatedAt = ? WHERE token = ?")
-              .run(requestedOrgId, new Date().toISOString(), token);
-          }
-        }
-        if (!requestedOrgId) return null;
-        const m: any = sqliteDb.prepare(
-          "SELECT organizationId, role FROM member WHERE userId = ? AND organizationId = ? LIMIT 1",
-        ).get(s.userId, requestedOrgId);
-        if (!m) return null;
-        const tms: any[] = sqliteDb.prepare(`
-          SELECT t.id
-          FROM teamMember tm
-          JOIN team t ON t.id = tm.teamId
-          WHERE tm.userId = ? AND t.organizationId = ?
-          ORDER BY tm.createdAt ASC
-        `).all(s.userId, requestedOrgId);
-        const departmentIds = tms.map((r: any) => r.id);
-        const memberRole = String(m.role || "").toLowerCase().trim();
-        const rawRole = memberRole === "owner" ? "admin" : (memberRole || globalRole || "viewer");
-        return {
-          id: s.userId,
-          role: String(rawRole).toLowerCase(),
-          tenantId: requestedOrgId,
-          departmentId: departmentIds[0] ?? null,
-          departmentIds,
-        };
+        return resolveMembershipActor(
+          s.userId,
+          String(u?.role || "").toLowerCase().trim(),
+          String(s.activeOrganizationId || "").trim(),
+          requestedOrgId,
+          token,
+        );
       }
     }
-  } catch { /* tanpa actor */ }
+  } catch { /* no actor */ }
   return null;
 };
 const attachRbacActor = async (req: any, _res: any, next: any) => {
@@ -433,7 +435,7 @@ async function getOrgFolderId(tenantInput, token) {
     tenant = tenantInput;
   }
   if (!tenant) {
-    const activeId = db.activeTenantId || "org-adapundi";
+    const activeId = db.activeTenantId || getDefaultTenantId();
     tenant =
       (db.tenants || DEFAULT_TENANTS).find((t) => t.id === activeId) ||
       DEFAULT_TENANTS[0];
@@ -578,7 +580,7 @@ async function getPartnerFolderId(partner, token, orgId) {
     return orgFolder2.id || db.googleConfig.driveFolderId;
   }
   const targetOrgId =
-    orgId || partner.organizationId || db.activeTenantId || "org-adapundi";
+    orgId || partner.organizationId || db.activeTenantId || getDefaultTenantId();
   const orgFolder = await getOrgFolderId(targetOrgId, token);
   const parentFolderId = orgFolder.id || db.googleConfig.driveFolderId;
   const extractedId = extractFolderIdFromLink(partner.link_folder_dd);
@@ -629,7 +631,37 @@ const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use("/uploads", express.static(uploadsDir));
+/** Folder name used for a tenant under uploads/ (mirrors saveLocalFile). */
+function tenantUploadFolderName(tenant: any): string {
+  return String(tenant?.name || "Organization").replace(/[/\\?%*:|"<>]/g, "_").trim();
+}
+/*
+ * Uploaded evidence (identity documents, contracts, invoices) is private:
+ * a session is required, non-superusers may only read their own tenant's
+ * folder, and files are served with headers that stop the browser from
+ * executing uploaded content (PRD §5.2 upload hardening).
+ */
+app.use("/uploads", (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const actor = (req as any).actor;
+  if (!actor) {
+    return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
+  }
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Security-Policy", "sandbox");
+  res.setHeader("Cache-Control", "private, no-store");
+  if (actor.role === "superuser") return next();
+  let firstSegment = "";
+  try {
+    firstSegment = decodeURIComponent(req.path.replace(/^\/+/, "").split("/")[0] || "");
+  } catch {
+    return res.status(400).end();
+  }
+  const ownTenant = findTenant(actor.tenantId);
+  const ownsFolder = ownTenant && tenantUploadFolderName(ownTenant) === firstSegment;
+  const isRootFile = !req.path.replace(/^\/+/, "").includes("/");
+  if (ownsFolder || (isRootFile && ["admin"].includes(String(actor.role)))) return next();
+  return res.status(404).end();
+}, express.static(uploadsDir, { dotfiles: "deny", index: false }));
 function saveLocalFile(
   partnerName: any,
   category: string,
@@ -638,7 +670,7 @@ function saveLocalFile(
   orgName?: string,
 ) {
   try {
-    const cleanOrg = (orgName || "PT Info Tekno Siaga")
+    const cleanOrg = (orgName || tenantDisplayName(getDefaultTenantId()))
       .replace(/[/\\?%*:|"<>]/g, "_")
       .trim();
     const cleanVendor = (partnerName || "Vendor")
@@ -915,15 +947,11 @@ async function migrateLocalFilesToGoogleDrive(token) {
 function isMatchingOrg(entityOrgId, targetTenantId) {
   if (!targetTenantId) return true;
   if (entityOrgId === targetTenantId) return true;
-  const defaultTenant =
-    (db.tenants || []).find((t) => t.isDefault) || db.tenants?.[0];
-  const isDefaultTarget =
-    targetTenantId === "org-adapundi" ||
-    (defaultTenant && targetTenantId === defaultTenant.id);
-  const isDefaultEntity =
-    !entityOrgId ||
-    entityOrgId === "org-adapundi" ||
-    (defaultTenant && entityOrgId === defaultTenant.id);
+  // Records without an organization (or carrying a pre-OSS alias) belong to
+  // the default tenant.
+  const defaultId = getDefaultTenantId();
+  const isDefaultTarget = targetTenantId === defaultId || isLegacyDefaultAlias(targetTenantId);
+  const isDefaultEntity = !entityOrgId || entityOrgId === defaultId || isLegacyDefaultAlias(entityOrgId);
   return Boolean(isDefaultTarget && isDefaultEntity);
 }
 /**
@@ -951,16 +979,24 @@ function assertTenantWriteAccess(
     body: { error: "RESOURCE_NOT_FOUND", message: "Resource not found." },
   };
 }
+/**
+ * Tenant a request operates on. Non-superusers are pinned to the tenant of
+ * their verified membership — client headers/body can never widen that
+ * (PRD §4.4). Superusers may target any existing tenant explicitly.
+ */
 function getRequestTenantId(req: express.Request): string {
   const actor = (req as any).actor;
-  if (actor?.role !== "superuser" && actor?.tenantId) return actor.tenantId;
-  return String(
+  if (!actor) return "__no_tenant__";
+  if (actor.role !== "superuser") return actor.tenantId || "__no_tenant__";
+  const requested = String(
     req.headers["x-organization-id"] ||
     req.headers["x-tenant-id"] ||
     req.query.tenantId ||
-    db.activeTenantId ||
-    "org-adapundi"
-  );
+    (req.body && typeof req.body === "object" ? req.body.organizationId : "") ||
+    "",
+  ).trim();
+  if (requested && findTenant(requested)) return findTenant(requested).id;
+  return db.activeTenantId || getDefaultTenantId();
 }
 function canReadAllTenants(req: express.Request): boolean {
   return (req as any).actor?.role === "superuser" && req.query.all === "true";
@@ -980,11 +1016,11 @@ async function ensureAllPartnersFolders(token?: string, targetTenantId?: string)
       partner.organizationId ||
       targetTenantId ||
       db.activeTenantId ||
-      "org-adapundi";
+      getDefaultTenantId();
     const tenant =
       (db.tenants || DEFAULT_TENANTS).find((t) => t.id === orgId) ||
       DEFAULT_TENANTS[0];
-    const cleanOrg = (tenant?.name || "PT Info Tekno Siaga")
+    const cleanOrg = (tenant?.name || "Organization")
       .replace(/[/\\?%*:|"<>]/g, "_")
       .trim();
     const cleanVendor = partner.nama_partner
@@ -1054,60 +1090,79 @@ async function ensureAllPartnersFolders(token?: string, targetTenantId?: string)
 }
 const dataFilePath = path.join(process.cwd(), "data_store.json");
 const DEFAULT_BRANDING = {
-  appName: "LMS - Legal Management System",
-  logoUrl:
-    "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=250&auto=format&fit=crop&q=80",
+  appName: "Silegal CLM",
+  logoUrl: "/favicon.png",
   primaryColor: "#06C755",
-  footerText: "\xA9 2026 PT Info Tekno Siaga (Adapundi). All rights reserved.",
-  loginHeadline: "Portal Manajemen Kontrak, Vendor & Insertion Order",
+  footerText: "Silegal — open-source contract lifecycle management.",
+  loginHeadline: "Contract, partner and commercial document management",
 };
-const DEFAULT_TENANTS = [
-  {
-    id: "org_1789542306289_b3a4f3",
-    name: "Adapundi",
-    legalEntity: "PT",
-    brandName: "Adapundi",
-    tagline: "Legal & Commercial Contract Management",
-    logoUrl: "/favicon.png",
-    primaryColor: "#06C755",
-    currency: "IDR",
-    domainSlug: "adapundi",
-    isDefault: true,
-    driveFolderId: "1FpW5eMbZ-4LAvR2k_sC39VcKmnTDaopY",
-    driveFolderLink:
-      "https://drive.google.com/drive/folders/1FpW5eMbZ-4LAvR2k_sC39VcKmnTDaopY",
-  },
-];
+// Only used when the store has no tenants at all (e.g. a store emptied by
+// hand). A fresh install is seeded from the demo dataset instead.
+const DEFAULT_TENANTS = [DEMO_TENANTS[0]];
+/*
+ * First-run bootstrap account. It exists so a fresh clone is usable
+ * immediately; the UI warns while the default password is still active.
+ * Disable with SEED_DEMO_ADMIN=false, or override the credentials.
+ */
+const DEFAULT_ADMIN_EMAIL = "admin@silegal.com";
+const DEFAULT_ADMIN_PASSWORD = "123456789";
+const demoAdminEmail = (process.env.DEMO_ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL).trim().toLowerCase();
+const demoAdminPassword = process.env.DEMO_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
+const shouldSeedDemoAdmin = process.env.SEED_DEMO_ADMIN !== "false";
+const demoData = buildDemoDataset();
 let db: any = {
-  allowedUsers: INITIAL_ALLOWED_USERS,
-  partners: INITIAL_PARTNERS,
-  contracts: INITIAL_CONTRACTS,
-  ios: INITIAL_IOS,
-  notifications: INITIAL_NOTIFICATIONS,
-  activityLogs: INITIAL_ACTIVITY_LOGS,
-  evaluations: INITIAL_EVALUATIONS || [],
-  spendings: INITIAL_SPENDINGS || [],
-  tenants: DEFAULT_TENANTS,
-  departments: [],
+  allowedUsers: demoData.allowedUsers,
+  partners: demoData.partners,
+  contracts: demoData.contracts,
+  ios: demoData.ios,
+  notifications: demoData.notifications,
+  activityLogs: demoData.activityLogs,
+  evaluations: demoData.evaluations,
+  spendings: demoData.spendings,
+  tenants: demoData.tenants,
+  departments: demoData.departments,
   newsTicker: { items: [] as string[], lastGeneratedAt: null as string | null },
-  activeTenantId: "org_1789542306289_b3a4f3",
+  activeTenantId: demoData.tenants[0].id,
   branding: DEFAULT_BRANDING,
   googleConfig: {
-    spreadsheetId: "178lap6p6jwuVlbrVp7jmrgvgpAPLYRgpPDkJvgc_EgM",
-    driveFolderId: "1xiFIvgWdDtYEzL7IoqVD9d-NaS7XcfYp",
-    isConnected: true,
-    lastSyncTime: new Date().toISOString(),
-    autoSync: true,
-    isLocked: true,
-    notificationEmails:
-      "legal.head@perusahaan.co.id, finance.team@perusahaan.co.id",
-    legalNotificationEmail: "legal.head@perusahaan.co.id",
-    financeNotificationEmail: "finance.team@perusahaan.co.id",
+    spreadsheetId: "",
+    driveFolderId: "",
+    isConnected: false,
+    lastSyncTime: "",
+    autoSync: false,
+    isLocked: false,
+    notificationEmails: "",
+    legalNotificationEmail: "",
+    financeNotificationEmail: "",
     aiModel: "gemini-3.8-flash",
     geminiApiKey: process.env.GEMINI_API_KEY || "",
     refreshToken: "",
   },
 };
+bindTenantStore(() => db);
+
+function seedDemoAdminAccount() {
+  if (!shouldSeedDemoAdmin || !demoAdminEmail || !demoAdminPassword) return;
+  const allowedUsers = Array.isArray(db.allowedUsers) ? db.allowedUsers : [];
+  const existingUser = allowedUsers.find(
+    (user: any) => String(user.email || "").trim().toLowerCase() === demoAdminEmail,
+  );
+  if (existingUser) return;
+
+  allowedUsers.push({
+    id: "demo-admin",
+    organizationId: getDefaultTenantId(),
+    email: demoAdminEmail,
+    name: "Silegal Admin",
+    role: "Superuser",
+    department: null,
+    status: "Active",
+    addedBy: "System bootstrap",
+    createdAt: new Date().toISOString(),
+  });
+  db.allowedUsers = allowedUsers;
+  console.log(`Seeded bootstrap superuser: ${demoAdminEmail}`);
+}
 setInvalidTokenCallback((badToken) => {
   if (db.googleConfig && db.googleConfig.accessToken === badToken) {
     console.warn(
@@ -1494,57 +1549,6 @@ __name(
   computeContractEndDateFromDuration,
   "computeContractEndDateFromDuration",
 );
-const STANDARD_DD_DOCUMENTS = [
-  { nama: "NDA", wajib: true, status: "Belum" },
-  { nama: "COR", wajib: false, status: "Belum" },
-  { nama: "DGT", wajib: false, status: "Belum" },
-  { nama: "Termination notice", wajib: false, status: "Belum" },
-  { nama: "Vendor assessment form", wajib: false, status: "Belum" },
-  { nama: "Placement Documentation", wajib: false, status: "Belum" },
-  { nama: "NIB/SIUP", wajib: false, status: "Belum" },
-  { nama: "Business license", wajib: false, status: "Belum" },
-  { nama: "NPWP", wajib: false, status: "Belum" },
-  { nama: "Akta Pendirian", wajib: false, status: "Belum" },
-];
-function normalizePartnerDDDocs(docs) {
-  const existingDocs = (docs || []).filter(
-    (d) =>
-      !d.nama.toLowerCase().includes("invoice") &&
-      !d.nama.toLowerCase().includes("billing"),
-  );
-  return STANDARD_DD_DOCUMENTS.map((def) => {
-    const isNDA = def.nama.toLowerCase() === "nda";
-    const matched = existingDocs.find(
-      (d) =>
-        d.nama.toLowerCase() === def.nama.toLowerCase() ||
-        (def.nama === "COR" && d.nama.includes("COR")) ||
-        (def.nama === "DGT" && d.nama.includes("DGT")) ||
-        (def.nama === "NIB/SIUP" &&
-          (d.nama.includes("NIB") || d.nama.includes("SIUP"))) ||
-        (def.nama === "NPWP" && d.nama.includes("NPWP")) ||
-        (def.nama === "Akta Pendirian" && d.nama.includes("Akta")),
-    );
-    if (matched) {
-      let files = matched.files || [];
-      if (files.length === 0 && matched.linkDrive) {
-        files = [
-          {
-            id: "legacy_" + Math.random().toString(36).substring(2, 9),
-            fileName: `${matched.nama}.pdf`,
-            linkDrive: matched.linkDrive,
-            uploadedAt: matched.uploadedAt || new Date().toISOString(),
-            tanggalKadaluarsa: matched.tanggalKadaluarsa,
-            year: matched.uploadedAt
-              ? new Date(matched.uploadedAt).getFullYear().toString()
-              : new Date().getFullYear().toString(),
-          },
-        ];
-      }
-      return { ...matched, nama: def.nama, wajib: isNDA ? true : false, files };
-    }
-    return { ...def, wajib: isNDA ? true : false, files: [] };
-  });
-}
 const sqliteInitialData = loadCoreDataFromSqlite();
 const sqliteHasCoreData = Object.values(sqliteInitialData).some((value) =>
   Array.isArray(value) ? value.length > 0 : Boolean(value),
@@ -1567,29 +1571,64 @@ if (sqliteHasCoreData) {
   console.log("SQLite is empty; using seed defaults for the first initialization.");
 }
 
-if (Array.isArray(db.partners)) {
-  db.partners.forEach((p) => {
-    if (!p.organizationId) p.organizationId = "org-adapundi";
-    p.daftar_dokumen_dd = normalizePartnerDDDocs(p.daftar_dokumen_dd);
-    const wajibItems = p.daftar_dokumen_dd.filter((d) => d.wajib);
-    const adaWajib = wajibItems.filter((d) => d.status === "Ada");
-    if (wajibItems.length > 0) {
-      p.status_dd = adaWajib.length === wajibItems.length ? "Lengkap" : "Belum Lengkap";
+seedDemoAdminAccount();
+migrateLegacyRecords();
+/**
+ * Bring records written by earlier releases in line with the current model:
+ * - organization-less / legacy-alias records belong to the default tenant;
+ * - Indonesian status labels become stable codes (see src/lib/domainStatus);
+ * - due-diligence checklists are rebuilt from the tenant's policy packs,
+ *   keeping every document that was already uploaded.
+ * Idempotent: running it on migrated data changes nothing.
+ */
+function migrateLegacyRecords() {
+  if (!Array.isArray(db.tenants) || db.tenants.length === 0) db.tenants = [...DEFAULT_TENANTS];
+  if (!db.tenants.some((t: any) => t.isDefault)) db.tenants[0].isDefault = true;
+  for (const tenant of db.tenants) {
+    if (!tenant.settings) {
+      // Pre-OSS tenants were Indonesian by construction; keep that behaviour
+      // for them, everything else starts jurisdiction-neutral.
+      const legacyIndonesian = tenant.currency === "IDR" || tenant.legalEntity === "PT";
+      tenant.settings = resolveTenantSettings({
+        settings: { countryCode: legacyIndonesian ? "ID" : "INTL" },
+        currency: tenant.currency,
+      });
     }
+  }
+  const defaultId = getDefaultTenantId();
+  const fixOrg = (row: any) => {
+    if (row && (!row.organizationId || isLegacyDefaultAlias(row.organizationId))) row.organizationId = defaultId;
+  };
+  for (const collection of [db.partners, db.contracts, db.ios, db.spendings, db.evaluations, db.notifications, db.templates, db.departments, db.allowedUsers]) {
+    if (Array.isArray(collection)) collection.forEach(fixOrg);
+  }
+  if (!db.templates) db.templates = [];
+  if (isLegacyDefaultAlias(db.activeTenantId) || !db.tenants.some((t: any) => t.id === db.activeTenantId)) {
+    db.activeTenantId = defaultId;
+  }
+  (db.partners || []).forEach((p: any) => {
+    if (p.country === undefined && p.badan_hukum) {
+      // BHI = "Badan Hukum Indonesia"; BHA = foreign entity of unknown country.
+      p.country = p.badan_hukum === "BHI" ? "ID" : "";
+    }
+    p.daftar_dokumen_dd = normalizePartnerDocuments(p);
+    p.status_dd = computeDueDiligenceStatus(p.daftar_dokumen_dd);
+  });
+  (db.contracts || []).forEach((c: any) => {
+    c.status = normalizeContractStatus(c.status);
+    c.status_approval = normalizeApprovalStatus(c.status_approval);
+    c.currency = normalizeCurrencyCode(c.currency || c.mata_uang, tenantDefaultCurrency(c.organizationId));
+  });
+  (db.ios || []).forEach((io: any) => {
+    io.status = normalizeContractStatus(io.status);
+    io.currency = normalizeCurrencyCode(io.currency || io.mata_uang, tenantDefaultCurrency(io.organizationId));
+    io.mata_uang = io.currency;
+  });
+  (db.spendings || []).forEach((sp: any) => {
+    sp.currency = normalizeCurrencyCode(sp.currency, tenantDefaultCurrency(sp.organizationId));
   });
 }
-const defaultTenant = (db.tenants || []).find((t) => t.isDefault) || db.tenants?.[0];
-const defaultTenantId = defaultTenant?.id || "org-adapundi";
-for (const collection of [db.partners, db.contracts, db.ios, db.spendings, db.evaluations]) {
-  if (Array.isArray(collection)) {
-    collection.forEach((row) => {
-      if (!row.organizationId) row.organizationId = defaultTenantId;
-    });
-  }
-}
-if (!db.tenants || db.tenants.length === 0) db.tenants = [...DEFAULT_TENANTS];
-if (!db.templates) db.templates = [];
-const defaultOrg = db.tenants.find((t) => t.id === "org-adapundi" || t.isDefault);
+const defaultOrg = db.tenants.find((t) => t.isDefault);
 if (defaultOrg) {
   if (!defaultOrg.spreadsheetId && db.googleConfig?.spreadsheetId) {
     defaultOrg.spreadsheetId = db.googleConfig.spreadsheetId;
@@ -1696,7 +1735,7 @@ function generateNextSpendingId() {
   return `SP${String(nextNum).padStart(4, "0")}`;
 }
 function sanitizePartnerTags(tags) {
-  if (!tags) return ["Advertising"];
+  if (!tags) return [];
   let list = [];
   if (Array.isArray(tags)) {
     list = tags.map((t) => String(t).trim());
@@ -1718,13 +1757,31 @@ function sanitizePartnerTags(tags) {
     if (/^\d{4}-\d{2}-\d{2}/.test(item)) return false;
     return true;
   });
-  return valid.length > 0 ? valid : ["Advertising"];
+  return valid;
+}
+/** ISO 3166-1 alpha-2 code or empty string (unknown). */
+function sanitizeCountryCode(value: unknown): string {
+  const code = String(value ?? "").trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(code) ? code : "";
+}
+/**
+ * Partner identifiers (PRD §3.2.2): `{ scheme, value, country }`. Values are
+ * kept as entered — format checks are advisory only and done client-side.
+ */
+function sanitizeIdentifiers(value: unknown): Array<{ scheme: string; value: string; country: string }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item: any) => item && typeof item === "object" && String(item.value || "").trim())
+    .slice(0, 20)
+    .map((item: any) => ({
+      scheme: String(item.scheme || "other").slice(0, 64),
+      value: String(item.value).trim().slice(0, 128),
+      country: sanitizeCountryCode(item.country),
+    }));
 }
 if (db.partners && Array.isArray(db.partners)) {
   db.partners = db.partners.map((p) => ({
     ...p,
-    badan_hukum: p.badan_hukum === "BHA" ? "BHA" : "BHI",
-    daftar_dokumen_dd: normalizePartnerDDDocs(p.daftar_dokumen_dd),
     tags: sanitizePartnerTags(p.tags),
   }));
   saveDb();
@@ -1740,14 +1797,6 @@ function triggerAutoPushToGoogleSheet(_req?: any, _options?: any): Promise<void>
   return Promise.resolve();
 }
 function syncAdderNames() {
-  db.allowedUsers.forEach((u) => {
-    if (
-      u.name &&
-      (u.name.includes("Adhitia") || u.name.includes("Super Admin"))
-    ) {
-      u.name = "Admin";
-    }
-  });
   const userByEmail = new Map();
   db.allowedUsers.forEach((u) => {
     if (u.email) {
@@ -1772,10 +1821,7 @@ function syncAdderNames() {
         const currentAddedBy = u.addedBy.trim().toLowerCase();
         if (
           currentAddedBy === creatorEmail ||
-          currentAddedBy === creatorName ||
-          (creatorEmail === "adhitcl@gmail.com" &&
-            (currentAddedBy.includes("adhitia") ||
-              currentAddedBy.includes("adhit")))
+          currentAddedBy === creatorName
         ) {
           u.addedByEmail = creator.email;
           u.addedBy = creator.name;
@@ -1842,213 +1888,184 @@ async function sendSmtpEmail({
     return { success: false, error: err.message || String(err) };
   }
 }
+function daysUntilForTenant(tenantId: string | null | undefined, date: string): number | null {
+  return computeLifecycle(tenantId, date, "Active").daysRemaining;
+}
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+function formatAmountForTenant(amount: unknown, currency: string, tenantId?: string | null): string {
+  const settings = getTenantSettings(tenantId);
+  const locale = settings.language === "ID" ? "id-ID" : getCountryPack(settings.countryCode).formattingLocale;
+  try {
+    return new Intl.NumberFormat(locale, { style: "currency", currency: normalizeCurrencyCode(currency, settings.defaultCurrency) }).format(Number(amount) || 0);
+  } catch {
+    return `${currency} ${Number(amount) || 0}`;
+  }
+}
+/** Reminder e-mail in the tenant's language, with its own name and colour. */
+function buildReminderEmail(params: {
+  tenantId: string;
+  kind: "contract" | "commercial";
+  reference: string;
+  title: string;
+  endDate: string;
+  daysRemaining: number;
+  rows: Array<[string, string]>;
+}): { subject: string; html: string } {
+  const settings = getTenantSettings(params.tenantId);
+  const tenant = findTenant(params.tenantId);
+  const brandColor = /^#[0-9a-f]{6}$/i.test(tenant?.primaryColor || "") ? tenant.primaryColor : DEFAULT_BRANDING.primaryColor;
+  const orgName = tenantDisplayName(params.tenantId);
+  const docLabel = params.kind === "contract"
+    ? (settings.language === "ID" ? "Kontrak" : "Contract")
+    : getIndustryPack(settings.industry).commercialDocument.label;
+  const ID = settings.language === "ID";
+  const subject = ID
+    ? `[Pengingat ${params.daysRemaining} hari] ${docLabel} ${params.reference} — ${params.title}`
+    : `[${params.daysRemaining}-day reminder] ${docLabel} ${params.reference} — ${params.title}`;
+  const heading = ID ? `${docLabel} akan berakhir` : `${docLabel} approaching expiry`;
+  const intro = ID
+    ? `${docLabel} berikut akan berakhir dalam ${params.daysRemaining} hari. Mohon tinjau kebutuhan pemberitahuan, perpanjangan, atau pengakhiran.`
+    : `The following ${docLabel.toLowerCase()} expires in ${params.daysRemaining} days. Please review any notice, renewal or termination action required.`;
+  const tableRows = [
+    [ID ? "Nomor" : "Reference", params.reference],
+    [ID ? "Judul" : "Title", params.title],
+    [ID ? "Tanggal berakhir" : "End date", params.endDate],
+    ...params.rows,
+  ]
+    .map(([k, v]) => `<tr><td style="padding:6px 8px;border-bottom:1px solid #F1F5F9;color:#475569;width:35%;">${escapeHtml(k)}</td><td style="padding:6px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;">${escapeHtml(v)}</td></tr>`)
+    .join("");
+  const footer = ID
+    ? `E-mail otomatis dari Silegal untuk ${orgName}.`
+    : `Automated e-mail from Silegal for ${orgName}.`;
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
+      <div style="background-color:${brandColor};color:#FFFFFF;padding:20px;text-align:center;">
+        <h2 style="margin:0;font-size:18px;">${escapeHtml(heading)}</h2>
+      </div>
+      <div style="padding:20px;color:#1E293B;font-size:14px;line-height:1.6;">
+        <p>${escapeHtml(intro)}</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">${tableRows}</table>
+      </div>
+      <div style="background-color:#F8FAFC;padding:10px 20px;text-align:center;color:#64748B;font-size:12px;border-top:1px solid #E2E8F0;">${escapeHtml(footer)}</div>
+    </div>`;
+  return { subject, html };
+}
+/** Roll an auto-renewing contract's end date forward past "today" (tenant timezone). */
+function rollForwardAutoRenewal(contract: any): void {
+  if (!contract.auto_renewal || !contract.tanggal_mulai || !contract.tanggal_berakhir) return;
+  const settings = getTenantSettings(contract.organizationId);
+  const today = todayInTimezone(settings.timezone);
+  const start = String(contract.tanggal_mulai).slice(0, 10);
+  let end = String(contract.tanggal_berakhir).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || end >= today) return;
+  const years = Math.max(1, Number(end.slice(0, 4)) - Number(start.slice(0, 4)) || 1);
+  let guard = 0;
+  while (end < today && guard++ < 200) {
+    end = `${Number(end.slice(0, 4)) + years}${end.slice(4)}`;
+  }
+  contract.tanggal_berakhir = end;
+}
+function reminderRecipients(tenantId: string, kind: "contract" | "commercial", owner?: string): string {
+  const cfg = db.googleConfig || {};
+  const configured = kind === "contract"
+    ? cfg.legalNotificationEmail || cfg.notificationEmails
+    : cfg.financeNotificationEmail || cfg.notificationEmails;
+  const tenantAdmins = (db.allowedUsers || [])
+    .filter((u: any) => isMatchingOrg(u.organizationId, tenantId) && ["admin", "manager"].includes(String(u.role).toLowerCase()) && u.status !== "Inactive")
+    .map((u: any) => u.email);
+  return [owner, configured, ...tenantAdmins].filter(Boolean).join(", ");
+}
+/**
+ * Recompute lifecycle status for contracts and commercial documents and emit
+ * reminders at the tenant's configured offsets (default 90/60/30/14 days).
+ */
 function recalculateStatuses() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
   let newNotifsCount = 0;
-  db.contracts = db.contracts.map((contract) => {
-    if (contract.status === "Terminated") {
-      return contract;
-    }
-    if (
-      contract.auto_renewal &&
-      contract.tanggal_mulai &&
-      contract.tanggal_berakhir
-    ) {
-      let currentEnd = new Date(contract.tanggal_berakhir);
-      currentEnd.setHours(0, 0, 0, 0);
-      const startDate = new Date(contract.tanggal_mulai);
-      let durationYears = 1;
-      if (!isNaN(startDate.getTime()) && !isNaN(currentEnd.getTime())) {
-        const diffYears = currentEnd.getFullYear() - startDate.getFullYear();
-        durationYears = Math.max(1, diffYears || 1);
+  const emitReminder = (kind: "contract" | "commercial", record: any, daysRemaining: number) => {
+    const tenantId = record.organizationId || getDefaultTenantId();
+    const settings = getTenantSettings(tenantId);
+    if (!settings.reminderOffsetsDays.includes(daysRemaining)) return;
+    const parentId = kind === "contract" ? record.contract_id : record.io_id;
+    const jenis = `Reminder ${daysRemaining}d`;
+    const legacyJenis = `Reminder H-${daysRemaining}`;
+    const exists = (db.notifications || []).some(
+      (n: any) => n.parent_id === parentId && (n.jenis_notifikasi === jenis || n.jenis_notifikasi === legacyJenis),
+    );
+    if (exists) return;
+    const reference = kind === "contract" ? record.nomor_kontrak : record.nomor_io;
+    const title = kind === "contract" ? record.judul_kontrak : record.judul_io;
+    const amount = kind === "contract" ? record.nilai_kontrak : record.nilai_io;
+    const recipients = reminderRecipients(tenantId, kind, record.pic_internal && String(record.pic_internal).includes("@") ? record.pic_internal : "");
+    const ID = settings.language === "ID";
+    const notif = {
+      notif_id: `notif-${kind === "contract" ? "ctr" : "doc"}-${Date.now()}-${Math.floor(Math.random() * 1e3)}`,
+      organizationId: tenantId,
+      parent_type: kind === "contract" ? "Contract" : "IO",
+      parent_id: parentId,
+      parent_nomor: reference,
+      parent_judul: title,
+      jenis_notifikasi: jenis,
+      tanggal_terkirim: new Date().toISOString(),
+      status_terkirim: true,
+      penerima: recipients,
+      pesan: ID
+        ? `${reference} (${title}) berakhir dalam ${daysRemaining} hari.${kind === "contract" ? ` Pemberitahuan ${record.notice_type_required || "Termination"} diperlukan ${record.notice_period_hari || 30} hari sebelumnya.` : ""}`
+        : `${reference} (${title}) expires in ${daysRemaining} days.${kind === "contract" ? ` ${record.notice_type_required || "Termination"} notice is due ${record.notice_period_hari || 30} days before expiry.` : ""}`,
+      is_read: false,
+    };
+    db.notifications.unshift(notif);
+    newNotifsCount++;
+    if (db.googleConfig?.smtpEnabled) {
+      const rows: Array<[string, string]> = [
+        [ID ? "Nilai" : "Value", formatAmountForTenant(amount, record.currency, tenantId)],
+      ];
+      if (kind === "contract") {
+        rows.push([ID ? "Periode pemberitahuan" : "Notice period", `${record.notice_period_hari || 30} ${ID ? "hari" : "days"} (${record.notice_type_required || "Termination"})`]);
+        rows.push([ID ? "Perpanjangan otomatis" : "Auto-renewal", record.auto_renewal ? (ID ? "Ya" : "Yes") : (ID ? "Tidak" : "No")]);
+      } else {
+        rows.push([ID ? "Model harga" : "Pricing model", record.pricing_model || "-"]);
       }
-      while (currentEnd.getTime() < today.getTime()) {
-        currentEnd.setFullYear(currentEnd.getFullYear() + durationYears);
-      }
-      const extendedEndDateStr = `${currentEnd.getFullYear()}-${String(currentEnd.getMonth() + 1).padStart(2, "0")}-${String(currentEnd.getDate()).padStart(2, "0")}`;
-      if (contract.tanggal_berakhir !== extendedEndDateStr) {
-        contract.tanggal_berakhir = extendedEndDateStr;
-      }
-    }
-    const endDate = new Date(contract.tanggal_berakhir);
-    endDate.setHours(0, 0, 0, 0);
-    const diffTime = endDate.getTime() - today.getTime();
-    const sisaHari = Math.ceil(diffTime / (1e3 * 60 * 60 * 24));
-    let status = contract.status;
-    if (sisaHari < 0) {
-      status = contract.auto_renewal ? "Aktif" : "Expired";
-    } else if (sisaHari <= 90) {
-      status = "Akan Berakhir";
-    } else {
-      status = "Aktif";
-    }
-    contract.status = status;
-    contract.sisa_hari = sisaHari;
-    if (
-      sisaHari === 90 ||
-      sisaHari === 60 ||
-      sisaHari === 30 ||
-      sisaHari === 14
-    ) {
-      const notifJenis = `Reminder H-${sisaHari}`;
-      const existingNotif = db.notifications.find(
-        (n) =>
-          n.parent_id === contract.contract_id &&
-          n.jenis_notifikasi === notifJenis,
-      );
-      if (!existingNotif) {
-        const legalEmails =
-          db.googleConfig.legalNotificationEmail ||
-          db.googleConfig.notificationEmails ||
-          "legal.head@perusahaan.co.id";
-        const notif = {
-          notif_id: `notif-ctr-${Date.now()}-${Math.floor(Math.random() * 1e3)}`,
-          parent_type: "Contract",
-          parent_id: contract.contract_id,
-          parent_nomor: contract.nomor_kontrak,
-          parent_judul: contract.judul_kontrak,
-          jenis_notifikasi: notifJenis,
-          tanggal_terkirim: new Date().toISOString(),
-          status_terkirim: true,
-          penerima: `${contract.pic_internal}, ${legalEmails}`,
-          pesan: `REMINDER: Kontrak ${contract.nomor_kontrak} (${contract.judul_kontrak}) sisa masa berlaku ${sisaHari} hari. Perlukan Notice of ${contract.notice_type_required}.`,
-        };
-        db.notifications.unshift(notif);
-        newNotifsCount++;
-        if (db.googleConfig.smtpEnabled) {
-          const emailSubject = `[NOTICE PERIOD REMINDER H-${sisaHari}] Kontrak: ${contract.nomor_kontrak} - ${contract.judul_kontrak}`;
-          const emailHtml = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;">
-              <div style="background-color: #06C755; color: #FFFFFF; padding: 20px; text-align: center;">
-                <h2 style="margin: 0; font-size: 18px;">Pemberitahuan Notice Period Kontrak</h2>
-                <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.95;">Sisa Masa Berlaku: <strong>${sisaHari} Hari</strong></p>
-              </div>
-              <div style="padding: 20px; color: #1E293B; font-size: 13px; line-height: 1.6;">
-                <p>Halo Tim Legal & PIC Internal,</p>
-                <p>Sistem mendeteksi bahwa kontrak berikut mendekati batas akhir notice period:</p>
-                <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
-                  <tr><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #64748B; width: 35%;">Nomor Kontrak</td><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; font-weight: bold;">${contract.nomor_kontrak}</td></tr>
-                  <tr><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #64748B;">Judul Kontrak</td><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; font-weight: bold;">${contract.judul_kontrak}</td></tr>
-                  <tr><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #64748B;">Partner / Vendor</td><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9;">${contract.partner_nama || "-"}</td></tr>
-                  <tr><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #64748B;">Tanggal Berakhir</td><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #DC2626; font-weight: bold;">${contract.tanggal_berakhir}</td></tr>
-                  <tr><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #64748B;">Ketentuan Notice</td><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9;">Notice of <strong>${contract.notice_type_required || "Termination / Extension"}</strong> (${contract.notice_period_hari || 30} hari sebelumnya)</td></tr>
-                  <tr><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #64748B;">PIC Internal</td><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9;">${contract.pic_internal || "-"}</td></tr>
-                </table>
-                <p style="color: #475569; font-size: 12px;">Harap segera tindak lanjuti sebelum batas waktu notice period berakhir untuk perpanjangan (extension) atau pengakhiran (termination).</p>
-              </div>
-              <div style="background-color: #F8FAFC; padding: 10px 20px; text-align: center; color: #94A3B8; font-size: 11px; border-top: 1px solid #E2E8F0;">
-                Email otomatis dikirim oleh Sistem Pengelola Kontrak & Insertion Order
-              </div>
-            </div>
-          `;
-          const validRecipients = notif.penerima
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s.includes("@"));
-          if (validRecipients.length > 0) {
-            sendSmtpEmail({
-              to: validRecipients,
-              subject: emailSubject,
-              html: emailHtml,
-            });
-          }
-        }
+      const { subject, html } = buildReminderEmail({
+        tenantId, kind, reference, title, endDate: record.tanggal_berakhir, daysRemaining, rows,
+      });
+      const validRecipients = recipients.split(",").map((s: string) => s.trim()).filter((s: string) => s.includes("@"));
+      if (validRecipients.length > 0) {
+        sendSmtpEmail({ to: validRecipients, subject, html });
       }
     }
+  };
+
+  db.contracts = (db.contracts || []).map((contract) => {
+    if (normalizeContractStatus(contract.status) === "Terminated") {
+      return { ...contract, status: "Terminated" };
+    }
+    rollForwardAutoRenewal(contract);
+    const { daysRemaining, status } = computeLifecycle(
+      contract.organizationId, contract.tanggal_berakhir, contract.status, contract.auto_renewal,
+    );
+    if (daysRemaining !== null) emitReminder("contract", contract, daysRemaining);
     return {
       ...contract,
       status,
-      sisa_hari: sisaHari,
+      sisa_hari: daysRemaining ?? contract.sisa_hari,
       updated_at: contract.updated_at || new Date().toISOString(),
     };
   });
-  db.ios = db.ios.map((io) => {
-    if (io.status === "Terminated") return io;
-    const endDate = new Date(io.tanggal_berakhir);
-    endDate.setHours(0, 0, 0, 0);
-    const diffTime = endDate.getTime() - today.getTime();
-    const sisaHari = Math.ceil(diffTime / (1e3 * 60 * 60 * 24));
-    let status = io.status;
-    if (sisaHari < 0) {
-      status = "Expired";
-    } else if (sisaHari <= 90) {
-      status = "Akan Berakhir";
-    } else {
-      status = "Aktif";
-    }
-    if (
-      sisaHari === 90 ||
-      sisaHari === 60 ||
-      sisaHari === 30 ||
-      sisaHari === 14
-    ) {
-      const notifJenis = `Reminder H-${sisaHari}`;
-      const existingNotif = db.notifications.find(
-        (n) => n.parent_id === io.io_id && n.jenis_notifikasi === notifJenis,
-      );
-      if (!existingNotif) {
-        const financeEmails =
-          db.googleConfig.financeNotificationEmail ||
-          db.googleConfig.notificationEmails ||
-          "finance.team@perusahaan.co.id";
-        const notif = {
-          notif_id: `notif-io-${Date.now()}-${Math.floor(Math.random() * 1e3)}`,
-          parent_type: "IO",
-          parent_id: io.io_id,
-          parent_nomor: io.nomor_io,
-          parent_judul: io.judul_io,
-          jenis_notifikasi: notifJenis,
-          tanggal_terkirim: new Date().toISOString(),
-          status_terkirim: true,
-          penerima: `PIC Marketing / BizDev, ${financeEmails}`,
-          pesan: `REMINDER: Insertion Order ${io.nomor_io} (${io.judul_io}) sisa masa berlaku ${sisaHari} hari. Cek deliverable & penagihan.`,
-        };
-        db.notifications.unshift(notif);
-        newNotifsCount++;
-        if (db.googleConfig.smtpEnabled) {
-          const emailSubject = `[IO REMINDER H-${sisaHari}] Insertion Order: ${io.nomor_io} - ${io.judul_io}`;
-          const emailHtml = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;">
-              <div style="background-color: #3B82F6; color: #FFFFFF; padding: 20px; text-align: center;">
-                <h2 style="margin: 0; font-size: 18px;">Pemberitahuan Insertion Order (IO)</h2>
-                <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.95;">Sisa Masa Berlaku: <strong>${sisaHari} Hari</strong></p>
-              </div>
-              <div style="padding: 20px; color: #1E293B; font-size: 13px; line-height: 1.6;">
-                <p>Halo Tim Finance & Marketing,</p>
-                <p>Sistem mendeteksi bahwa Insertion Order (IO) berikut mendekati batas akhir periode:</p>
-                <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
-                  <tr><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #64748B; width: 35%;">Nomor IO</td><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; font-weight: bold;">${io.nomor_io}</td></tr>
-                  <tr><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #64748B;">Judul IO</td><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; font-weight: bold;">${io.judul_io}</td></tr>
-                  <tr><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #64748B;">Tanggal Berakhir</td><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #DC2626; font-weight: bold;">${io.tanggal_berakhir}</td></tr>
-                  <tr><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #64748B;">Nilai IO</td><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9;">${io.currency || "IDR"} ${Number(io.nilai_io || 0).toLocaleString("id-ID")}</td></tr>
-                  <tr><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9; color: #64748B;">Pricing Model</td><td style="padding: 6px 8px; border-bottom: 1px solid #F1F5F9;">${io.pricing_model || "-"} (${io.charging_type || "-"})</td></tr>
-                </table>
-                <p style="color: #475569; font-size: 12px;">Harap pastikan deliverables telah tercapai dan proses penagihan/rekonsiliasi invoice berjalan lancar.</p>
-              </div>
-              <div style="background-color: #F8FAFC; padding: 10px 20px; text-align: center; color: #94A3B8; font-size: 11px; border-top: 1px solid #E2E8F0;">
-                Email otomatis dikirim oleh Sistem Pengelola Kontrak & Insertion Order
-              </div>
-            </div>
-          `;
-          const validRecipients = notif.penerima
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s.includes("@"));
-          if (validRecipients.length > 0) {
-            sendSmtpEmail({
-              to: validRecipients,
-              subject: emailSubject,
-              html: emailHtml,
-            });
-          }
-        }
-      }
-    }
+  db.ios = (db.ios || []).map((io) => {
+    if (normalizeContractStatus(io.status) === "Terminated") return { ...io, status: "Terminated" };
+    const { daysRemaining, status } = computeLifecycle(io.organizationId, io.tanggal_berakhir, io.status, false);
+    if (daysRemaining !== null) emitReminder("commercial", io, daysRemaining);
     return {
       ...io,
       status,
-      sisa_hari: sisaHari,
+      sisa_hari: daysRemaining ?? io.sisa_hari,
       updated_at: io.updated_at || new Date().toISOString(),
     };
   });
@@ -2260,59 +2277,54 @@ app.get("/api/user/my-role", async (req: express.Request, res: express.Response)
     loginTime: new Date().toISOString(),
   });
 });
-// Dashboard news ticker: 5 short headlines about current Indonesian
-// fintech-lending (Pindar/Pinjol) regulation, refreshed via Gemini at most
-// once every 7 days — cached in db.newsTicker between refreshes.
+// Dashboard news ticker (optional module, off by default): 5 short
+// regulatory headlines for the tenant's industry and country, refreshed via
+// the AI provider at most once every 7 days and cached per tenant.
 const NEWS_TICKER_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
-const NEWS_TICKER_PROMPT_GROUNDED = `Anda adalah asisten riset regulasi keuangan digital Indonesia. Gunakan Google Search untuk mencari peraturan TERKINI (beberapa bulan terakhir) terkait bisnis Pindar (Pinjaman Daring), Pinjol (Pinjaman Online), dan Pinjaman digital di Indonesia — khususnya dari OJK (Otoritas Jasa Keuangan) dan regulasi P2P Lending/Fintech Lending.
+function newsTickerPrompt(tenantId: string, grounded: boolean): string {
+  const settings = getTenantSettings(tenantId);
+  const ctx = aiPolicyContext(tenantId);
+  const topic = getIndustryPack(settings.industry).newsTopic;
+  const regulators = ctx.regulators.length > 0 ? ` Prioritise updates from: ${ctx.regulators.join(", ")}.` : "";
+  return `You are a regulatory research assistant. ${grounded ? "Use Google Search to find" : "From your knowledge, describe"} RECENT developments (last few months) in ${topic} relevant to organizations operating in ${ctx.countryName}.${regulators}
 
-Buat TEPAT 5 teks headline newsticker singkat (gaya headline berita, maksimal sekitar 20 kata per teks, Bahasa Indonesia) yang merangkum peraturan/kebijakan terkini paling relevan untuk pelaku bisnis Pindar/Pinjol.
+Write EXACTLY 5 short news-ticker headlines (at most about 20 words each) in ${ctx.responseLanguage}.
 
-Format output: HANYA 5 teks tersebut, dipisahkan dengan " | " (spasi-pipe-spasi), tanpa penomoran, tanpa markdown, tanpa kalimat pembuka/penutup. Contoh format persis seperti ini:
-OJK Rilis POJK 8/2026: Penyelenggara Pindar Wajib Lapor Data Transaksi Real-Time | Perlindungan Data Diperketat: OJK Tegaskan Larangan Jual Beli Data Pribadi Pengguna | Regulasi Batasan Pinjaman Diperbarui: OJK Hapus Aturan Maksimal Pinjam di 3 Platform P2P Lending | Penyelenggara Pindar Wajib Penuhi Kecukupan Ekuitas Minimum dan Mitigasi Kredit Macet Secara Ketat | Penguatan Tata Kelola P2P Lending: OJK Minta Platform Terapkan Scoring Kredit Adaptif
+Output format: ONLY the 5 headlines separated by " | " (space-pipe-space), no numbering, no markdown, no introduction or closing.
 
-Pastikan setiap teks akurat berdasarkan hasil pencarian; jangan mengarang nomor atau tanggal peraturan bila tidak yakin dari hasil pencarian.`;
-// Used only if the grounded attempt above fails — no `tools`, so it can't
-// cite a specific regulation number/date it isn't sure of; asked to speak
-// in general terms instead (e.g. "OJK perketat aturan pelaporan transaksi
-// Pindar" rather than inventing a POJK number).
-const NEWS_TICKER_PROMPT_PLAIN = `Anda adalah asisten riset regulasi keuangan digital Indonesia. Berdasarkan pengetahuan Anda tentang arah kebijakan OJK (Otoritas Jasa Keuangan) terkait bisnis Pindar (Pinjaman Daring), Pinjol (Pinjaman Online), dan P2P Lending/Fintech Lending di Indonesia, buat TEPAT 5 teks headline newsticker singkat (gaya headline berita, maksimal sekitar 20 kata per teks, Bahasa Indonesia) tentang tema regulasi yang relevan dan penting bagi pelaku bisnis Pindar/Pinjol (mis. pelaporan transaksi, perlindungan data pengguna, batas bunga/denda, kecukupan ekuitas, tata kelola risiko kredit).
+${grounded ? "Every headline must be supported by the search results." : "Speak in general terms."} Never invent regulation numbers or dates you are not certain of.`;
+}
 
-Format output: HANYA 5 teks tersebut, dipisahkan dengan " | " (spasi-pipe-spasi), tanpa penomoran, tanpa markdown, tanpa kalimat pembuka/penutup.
-
-PENTING: jangan menyebut nomor POJK/peraturan atau tanggal spesifik kecuali Anda benar-benar yakin — gunakan kalimat umum yang tetap informatif (mis. "OJK Perketat Kewajiban Pelaporan Transaksi Real-Time Penyelenggara Pindar") daripada mengarang nomor/tanggal yang berisiko salah.`;
-
-/**
- * The grounded (Google Search-tool) attempt is what QA found always fails
- * with a quota error on this environment's API key, while every OTHER
- * Gemini call in this app (e.g. /api/partners/generate-dd-notes) — which
- * never passes `config.tools` — succeeds reliably. Google's grounding tool
- * is metered on a separate, much stricter quota from plain generateContent
- * calls, so cycling through fallback *models* (which
- * generateContentWithRetryAndFallback already does) doesn't help: the
- * bottleneck is the tool, not the model. Falls back to a plain, un-grounded
- * call so the ticker still gets content instead of failing outright.
- */
-async function generateNewsTickerText(): Promise<string> {
+async function generateNewsTickerText(tenantId: string): Promise<string> {
   try {
     const response = await generateContentWithRetryAndFallback({
-      contents: NEWS_TICKER_PROMPT_GROUNDED,
+      contents: newsTickerPrompt(tenantId, true),
       config: { tools: [{ googleSearch: {} }] },
     });
     return String((response as any).text || "").trim();
   } catch (groundedErr: any) {
+    // The search-grounding tool has a much stricter quota than plain
+    // generation; fall back to an un-grounded call rather than failing.
     console.warn(
-      `[News Ticker] Grounded (Google Search) generation failed (${(groundedErr?.message || "").slice(0, 160)}), falling back to a plain (un-grounded) call...`,
+      `[News Ticker] Grounded generation failed (${(groundedErr?.message || "").slice(0, 160)}), falling back to plain generation...`,
     );
     const response = await generateContentWithRetryAndFallback({
-      contents: NEWS_TICKER_PROMPT_PLAIN,
+      contents: newsTickerPrompt(tenantId, false),
     });
     return String((response as any).text || "").trim();
   }
 }
 
 app.get("/api/dashboard/news-ticker", async (req: express.Request, res: express.Response) => {
-  const ticker = db.newsTicker || { items: [], lastGeneratedAt: null };
+  const tenantId = getRequestTenantId(req);
+  const settings = getTenantSettings(tenantId);
+  if (!settings.modules.newsTicker || !settings.modules.aiAssistant) {
+    return res.json({ items: [], disabled: true });
+  }
+  if (!db.newsTicker || typeof db.newsTicker !== "object" || !db.newsTicker.byTenant) {
+    db.newsTicker = { byTenant: {} };
+  }
+  const ticker = db.newsTicker.byTenant[tenantId] || { items: [], lastGeneratedAt: null };
   const isStale =
     !ticker.lastGeneratedAt ||
     !Array.isArray(ticker.items) ||
@@ -2322,29 +2334,31 @@ app.get("/api/dashboard/news-ticker", async (req: express.Request, res: express.
   if (!isStale) {
     return res.json({ items: ticker.items, lastGeneratedAt: ticker.lastGeneratedAt, cached: true });
   }
+  if (!getEffectiveGeminiApiKey()) {
+    return res.json({ items: [], disabled: true });
+  }
 
   try {
-    const rawText = await generateNewsTickerText();
+    const rawText = await generateNewsTickerText(tenantId);
     const items = rawText
       .split("|")
       .map((s: string) => s.trim())
       .filter(Boolean)
       .slice(0, 5);
     if (items.length === 0) {
-      throw new Error("Respons AI kosong, tidak ada teks newsticker yang dihasilkan.");
+      throw new Error("The AI provider returned no headlines.");
     }
 
-    db.newsTicker = { items, lastGeneratedAt: new Date().toISOString() };
+    const entry = { items, lastGeneratedAt: new Date().toISOString() };
+    db.newsTicker.byTenant[tenantId] = entry;
     saveDb();
-    res.json({ items, lastGeneratedAt: db.newsTicker.lastGeneratedAt, cached: false });
+    res.json({ ...entry, cached: false });
   } catch (err: any) {
     console.error("Error generating news ticker:", err);
-    // Prefer showing stale cached content over nothing when the AI call fails
-    // (e.g. no Gemini API key configured yet, or a transient outage).
     if (Array.isArray(ticker.items) && ticker.items.length > 0) {
       return res.json({ items: ticker.items, lastGeneratedAt: ticker.lastGeneratedAt, cached: true, stale: true });
     }
-    res.status(500).json({ error: err?.message || "Gagal memuat newsticker." });
+    res.status(500).json({ error: err?.message || "Failed to load the news ticker." });
   }
 });
 
@@ -2354,7 +2368,7 @@ app.get("/api/departments", async (req: express.Request, res: express.Response) 
       req.headers["x-tenant-id"] ||
       req.headers["x-organization-id"] ||
       req.query.tenantId;
-    if (!tenantId || tenantId === "org-adapundi") {
+    if (!tenantId || isLegacyDefaultAlias(tenantId)) {
       const email = await getClerkUserEmail(req);
       if (email) {
         const user: any = sqliteDb
@@ -2372,7 +2386,7 @@ app.get("/api/departments", async (req: express.Request, res: express.Response) 
         }
       }
     }
-    if (!tenantId || tenantId === "org-adapundi") {
+    if (!tenantId || isLegacyDefaultAlias(tenantId)) {
       const firstOrg: any = sqliteDb
         .prepare("SELECT id FROM organization ORDER BY createdAt ASC LIMIT 1")
         .get();
@@ -2440,104 +2454,79 @@ app.post("/api/user/log-activity", async (req: express.Request, res: express.Res
   );
   res.json({ success: true });
 });
-async function checkIsAdmin(req: express.Request, fallbackEmail?: string, fallbackName?: string) {
-  const session = await getBetterAuthSession(req);
-  const email = (
-    session?.user?.email ||
-    fallbackEmail ||
-    req.headers["x-user-email"] ||
-    req.headers["x-google-user-email"] ||
-    req.body?.adminEmail ||
-    req.query?.adminEmail ||
-    ""
-  )
-    .toLowerCase()
-    .trim();
-
-  const name =
-    session?.user?.name ||
-    fallbackName ||
-    req.headers["x-user-name"] ||
-    req.body?.adminName ||
-    req.query?.adminName ||
-    "User";
-
-  // SECURE FIX: Unauthenticated requests without email MUST NOT gain admin access
-  if (!email) {
-    return {
-      isAdmin: false,
-      adminEmail: "",
-      adminName: "",
-    };
+/**
+ * Resolve the verified e-mail behind a Google OAuth access token using
+ * Google's userinfo endpoint. Returns null when the token is invalid or the
+ * e-mail is not verified.
+ */
+async function verifyGoogleAccessTokenEmail(accessToken: unknown): Promise<string | null> {
+  if (!accessToken || typeof accessToken !== "string") return null;
+  try {
+    const response = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) return null;
+    const info: any = await response.json();
+    if (!info?.email || info.email_verified === false) return null;
+    return String(info.email).toLowerCase().trim();
+  } catch {
+    return null;
   }
-
-  // Check if user is banned in SQLite user table
+}
+/*
+ * Provider secrets never leave the server (PRD §5.1). Clients receive a
+ * masked hint; a masked value posted back means "keep the stored secret".
+ */
+const SECRET_MASK_CHAR = "•";
+function maskSecret(value: unknown): string {
+  const text = String(value ?? "");
+  if (!text) return "";
+  return `${SECRET_MASK_CHAR.repeat(8)}${text.length > 8 ? text.slice(-4) : ""}`;
+}
+function isMaskedSecret(value: unknown): boolean {
+  const text = String(value ?? "");
+  return text.includes(SECRET_MASK_CHAR) || /^\*{4,}$/.test(text);
+}
+function redactProviderConfig(config: any) {
+  const { accessToken, refreshToken, smtpPassword, geminiApiKey, ...rest } = config || {};
+  return {
+    ...rest,
+    geminiApiKey: maskSecret(geminiApiKey),
+    hasGeminiApiKey: Boolean(geminiApiKey),
+    smtpPassword: maskSecret(smtpPassword),
+    hasSmtpPassword: Boolean(smtpPassword),
+    hasGoogleSession: Boolean(accessToken || refreshToken),
+  };
+}
+/**
+ * Admin check based ONLY on the verified session identity. Earlier versions
+ * also trusted e-mail addresses supplied in headers, body or query string;
+ * the unused `_fallback*` parameters are kept for call-site compatibility.
+ */
+async function checkIsAdmin(req: express.Request, _fallbackEmail?: string, _fallbackName?: string) {
+  const session = await getBetterAuthSession(req);
+  const email = String(session?.user?.email || "").toLowerCase().trim();
+  const name = session?.user?.name || "User";
+  if (!email) {
+    return { isAdmin: false, adminEmail: "", adminName: "" };
+  }
   try {
     const userRow: any = sqliteDb
-      .prepare("SELECT id, role, banned FROM user WHERE LOWER(email) = LOWER(?)")
+      .prepare("SELECT id, name, role, banned FROM user WHERE LOWER(email) = LOWER(?)")
       .get(email);
-    if (userRow) {
-      if (userRow.banned === 1) {
-        return {
-          isAdmin: false,
-          adminEmail: email,
-          adminName: name,
-        };
-      }
-      const uRole = (userRow.role || "").toLowerCase();
-      if (["admin", "superuser", "owner", "super admin"].includes(uRole)) {
-        return {
-          isAdmin: true,
-          adminEmail: email,
-          adminName: userRow.name || name,
-        };
-      }
+    if (userRow?.banned === 1) {
+      return { isAdmin: false, adminEmail: email, adminName: name };
     }
   } catch (_) {}
-
-  // Check in db.allowedUsers
   const allowed = (db.allowedUsers || []).find(
-    (u: any) => (u.email || "").toLowerCase() === email
+    (u: any) => (u.email || "").toLowerCase() === email,
   );
-  if (allowed) {
-    if (allowed.status === "Inactive" || allowed.status === "Banned") {
-      return {
-        isAdmin: false,
-        adminEmail: email,
-        adminName: name,
-      };
-    }
-    const aRole = (allowed.role || "").toLowerCase();
-    if (["admin", "superuser", "owner", "super admin"].includes(aRole)) {
-      return {
-        isAdmin: true,
-        adminEmail: email,
-        adminName: allowed.name || name,
-      };
-    }
+  if (allowed && (allowed.status === "Inactive" || allowed.status === "Banned")) {
+    return { isAdmin: false, adminEmail: email, adminName: name };
   }
-
-  // Check session role
-  const sRole = (session?.user?.role || "").toLowerCase();
-  if (["admin", "superuser", "owner", "super admin"].includes(sRole)) {
-    return {
-      isAdmin: true,
-      adminEmail: email,
-      adminName: session?.user?.name || name,
-    };
-  }
-
-  // Primary superadmin default email
-  if (email === "adhitcl@gmail.com") {
-    return {
-      isAdmin: true,
-      adminEmail: email,
-      adminName: allowed?.name || name || "Administrator",
-    };
-  }
-
+  const actorRole = String((req as any).actor?.role || session?.user?.role || "").toLowerCase();
   return {
-    isAdmin: false,
+    isAdmin: ["admin", "superuser", "owner"].includes(actorRole),
     adminEmail: email,
     adminName: allowed?.name || name,
   };
@@ -2810,15 +2799,24 @@ app.get("/api/partners", (req: express.Request, res: express.Response) => {
   }));
   res.json(normalizedPartners);
 });
-app.post("/api/partners/parse", upload.single("file") as any, async (req: express.Request, res: express.Response) => {
-  if (!process.env.GEMINI_API_KEY) {
-    return res
-      .status(401)
-      .json({
-        error:
-          "Missing GEMINI_API_KEY. Please add it via the Settings menu in AI Studio.",
-      });
+/**
+ * AI is an optional, per-tenant capability (PRD §4.1, §5.1): it needs a
+ * configured provider key AND the tenant's `aiAssistant` module switched on.
+ */
+function ensureAiAvailable(req: express.Request, res: express.Response): boolean {
+  const settings = getTenantSettings(getRequestTenantId(req));
+  if (!settings.modules.aiAssistant) {
+    res.status(403).json({ error: "AI_DISABLED", message: "AI features are disabled for this organization." });
+    return false;
   }
+  if (!getEffectiveGeminiApiKey()) {
+    res.status(400).json({ error: "AI_NOT_CONFIGURED", message: "No AI provider key is configured. Add one under Settings > AI." });
+    return false;
+  }
+  return true;
+}
+app.post("/api/partners/parse", upload.single("file") as any, async (req: express.Request, res: express.Response) => {
+  if (!ensureAiAvailable(req, res)) return;
   try {
     const inputData = req.file?.buffer || req.body?.pdfBase64 || req.body?.fileBase64;
     const model = req.body?.model;
@@ -2826,27 +2824,30 @@ app.post("/api/partners/parse", upload.single("file") as any, async (req: expres
       return res.status(400).json({ error: "File (binary or base64) is required" });
     }
 
+    const tenantId = getRequestTenantId(req);
     const inputHash = computeInputSha256(inputData);
-    const cached = globalOcrCache.get(inputHash, "partners");
+    const cacheScope = `partners:${tenantId}`;
+    const cached = globalOcrCache.get(inputHash, cacheScope);
     if (cached) {
-      console.log(`[OCR Cache HIT] Returned cached partner parse result for hash ${inputHash.slice(0, 10)}...`);
       return res.json({
         ...cached,
         cached: true,
       });
     }
 
-    const prompt = `You are an expert legal document assistant. Extract the following information about the partner/vendor from this contract or agreement document to register them into the partner management system:
+    const ctx = aiPolicyContext(tenantId);
+    const prompt = `You are an expert legal document assistant. Extract the following information about the counterparty (partner/vendor/customer) from this contract or agreement so it can be registered in a contract management system. Our own organization is "${ctx.organizationName}" — never return our organization as the counterparty.
 
-1. Nama Legal Partner (Key: "nama_partner"): Ekstrak nama legal lengkap perusahaan rekanan / lawan transaksi (selain PT Info Tekno Siaga / Adapundi) yang tertera di bagian pembuka dokumen. Jangan singkat bentuk badan hukumnya (contoh: "PT FLIPTECH LENTERA INSPIRASI PERTIWI").
-2. Jenis Badan Hukum (Key: "badan_hukum"): Kembalikan "BHI" jika partner berbadan hukum Indonesia (misal: PT atau CV yang didirikan berdasarkan hukum Indonesia), atau "BHA" jika entitas asing.
-3. Nama PIC Partner (Key: "nama_pic"): Ekstrak nama individu atau tim/divisi representatif partner dari bagian Korespondensi/Pemberitahuan/Notices. Jika tidak ada nama individu, ambil nama tim/divisi yang tertera (contoh: "Business development team"). Kembalikan "-" jika tidak ditemukan.
-4. Email PIC Partner (Key: "email_pic"): Ekstrak alamat email resmi korespondensi partner (bagian PIC/Attention/cc partner). Jika ada lebih dari satu, ambil email utama. Kembalikan "-" jika tidak ada (contoh: "bizdev@flip.id").
-5. Telepon PIC (Key: "telepon_pic"): Ekstrak nomor telepon/fax/WhatsApp resmi kontak partner dari bagian korespondensi. Kembalikan "-" jika tidak tercantum nomor telepon pada dokumen.
-6. Alamat Partner (Key: "alamat_pic"): Ekstrak alamat lengkap domisili/kantor partner dari bagian korespondensi atau pembukaan perjanjian (contoh: "Arkadia Green Office Tower F - Lantai 3, Jl. T.B. Simatupang Kav. 88, Kebagusan, Pasar Minggu, Jakarta Selatan 12510"). Kembalikan "-" jika tidak ditemukan.
-7. Due Diligence / Internal Notes (Key: "notes"): Bertindaklah sebagai Senior Due Diligence & Vendor Risk Analyst. Rangkum profil operasional dan legalitas partner/vendor ke dalam SATU paragraf naratif komprehensif, padat, dan profesional (bahasa Indonesia) berbasis data dokumen. Paragraf wajib mencakup 4 pilar secara mengalir: (1) Core Business & Spesialisasi (model bisnis utama), (2) Media Network & Publisher Tier (partner media global utama), (3) Proprietary Tech / Platform AI (teknologi internal yang digunakan), dan (4) Strategic Function & Location Context (fungsi strategis yurisdiksi entitas). Tepat 1 paragraf, tanpa bullet points, tanpa heading, langsung mulai dengan nama entitas.
+1. "nama_partner": the counterparty's full legal name exactly as written, including its legal form (e.g. "Pte. Ltd.", "Sdn. Bhd.", "PT", "Co., Ltd."). Do not abbreviate.
+2. "country": ISO 3166-1 alpha-2 code of the counterparty's country of incorporation (e.g. "SG", "ID", "IN", "JP"). Return "" if it cannot be determined.
+3. "entity_type": the counterparty's legal form as written (e.g. "Private Limited", "Sendirian Berhad", "Perseroan Terbatas"). Return "" if unknown.
+4. "nama_pic": the counterparty's contact person or team named in the notices/correspondence clause. Return "-" if absent.
+5. "email_pic": the counterparty's main notice e-mail address. Return "-" if absent.
+6. "telepon_pic": the counterparty's phone number in international format (E.164, e.g. "+6591234567") when possible. Return "-" if absent.
+7. "alamat_pic": the counterparty's registered or correspondence address. Return "-" if absent.
+8. "notes": acting as a senior due-diligence and vendor-risk analyst, write ONE concise narrative paragraph in ${ctx.responseLanguage} describing the counterparty's core business, the services relevant to this agreement, notable technology or assets, and its jurisdictional context. No bullet points or headings; start directly with the entity name. Do not include personal identification numbers.
 
-Return the result strictly as a valid JSON object matching the requested schema.`;
+Return strictly one valid JSON object matching the schema.`;
     const { contents: ocrContents, ocrStats } = await buildCheapOcrContents(
       inputData,
       prompt,
@@ -2864,7 +2865,8 @@ Return the result strictly as a valid JSON object matching the requested schema.
           type: Type.OBJECT,
           properties: {
             nama_partner: { type: Type.STRING },
-            badan_hukum: { type: Type.STRING },
+            country: { type: Type.STRING },
+            entity_type: { type: Type.STRING },
             nama_pic: { type: Type.STRING },
             email_pic: { type: Type.STRING },
             telepon_pic: { type: Type.STRING },
@@ -2877,7 +2879,7 @@ Return the result strictly as a valid JSON object matching the requested schema.
     const parsedData = JSON.parse((response as any).text);
     const responsePayload = { success: true, data: parsedData, ocrStats };
     if (ocrStats.fileHash) {
-      globalOcrCache.set(ocrStats.fileHash, "partners", responsePayload);
+      globalOcrCache.set(ocrStats.fileHash, cacheScope, responsePayload);
     }
     res.json(responsePayload);
   } catch (error) {
@@ -2892,20 +2894,13 @@ Return the result strictly as a valid JSON object matching the requested schema.
   }
 });
 app.post("/api/partners/generate-dd-notes", async (req: express.Request, res: express.Response) => {
-  if (!process.env.GEMINI_API_KEY) {
-    return res
-      .status(401)
-      .json({
-        error:
-          "Missing GEMINI_API_KEY. Please add it via the Settings menu in AI Studio.",
-      });
-  }
+  if (!ensureAiAvailable(req, res)) return;
   try {
-    const { nama_partner, badan_hukum, tags, model, pdfBase64 } = req.body;
+    const { nama_partner, country, entity_type, tags, model, pdfBase64 } = req.body;
     if (!nama_partner) {
       return res
         .status(400)
-        .json({ error: "Nama Partner / Entitas wajib diisi." });
+        .json({ error: "Partner name is required." });
     }
     const selectedModel = getValidAiModel(model);
     const contents = [];
@@ -2919,22 +2914,17 @@ app.post("/api/partners/generate-dd-notes", async (req: express.Request, res: ex
         },
       });
     }
-    const prompt = `Bertindaklah sebagai Senior Due Diligence & Vendor Risk Analyst. 
+    const ctx = aiPolicyContext(getRequestTenantId(req));
+    const countryName = country ? getCountryPack(String(country)).name : "";
+    const prompt = `Act as a senior due-diligence and vendor-risk analyst for ${ctx.organizationName}, an organization in the ${ctx.industryName} industry operating in ${ctx.countryName}.
 
-Tugasmu adalah menganalisis dan merangkum profil operasional vendor digital/ad-tech ke dalam SATU paragraf naratif komprehensif, padat, dan profesional (bahasa Indonesia) berdasarkan data entitas resminya.
+Summarise the counterparty below in ONE comprehensive, professional paragraph written in ${ctx.responseLanguage}.
 
-Input Vendor: "${nama_partner}" ${badan_hukum ? `(Status Badan Hukum: ${badan_hukum === "BHA" ? "BHA - Badan Hukum Asing" : "BHI - Badan Hukum Indonesia"})` : ""} ${tags && tags.length > 0 ? `(Kategori Kerjasama: ${tags.join(", ")})` : ""}
+Counterparty: "${String(nama_partner).slice(0, 200)}"${countryName ? ` (incorporated in ${countryName})` : ""}${entity_type ? ` — legal form: ${String(entity_type).slice(0, 120)}` : ""}${Array.isArray(tags) && tags.length > 0 ? ` — relationship categories: ${tags.slice(0, 10).join(", ")}` : ""}
 
-Struktur paragraf wajib mencakup 4 pilar informasi berikut secara mengalir:
-1. Core Business & Spesialisasi: Model bisnis utama (misal: programmatic, cross-border UA, creative assets, ad aggregator).
-2. Media Network & Publisher Tier: Partner media global utama yang dikelola (misal: Meta, Google, TikTok, Snapchat, Kwai).
-3. Proprietary Tech / Platform AI: Teknologi/alat internal yang digunakan (misal: platform bidding ML/AI, sistem prediksi CTR).
-4. Strategic Function & Location Context: Fungsi strategis entitas/yurisdiksi tempatnya didaftarkan (misal: tax incentive hub, transaksi lintas batas, remitansi).
+The paragraph must flow through: (1) core business and specialisation, (2) the products or services relevant to this relationship, (3) notable technology, assets or certifications, and (4) jurisdictional and risk context relevant to ${ctx.industryName} (for example: ${ctx.reviewFocus.slice(0, 3).join(", ")}).
 
-Ketentuan Output:
-- Format: Tepat 1 paragraf, tanpa bullet points, tanpa heading.
-- Gaya bahasa: Formal, teknis periklanan digital (pertahankan istilah industri relevan dalam cetak miring/tanda kurung), to the point.
-- Hindari kalimat pembuka atau penutup basa-basi (langsung mulai dengan nama subjek/entitas).`;
+Output rules: exactly one paragraph, no bullet points or headings, no opening or closing pleasantries, start with the entity name, and never invent registration or identification numbers.`;
     contents.push({ text: prompt });
     const response = await generateContentWithRetryAndFallback({
       model: selectedModel,
@@ -2956,7 +2946,9 @@ app.post("/api/partners", async (req: express.Request, res: express.Response) =>
   const {
     nama_partner,
     codename,
-    badan_hukum,
+    country,
+    entity_type,
+    identifiers,
     jenis_partner,
     pic_partner,
     nama_pic,
@@ -2974,12 +2966,7 @@ app.post("/api/partners", async (req: express.Request, res: express.Response) =>
   if (!nama_partner) {
     return res.status(400).json({ error: "Nama Partner wajib diisi." });
   }
-  const targetOrgId =
-    req.headers["x-tenant-id"] ||
-    req.headers["x-organization-id"] ||
-    req.body.organizationId ||
-    db.activeTenantId ||
-    "org-adapundi";
+  const targetOrgId = getRequestTenantId(req);
   const token = await resolveActiveGoogleToken(
     req.headers["x-google-access-token"] ||
       req.body.accessToken ||
@@ -3015,7 +3002,8 @@ app.post("/api/partners", async (req: express.Request, res: express.Response) =>
       );
     }
   }
-  const defaultDD = STANDARD_DD_DOCUMENTS.map((d) => ({ ...d }));
+  const partnerCountry = sanitizeCountryCode(country);
+  const defaultDD = normalizePartnerDocuments({ organizationId: targetOrgId, country: partnerCountry, daftar_dokumen_dd: [] });
   const computedPicPartner =
     pic_partner ||
     (nama_pic
@@ -3026,7 +3014,9 @@ app.post("/api/partners", async (req: express.Request, res: express.Response) =>
     organizationId: targetOrgId,
     nama_partner,
     codename: codename || "",
-    badan_hukum: badan_hukum === "BHA" ? "BHA" : "BHI",
+    country: partnerCountry,
+    entity_type: String(entity_type || "").slice(0, 120),
+    identifiers: sanitizeIdentifiers(identifiers),
     jenis_partner: jenis_partner || "Vendor",
     pic_partner: computedPicPartner,
     nama_pic: nama_pic || "",
@@ -3037,7 +3027,7 @@ app.post("/api/partners", async (req: express.Request, res: express.Response) =>
       kontak_pic ||
       (email_pic && telepon_pic ? `${email_pic} / ${telepon_pic}` : ""),
     pic_internal: pic_internal || "",
-    status_dd: "Belum Lengkap",
+    status_dd: computeDueDiligenceStatus(defaultDD),
     link_folder_dd: driveFolderLink,
     daftar_dokumen_dd: defaultDD,
     catatan: catatan || "",
@@ -3053,7 +3043,7 @@ app.post("/api/partners", async (req: express.Request, res: express.Response) =>
     userRole || "Business Owner",
     "CREATE",
     "PARTNER",
-    `Menambahkan Partner baru: ${nama_partner} (${newPartner.badan_hukum})`,
+    `Menambahkan Partner baru: ${nama_partner}${partnerCountry ? ` (${partnerCountry})` : ""}`,
     req,
   );
   await triggerAutoPushToGoogleSheet(req, { tenantId: targetOrgId });
@@ -3064,7 +3054,9 @@ app.put("/api/partners/:id", async (req: express.Request, res: express.Response)
   const {
     nama_partner,
     codename,
-    badan_hukum,
+    country,
+    entity_type,
+    identifiers,
     jenis_partner,
     pic_partner,
     nama_pic,
@@ -3087,35 +3079,20 @@ app.put("/api/partners/:id", async (req: express.Request, res: express.Response)
   const existing = db.partners[partnerIndex];
   const tenantDenial = assertTenantWriteAccess(req, existing.organizationId);
   if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
-  let status_dd = existing.status_dd;
-  if (daftar_dokumen_dd && Array.isArray(daftar_dokumen_dd)) {
-    const wajibItems = daftar_dokumen_dd.filter((d) => d.wajib);
-    const adaWajib = wajibItems.filter((d) => d.status === "Ada");
-    const totalItems = daftar_dokumen_dd.length;
-    const adaTotal = daftar_dokumen_dd.filter((d) => d.status === "Ada").length;
-    const adaKadaluarsa = daftar_dokumen_dd.some(
-      (d) => d.status === "Kadaluarsa",
-    );
-    if (adaKadaluarsa) {
-      status_dd = "Kadaluarsa";
-    } else if (wajibItems.length > 0) {
-      status_dd =
-        adaWajib.length === wajibItems.length ? "Lengkap" : "Belum Lengkap";
-    } else {
-      status_dd =
-        adaTotal === totalItems && totalItems > 0 ? "Lengkap" : "Belum Lengkap";
-    }
-  }
+  const nextCountry = country !== void 0 ? sanitizeCountryCode(country) : existing.country || "";
+  const nextDocuments = normalizePartnerDocuments({
+    organizationId: existing.organizationId,
+    country: nextCountry,
+    daftar_dokumen_dd: Array.isArray(daftar_dokumen_dd) ? daftar_dokumen_dd : existing.daftar_dokumen_dd,
+  });
+  const status_dd = computeDueDiligenceStatus(nextDocuments);
   const updatedPartner = {
     ...existing,
     nama_partner: nama_partner || existing.nama_partner,
     codename: codename !== void 0 ? codename : existing.codename,
-    badan_hukum:
-      badan_hukum !== void 0
-        ? badan_hukum === "BHA"
-          ? "BHA"
-          : "BHI"
-        : existing.badan_hukum,
+    country: nextCountry,
+    entity_type: entity_type !== void 0 ? String(entity_type).slice(0, 120) : existing.entity_type || "",
+    identifiers: identifiers !== void 0 ? sanitizeIdentifiers(identifiers) : existing.identifiers || [],
     jenis_partner: jenis_partner || existing.jenis_partner || "Vendor",
     pic_partner: pic_partner !== void 0 ? pic_partner : existing.pic_partner,
     nama_pic: nama_pic !== void 0 ? nama_pic : existing.nama_pic,
@@ -3130,10 +3107,10 @@ app.put("/api/partners/:id", async (req: express.Request, res: express.Response)
       tags !== void 0
         ? sanitizePartnerTags(tags)
         : sanitizePartnerTags(existing.tags),
-    daftar_dokumen_dd: daftar_dokumen_dd || existing.daftar_dokumen_dd,
+    daftar_dokumen_dd: nextDocuments,
     status_dd,
     tanggal_dd_diverifikasi:
-      status_dd === "Lengkap"
+      status_dd === "Complete" && existing.status_dd !== "Complete"
         ? new Date().toISOString().split("T")[0]
         : existing.tanggal_dd_diverifikasi,
     updated_at: new Date().toISOString(),
@@ -3258,12 +3235,7 @@ app.post("/api/partner-evaluations", async (req: express.Request, res: express.R
           "Harap lengkapi semua bidang isian formulir evaluasi yang wajib.",
       });
   }
-  const targetOrgId =
-    req.headers["x-tenant-id"] ||
-    req.headers["x-organization-id"] ||
-    req.body.organizationId ||
-    db.activeTenantId ||
-    "org-adapundi";
+  const targetOrgId = getRequestTenantId(req);
   const calculated_score = computeEvaluationScore(
     obligation_target,
     incident_frequency,
@@ -3386,54 +3358,24 @@ app.delete("/api/partner-evaluations/:id", async (req: express.Request, res: exp
 });
 app.get("/api/exchange-rates", async (req: express.Request, res: express.Response) => {
   try {
-    const token = (
-      req.headers["x-google-access-token"] ||
-      db.googleConfig.accessToken ||
-      ""
-    ).toString();
-    const spreadsheetId = db.googleConfig.spreadsheetId;
-    if (!spreadsheetId) {
-      return res.json({ USD: 1 });
-    }
     const currencies = Array.from(
       new Set([
-        ...(db.spendings || []).map((s) => s.currency || "IDR"),
-        ...(db.contracts || []).map((c) => c.currency || "IDR"),
-        ...(db.ios || []).map((i) => i.currency || "IDR"),
-      ]),
+        ...(db.spendings || []).map((s) => s.currency),
+        ...(db.contracts || []).map((c) => c.currency),
+        ...(db.ios || []).map((i) => i.currency),
+      ].filter(Boolean).map((c) => normalizeCurrencyCode(c))),
     );
-    const rates = await getExchangeRates(spreadsheetId, token, currencies);
-    res.json(rates);
+    const rates = await getExchangeRates("", "", currencies);
+    res.json({ USD: 1, ...rates });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 app.get("/api/exchange-rate-historical", async (req: express.Request, res: express.Response) => {
   try {
-    const currency = String(req.query.currency || "IDR").toUpperCase();
+    const currency = normalizeCurrencyCode(req.query.currency, "USD");
     const date = String(req.query.date || "");
-    if (currency === "USD") {
-      return res.json({ currency: "USD", date, rate: 1, isFallback: false });
-    }
-    const token = (
-      req.headers["x-google-access-token"] ||
-      db.googleConfig.accessToken ||
-      ""
-    ).toString();
-    const spreadsheetId = db.googleConfig.spreadsheetId;
-    let rate = currency === "IDR" ? 62e-6 : 1;
-    let isFallback = true;
-    try {
-      rate = await getHistoricalExchangeRate(
-        spreadsheetId,
-        token,
-        currency,
-        date,
-      );
-      isFallback = false;
-    } catch (e) {
-      console.error("Error fetching historical exchange rate:", e);
-    }
+    const { rate, isFallback } = await getUsdRate(currency);
     res.json({ currency, date, rate, isFallback });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -3450,11 +3392,11 @@ app.get("/api/partner-spendings", (req: express.Request, res: express.Response) 
   const list = spendingsList.map((s) => {
     if (s.total_amount_usd === void 0 || s.total_amount_usd === null) {
       const amt = Number(s.total_amount) || 0;
-      const cur = s.currency || "IDR";
+      const cur = normalizeCurrencyCode(s.currency, tenantDefaultCurrency(s.organizationId));
       const usdVal =
         cur === "USD"
           ? amt
-          : Math.round(amt * (cur === "IDR" ? 62e-6 : 1) * 100) / 100;
+          : convertToUsdWithFallback(amt, cur);
       return { ...s, total_amount_usd: usdVal };
     }
     return s;
@@ -3462,14 +3404,7 @@ app.get("/api/partner-spendings", (req: express.Request, res: express.Response) 
   res.json(list);
 });
 app.post("/api/spendings/parse", upload.single("file") as any, async (req: express.Request, res: express.Response) => {
-  if (!process.env.GEMINI_API_KEY) {
-    return res
-      .status(401)
-      .json({
-        error:
-          "Missing GEMINI_API_KEY. Please add it via the Settings menu in AI Studio.",
-      });
-  }
+  if (!ensureAiAvailable(req, res)) return;
   try {
     const inputData = req.file?.buffer || req.body?.pdfBase64 || req.body?.fileBase64;
     const model = req.body?.model;
@@ -3477,29 +3412,31 @@ app.post("/api/spendings/parse", upload.single("file") as any, async (req: expre
       return res.status(400).json({ error: "File (binary or base64) is required" });
     }
 
+    const tenantId = getRequestTenantId(req);
     const inputHash = computeInputSha256(inputData);
-    const cached = globalOcrCache.get(inputHash, "spendings");
+    const cacheScope = `spendings:${tenantId}`;
+    const cached = globalOcrCache.get(inputHash, cacheScope);
     if (cached) {
-      console.log(`[OCR Cache HIT] Returned cached spending parse result for hash ${inputHash.slice(0, 10)}...`);
       return res.json({
         ...cached,
         cached: true,
       });
     }
 
-    const prompt = `You are an expert OCR and data extraction assistant processing a B2B business invoice or spending document. Extract the following information accurately:
+    const ctx = aiPolicyContext(tenantId);
+    const prompt = `You are an expert OCR and data-extraction assistant processing a B2B invoice or billing document received by ${ctx.organizationName}. Extract:
 
-1. Nomor Invoice (Key: "invoice_number"): Ekstrak nomor invoice/tagihan resmi yang tertera pada bagian "INVOICE NO.". Kembalikan nilai string persis sesuai yang tertulis pada dokumen (contoh: "ADAPUNDI-2604-1").
-2. Tanggal Invoice (Key: "invoice_date"): Ekstrak tanggal penerbitan invoice ("ISSUE DATE") dan konversikan formatnya menjadi "DD/MM/YYYY" (contoh: 2026/4/13 menjadi "13/04/2026").
-3. Bulan Tagihan (Key: "invoice_month"): Tentukan periode bulan penagihan berdasarkan tanggal penerbitan invoice (ISSUE DATE) dalam format "[Nama Bulan dalam Bahasa Indonesia] [YYYY]" (contoh: "April 2026", "Mei 2026", "Agustus 2026").
-4. Deskripsi Tagihan (Key: "invoice_description"): Ekstrak seluruh baris rincian item jasa/barang dari kolom "Description" pada tabel tagihan. Gabungkan setiap baris dengan pemisah baris baru (newline / "\\n") secara persis sesuai teks pada dokumen (contoh: "2026.3 Meta5\\n2026.3 Tik Tok3\\n2025 Q4 TikTok Rebate").
-5. Mata Uang (Key: "currency"): Ekstrak kode 3 huruf mata uang tagihan (misal: "USD", "IDR", "SGD", "EUR") yang tertera pada header kolom tabel ("Amount in USD") atau simbol mata uang.
-6. Total Nilai Tagihan (Key: "total_amount"): Ekstrak nilai total akhir tagihan ("TOTAL") dalam bentuk angka murni (number / float) tanpa menyertakan simbol mata uang ($) maupun teks tambahan (contoh: 399259.38).
-7. Nama Bank Pembayaran (Key: "bank_name"): Ekstrak nama bank penerima pembayaran yang tertera pada baris "Bank Name:". Kembalikan hanya nama bank (contoh: "HSBC", "BCA", "Bank Mandiri").
-8. Nomor Rekening (Key: "account_number"): Ekstrak nomor rekening bank penerima pembayaran yang tertera pada baris "Account number:". Pertahankan tanda hubung (-) persis sesuai dokumen (contoh: "809-600703-838").
-9. Nama Pemilik Rekening (Key: "account_holder"): Ekstrak nama lengkap pemilik rekening resmi (beneficiary) yang tertera pada baris "Account Name:". Jangan menyingkat atau mengubah teks (contoh: "BLUEFOCUS INTERNATIONAL LIMITED").
+1. "invoice_number": the official invoice number exactly as printed.
+2. "invoice_date": the issue date, converted to ISO 8601 "YYYY-MM-DD".
+3. "invoice_month": the billing period month as "YYYY-MM" (use the issue date's month when no separate period is printed).
+4. "invoice_description": every line-item description from the invoice table, joined with newline characters ("\n"), verbatim.
+5. "currency": the ISO 4217 three-letter currency code of the invoice total (e.g. "USD", "SGD", "INR", "JPY"). If only a symbol is shown, infer the code from the issuer's country; default to "${ctx.defaultCurrency}" when still unclear.
+6. "total_amount": the final invoice total as a plain number, without symbols or thousands separators.
+7. "bank_name": the beneficiary bank name only.
+8. "account_number": the beneficiary account number or IBAN exactly as printed, keeping separators.
+9. "account_holder": the beneficiary account name exactly as printed.
 
-Return the result strictly as a valid JSON object matching the requested schema. If any string field is not found, return empty string "".`;
+Return strictly one valid JSON object matching the schema. Use an empty string "" for any text field that is not present.`;
     const { contents: ocrContents, ocrStats } = await buildCheapOcrContents(
       inputData,
       prompt,
@@ -3535,7 +3472,7 @@ Return the result strictly as a valid JSON object matching the requested schema.
     }
     const responsePayload = { success: true, data: parsedData, ocrStats };
     if (ocrStats.fileHash) {
-      globalOcrCache.set(ocrStats.fileHash, "spendings", responsePayload);
+      globalOcrCache.set(ocrStats.fileHash, cacheScope, responsePayload);
     }
     res.json(responsePayload);
   } catch (error) {
@@ -3620,12 +3557,7 @@ app.post("/api/partner-spendings", async (req: express.Request, res: express.Res
         error: "Vendor Name, Invoice Number, and Total Amount are required.",
       });
   }
-  const targetOrgId =
-    req.headers["x-tenant-id"] ||
-    req.headers["x-organization-id"] ||
-    req.body.organizationId ||
-    db.activeTenantId ||
-    "org-adapundi";
+  const targetOrgId = getRequestTenantId(req);
   const targetTenant = (db.tenants || DEFAULT_TENANTS).find(
     (t) => t.id === targetOrgId,
   );
@@ -3646,12 +3578,12 @@ app.post("/api/partner-spendings", async (req: express.Request, res: express.Res
     total_amount_usd === null ||
     isNaN(Number(total_amount_usd))
   ) {
-    const cur = currency || "IDR";
+    const cur = normalizeCurrencyCode(currency, tenantDefaultCurrency(targetOrgId));
     const amt = Number(total_amount) || 0;
     if (cur === "USD") {
       total_amount_usd = amt;
     } else {
-      let rate = cur === "IDR" ? 62e-6 : 1;
+      let rate = getDefaultUsdRate(cur);
       try {
         const sheetId =
           targetTenant?.spreadsheetId || db.googleConfig?.spreadsheetId;
@@ -3807,7 +3739,7 @@ app.post("/api/partner-spendings", async (req: express.Request, res: express.Res
     invoice_date: invoice_date || new Date().toISOString().split("T")[0],
     invoice_month: monthsArray,
     invoice_description: invoice_description || "",
-    currency: currency || "IDR",
+    currency: normalizeCurrencyCode(currency, tenantDefaultCurrency(targetOrgId)),
     total_amount: Number(total_amount) || 0,
     total_amount_usd,
     bank_name: bank_name || "",
@@ -3830,7 +3762,7 @@ app.post("/api/partner-spendings", async (req: express.Request, res: express.Res
     userRole || "Finance",
     "CREATE",
     "PARTNER",
-    `Menambahkan Catatan Partner Spending untuk '${vendor_name}' (Invoice #${invoice_number}) senilai ${currency || "IDR"} ${Number(total_amount).toLocaleString("id-ID")}`,
+    `Menambahkan Catatan Partner Spending untuk '${vendor_name}' (Invoice #${invoice_number}) senilai ${formatAmountForTenant(total_amount, normalizeCurrencyCode(currency, tenantDefaultCurrency(targetOrgId)), targetOrgId)}`,
     req,
   );
   await triggerAutoPushToGoogleSheet(req, { tenantId: targetOrgId });
@@ -3855,7 +3787,7 @@ app.put("/api/partner-spendings/:id", async (req: express.Request, res: express.
     updates.total_amount_usd === void 0 ||
     updates.total_amount_usd === null
   ) {
-    const cur = updates.currency || existing.currency || "IDR";
+    const cur = normalizeCurrencyCode(updates.currency || existing.currency, tenantDefaultCurrency(existing.organizationId));
     const amt =
       Number(
         updates.total_amount !== void 0
@@ -3866,7 +3798,7 @@ app.put("/api/partner-spendings/:id", async (req: express.Request, res: express.
     if (cur === "USD") {
       updates.total_amount_usd = amt;
     } else {
-      let rate = cur === "IDR" ? 62e-6 : 1;
+      let rate = getDefaultUsdRate(cur);
       try {
         const token2 = await resolveActiveGoogleToken(
           req.headers["x-google-access-token"],
@@ -4080,6 +4012,8 @@ app.post("/api/partners/:id/upload-dd", async (req: express.Request, res: expres
   if (!partner) {
     return res.status(404).json({ error: "Partner tidak ditemukan." });
   }
+  const uploadDenial = assertTenantWriteAccess(req, partner.organizationId);
+  if (uploadDenial) return res.status(uploadDenial.status).json(uploadDenial.body);
   const token = await resolveActiveGoogleToken(
     req.headers["x-google-access-token"] || req.body.accessToken,
   );
@@ -4206,9 +4140,11 @@ app.post("/api/partners/:id/upload-dd", async (req: express.Request, res: expres
             ...existingFiles.filter((f) => f.linkDrive !== driveLink),
           ]
         : existingFiles;
+      const expiry = tanggalKadaluarsa || doc.tanggalKadaluarsa;
+      const expiryDays = expiry ? daysUntilForTenant(partner.organizationId, expiry) : null;
       return {
         ...doc,
-        status: updatedFiles.length > 0 ? "Ada" : "Belum",
+        status: updatedFiles.length === 0 ? "Missing" : expiryDays !== null && expiryDays < 0 ? "Expired" : "Available",
         nomorDokumen: nomorDokumen || doc.nomorDokumen || "",
         tanggalKadaluarsa: tanggalKadaluarsa || doc.tanggalKadaluarsa,
         linkDrive: driveLink || doc.linkDrive || "",
@@ -4218,13 +4154,10 @@ app.post("/api/partners/:id/upload-dd", async (req: express.Request, res: expres
     }
     return doc;
   });
-  const wajibItems = partner.daftar_dokumen_dd.filter((d) => d.wajib);
-  const adaWajib = wajibItems.filter((d) => d.status === "Ada");
-  if (wajibItems.length > 0 && adaWajib.length === wajibItems.length) {
-    partner.status_dd = "Lengkap";
+  const previousDdStatus = partner.status_dd;
+  partner.status_dd = computeDueDiligenceStatus(partner.daftar_dokumen_dd);
+  if (partner.status_dd === "Complete" && previousDdStatus !== "Complete") {
     partner.tanggal_dd_diverifikasi = new Date().toISOString().split("T")[0];
-  } else {
-    partner.status_dd = "Belum Lengkap";
   }
   partner.updated_at = new Date().toISOString();
   saveDb();
@@ -4247,6 +4180,8 @@ app.delete("/api/partners/:id/dd-file", async (req: express.Request, res: expres
   if (!partner) {
     return res.status(404).json({ error: "Partner tidak ditemukan." });
   }
+  const deleteDenial = assertTenantWriteAccess(req, partner.organizationId);
+  if (deleteDenial) return res.status(deleteDenial.status).json(deleteDenial.body);
   partner.daftar_dokumen_dd = partner.daftar_dokumen_dd.map((doc) => {
     if (doc.nama === docName) {
       const remainingFiles = (doc.files || []).filter((f) => f.id !== fileId);
@@ -4254,20 +4189,17 @@ app.delete("/api/partners/:id/dd-file", async (req: express.Request, res: expres
       return {
         ...doc,
         files: remainingFiles,
-        status: hasFiles ? "Ada" : "Belum",
+        status: hasFiles ? "Available" : "Missing",
         linkDrive: hasFiles ? remainingFiles[0].linkDrive : void 0,
         uploadedAt: hasFiles ? remainingFiles[0].uploadedAt : void 0,
       };
     }
     return doc;
   });
-  const wajibItems = partner.daftar_dokumen_dd.filter((d) => d.wajib);
-  const adaWajib = wajibItems.filter((d) => d.status === "Ada");
-  if (wajibItems.length > 0 && adaWajib.length === wajibItems.length) {
-    partner.status_dd = "Lengkap";
+  const previousDdStatus = partner.status_dd;
+  partner.status_dd = computeDueDiligenceStatus(partner.daftar_dokumen_dd);
+  if (partner.status_dd === "Complete" && previousDdStatus !== "Complete") {
     partner.tanggal_dd_diverifikasi = new Date().toISOString().split("T")[0];
-  } else {
-    partner.status_dd = "Belum Lengkap";
   }
   partner.updated_at = new Date().toISOString();
   saveDb();
@@ -4297,12 +4229,7 @@ app.post("/api/contracts/export-google-docs", async (req: express.Request, res: 
       req.body.accessToken ||
       db.googleConfig?.accessToken
     );
-    const targetOrgId =
-      req.headers["x-tenant-id"] ||
-      req.headers["x-organization-id"] ||
-      req.body.organizationId ||
-      db.activeTenantId ||
-      "org-adapundi";
+    const targetOrgId = getRequestTenantId(req);
 
     let targetFolderId = db.googleConfig?.driveFolderId;
     if (partnerName) {
@@ -4384,7 +4311,7 @@ app.get("/api/init-data", (req: express.Request, res: express.Response) => {
     ios,
     partners,
     notifications,
-    googleConfig: db.googleConfig,
+    googleConfig: redactProviderConfig(db.googleConfig),
     evaluations,
     spendings,
     tenants: db.tenants || [],
@@ -4403,14 +4330,14 @@ app.get("/api/contracts", (req: express.Request, res: express.Response) => {
     : db.contracts || [];
   const result = contractsList.map((c) => {
     const p = db.partners.find((part) => part.partner_id === c.partner_id);
-    const cur = c.currency || "IDR";
+    const cur = normalizeCurrencyCode(c.currency, tenantDefaultCurrency(c.organizationId));
     const amt = Number(c.nilai_kontrak) || 0;
     const usdVal =
       c.nilai_kontrak_usd !== void 0 && c.nilai_kontrak_usd !== null
         ? c.nilai_kontrak_usd
         : cur === "USD"
           ? amt
-          : Math.round(amt * (cur === "IDR" ? 62e-6 : 1) * 100) / 100;
+          : convertToUsdWithFallback(amt, cur);
     return {
       ...c,
       currency: cur,
@@ -4421,14 +4348,7 @@ app.get("/api/contracts", (req: express.Request, res: express.Response) => {
   res.json(result);
 });
 app.post("/api/contracts/parse", upload.single("file") as any, async (req: express.Request, res: express.Response) => {
-  if (!getEffectiveGeminiApiKey()) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Missing GEMINI_API_KEY. Silakan masukkan Gemini API Key di menu Pengaturan (Settings) > Model AI & Parser.",
-      });
-  }
+  if (!ensureAiAvailable(req, res)) return;
   try {
     const inputData = req.file?.buffer || req.body?.pdfBase64 || req.body?.fileBase64;
     const model = req.body?.model;
@@ -4436,110 +4356,54 @@ app.post("/api/contracts/parse", upload.single("file") as any, async (req: expre
       return res.status(400).json({ error: "File (binary or base64) is required" });
     }
 
+    const tenantId = getRequestTenantId(req);
     const inputHash = computeInputSha256(inputData);
-    const cached = globalOcrCache.get(inputHash, "contracts");
+    const cacheScope = `contracts:${tenantId}`;
+    const cached = globalOcrCache.get(inputHash, cacheScope);
     if (cached) {
-      console.log(`[OCR Cache HIT] Returned cached contract parse result for hash ${inputHash.slice(0, 10)}...`);
       return res.json({
         ...cached,
         cached: true,
       });
     }
 
+    const ctx = aiPolicyContext(tenantId);
     const startTime = Date.now();
-    const prompt = `You are an expert legal contract analyst specializing in Indonesian and International corporate agreements, Master Service Agreements (PKS/MSA), and Addendums for PT Info Tekno Siaga (ITS / Adapundi).
-Extract the following information from this contract document to fill out the contract registration form with maximum legal precision:
+    const prompt = `You are an expert legal contract analyst. Our organization is "${ctx.organizationName}" (${ctx.industryName}, primary jurisdiction: ${ctx.countryName}). Extract the following from this contract so it can be registered in our contract repository. The contract may be written in any language and governed by any jurisdiction.
 
-1. Jenis Dokumen (Key: "jenis_dokumen"): Tentukan apakah dokumen ini adalah "Agreement Addendum" (jika merupakan addendum/amandemen/perubahan/perpanjangan) atau "Master Agreement" (perjanjian induk/kerjasama standar).
-2. Judul Kontrak (Key: "judul_kontrak"): Ekstrak judul lengkap resmi perjanjian (contoh: "Addendum of Advertising Agreement" atau "Perjanjian Kerjasama Periklanan").
-3. Nama Partner / Vendor (Key: "nama_partner"): Ekstrak nama lengkap entitas partner/vendor pihak kedua (selain Adapundi / PT Info Tekno Siaga), contoh: "Hainan AdTiger Information Technology Co., Limited".
-4. Nomor Kontrak (Key: "nomor_kontrak"): Ekstrak nomor registrasi resmi kontrak dari PT Info Tekno Siaga (ITS / Adapundi).
-   === ATURAN EKSTRAKSI NOMOR KONTRAK ITS / ADAPUNDI ===
-   Nomor kontrak ITS/Adapundi umumnya memiliki format baku:
-   - Format PKS / Perjanjian Induk: "xx/PKS-ITS/xx/xxxx" atau "xx/PKS-ITS-[DIVISI]/xx/xxxx" (contoh: "01/PKS-ITS/XI/2024", "52/PKS-ITS/VII/2025", "24A/PKS-ITS/X/2022")
-   - Format Addendum / Amandemen: "xx/ADD-ITS/xx/xxxx" atau "xx/ADD-ITS-[DIVISI]/xx/xxxx" (contoh: "01/ADD-ITS/XI/2024", "01A/ADD-ITS/I/2023", "02/ADD-ITS/XI/2024")
-   PENTING: Di dalam dokumen sering terdapat 2 (dua) nomor kontrak yang berbeda (satu nomor dari pihak Adapundi/ITS dan satu nomor dari pihak Vendor/Partner). Anda WAJIB memprioritaskan dan memilih nomor kontrak resmi dari pihak ITS/Adapundi yang memuat unsur "PKS-ITS", "ADD-ITS", atau "ITS".
-5. Nomor Kontrak Induk (Key: "nomor_kontrak_induk"): Jika dokumen ini adalah Addendum/Amandemen, ekstrak nomor perjanjian induk (Master Agreement) ITS yang diubah (contoh: "24A/PKS-ITS/X/2022"). Jika bukan addendum, isi dengan "".
-6. Tanggal Mulai (Key: "tanggal_mulai"): Ekstrak tanggal efektif awal berlakunya perjanjian atau tanggal penandatanganan dokumen dalam format DD/MM/YYYY (contoh: "04/11/2024").
-7. Tanggal Berakhir (Key: "tanggal_berakhir"): Ekstrak atau hitung tanggal berakhirnya perjanjian dalam format DD/MM/YYYY dengan PRESISI TINGGI.
-   === ATURAN PRESISI PENETAPAN TANGGAL BERAKHIR PERJANJIAN ===
-   a. KASUS A (Tanggal Akhir Tertulis Eksplisit): Jika dokumen secara tertulis menyebutkan tanggal berakhir secara spesifik tanpa perpanjangan otomatis tahun berikutnya, gunakan tanggal tersebut.
-      - CONTOH: Tanggal awal adalah 4 November 2024 (04/11/2024), tertulis berakhir pada 3 November 2026 -> input end date: "03/11/2026".
-   b. KASUS B (Durasi Relatif dari Awal Perjanjian): Jika dokumen menyebutkan durasi masa berlaku (misal: "berlaku untuk 1 (satu) tahun terhitung sejak tanggal mulai"), rumusnya adalah:
-      Tanggal Berakhir = (Tanggal Mulai + Jangka Waktu Periode) - 1 Hari.
-      - CONTOH: Tanggal awal adalah 4 November 2024 (04/11/2024) dan berlaku 1 tahun setelah awal perjanjian -> input end date: "03/11/2025".
-      - CONTOH: Tanggal awal adalah 04/11/2024 dan berlaku 2 tahun -> input end date: "03/11/2026".
-      - CONTOH: Tanggal awal adalah 04/11/2024 dan berlaku 6 bulan -> input end date: "03/05/2025".
-   c. KASUS C (Berakhir pada Tanggal Tertentu + Perpanjangan Otomatis 1 Tahun): Jika dokumen tertulis berakhir pada tanggal tertentu dan berlaku perpanjangan otomatis 1 tahun berikutnya:
-      - CONTOH: Tanggal awal 04/11/2024, tertulis berakhir pada 3 November 2026 dan berlaku perpanjangan otomatis 1 tahun berikutnya -> input end date: "03/11/2027", dan auto_renewal WAJIB true.
-   d. KASUS D (Perpanjangan Otomatis Sampai Pengakhiran dari Salah Satu Pihak): Jika dokumen menyatakan diperpanjang otomatis secara terus-menerus sampai ada pengakhiran dari salah satu pihak (tacit renewal / until terminated by either party):
-      - CONTOH: Tanggal awal 04/11/2024 dan diperpanjang otomatis sampai pengakhiran dari salah satu pihak -> input end date: "03/11/9999" (yaitu hari sebelum tanggal mulai pada tahun 9999), dan auto_renewal WAJIB true.
-   e. Jika dokumen berupa Addendum Perpanjangan Waktu, hitung tanggal akhir baru dari tanggal akhir periode sebelumnya.
-8. Klausul Jangka Waktu (Key: "klausul_jangka_waktu"): Kutip kalimat lengkap dari dokumen terkait pasal jangka waktu, periode masa berlaku, dan perpanjangan perjanjian (contoh: "Perjanjian ini berlaku untuk jangka waktu 1 (satu) tahun terhitung sejak tanggal 04 November 2024 dan akan otomatis diperpanjang...").
-9. Durasi Perjanjian (Key: "durasi_perjanjian"): Ekstrak teks durasi masa berlaku perjanjian (contoh: "1 tahun", "6 bulan", "2 tahun", "3 bulan", "Sampai Pengakhiran").
-10. Nilai Kontrak (Key: "nilai_kontrak"): Ekstrak nominal total komitmen kontrak jika disebutkan angka pasti (contoh: 50000000). Jika berbasis komisi berjalan/tarif variabel atau tidak tercantum angka pasti, kembalikan 0.
-11. Mata Uang (Key: "currency"): "IDR" atau "USD".
-12. Auto Renewal (Key: "auto_renewal"): Boolean true jika terdapat klausul perpanjangan otomatis tahunan/berkala atau berlaku sampai pengakhiran oleh salah satu pihak, atau false jika tidak ada.
-13. Notice Period Hari (Key: "notice_period_hari"): Ekstrak batas waktu hari pemberitahuan awal untuk pengakhiran/perpanjangan (contoh: 30 atau 14). Default 30 jika tidak disebutkan spesifik.
-14. Ringkasan Perubahan (Key: "ringkasan_perubahan"): Jika dokumen ini Addendum, buat ringkasan jelas pasal mana saja yang diubah dan isi perubahannya.
-15. Field Yang Berubah (Key: "field_yang_berubah"): Array of string elemen/field yang diubah jika Addendum (pilih di antara: "Nilai Kontrak / IO", "Jangka Waktu Periode", "Ketentuan Komersial / Pembayaran", "Scope of Work / Deliverables", "Rekening Bank / Perpajakan", "Lainnya").
-16. Internal Notes (Key: "internal_notes"):
-Anda adalah seorang Ahli Hukum dan Legal Analyst senior. Tugas Anda adalah membaca dan menganalisis dokumen perjanjian/kontrak yang diberikan, lalu membuat ringkasan terstruktur dalam format Markdown.
+1. "jenis_dokumen": "Agreement Addendum" if this is an amendment, addendum, variation or extension; otherwise "Master Agreement".
+2. "judul_kontrak": the full official title of the agreement.
+3. "nama_partner": the full legal name of the counterparty — the party that is NOT ${ctx.organizationName}.
+4. "nomor_kontrak": the contract reference number issued by ${ctx.organizationName}. When the document carries two reference numbers (ours and the counterparty's), prefer the one issued by ${ctx.organizationName}; if ours cannot be identified, return the first reference number shown.
+5. "nomor_kontrak_induk": for an addendum, the reference number of the master agreement it amends; otherwise "".
+6. "tanggal_mulai": the effective (or signing) date as ISO 8601 "YYYY-MM-DD".
+7. "tanggal_berakhir": the expiry date as "YYYY-MM-DD", computed precisely:
+   a. An explicit end date without automatic renewal: use it as written.
+   b. A relative term ("valid for 1 year from the start date"): end date = start date + term − 1 day (e.g. start 2024-11-04, 1 year → 2025-11-03; 6 months → 2025-05-03).
+   c. A fixed end date plus automatic renewal for another period: add one renewal period to the written end date and set auto_renewal to true.
+   d. Evergreen / renews until terminated by either party: return the day before the start date in year 9999 (start 2024-11-04 → "9999-11-03") and set auto_renewal to true.
+   e. An extension addendum: compute the new end date from the previous term's end date.
+8. "klausul_jangka_waktu": quote verbatim the term/renewal clause.
+9. "durasi_perjanjian": the term as short text (e.g. "1 year", "6 months", "Until terminated").
+10. "nilai_kontrak": the total committed contract value as a number, or 0 when the value is variable, commission-based, or not stated.
+11. "currency": the ISO 4217 code of the contract value (e.g. "USD", "SGD", "IDR", "INR", "JPY"); "${ctx.defaultCurrency}" if no currency is stated.
+12. "auto_renewal": true when the contract renews automatically or runs until terminated; otherwise false.
+13. "notice_period_hari": the notice period in days for termination or non-renewal (default 30 when not specified).
+14. "ringkasan_perubahan": for an addendum, a clear summary of which clauses changed and how; otherwise "".
+15. "field_yang_berubah": for an addendum, an array containing any of exactly these codes: "Nilai Kontrak / IO", "Jangka Waktu Periode", "Ruang Lingkup / Deliverables", "Syarat Pembayaran", "Pihak Berwenang". Otherwise [].
+16. "internal_notes": a structured Markdown summary written in ${ctx.responseLanguage}, acting as a senior legal analyst.
+   STRICT RULE: do not use the comma character (,) anywhere in internal_notes — use "and", "or", parentheses or hyphens instead — so the text can be exported to CSV safely.
+   Use exactly these sections (translate the headings into ${ctx.responseLanguage}):
+   # AGREEMENT SUMMARY — [counterparty or product name]
+   - Title / our reference / counterparty reference / effective date / expiry date / term
+   ## PARTIES — for each party: legal name / address / signatory and title / notice e-mail
+   ## SCOPE AND PURPOSE — 3 to 4 bullets on purpose / responsibilities / limits of liability
+   ## COMMERCIAL TERMS — fees or commissions / payment terms and currency / taxes (${ctx.indirectTaxName} and withholding)
+   ## EXCLUSIVITY AND NON-COMPETE — or state that none is provided
+   ## CONFIDENTIALITY AND DATA PROTECTION — NDA reference / confidentiality duties / data-breach notification / reference to ${ctx.dataProtectionLaw} or the law actually cited
+   ## GOVERNING LAW AND DISPUTES — governing law as written / dispute resolution steps and forum
 
-PETUNJUK FORMAT DAN BATASAN KETAT:
-1. ATURAN BEBAS TANDA KOMA (SANGAT PENTING):
-   - DILARANG GUNAKAN TANDA KOMA (,) DI MANA PUN DALAM SELURUH TEKS OUTPUT INTERNAL NOTES.
-   - Ganti fungsi tanda koma dengan kata hubung (seperti: dan, serta, atau), spasi, tanda kurung (), atau tanda hubung (-).
-   - Aturan ini wajib dipatuhi agar hasil output tidak merusak struktur saat diimpor/dikonversi ke format CSV atau dimasukkan ke 1 sel Excel.
-
-2. STRUKTUR DAN FORMAT OUTPUT:
-   Gunakan struktur hirarki Markdown berikut secara eksak tanpa mengubah nama section/judul:
-
-# RINGKASAN PERJANJIAN PEMANFAATAN APLIKASI [NAMA_APLIKASI/MITRA]
-
-- Judul Perjanjian: [Judul Resmi Perjanjian]
-- Nomor Perjanjian Pihak Pertama: [Nomor Surat/PKS Pihak Pertama]
-- Nomor Perjanjian Pihak Kedua: [Nomor Surat/PKS Pihak Kedua]
-- Tanggal Mulai Efektif: [Tanggal Efektif Perjanjian Berlaku]
-- Tanggal Berakhir Efektif: [Tanggal Efektif Perjanjian Berakhir]
-- Jangka Waktu Perjanjian: [Durasi Masa Berlaku Perjanjian]
-
-## PARA PIHAK
-1. Pihak Pertama ([Nama Singkat Pihak Pertama]): [Nama Legal PT Pihak Pertama]
-   - Alamat: [Alamat Lengkap Tanpa Koma]
-   - Perwakilan / Penandatangan: [Nama Penandatangan dan Jabatan]
-   - Email Korespondensi: [Email Contact Person]
-
-2. Pihak Kedua ([Nama Singkat Pihak Kedua]): [Nama Legal PT Pihak Kedua]
-   - Alamat: [Alamat Lengkap Tanpa Koma]
-   - Perwakilan / Penandatangan: [Nama Penandatangan dan Jabatan]
-   - Email Korespondensi: [Email Contact Person]
-
-## RUANG LINGKUP DAN TUJUAN KERJA SAMA
-- [Poin 1: Inti tujuan kerja sama dan integrasi]
-- [Poin 2: Peran teknis dan batasan fungsi masing-masing pihak]
-- [Poin 3: Pembagian tanggung jawab operasional dan layanan pelanggan/CS]
-- [Poin 4: Batasan tanggung jawab atas risiko hukum/pendanaan]
-
-## KETENTUAN KOMERSIAL DAN SKEMA BIAYA ([KOMISI / BIAYA PLATFORM])
-- [Poin rincian biaya / komisi untuk pengguna baru atau produk A]
-- [Poin rincian biaya / komisi untuk pengguna berulang atau produk B]
-- [Ketentuan Pembayaran: Tanggal jatuh tempo skema rekonsiliasi mata uang dan nomor rekening bank]
-- [Ketentuan Pajak: PPN PPh dan tanggungan pajak masing-masing pihak]
-
-## KETENTUAN EKSKLUSIVITAS DAN NON-KOMPETISI
-- [Jelaskan klausul eksklusivitas atau non-kompetisi jika ada. Jika tidak ada tuliskan: Tidak diatur klausul eksklusivitas khusus dalam batang tubuh Perjanjian utama]
-
-## KERAHASIAAN DAN PERLINDUNGAN DATA PRIBADI ([PASAL KERAHASIAAN])
-- [Poin rincian acuan NDA jika ada]
-- [Kewajiban menjaga Informasi Rahasia dan kepatuhan terhadap UU Pelindungan Data Pribadi]
-- [Prosedur laporan Kegagalan Pelindungan Data dan penunjukan DPO/Audit Trail]
-
-## HUKUM YANG BERLAKU DAN PENYELESAIAN SENGKETA ([PASAL SENGKETA])
-- Hukum yang Berlaku: [Hukum Negara/Wilayah]
-- Penyelesaian Sengketa: [Jelaskan tahapan musyawarah durasi hari dan lembaga arbitrase/pengadilan yang ditunjuk]
-
-Return the result strictly as a valid JSON object matching the requested schema. If any string field is not found in the document, return an empty string "".`;
+Return strictly one valid JSON object matching the schema. Use "" for any text field not found in the document.`;
     const { contents: ocrContents, ocrStats } = await buildCheapOcrContents(
       inputData,
       prompt,
@@ -4635,7 +4499,7 @@ Return the result strictly as a valid JSON object matching the requested schema.
       performance: { durationMs, ...ocrStats },
     };
     if (ocrStats.fileHash) {
-      globalOcrCache.set(ocrStats.fileHash, "contracts", responsePayload);
+      globalOcrCache.set(ocrStats.fileHash, cacheScope, responsePayload);
     }
     res.json(responsePayload);
   } catch (error) {
@@ -4652,8 +4516,8 @@ Return the result strictly as a valid JSON object matching the requested schema.
 app.get("/api/contracts/:id/redline-analysis", (req: express.Request, res: express.Response) => {
   const { id } = req.params;
   const contract = db.contracts.find((c) => c.contract_id === id);
-  if (!contract) {
-    return res.status(404).json({ error: "Kontrak tidak ditemukan." });
+  if (!contract || !isMatchingOrg(contract.organizationId, getRequestTenantId(req))) {
+    return res.status(404).json({ error: "Contract not found." });
   }
   res.json({
     success: true,
@@ -4665,8 +4529,8 @@ app.get("/api/contracts/:id/redline-analysis", (req: express.Request, res: expre
 app.post("/api/contracts/:id/redline-analysis", async (req: express.Request, res: express.Response) => {
   const { id } = req.params;
   const contract = db.contracts.find((c) => c.contract_id === id);
-  if (!contract) {
-    return res.status(404).json({ error: "Kontrak tidak ditemukan." });
+  if (!contract || !isMatchingOrg(contract.organizationId, getRequestTenantId(req))) {
+    return res.status(404).json({ error: "Contract not found." });
   }
   const force = Boolean(req.body.force);
   const hasCustomClause = Boolean(
@@ -4680,60 +4544,45 @@ app.post("/api/contracts/:id/redline-analysis", async (req: express.Request, res
       analyzed_at: contract.redline_analyzed_at || contract.updated_at,
     });
   }
-  if (!getEffectiveGeminiApiKey()) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Missing GEMINI_API_KEY. Silakan masukkan Gemini API Key di menu Pengaturan (Settings) > Model AI & Parser.",
-      });
-  }
+  if (!ensureAiAvailable(req, res)) return;
   const partner = db.partners.find((p) => p.partner_id === contract.partner_id);
   try {
     const selectedModel = getValidAiModel(req.body.model);
-    const prompt = `Anda adalah seorang Senior Corporate Legal Counsel dan AI Contract Reviewer terkemuka.
-Tugas Anda adalah melakukan analisis risiko mendalam (Risk & Compliance Analysis) serta memberikan rekomendasi revisi/redline (Contract Redlining) untuk kontrak komersial berikut:
+    const ctx = aiPolicyContext(contract.organizationId);
+    const regulatorLine = ctx.regulators.length > 0
+      ? `Regulators relevant to our industry in ${ctx.countryName}: ${ctx.regulators.join(", ")}. Assess outsourcing, audit-right and reporting expectations they typically impose.`
+      : "No specific sector regulator is configured; assess against general commercial law and good practice.";
+    const prompt = `You are a senior corporate legal counsel and AI contract reviewer acting for ${ctx.organizationName}, a ${ctx.industryName} organization whose primary jurisdiction is ${ctx.countryName}.
+Perform a risk and compliance analysis of the commercial contract below and propose balanced redlines. Write every narrative field in ${ctx.responseLanguage}.
 
-=== INFORMASI KONTRAK ===
-Nomor Kontrak: ${contract.nomor_kontrak}
-Judul Kontrak: ${contract.judul_kontrak}
-Jenis Dokumen: ${contract.jenis_dokumen || "Master Agreement"}
-Partner / Vendor: ${contract.partner_nama || partner?.nama_partner || "-"}
-Kategori Kerjasama: ${(contract.kategori_kerjasama || []).join(", ") || "-"}
-Nilai Kontrak: ${contract.currency || "IDR"} ${Number(contract.nilai_kontrak || 0).toLocaleString("id-ID")}
-Masa Berlaku: ${contract.tanggal_mulai} s/d ${contract.tanggal_berakhir} (Sisa: ${contract.sisa_hari ?? "-"} hari)
-Perpanjangan Otomatis (Auto-Renewal): ${contract.auto_renewal ? "Ya (Aktif)" : "Tidak"}
-Notice Period: ${contract.notice_period_hari || 30} hari (${contract.notice_type_required || "Notice of Termination/Extension"})
-Catatan Internal / Ringkasan Klausul: ${contract.internal_notes || contract.ringkasan_perubahan || "Kontrak standar penyediaan jasa / kerjasama komersial B2B."}
-Status Due Diligence Partner: ${partner?.status_dd || "Verified"}
-${
-  req.body.customClauseText
-    ? `
-Teks Tambahan / Draf Klausul Khusus:
-${req.body.customClauseText}`
-    : ""
-}
+=== CONTRACT ===
+Reference: ${contract.nomor_kontrak}
+Title: ${contract.judul_kontrak}
+Document type: ${contract.jenis_dokumen || "Master Agreement"}
+Counterparty: ${contract.partner_nama || partner?.nama_partner || "-"}${partner?.country ? ` (${getCountryPack(partner.country).name})` : ""}
+Categories: ${(contract.kategori_kerjasama || []).join(", ") || "-"}
+Value: ${normalizeCurrencyCode(contract.currency, ctx.defaultCurrency)} ${Number(contract.nilai_kontrak || 0)}
+Term: ${contract.tanggal_mulai} to ${contract.tanggal_berakhir} (days remaining: ${contract.sisa_hari ?? "-"})
+Auto-renewal: ${contract.auto_renewal ? "yes" : "no"}
+Notice period: ${contract.notice_period_hari || 30} days (${contract.notice_type_required || "termination/extension"})
+Internal notes / clause summary: ${contract.internal_notes || contract.ringkasan_perubahan || "Standard B2B commercial services agreement."}
+Counterparty due-diligence status: ${partner?.status_dd || "unknown"}
+${req.body.customClauseText ? `
+Additional clause text to review:
+${String(req.body.customClauseText).slice(0, 20000)}` : ""}
 
-=== INSTRUKSI ANALISIS REDLINING ===
-Lakukan penilaian kepatuhan hukum mendalam, risiko liabilitas, klausul pengakhiran (termination), ganti rugi (indemnification), kerahasiaan data (NDA/PDP), dan yurisdiksi penyelesaian sengketa berdasarkan hukum bisnis Indonesia, standar industri B2B, serta **Regulasi & Standar Kepatuhan Otoritas Jasa Keuangan (OJK)** (termasuk POJK Tata Kelola TI, POJK Kerja Sama Pihak Ketiga/Vendor Alih Daya, POJK Perlindungan Konsumen Sektor Jasa Keuangan, dan Hak Audit Regulator OJK).
+=== REVIEW INSTRUCTIONS ===
+Assess liability, termination, indemnities, confidentiality and data protection (reference ${ctx.dataProtectionLaw} where our own processing is concerned), governing law and dispute resolution (our default position: ${ctx.governingLaw}), and these industry focus areas: ${ctx.reviewFocus.join("; ")}.
+${regulatorLine}
+Do not invent statute or regulation numbers — cite them only when you are certain; otherwise describe the requirement in general terms.
 
-Kembalikan hasil analisis dalam format JSON terstruktur dengan skema persis:
-1. overallRiskScore: angka integer 0-100 (0-25: Sangat Aman/Rendah, 26-55: Sedang/Wajar, 56-75: Tinggi/Perlu Penyesuaian, 76-100: Kritis/Wajib Negosiasi Ulang).
-2. riskLevel: string salah satu dari "LOW", "MEDIUM", "HIGH", "CRITICAL".
-3. executiveSummary: string penjelasan menyeluruh posisi tawar hukum, kepatuhan regulasi OJK, dan ringkasan risiko kontrak (2-3 paragraf ringkas).
-4. keyFindings: array string yang berisi 3-5 poin temuan paling krusial / klausul berisiko hukum maupun kepatuhan OJK.
-5. analyzedClauses: array of objects yang menganalisis klausul-klausul utama, masing-masing berisi:
-   - clauseTitle: string (misal: "Klausul Hak Audit & Pengawasan Regulator OJK", "Klausul Pembatasan Tanggung Jawab (Limitation of Liability)", "Klausul Terminasi & Notice Period", "Klausul Perlindungan Data Finansial (POJK & UU PDP)", "Klausul Ganti Rugi Sepihak (Indemnity)", "Klausul Keberlangsungan Layanan (SLA & BCP)")
-   - riskCategory: string (misal: "Kepatuhan OJK", "Liabilitas", "Terminasi", "Keamanan Data", "Finansial", "Hukum Perdata")
-   - severity: string ("LOW", "MEDIUM", "HIGH", "CRITICAL")
-   - originalTextOrIssue: string (bunyi isu klausul yang berisiko atau klausul yang memberatkan)
-   - identifiedRisk: string (penjelasan detail dampak hukum / risiko sanksi OJK / kerugian operasional bagi perusahaan)
-   - recommendedRedline: string (draf usulan revisi/redlining klausul yang seimbang, profesional, dan memenuhi standar kepatuhan regulasi OJK)
-   - legalRationale: string (dasar hukum POJK / UU atau argumen negosiasi yang dapat disampaikan ke mitra)
-6. complianceChecklist: array of objects minimal 5-6 item mencakup aspek OJK:
-   - item: string (wajib mencakup: "Kepatuhan Regulasi OJK (POJK Kerja Sama Pihak Ketiga & Tata Kelola IT)", "Klausul Hak Audit & Pemeriksaan Regulator OJK", "Kepatuhan Perlindungan Data & Kerahasiaan Finansial (POJK / UU PDP)", "Kejelasan Mekanisme Notice Period & Auto-Renewal", "Kepatuhan Hukum Indonesia (UU ITE & KUHPerdata)", "Klausul Penyelesaian Sengketa (BANI / Pengadilan Indonesia)")
-   - status: string ("COMPLIANT", "NEEDS_REVIEW", "NON_COMPLIANT")
-   - notes: string (penjelasan detail hasil telaah kesesuaian klausul kontrak terhadap aturan OJK dan hukum positif)
+Return JSON with exactly:
+1. overallRiskScore: integer 0-100 (0-25 low, 26-55 moderate, 56-75 high, 76-100 critical).
+2. riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL".
+3. executiveSummary: 2-3 short paragraphs on negotiating position, regulatory fit and key risks.
+4. keyFindings: 3-5 of the most important issues.
+5. analyzedClauses: the main clauses, each with clauseTitle, riskCategory, severity ("LOW"|"MEDIUM"|"HIGH"|"CRITICAL"), originalTextOrIssue, identifiedRisk, recommendedRedline (balanced replacement wording) and legalRationale (legal basis or negotiation argument).
+6. complianceChecklist: 5-6 items, each with item, status ("COMPLIANT" | "NEEDS_REVIEW" | "NON_COMPLIANT") and notes. Cover: data protection, audit and regulator access (if a regulator applies), notice period and auto-renewal clarity, governing law and dispute forum, and the industry focus areas above.
 `;
     const response = await generateContentWithRetryAndFallback({
       model: selectedModel,
@@ -4820,12 +4669,10 @@ Kembalikan hasil analisis dalam format JSON terstruktur dengan skema persis:
 });
 
 // Custom Template & Translation Endpoints
+// Contract templates are tenant-scoped (PRD §3.3.3, §3.4.1).
 app.get("/api/templates", (req, res) => {
-  try {
-    res.json(db.templates || []);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+  const tenantId = getRequestTenantId(req);
+  res.json((db.templates || []).filter((t: any) => isMatchingOrg(t.organizationId, tenantId)));
 });
 
 app.post("/api/templates", (req, res) => {
@@ -4834,7 +4681,7 @@ app.post("/api/templates", (req, res) => {
     if (!name || !contentId) {
       return res.status(400).json({ error: "Name and content are required." });
     }
-
+    const tenantId = getRequestTenantId(req);
     const templateId = id || `tpl-${Date.now()}`;
     const nowIso = new Date().toISOString();
 
@@ -4843,12 +4690,18 @@ app.post("/api/templates", (req, res) => {
     }
 
     const existingIndex = db.templates.findIndex((t: any) => t.id === templateId);
+    if (existingIndex >= 0 && !isMatchingOrg(db.templates[existingIndex].organizationId, tenantId)) {
+      return res.status(404).json({ error: "Template not found." });
+    }
+    const previous = existingIndex >= 0 ? db.templates[existingIndex] : null;
     const templateData = {
       id: templateId,
-      name,
+      organizationId: previous?.organizationId || tenantId,
+      name: String(name).slice(0, 200),
       contentId,
       customFields: Array.isArray(customFields) ? customFields : [],
-      createdAt: existingIndex >= 0 ? db.templates[existingIndex].createdAt : nowIso,
+      version: (Number(previous?.version) || 0) + 1,
+      createdAt: previous?.createdAt || nowIso,
       updatedAt: nowIso,
     };
 
@@ -4866,23 +4719,16 @@ app.post("/api/templates", (req, res) => {
 });
 
 app.delete("/api/templates/:id", (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!db.templates) {
-      db.templates = [];
-    }
-
-    const index = db.templates.findIndex((t: any) => t.id === id);
-    if (index >= 0) {
-      db.templates.splice(index, 1);
-      saveDb();
-      res.json({ success: true });
-    } else {
-      res.status(404).json({ error: "Template not found." });
-    }
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  const tenantId = getRequestTenantId(req);
+  const index = (db.templates || []).findIndex(
+    (t: any) => t.id === req.params.id && isMatchingOrg(t.organizationId, tenantId),
+  );
+  if (index < 0) {
+    return res.status(404).json({ error: "Template not found." });
   }
+  db.templates.splice(index, 1);
+  saveDb();
+  res.json({ success: true });
 });
 
 app.post("/api/contracts", async (req: express.Request, res: express.Response) => {
@@ -4933,9 +4779,11 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
       .status(400)
       .json({ error: "Tanggal Berakhir harus setelah Tanggal Mulai." });
   }
+  const requestTenantId = getRequestTenantId(req);
   const existingContractDup = db.contracts.find(
     (c) =>
-      c.nomor_kontrak.trim().toLowerCase() ===
+      isMatchingOrg(c.organizationId, requestTenantId) &&
+      String(c.nomor_kontrak || "").trim().toLowerCase() ===
       nomor_kontrak.trim().toLowerCase(),
   );
   if (existingContractDup) {
@@ -4945,12 +4793,7 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
         error: `Nomor Kontrak '${nomor_kontrak}' sudah terdaftar dalam sistem.`,
       });
   }
-  const targetOrgId =
-    req.headers["x-tenant-id"] ||
-    req.headers["x-organization-id"] ||
-    req.body.organizationId ||
-    db.activeTenantId ||
-    "org-adapundi";
+  const targetOrgId = getRequestTenantId(req);
   const targetTenant = (db.tenants || DEFAULT_TENANTS).find(
     (t) => t.id === targetOrgId,
   );
@@ -4958,14 +4801,14 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
   const token = await resolveActiveGoogleToken(
     req.headers["x-google-access-token"] || req.body.accessToken,
   );
-  const cur = (currency || "IDR").toUpperCase();
+  const cur = normalizeCurrencyCode(currency, tenantDefaultCurrency(targetOrgId));
   const amt = Number(nilai_kontrak) || 0;
   let total_usd = req_usd;
   if (total_usd === void 0 || total_usd === null || isNaN(Number(total_usd))) {
     if (cur === "USD") {
       total_usd = amt;
     } else {
-      let rate = cur === "IDR" ? 62e-6 : 1;
+      let rate = getDefaultUsdRate(cur);
       try {
         const sheetId =
           targetTenant?.spreadsheetId || db.googleConfig?.spreadsheetId;
@@ -5048,44 +4891,20 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
       );
     }
   }
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  let finalTanggalBerakhir = tanggal_berakhir;
-  const isAutoRenew = Boolean(auto_renewal);
-  if (
-    isAutoRenew &&
-    tanggal_mulai &&
-    finalTanggalBerakhir &&
-    status !== "Terminated"
-  ) {
-    let currentEnd = new Date(finalTanggalBerakhir);
-    currentEnd.setHours(0, 0, 0, 0);
-    const startDate = new Date(tanggal_mulai);
-    let durationYears = 1;
-    if (!isNaN(startDate.getTime()) && !isNaN(currentEnd.getTime())) {
-      const diffYears = currentEnd.getFullYear() - startDate.getFullYear();
-      durationYears = Math.max(1, diffYears || 1);
-    }
-    while (currentEnd.getTime() < today.getTime()) {
-      currentEnd.setFullYear(currentEnd.getFullYear() + durationYears);
-    }
-    finalTanggalBerakhir = `${currentEnd.getFullYear()}-${String(currentEnd.getMonth() + 1).padStart(2, "0")}-${String(currentEnd.getDate()).padStart(2, "0")}`;
-  }
-  const end = new Date(finalTanggalBerakhir);
-  end.setHours(0, 0, 0, 0);
-  const diffDays = Math.ceil(
-    (end.getTime() - today.getTime()) / (1e3 * 60 * 60 * 24),
+  const lifecycleDraft: any = {
+    organizationId: targetOrgId,
+    tanggal_mulai,
+    tanggal_berakhir,
+    auto_renewal: Boolean(auto_renewal),
+  };
+  if (normalizeContractStatus(status) !== "Terminated") rollForwardAutoRenewal(lifecycleDraft);
+  const finalTanggalBerakhir = lifecycleDraft.tanggal_berakhir;
+  const { status: finalStatus, daysRemaining: diffDays } = computeLifecycle(
+    targetOrgId,
+    finalTanggalBerakhir,
+    normalizeContractStatus(status) === "Terminated" ? "Terminated" : "Active",
+    Boolean(auto_renewal),
   );
-  let finalStatus = status === "Terminated" ? "Terminated" : "Aktif";
-  if (finalStatus !== "Terminated") {
-    if (diffDays < 0) {
-      finalStatus = isAutoRenew ? "Aktif" : "Expired";
-    } else if (diffDays <= 90) {
-      finalStatus = "Akan Berakhir";
-    } else {
-      finalStatus = "Aktif";
-    }
-  }
   const newContract = {
     contract_id: generateNextContractId(),
     organizationId: targetOrgId,
@@ -5106,11 +4925,11 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
     currency: cur,
     nilai_kontrak: amt,
     nilai_kontrak_usd: Number(total_usd),
-    auto_renewal: isAutoRenew,
+    auto_renewal: Boolean(auto_renewal),
     notice_period_hari: Number(notice_period_hari) || 30,
     notice_type_required: notice_type_required || "Termination",
     status: finalStatus,
-    status_approval: status_approval || "Aktif",
+    status_approval: normalizeApprovalStatus(status_approval),
     pic_internal: pic_internal || "Legal Team",
     internal_notes: internal_notes ? String(internal_notes).trim() : void 0,
     link_file_kontrak,
@@ -5131,7 +4950,7 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
     userRole || "Legal",
     "CREATE",
     "CONTRACT",
-    `Membuat Kontrak Baru '${nomor_kontrak}' (${judul_kontrak}) senilai Rp ${Number(nilai_kontrak).toLocaleString("id-ID")}`,
+    `Membuat Kontrak Baru '${nomor_kontrak}' (${judul_kontrak}) senilai ${formatAmountForTenant(amt, cur, targetOrgId)}`,
     req,
   );
   await triggerAutoPushToGoogleSheet(req, { tenantId: targetOrgId });
@@ -5154,14 +4973,15 @@ app.put("/api/contracts/:id", async (req: express.Request, res: express.Response
     ...updates,
     updated_at: new Date().toISOString(),
   };
-  const cur = (updated.currency || existing.currency || "IDR").toUpperCase();
+  const cur = normalizeCurrencyCode(updated.currency || existing.currency, tenantDefaultCurrency(existing.organizationId));
+  updated.currency = cur;
   const amt = Number(updated.nilai_kontrak) || 0;
   let total_usd = updates.nilai_kontrak_usd;
   if (total_usd === void 0 || total_usd === null || isNaN(Number(total_usd))) {
     if (cur === "USD") {
       total_usd = amt;
     } else {
-      let rate = cur === "IDR" ? 62e-6 : 1;
+      let rate = getDefaultUsdRate(cur);
       try {
         const token = await resolveActiveGoogleToken(
           req.headers["x-google-access-token"] || req.body.accessToken,
@@ -5279,38 +5099,12 @@ app.put("/api/contracts/:id", async (req: express.Request, res: express.Response
     updated.link_file_kontrak = link_file_kontrak;
     updated.fileName = targetFileName;
   }
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (
-    updated.auto_renewal &&
-    updated.tanggal_mulai &&
-    updated.tanggal_berakhir &&
-    updated.status !== "Terminated"
-  ) {
-    let currentEnd = new Date(updated.tanggal_berakhir);
-    currentEnd.setHours(0, 0, 0, 0);
-    const startDate = new Date(updated.tanggal_mulai);
-    let durationYears = 1;
-    if (!isNaN(startDate.getTime()) && !isNaN(currentEnd.getTime())) {
-      const diffYears = currentEnd.getFullYear() - startDate.getFullYear();
-      durationYears = Math.max(1, diffYears || 1);
-    }
-    while (currentEnd.getTime() < today.getTime()) {
-      currentEnd.setFullYear(currentEnd.getFullYear() + durationYears);
-    }
-    updated.tanggal_berakhir = `${currentEnd.getFullYear()}-${String(currentEnd.getMonth() + 1).padStart(2, "0")}-${String(currentEnd.getDate()).padStart(2, "0")}`;
-  }
-  const end = new Date(updated.tanggal_berakhir);
-  end.setHours(0, 0, 0, 0);
-  updated.sisa_hari = Math.ceil(
-    (end.getTime() - today.getTime()) / (1e3 * 60 * 60 * 24),
-  );
-  if (updated.status !== "Terminated") {
-    if (updated.sisa_hari < 0)
-      updated.status = updated.auto_renewal ? "Aktif" : "Expired";
-    else if (updated.sisa_hari <= 90) updated.status = "Akan Berakhir";
-    else updated.status = "Aktif";
-  }
+  updated.status = normalizeContractStatus(updated.status);
+  updated.status_approval = normalizeApprovalStatus(updated.status_approval);
+  if (updated.status !== "Terminated") rollForwardAutoRenewal(updated);
+  const lifecycle = computeLifecycle(updated.organizationId, updated.tanggal_berakhir, updated.status, updated.auto_renewal);
+  updated.sisa_hari = lifecycle.daysRemaining ?? updated.sisa_hari;
+  updated.status = lifecycle.status;
   db.contracts[idx] = updated;
   saveDb();
   addActivityLog(
@@ -5357,14 +5151,14 @@ app.get("/api/ios", (req: express.Request, res: express.Response) => {
   const result = iosList.map((io) => {
     const p = db.partners.find((part) => part.partner_id === io.partner_id);
     const c = db.contracts.find((ctr) => ctr.contract_id === io.contract_id);
-    const cur = io.currency || "IDR";
+    const cur = normalizeCurrencyCode(io.currency || io.mata_uang, tenantDefaultCurrency(io.organizationId));
     const amt = Number(io.nilai_io) || 0;
     const usdVal =
       io.nilai_io_usd !== void 0 && io.nilai_io_usd !== null
         ? io.nilai_io_usd
         : cur === "USD"
           ? amt
-          : Math.round(amt * (cur === "IDR" ? 62e-6 : 1) * 100) / 100;
+          : convertToUsdWithFallback(amt, cur);
     return {
       ...io,
       currency: cur,
@@ -5376,14 +5170,7 @@ app.get("/api/ios", (req: express.Request, res: express.Response) => {
   res.json(result);
 });
 app.post("/api/ios/parse", upload.single("file") as any, async (req: express.Request, res: express.Response) => {
-  if (!getEffectiveGeminiApiKey()) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Missing GEMINI_API_KEY. Silakan masukkan Gemini API Key di menu Pengaturan (Settings) > Model AI & Parser.",
-      });
-  }
+  if (!ensureAiAvailable(req, res)) return;
   try {
     const inputData = req.file?.buffer || req.body?.pdfBase64 || req.body?.fileBase64;
     const model = req.body?.model;
@@ -5391,92 +5178,42 @@ app.post("/api/ios/parse", upload.single("file") as any, async (req: express.Req
       return res.status(400).json({ error: "File (binary or base64) is required" });
     }
 
+    const tenantId = getRequestTenantId(req);
     const inputHash = computeInputSha256(inputData);
-    const cached = globalOcrCache.get(inputHash, "ios");
+    const cacheScope = `ios:${tenantId}`;
+    const cached = globalOcrCache.get(inputHash, cacheScope);
     if (cached) {
-      console.log(`[OCR Cache HIT] Returned cached IO parse result for hash ${inputHash.slice(0, 10)}...`);
       return res.json({
         ...cached,
         cached: true,
       });
     }
 
+    const ctx = aiPolicyContext(tenantId);
+    const profile = getIndustryPack(getTenantSettings(tenantId).industry).commercialDocument;
     const startTime = Date.now();
-    const prompt = `You are an expert advertising and media Insertion Order (IO) / agreement analyst. Extract the following information from this Insertion Order (IO) or agreement document:
+    const prompt = `You are an expert commercial-document analyst for ${ctx.organizationName} (${ctx.industryName}). The document is a ${profile.label} or a similar order/schedule issued under a master agreement (it may also be a purchase order, order form, statement of work, insertion order or service order). Extract:
 
-1. Nomor IO (Key: "nomor_io"): Ekstrak nomor dokumen Insertion Order (IO) jika dokumen merupakan IO. Jika dokumen berupa PKS/Perjanjian Kerjasama tanpa lembar IO terpisah, kembalikan "-".
-2. Judul Campaign / IO (Key: "judul_io"): Ekstrak judul campaign/kegiatan atau nama order IO.
-3. Nama Partner / Vendor (Key: "nama_partner"): Ekstrak nama entitas media vendor / partner publisher yang ditunjuk.
-4. Nomor Kontrak Terkait (Key: "contract_nomor"): Ekstrak nomor PKS/kontrak induk yang dirujuk jika ada.
-5. Kanal Media (Key: "kanal_media"): Ekstrak platform, aplikasi, atau kanal media tempat layanan/iklan diintegrasikan atau ditampilkan (contoh: "Aplikasi Flip"). Kembalikan "-" jika tidak disebutkan.
-6. Model Harga (Key: "pricing_model"): Tentukan model komersial/harga dari klausul Biaya dan Komisi. Pilih salah satu dari: "Commission Fee", "CPM", "CPC", "Flat Fee", "Revenue Share", atau "Fixed Package".
-7. Detail Harga (Key: "pricing_detail"): Ekstrak rincian tarif komisi/biaya per unit/kategori yang disepakati secara lengkap beserta nominalnya (contoh: "Rp165.000 per pinjaman Penerima Dana Baru\\nRp50.000 per pinjaman Penerima Dana Berulang").
-8. Tanggal Mulai IO (Key: "tanggal_mulai"): Ekstrak tanggal mulai periode kampanye spesifik pada IO jika ada dalam format DD/MM/YYYY. Jika tidak tertera terpisah dari kontrak utama, kembalikan "-".
-9. Tanggal Selesai IO (Key: "tanggal_berakhir"): Ekstrak atau hitung tanggal selesai periode kampanye spesifik pada IO dalam format DD/MM/YYYY.
-   - Jika tertulis tanggal selesai eksplisit (contoh: "31/12/2024"), kembalikan tanggal tersebut.
-   - Jika tertulis durasi (misal: "berlaku selama 1 bulan sejak 01/06/2023" atau "jangka waktu 3 bulan"), hitung Tanggal Selesai = (Tanggal Mulai + Durasi) - 1 Hari (contoh: 30/06/2023 atau 31/08/2023).
-   - Jika tidak tertera, kembalikan "-".
-10. Durasi Campaign (Key: "durasi_campaign"): Ekstrak durasi periode penayangan/kampanye IO (contoh: "1 bulan", "3 bulan", "14 hari", "1 tahun").
-11. Total Nilai IO (Key: "nilai_io"): Ekstrak total nilai pemesanan IO dalam bentuk angka murni tanpa simbol mata uang/pemisah ribuan. Jika berbasis komisi berjalan / variabel (tidak ada nominal pasti/cap), kembalikan null atau 0.
-12. Deliverables / KPI / Structured Deliverables Details (Key: "deliverables"):
-Anda adalah seorang Digital Marketing & Legal Operation Specialist. Tugas Anda adalah membaca dokumen Insertion Order (IO) / Media Order / Perintah Penyisipan Periklanan yang diberikan, lalu mengekstrak informasinya menjadi ringkasan terstruktur dalam format Markdown.
+1. "nomor_io": the document's reference number; "-" if it has none.
+2. "judul_io": the order, campaign, project or engagement title.
+3. "nama_partner": the counterparty's full legal name (not ${ctx.organizationName}).
+4. "contract_nomor": the reference number of the master agreement it refers to, if any.
+5. "kanal_media": the ${profile.channelLabel.toLowerCase()} this document covers (e.g. ${profile.channelPlaceholder.replace(/^e\.g\. /, "")}); "-" if not stated.
+6. "pricing_model": one of ${profile.pricingModels.map((m) => `"${m}"`).join(", ")} — or the closest short label used in the document.
+7. "tanggal_mulai": the start date as ISO 8601 "YYYY-MM-DD"; "-" if not separately stated.
+8. "tanggal_berakhir": the end date as "YYYY-MM-DD". If only a duration is given, end date = start date + duration − 1 day. "-" if unknown.
+9. "durasi_campaign": the duration as short text (e.g. "3 months", "14 days").
+10. "nilai_io": the total committed value as a plain number; 0 when the value is variable or uncapped.
+11. "currency": the ISO 4217 code of the value; "${ctx.defaultCurrency}" if none is stated.
+12. "deliverables": a structured Markdown summary in ${ctx.responseLanguage}. STRICT RULES: never use the comma character (,) — use "and", "or", parentheses or hyphens — and do not add citation markers. Use these sections (translate headings into ${ctx.responseLanguage}):
+   # ${profile.label.toUpperCase()} SUMMARY
+   - Document name / reference / master agreement / start date / end date
+   ## PARTIES — provider (contact and e-mail) and customer (signatory and billing address)
+   ## SCOPE AND DELIVERABLES — region / service or goods / ${profile.channelLabel.toLowerCase()} / KPIs or acceptance criteria
+   ## PRICING — model / unit prices or tiers / fees / discounts or rebates / budget or cap
+   ## PAYMENT AND INVOICING — prepaid or postpaid / payment term from invoice / invoice requirements
 
-PETUNJUK FORMAT DAN BATASAN KETAT:
-1. ATURAN BEBAS TANDA KOMA (SANGAT PENTING):
-   - DILARANG MENGGUNAKAN TANDA KOMA (,) DI MANA PUN DALAM SELURUH TEKS OUTPUT.
-   - Ganti fungsi tanda koma dengan kata hubung (seperti: dan, serta, atau), spasi, tanda kurung (), atau tanda hubung (-).
-   - Aturan ini wajib dipatuhi agar hasil output tidak merusak struktur saat diimpor/dikonversi ke format CSV atau dimasukkan ke 1 sel Excel.
-
-2. ATURAN BEBAS SITASI:
-   - DILARANG MENAMBAHKAN PENANDA SITASI ATAU CITATION DI DALAM HASIL OUTPUT.
-
-3. STRUKTUR DAN FORMAT OUTPUT:
-   Gunakan struktur hirarki Markdown berikut secara eksak tanpa mengubah nama section/judul:
-
-# RINGKASAN INSERTION ORDER (IO) PERIKLANAN
-
-- Nama Dokumen: [Nama Resmi Dokumen / Insertion Order]
-- Nomor Annex / IO: [Nomor IO atau Nomor Referensi Dokumen]
-- Perjanjian Induk: [Nama Perjanjian Induk beserta Tanggal Perjanjian/Addendum jika ada]
-- Tanggal Mulai (Start Date): [Tanggal Mulai Kampanye/IO]
-- Tanggal Berakhir (End Date): [Tanggal Berakhir Kampanye/IO]
-
-## PARA PIHAK
-1. Penyedia Layanan (Service Provider / Vendor): [Nama Perusahaan Vendor]
-   - Kontak Person: [Nama Kontak dan Jabatan]
-   - Email Korespondensi: [Email Contact Person Vendor]
-
-2. Klien / Pemilik Kampanye: [Nama Perusahaan Klien]
-   - Perwakilan / Penandatangan: [Nama Penandatangan dan Jabatan]
-   - Email Korespondensi: [Email Contact Person Klien]
-   - Alamat Faktur: [Alamat Pengiriman Invoice Klien Tanpa Koma]
-
-## RINCIAN KAMPANYE DAN MODEL BISNIS
-- Wilayah Target (Geographic): [Wilayah Target Kampanye]
-- Jenis Layanan: [Jenis Layanan Periklanan]
-- Platform: [Platform yang digunaan misal: Meta TikTok Google atau Dikonfirmasi via email]
-- Mata Uang: [Mata Uang Transaksi]
-- Model Bisnis (Business Model): [CPA / CPM / CPC / N/A]
-- Jenis Pengenaan (Charging Type): [Detail Jenis Pengenaan / N/A]
-- Definisi Alur Konversi CPA: [Jelaskan urutan alur konversi dari angka 1 hingga selesai jika ada model CPA. Jika tidak ada tuliskan: N/A]
-
-## SKEMA HARGA DAN KETENTUAN KOMERSIAL (UNIT PRICE / BIAYA LAYANAN & REBATE)
-- Anggaran Media (Media Budget): [Total Anggaran Media / Terbuka (Open) / N/A]
-- Harga Satuan / Tiered Pricing: [Rincian Harga Satuan per tier volume jika ada / N/A]
-- Biaya Layanan (Service Fee): [Rincian persentase atau biaya layanan per platform jika ada / N/A]
-- Kebijakan Potongan Harga (Rebate Policy): [Rincian syarat dan persentase rebate per platform jika ada / N/A]
-- Catatan Pembayaran: [Kondisi atau pemicu pembayaran / N/A]
-
-## KETENTUAN PEMBAYARAN DAN FAKTUR (PAYMENT TERMS)
-- Tipe Pembayaran: [Pasca-bayar (Post-payment) / Pra-bayar (Pre-payment)]
-- Metode Pembayaran: [Tenggat waktu pembayaran sejak invoice diterima beserta syarat faktur valid]
-- Catatan Tambahan: [Catatan khusus mengenai faktur atau penagihan / N/A]
-
----
-
-PROSES DOKUMEN IO DENGAN KETENTUAN DI ATAS DAN BERIKAN OUTPUT HANYA TEKS MARKDOWN TERSEBUT.
-
-Return the result strictly as a valid JSON object matching the requested schema.`;
+Return strictly one valid JSON object matching the schema.`;
     const { contents: ocrContents, ocrStats } = await buildCheapOcrContents(
       inputData,
       prompt,
@@ -5503,6 +5240,7 @@ Return the result strictly as a valid JSON object matching the requested schema.
             tanggal_berakhir: { type: Type.STRING },
             durasi_campaign: { type: Type.STRING },
             nilai_io: { type: Type.NUMBER },
+            currency: { type: Type.STRING },
             deliverables: { type: Type.STRING },
           },
         },
@@ -5551,7 +5289,7 @@ Return the result strictly as a valid JSON object matching the requested schema.
       performance: { durationMs, ...ocrStats },
     };
     if (ocrStats.fileHash) {
-      globalOcrCache.set(ocrStats.fileHash, "ios", responsePayload);
+      globalOcrCache.set(ocrStats.fileHash, cacheScope, responsePayload);
     }
     res.json(responsePayload);
   } catch (error) {
@@ -5609,20 +5347,16 @@ app.post("/api/ios", async (req: express.Request, res: express.Response) => {
       .status(400)
       .json({ error: "Tanggal Berakhir harus setelah Tanggal Mulai." });
   }
+  const ioTenantId = getRequestTenantId(req);
   const existingIODup = db.ios.find(
-    (i) => i.nomor_io.trim().toLowerCase() === nomor_io.trim().toLowerCase(),
+    (i) => isMatchingOrg(i.organizationId, ioTenantId) && String(i.nomor_io || "").trim().toLowerCase() === nomor_io.trim().toLowerCase(),
   );
   if (existingIODup) {
     return res
       .status(400)
       .json({ error: `Nomor IO '${nomor_io}' sudah terdaftar dalam sistem.` });
   }
-  const targetOrgId =
-    req.headers["x-tenant-id"] ||
-    req.headers["x-organization-id"] ||
-    req.body.organizationId ||
-    db.activeTenantId ||
-    "org-adapundi";
+  const targetOrgId = getRequestTenantId(req);
   const targetTenant = (db.tenants || DEFAULT_TENANTS).find(
     (t) => t.id === targetOrgId,
   );
@@ -5631,14 +5365,14 @@ app.post("/api/ios", async (req: express.Request, res: express.Response) => {
   const token = await resolveActiveGoogleToken(
     req.headers["x-google-access-token"] || req.body.accessToken,
   );
-  const cur = (currency || "IDR").toUpperCase();
+  const cur = normalizeCurrencyCode(currency, tenantDefaultCurrency(targetOrgId));
   const amt = Number(nilai_io) || 0;
   let total_usd = req_usd;
   if (total_usd === void 0 || total_usd === null || isNaN(Number(total_usd))) {
     if (cur === "USD") {
       total_usd = amt;
     } else {
-      let rate = cur === "IDR" ? 62e-6 : 1;
+      let rate = getDefaultUsdRate(cur);
       try {
         const sheetId =
           targetTenant?.spreadsheetId || db.googleConfig?.spreadsheetId;
@@ -5721,16 +5455,7 @@ app.post("/api/ios", async (req: express.Request, res: express.Response) => {
       );
     }
   }
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = new Date(tanggal_berakhir);
-  end.setHours(0, 0, 0, 0);
-  const diffDays = Math.ceil(
-    (end.getTime() - today.getTime()) / (1e3 * 60 * 60 * 24),
-  );
-  let status = "Aktif";
-  if (diffDays < 0) status = "Expired";
-  else if (diffDays <= 90) status = "Akan Berakhir";
+  const { status, daysRemaining: diffDays } = computeLifecycle(targetOrgId, tanggal_berakhir, "Active", false);
   const newIO = {
     io_id: generateNextIOId(),
     organizationId: targetOrgId,
@@ -5740,12 +5465,13 @@ app.post("/api/ios", async (req: express.Request, res: express.Response) => {
     judul_io,
     partner_id,
     partner_nama: partner ? partner.nama_partner : "Partner",
-    kanal_media: kanal_media || "Digital Channel",
+    kanal_media: kanal_media || "",
     tanggal_mulai,
     tanggal_berakhir,
     pricing_model,
     charging_type,
     currency: cur,
+    mata_uang: cur,
     nilai_io: amt,
     nilai_io_usd: Number(total_usd),
     deliverables: deliverables || "-",
@@ -5766,7 +5492,7 @@ app.post("/api/ios", async (req: express.Request, res: express.Response) => {
     userRole || "Business Owner",
     "CREATE",
     "IO",
-    `Membuat Insertion Order Baru '${nomor_io}' (${judul_io}) senilai Rp ${Number(nilai_io).toLocaleString("id-ID")}`,
+    `Membuat dokumen komersial baru '${nomor_io}' (${judul_io}) senilai ${formatAmountForTenant(amt, cur, targetOrgId)}`,
     req,
   );
   await triggerAutoPushToGoogleSheet(req, { tenantId: targetOrgId });
@@ -5786,14 +5512,16 @@ app.put("/api/ios/:id", async (req: express.Request, res: express.Response) => {
     ...updates,
     updated_at: new Date().toISOString(),
   };
-  const cur = (updated.currency || existing.currency || "IDR").toUpperCase();
+  const cur = normalizeCurrencyCode(updated.currency || existing.currency, tenantDefaultCurrency(existing.organizationId));
+  updated.currency = cur;
+  updated.mata_uang = cur;
   const amt = Number(updated.nilai_io) || 0;
   let total_usd = updates.nilai_io_usd;
   if (total_usd === void 0 || total_usd === null || isNaN(Number(total_usd))) {
     if (cur === "USD") {
       total_usd = amt;
     } else {
-      let rate = cur === "IDR" ? 62e-6 : 1;
+      let rate = getDefaultUsdRate(cur);
       try {
         const token = await resolveActiveGoogleToken(
           req.headers["x-google-access-token"] || req.body.accessToken,
@@ -5902,7 +5630,8 @@ app.put("/api/ios/:id", async (req: express.Request, res: express.Response) => {
   if (updated.nomor_io) {
     const dup = db.ios.find(
       (i) =>
-        i.nomor_io.trim().toLowerCase() ===
+        isMatchingOrg(i.organizationId, updated.organizationId) &&
+        String(i.nomor_io || "").trim().toLowerCase() ===
           updated.nomor_io.trim().toLowerCase() && i.io_id !== id,
     );
     if (dup) {
@@ -5913,18 +5642,9 @@ app.put("/api/ios/:id", async (req: express.Request, res: express.Response) => {
         });
     }
   }
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = new Date(updated.tanggal_berakhir);
-  end.setHours(0, 0, 0, 0);
-  updated.sisa_hari = Math.ceil(
-    (end.getTime() - today.getTime()) / (1e3 * 60 * 60 * 24),
-  );
-  if (updated.status !== "Terminated") {
-    if (updated.sisa_hari < 0) updated.status = "Expired";
-    else if (updated.sisa_hari <= 90) updated.status = "Akan Berakhir";
-    else updated.status = "Aktif";
-  }
+  const ioLifecycle = computeLifecycle(updated.organizationId, updated.tanggal_berakhir, updated.status, false);
+  updated.sisa_hari = ioLifecycle.daysRemaining ?? updated.sisa_hari;
+  updated.status = ioLifecycle.status;
   db.ios[idx] = updated;
   saveDb();
   addActivityLog(
@@ -6088,6 +5808,9 @@ app.post(
 app.get(
   ["/api/auth/google/token", "/api/google-auth/token"],
   async (req: express.Request, res: express.Response) => {
+    if (!(req as any).actor) {
+      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
+    }
     try {
       const freshToken = await getFreshGoogleAccessToken();
       const activeToken = freshToken || db.googleConfig?.accessToken || null;
@@ -6114,6 +5837,9 @@ app.get(
 app.post(
   ["/api/auth/google/refresh-token", "/api/google-auth/refresh-token"],
   async (req: express.Request, res: express.Response) => {
+    if (!(req as any).actor) {
+      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
+    }
     try {
       const freshToken = await getFreshGoogleAccessToken();
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -6141,18 +5867,37 @@ app.post(
       const userName = name || cleanEmail.split("@")[0];
       const now = new Date().toISOString();
 
+      // The e-mail in the request body is untrusted: prove it with Google.
+      const verifiedEmail = await verifyGoogleAccessTokenEmail(accessToken);
+      if (!verifiedEmail || verifiedEmail !== cleanEmail) {
+        return res.status(401).json({
+          success: false,
+          error: "GOOGLE_IDENTITY_NOT_VERIFIED",
+          message: "The Google sign-in could not be verified. Please sign in again.",
+        });
+      }
+
       // 1. Sync to db.allowedUsers
       let allowedUser = (db.allowedUsers || []).find((u: any) => (u.email || "").toLowerCase() === cleanEmail);
       if (!allowedUser) {
-        const isFirstUser = !db.allowedUsers || db.allowedUsers.length === 0;
+        // Self-service sign-up is off unless explicitly enabled; otherwise an
+        // administrator must invite the user first.
+        if (process.env.ALLOW_GOOGLE_SELF_SIGNUP !== "true") {
+          return res.status(403).json({
+            success: false,
+            error: "NOT_INVITED",
+            message: "This Google account has not been invited. Ask an administrator to add you.",
+          });
+        }
         allowedUser = {
           id: `user_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`,
+          organizationId: getDefaultTenantId(),
           email: cleanEmail,
           name: userName,
-          role: isFirstUser ? "Admin" : "Staff",
-          department: "Commercial & Marketing",
+          role: "Viewer",
+          department: "",
           status: "Active",
-          addedBy: "Google Auth (Firebase: safeforwork-47.firebaseapp.com)",
+          addedBy: "Google sign-in (self sign-up)",
           createdAt: now,
           lastLoginAt: now,
         };
@@ -6223,7 +5968,7 @@ app.post(
 
       // Ensure membership in organization
       try {
-        const orgId = allowedUser.organizationId || 'org_1789542306289_b3a4f3';
+        const orgId = allowedUser.organizationId || getDefaultTenantId();
         sqliteDb.prepare(`
           INSERT OR IGNORE INTO member (id, organizationId, userId, role, createdAt)
           VALUES (?, ?, ?, ?, ?)
@@ -6236,7 +5981,7 @@ app.post(
       const sessionExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
       const ipAddress = (req.headers["x-forwarded-for"] as string) || req.ip || "127.0.0.1";
       const userAgent = req.headers["user-agent"] || "Browser Client";
-      const orgId = allowedUser.organizationId || 'org_1789542306289_b3a4f3';
+      const orgId = allowedUser.organizationId || getDefaultTenantId();
 
       try {
         sqliteDb.prepare(`
@@ -6275,7 +6020,7 @@ app.post(
           role: allowedUser.role,
           action: "LOGIN",
           module: "Autentikasi",
-          description: "Login berhasil menggunakan Google Sign-In (safeforwork-47.firebaseapp.com)",
+          description: "Signed in with Google",
           timestamp: now,
           ip: (req.headers["x-forwarded-for"] as string) || req.ip || "127.0.0.1",
         });
@@ -6307,6 +6052,9 @@ app.post(
 app.post(
   ["/api/google-integration/connect", "/api/auth/google/connect"],
   async (req: express.Request, res: express.Response) => {
+    if (!(await checkIsAdmin(req)).isAdmin) {
+      return res.status(403).json({ error: "Forbidden: only administrators can change the Google integration." });
+    }
     try {
       const { accessToken, refreshToken } = req.body || {};
       const token = accessToken || req.headers["x-google-access-token"];
@@ -6335,7 +6083,7 @@ app.post(
         success: true,
         isConnected: true,
         lastSyncTime: db.googleConfig.lastSyncTime,
-        config: db.googleConfig,
+        config: redactProviderConfig(db.googleConfig),
       });
     } catch (err) {
       res
@@ -6350,6 +6098,9 @@ app.post(
 app.post(
   ["/api/google-integration/disconnect", "/api/auth/google/disconnect"],
   async (req: express.Request, res: express.Response) => {
+    if (!(await checkIsAdmin(req)).isAdmin) {
+      return res.status(403).json({ error: "Forbidden: only administrators can change the Google integration." });
+    }
     try {
       db.googleConfig.accessToken = "";
       db.googleConfig.refreshToken = "";
@@ -6380,16 +6131,7 @@ app.get("/api/google-integration", async (req: express.Request, res: express.Res
       .json({ error: "Unauthorized: Harap login terlebih dahulu." });
   }
   await getFreshGoogleAccessToken();
-  const isAdmin = adminCheck.isAdmin;
-  if (!isAdmin) {
-    const { smtpPassword, geminiApiKey, refreshToken, ...safeConfig } =
-      db.googleConfig;
-    return res.json({
-      ...safeConfig,
-      geminiApiKey: geminiApiKey ? "********" : "",
-    });
-  }
-  res.json(db.googleConfig);
+  res.json(redactProviderConfig(db.googleConfig));
 });
 app.post("/api/google-integration", async (req: express.Request, res: express.Response) => {
   const adminCheck = await checkIsAdmin(req);
@@ -6432,11 +6174,11 @@ app.post("/api/google-integration", async (req: express.Request, res: express.Re
     db.googleConfig.accessToken;
   const effectiveRefreshToken =
     refreshToken !== void 0 ? refreshToken : db.googleConfig.refreshToken;
-  const effectiveApiKey =
-    geminiApiKey !== void 0
-      ? String(geminiApiKey).trim()
-      : db.googleConfig.geminiApiKey || "";
-  if (geminiApiKey !== void 0) {
+  const keepStoredKey = geminiApiKey === void 0 || isMaskedSecret(geminiApiKey);
+  const effectiveApiKey = keepStoredKey
+    ? db.googleConfig.geminiApiKey || ""
+    : String(geminiApiKey).trim();
+  if (!keepStoredKey) {
     process.env.GEMINI_API_KEY = effectiveApiKey;
   }
   db.googleConfig = {
@@ -6487,7 +6229,9 @@ app.post("/api/google-integration", async (req: express.Request, res: express.Re
       smtpSecure !== void 0 ? Boolean(smtpSecure) : db.googleConfig.smtpSecure,
     smtpUser: smtpUser !== void 0 ? smtpUser : db.googleConfig.smtpUser,
     smtpPassword:
-      smtpPassword !== void 0 ? smtpPassword : db.googleConfig.smtpPassword,
+      smtpPassword !== void 0 && smtpPassword !== "" && !isMaskedSecret(smtpPassword)
+        ? smtpPassword
+        : db.googleConfig.smtpPassword,
     smtpFromEmail:
       smtpFromEmail !== void 0 ? smtpFromEmail : db.googleConfig.smtpFromEmail,
     smtpFromName:
@@ -6527,7 +6271,7 @@ app.post("/api/google-integration", async (req: express.Request, res: express.Re
   }
   if (isSheetChanged && db.googleConfig.spreadsheetId) {
     const defaultOrg = (db.tenants || []).find(
-      (t) => t.id === "org-adapundi" || t.isDefault,
+      (t) => t.isDefault,
     );
     if (defaultOrg) {
       defaultOrg.spreadsheetId = db.googleConfig.spreadsheetId;
@@ -6537,7 +6281,7 @@ app.post("/api/google-integration", async (req: express.Request, res: express.Re
         if (orgsDb) {
           const row: any = orgsDb
             .prepare("SELECT * FROM organization WHERE id = ? OR slug = ?")
-            .get("org-adapundi", "adapundi");
+            .get(defaultOrg.id, defaultOrg.domainSlug || defaultOrg.id);
           if (row) {
             let meta: any = {};
             try {
@@ -6552,7 +6296,7 @@ app.post("/api/google-integration", async (req: express.Request, res: express.Re
               .prepare(
                 "UPDATE organization SET metadata = ? WHERE id = ? OR slug = ?",
               )
-              .run(JSON.stringify(meta), "org-adapundi", "adapundi");
+              .run(JSON.stringify(meta), defaultOrg.id, defaultOrg.domainSlug || defaultOrg.id);
           }
         }
       } catch (e) {
@@ -6583,7 +6327,7 @@ app.post("/api/google-integration", async (req: express.Request, res: express.Re
   syncTenantsWithSqlite();
   res.json({
     success: true,
-    config: db.googleConfig,
+    config: redactProviderConfig(db.googleConfig),
     tenants: db.tenants,
     syncWarning,
   });
@@ -6608,7 +6352,7 @@ app.post("/api/smtp/test", async (req: express.Request, res: express.Response) =
   const host = (smtpHost || db.googleConfig.smtpHost || "").trim();
   const user = (smtpUser || db.googleConfig.smtpUser || "").trim();
   const pass =
-    smtpPassword !== void 0 ? smtpPassword : db.googleConfig.smtpPassword || "";
+    smtpPassword && !isMaskedSecret(smtpPassword) ? smtpPassword : db.googleConfig.smtpPassword || "";
   const recipient = (testRecipient || "").trim();
   if (!host || !user || !recipient) {
     return res
@@ -6650,7 +6394,7 @@ app.post("/api/smtp/test", async (req: express.Request, res: express.Response) =
           <div style="background: #FFFFFF; border: 1px solid #A7F3D0; border-radius: 8px; padding: 12px; font-size: 12px; color: #047857; margin-top: 12px;">
             <p style="margin: 4px 0;"><strong>SMTP Server:</strong> ${host}:${port}</p>
             <p style="margin: 4px 0;"><strong>Email Pengirim:</strong> ${fromAddress}</p>
-            <p style="margin: 4px 0;"><strong>Waktu Pengujian:</strong> ${new Date().toLocaleString("id-ID")}</p>
+            <p style="margin: 4px 0;"><strong>Waktu Pengujian:</strong> ${new Date().toISOString()}</p>
           </div>
         </div>
       `,
@@ -6670,7 +6414,7 @@ app.post("/api/smtp/test", async (req: express.Request, res: express.Response) =
 });
 app.post("/api/ai/test-key", async (req: express.Request, res: express.Response) => {
   const { apiKey, model } = req.body;
-  const keyToTest = (apiKey || getEffectiveGeminiApiKey()).trim();
+  const keyToTest = (apiKey && !isMaskedSecret(apiKey) ? String(apiKey) : getEffectiveGeminiApiKey()).trim();
   if (!keyToTest) {
     return res
       .status(400)
@@ -6730,7 +6474,7 @@ app.post("/api/google-integration/sync", (req: express.Request, res: express.Res
   return res.json({
     success: true,
     message: "Data tersinkronisasi dan tersimpan penuh di database SQLite (Single Source of Truth).",
-    config: db.googleConfig,
+    config: redactProviderConfig(db.googleConfig),
     counts: {
       partners: (db.partners || []).length,
       contracts: (db.contracts || []).length,
@@ -6891,213 +6635,207 @@ const provisionFoldersHandler = __name(async (req: express.Request, res: express
 }, "provisionFoldersHandler");
 app.post("/api/google-integration/provision-folders", provisionFoldersHandler);
 app.post("/api/partners/provision-folders", provisionFoldersHandler);
+/**
+ * Reset & organization setup (superuser only).
+ *
+ * mode "empty": wipes all business data and creates ONE organization from the
+ *               supplied profile (name, country, industry, currency, ...),
+ *               whose policy packs drive checklists, currency and dates.
+ * mode "demo":  wipes all business data and reloads the multi-country demo
+ *               dataset, so the product can be explored again.
+ *
+ * Registered login accounts are kept and re-attached to the (first) new
+ * organization; AI and SMTP provider credentials are kept because they are
+ * deployment configuration, not organization data.
+ */
 app.post("/api/admin/reset-database", async (req: express.Request, res: express.Response) => {
   const actor = (req as any).actor;
   if (actor?.role !== "superuser") {
     return res.status(403).json({
       error: "INSUFFICIENT_PERMISSION",
-      message: "Hanya Superuser yang dapat mereset seluruh database.",
+      message: "Only a superuser can reset the application.",
     });
   }
-  const { userEmail, userName, userRole, accessToken, confirmKeyword } =
-    req.body;
+  const { confirmKeyword, mode = "empty", organization = {} } = req.body || {};
   if (confirmKeyword !== "RESET NOW") {
-    return res
-      .status(400)
-      .json({
-        error:
-          'Konfirmasi tidak valid. Harap ketik "RESET NOW" untuk mereset database.',
-      });
+    return res.status(400).json({ error: 'Invalid confirmation. Type "RESET NOW" to reset the application.' });
   }
-  db.partners = [];
-  db.contracts = [];
-  db.ios = [];
-  db.spendings = [];
-  db.evaluations = [];
-  db.notifications = [];
-  db.activityLogs = [];
-  db.departments = [];
-  db.googleConfig.spreadsheetId = "";
-  db.googleConfig.driveFolderId = "";
-  db.googleConfig.masterSpreadsheetId = "";
-  db.googleConfig.masterSpreadsheetUrl = "";
-  db.googleConfig.isConnected = false;
-  if (accessToken) db.googleConfig.accessToken = accessToken;
-  db.googleConfig.autoSync = true;
-  db.googleConfig.isLocked = true;
-  db.googleConfig.notificationEmails =
-    "legal.head@perusahaan.co.id, finance.team@perusahaan.co.id";
-  db.googleConfig.legalNotificationEmail = "legal.head@perusahaan.co.id";
-  db.googleConfig.financeNotificationEmail = "finance.team@perusahaan.co.id";
-  db.googleConfig.aiModel = "gemini-3.8-flash";
-  db.branding = { ...DEFAULT_BRANDING };
-  if (db.customTranslations) {
-    db.customTranslations = {};
+  if (mode !== "empty" && mode !== "demo") {
+    return res.status(400).json({ error: 'mode must be "empty" or "demo".' });
   }
-  const defaultOrgId = "org_1789542306289_b3a4f3";
-  const defaultOrgName = "Adapundi";
-  const defaultOrgSlug = "adapundi";
-  const defaultOrgLogo = "/favicon.png";
-  const defaultMetadata = JSON.stringify({
-    currency: "IDR",
-    brandName: "Adapundi",
-    legalEntity: "PT",
-    tagline: "Legal & Commercial Contract Management",
-    primaryColor: "#06C755",
-    driveFolderId: "1FpW5eMbZ-4LAvR2k_sC39VcKmnTDaopY",
-    driveFolderLink:
-      "https://drive.google.com/drive/folders/1FpW5eMbZ-4LAvR2k_sC39VcKmnTDaopY",
-  });
+
+  const nowIso = new Date().toISOString();
+  let dataset: ReturnType<typeof buildDemoDataset>;
+  if (mode === "demo") {
+    dataset = buildDemoDataset();
+  } else {
+    const orgName = String(organization.name || "").trim().slice(0, 120) || "My Organization";
+    const settings = resolveTenantSettings({
+      settings: {
+        countryCode: organization.countryCode,
+        industry: organization.industry,
+        defaultCurrency: organization.defaultCurrency,
+        reportingCurrency: organization.reportingCurrency,
+        timezone: organization.timezone,
+        language: organization.language,
+      },
+    });
+    const slug = orgName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "organization";
+    dataset = {
+      tenants: [{
+        id: `org_${Date.now().toString(36)}_${crypto.randomBytes(3).toString("hex")}`,
+        name: orgName,
+        legalEntity: String(organization.legalEntity || "").slice(0, 120),
+        brandName: orgName,
+        tagline: "Contract Lifecycle Management",
+        logoUrl: "/favicon.png",
+        primaryColor: DEFAULT_BRANDING.primaryColor,
+        currency: settings.defaultCurrency,
+        settings,
+        domainSlug: slug,
+        isDefault: true,
+        spreadsheetId: "",
+        driveFolderId: "",
+        created_at: nowIso,
+        updated_at: nowIso,
+      }],
+      departments: [], allowedUsers: [], partners: [], contracts: [], ios: [],
+      spendings: [], evaluations: [], notifications: [], activityLogs: [],
+    };
+  }
+  const primaryTenantId = dataset.tenants[0].id;
+
+  // Keep every registered login account and attach it to the primary tenant.
+  const authUsers: any[] = (() => {
+    try {
+      return sqliteDb.prepare("SELECT id, name, email, role, banned, createdAt FROM user").all() as any[];
+    } catch {
+      return [];
+    }
+  })();
+  const demoEmails = new Set(dataset.allowedUsers.map((u: any) => String(u.email).toLowerCase()));
+  const preservedUsers = authUsers
+    .filter((u) => u.email && !demoEmails.has(String(u.email).toLowerCase()))
+    .map((u) => ({
+      id: u.id,
+      organizationId: primaryTenantId,
+      email: String(u.email).toLowerCase(),
+      name: u.name || "User",
+      role: u.id === actor.id || String(u.role).toLowerCase() === "superuser"
+        ? "Superuser"
+        : String(u.role || "viewer").replace(/^./, (c: string) => c.toUpperCase()),
+      department: null,
+      status: u.banned ? "Inactive" : "Active",
+      addedBy: "System reset",
+      createdAt: u.createdAt || nowIso,
+    }));
+
   try {
-    if (sqliteDb) {
-      sqliteDb.prepare("DELETE FROM invitation").run();
-      sqliteDb.prepare("DELETE FROM apikey").run();
-      sqliteDb.prepare("DELETE FROM teamMember").run();
-      sqliteDb.prepare("DELETE FROM team").run();
-      sqliteDb.prepare("DELETE FROM organization").run();
-      sqliteDb
-        .prepare(
-          `
-        INSERT INTO organization (id, name, slug, logo, createdAt, metadata)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `,
-        )
-        .run(
-          defaultOrgId,
-          defaultOrgName,
-          defaultOrgSlug,
-          defaultOrgLogo,
-          new Date().toISOString(),
-          defaultMetadata,
-        );
-      sqliteDb.prepare("DELETE FROM team").run();
-      db.departments = [];
-      sqliteDb.prepare("DELETE FROM member").run();
-      const existingUsers = (sqliteDb
-        .prepare("SELECT id, name, email, role FROM user")
-        .all() || []) as any[];
-      for (const u of existingUsers) {
-        const memberRole = u.role === "superuser" ? "admin" : u.role || "admin";
-        sqliteDb
-          .prepare(
-            `
+    sqliteDb.transaction(() => {
+      for (const table of ["invitation", "apikey", "teamMember", "team", "member", "organization"]) {
+        sqliteDb.prepare(`DELETE FROM ${table}`).run();
+      }
+      for (const tenant of dataset.tenants) {
+        sqliteDb.prepare(`
+          INSERT INTO organization (id, name, slug, logo, createdAt, metadata)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(tenant.id, tenant.name, tenant.domainSlug, tenant.logoUrl, nowIso, JSON.stringify({
+          legalEntity: tenant.legalEntity,
+          brandName: tenant.brandName,
+          tagline: tenant.tagline,
+          primaryColor: tenant.primaryColor,
+          currency: tenant.currency,
+          settings: tenant.settings,
+        }));
+      }
+      for (const u of preservedUsers) {
+        sqliteDb.prepare(`
           INSERT INTO member (id, organizationId, userId, role, createdAt)
           VALUES (?, ?, ?, ?, ?)
-        `,
-          )
-          .run(
-            `mem_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`,
-            defaultOrgId,
-            u.id,
-            memberRole,
-            new Date().toISOString(),
-          );
-        sqliteDb
-          .prepare(
-            `
-          INSERT INTO teamMember (id, teamId, userId, createdAt)
-          VALUES (?, ?, ?, ?)
-        `,
-          )
-          .run(
-            `tm_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`,
-            "team-legal",
-            u.id,
-            new Date().toISOString(),
-          );
+        `).run(`mem_${u.id}`, primaryTenantId, u.id, u.role === "Superuser" ? "admin" : u.role.toLowerCase(), nowIso);
       }
-      const allTeams = (sqliteDb.prepare("SELECT id FROM team").all() || []) as any[];
-      for (const tm of allTeams) {
-        const count =
-          (sqliteDb
-            .prepare(
-              "SELECT COUNT(*) as count FROM teamMember WHERE teamId = ?",
-            )
-            .get(tm.id) as any)?.count || 0;
-        sqliteDb
-          .prepare(
-            "UPDATE team SET memberCount = ?, updatedAt = ? WHERE id = ?",
-          )
-          .run(count, new Date().toISOString(), tm.id);
-      }
-      sqliteDb
-        .prepare(
-          "UPDATE session SET activeOrganizationId = ?, activeTeamId = ?",
-        )
-        .run(defaultOrgId, "team-legal");
-    }
+      sqliteDb.prepare("UPDATE session SET activeOrganizationId = ?, activeTeamId = NULL").run(primaryTenantId);
+    })();
   } catch (err) {
-    console.error("Error resetting sqlite auth tables:", err);
+    console.error("Error resetting auth organization tables:", err);
+    return res.status(500).json({ error: "Failed to reset organization tables." });
   }
-  const defaultTenant = {
-    id: defaultOrgId,
-    name: defaultOrgName,
-    legalEntity: "PT",
-    brandName: defaultOrgName,
-    tagline: "Legal & Commercial Contract Management",
-    logoUrl: defaultOrgLogo,
-    primaryColor: "#06C755",
-    currency: "IDR",
-    domainSlug: defaultOrgSlug,
-    isDefault: true,
-    spreadsheetId: "",
-    spreadsheetUrl: void 0,
-    driveFolderId: "",
-    driveFolderLink: void 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-  db.tenants = [defaultTenant];
-  db.activeTenantId = defaultTenant.id;
-  const activeUserEmail = (userEmail || "adhitcl@gmail.com").toLowerCase();
-  const activeUserName = userName || "Aditya Pratama";
-  const existingUser = db.allowedUsers.find(
-    (u) => u.email.toLowerCase() === activeUserEmail,
-  );
-  db.allowedUsers = [
-    {
-      id: existingUser?.id || "usr-1",
-      organizationId: defaultOrgId,
-      email: activeUserEmail,
-      name: existingUser?.name || activeUserName,
-      role: "Superuser",
-      department: existingUser?.department || "Legal & Compliance",
-      status: "Active",
-      addedBy: "System Core",
-      createdAt: existingUser?.createdAt || new Date().toISOString(),
-      lastLoginAt: new Date().toISOString(),
+
+  // Mutate `db` in place: the auth console holds a reference to this object.
+  const provider = db.googleConfig || {};
+  Object.assign(db, {
+    tenants: dataset.tenants,
+    activeTenantId: primaryTenantId,
+    departments: dataset.departments,
+    allowedUsers: [...preservedUsers, ...dataset.allowedUsers],
+    partners: dataset.partners,
+    contracts: dataset.contracts,
+    ios: dataset.ios,
+    spendings: dataset.spendings,
+    evaluations: dataset.evaluations,
+    notifications: dataset.notifications,
+    activityLogs: dataset.activityLogs,
+    templates: [],
+    newsTicker: { byTenant: {} },
+    branding: { ...DEFAULT_BRANDING },
+    customTranslations: {},
+    googleConfig: {
+      spreadsheetId: "",
+      driveFolderId: "",
+      masterSpreadsheetId: "",
+      masterSpreadsheetUrl: "",
+      isConnected: false,
+      autoSync: false,
+      isLocked: false,
+      notificationEmails: "",
+      legalNotificationEmail: "",
+      financeNotificationEmail: "",
+      aiModel: provider.aiModel || "gemini-3.8-flash",
+      geminiApiKey: provider.geminiApiKey || "",
+      smtpEnabled: Boolean(provider.smtpEnabled),
+      smtpHost: provider.smtpHost || "",
+      smtpPort: provider.smtpPort,
+      smtpSecure: provider.smtpSecure,
+      smtpUser: provider.smtpUser || "",
+      smtpPassword: provider.smtpPassword || "",
+      smtpFromEmail: provider.smtpFromEmail || "",
+      smtpFromName: provider.smtpFromName || "",
+      refreshToken: "",
+      accessToken: "",
     },
-  ];
+  });
+
   if (fs.existsSync(uploadsDir)) {
     try {
-      const items = fs.readdirSync(uploadsDir);
-      for (const item of items) {
-        const itemPath = path.join(uploadsDir, item);
-        if (fs.lstatSync(itemPath).isDirectory()) {
-          fs.rmSync(itemPath, { recursive: true, force: true });
-        } else {
-          fs.unlinkSync(itemPath);
-        }
+      for (const item of fs.readdirSync(uploadsDir)) {
+        fs.rmSync(path.join(uploadsDir, item), { recursive: true, force: true });
       }
     } catch (e) {
       console.error("Error cleaning uploads during reset:", e);
     }
   }
+
+  migrateLegacyRecords();
+  recalculateStatuses();
   saveDb();
+  // Recreate demo users/teams/memberships in the auth tables. Demo accounts
+  // get the bootstrap password (DEMO_ADMIN_PASSWORD) so they can be tried.
+  hydrateAuthConsoleFromDataStore(db);
+  await ensureUserAccountsExist();
   addActivityLog(
-    userEmail || "admin@app",
-    userName || "Admin",
-    userRole || "Admin",
-    "RESET",
-    "SYSTEM",
-    "Mereset seluruh pengaturan sistem (Manage Admin Access, Organisasi, Departemen, AI, Notifikasi, Storage & Database) dan seluruh data transaksi ke kondisi awal kosong.",
+    "", "", "Superuser", "RESET", "SYSTEM",
+    mode === "demo"
+      ? "Reset the application and reloaded the demo dataset."
+      : `Reset the application and set up organization "${dataset.tenants[0].name}" (${dataset.tenants[0].settings.countryCode}, ${dataset.tenants[0].settings.industry}).`,
     req,
   );
   res.json({
     success: true,
-    message:
-      "Seluruh pengaturan sistem (Manage Admin Access, Organisasi, Departemen, AI, Notifikasi, Storage & Database) dan seluruh data transaksi berhasil direset ke kondisi awal kosong. Akun pengguna terdaftar tetap dipertahankan.",
-    defaultOrgId,
+    mode,
+    message: mode === "demo"
+      ? "The application was reset and the demo dataset was loaded."
+      : `The application was reset. Organization "${dataset.tenants[0].name}" is ready to use.`,
+    defaultOrgId: primaryTenantId,
   });
 });
 app.get("/api/google-service-account/status", async (req: express.Request, res: express.Response) => {
@@ -7150,6 +6888,9 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
       .status(400)
       .json({ error: "Tipe data dan baris tidak boleh kosong." });
   }
+  const tenantId = getRequestTenantId(req);
+  const tenantCurrency = tenantDefaultCurrency(tenantId);
+  const inTenant = (row: any) => isMatchingOrg(row?.organizationId, tenantId);
   const succeeded = [];
   const skipped = [];
   const failed = [];
@@ -7171,7 +6912,7 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
         continue;
       }
       const exists = db.partners.find(
-        (p) => p.nama_partner?.toLowerCase() === name.toLowerCase(),
+        (p) => inTenant(p) && inTenant(p) && p.nama_partner?.toLowerCase() === name.toLowerCase(),
       );
       if (exists) {
         skipped.push({
@@ -7224,14 +6965,19 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
           telepon_pic: row.telepon_pic || "",
           alamat_pic: row.alamat_pic || "",
           kontak_pic: fullKontakPic,
-          badan_hukum: row.badan_hukum === "BHA" ? "BHA" : "BHI",
-          status_dd: "Belum Lengkap",
+          organizationId: tenantId,
+          country: sanitizeCountryCode(row.country) || (row.badan_hukum === "BHI" ? "ID" : ""),
+          entity_type: String(row.entity_type || "").slice(0, 120),
+          identifiers: [],
+          status_dd: "Incomplete",
           catatan: row.catatan || "",
           tags: sanitizePartnerTags(row.tags),
-          daftar_dokumen_dd: normalizePartnerDDDocs([]),
+          daftar_dokumen_dd: [],
           created_at: now,
           updated_at: now,
         };
+        newPartner.daftar_dokumen_dd = normalizePartnerDocuments(newPartner);
+        newPartner.status_dd = computeDueDiligenceStatus(newPartner.daftar_dokumen_dd);
         db.partners.push(newPartner);
         succeeded.push({
           rowIndex,
@@ -7260,7 +7006,7 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
         continue;
       }
       const exists = db.contracts.find(
-        (c) => c.nomor_kontrak?.toLowerCase() === nomor.toLowerCase(),
+        (c) => inTenant(c) && c.nomor_kontrak?.toLowerCase() === nomor.toLowerCase(),
       );
       if (exists) {
         skipped.push({
@@ -7272,7 +7018,7 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
       }
       const partnerNama = (row.partner_nama || "").trim();
       const partner = db.partners.find(
-        (p) => p.nama_partner?.toLowerCase() === partnerNama.toLowerCase(),
+        (p) => inTenant(p) && p.nama_partner?.toLowerCase() === partnerNama.toLowerCase(),
       );
       try {
         const kategori = row.kategori_kerjasama
@@ -7291,6 +7037,7 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
         }
         const newContract = {
           contract_id: generateNextContractId(),
+          organizationId: tenantId,
           nomor_kontrak: nomor,
           judul_kontrak: row.judul_kontrak || nomor,
           partner_id: partner?.partner_id || "",
@@ -7298,14 +7045,14 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
           kategori_kerjasama: kategori,
           tanggal_mulai: row.tanggal_mulai || "",
           tanggal_berakhir: row.tanggal_berakhir || "",
-          currency: row.currency || "IDR",
+          currency: normalizeCurrencyCode(row.currency, tenantCurrency),
           nilai_kontrak: parseFloat(row.nilai_kontrak) || 0,
           auto_renewal: false,
           notice_period_hari: parseInt(row.notice_period_hari) || 30,
           notice_type_required: row.notice_type_required || "Both",
           pic_internal: contractPic,
           internal_notes: row.internal_notes || "",
-          status: "Aktif",
+          status: "Active",
           status_approval: "Signed",
           created_at: now,
           updated_at: now,
@@ -7351,15 +7098,16 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
       }
       const partnerNama = (row.partner_nama || "").trim();
       const partner = db.partners.find(
-        (p) => p.nama_partner?.toLowerCase() === partnerNama.toLowerCase(),
+        (p) => inTenant(p) && p.nama_partner?.toLowerCase() === partnerNama.toLowerCase(),
       );
       const contractNomor = (row.contract_nomor || "").trim();
       const contract = db.contracts.find(
-        (c) => c.nomor_kontrak?.toLowerCase() === contractNomor.toLowerCase(),
+        (c) => inTenant(c) && c.nomor_kontrak?.toLowerCase() === contractNomor.toLowerCase(),
       );
       try {
         const newIO = {
           io_id: generateNextIOId(),
+          organizationId: tenantId,
           nomor_io: nomor,
           judul_io: row.judul_io || nomor,
           partner_id: partner?.partner_id || "",
@@ -7369,13 +7117,13 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
           tanggal_berakhir: row.tanggal_berakhir || "",
           pricing_model: row.pricing_model || "Flat Fee",
           charging_type: row.charging_type || "Prepaid",
-          currency: row.currency || "IDR",
+          currency: normalizeCurrencyCode(row.currency, tenantCurrency),
           nilai_io: parseFloat(row.nilai_io) || 0,
           deliverables: row.deliverables || "",
           notice_period_hari: parseInt(row.notice_period_hari) || 14,
           notice_type_required: row.notice_type_required || "Termination",
           internal_notes: row.internal_notes || "",
-          status: "Aktif",
+          status: "Active",
           created_at: now,
           updated_at: now,
         };
@@ -7422,7 +7170,7 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
         continue;
       }
       const partner = db.partners.find(
-        (p) => p.nama_partner?.toLowerCase() === supplierName.toLowerCase(),
+        (p) => inTenant(p) && p.nama_partner?.toLowerCase() === supplierName.toLowerCase(),
       );
       try {
         const newEval = {
@@ -7469,7 +7217,7 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
       }
       const identifier = `${vendorName} \u2014 ${invoiceNumber}`;
       const exists = db.spendings.find(
-        (s) =>
+        (s) => inTenant(s) &&
           s.invoice_number?.toLowerCase() === invoiceNumber.toLowerCase() &&
           s.vendor_name?.toLowerCase() === vendorName.toLowerCase(),
       );
@@ -7482,14 +7230,15 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
         continue;
       }
       const partner = db.partners.find(
-        (p) => p.nama_partner?.toLowerCase() === vendorName.toLowerCase(),
+        (p) => inTenant(p) && p.nama_partner?.toLowerCase() === vendorName.toLowerCase(),
       );
       try {
         const invoiceMonth = normalizeSpendingMonths(row.invoice_month);
         const totalAmount = parseFloat(row.total_amount) || 0;
-        const currency = (row.currency || "IDR").toUpperCase();
+        const currency = normalizeCurrencyCode(row.currency, tenantCurrency);
         const newSpending = {
           id: generateNextSpendingId(),
+          organizationId: tenantId,
           vendor_id: partner?.partner_id || "",
           vendor_name: vendorName,
           invoice_number: invoiceNumber,
@@ -7564,27 +7313,30 @@ function syncTenantsWithSqlite() {
           const existing: any = (db.tenants || []).find(
             (t: any) => t.id === org.id || t.domainSlug === org.slug,
           );
+          const tenantSettings = resolveTenantSettings({
+            settings: existing?.settings || meta.settings,
+            currency: existing?.currency || meta.currency,
+          });
           const tenantObj = {
             id: org.id,
             name: org.name,
-            legalEntity: existing?.legalEntity || "PT",
+            legalEntity: existing?.legalEntity || meta.legalEntity || "",
             brandName: org.name,
             tagline:
               meta.tagline ||
               existing?.tagline ||
-              "Legal & Commercial Contract Management",
+              "Contract Lifecycle Management",
             logoUrl: org.logo || existing?.logoUrl || "/favicon.png",
             primaryColor:
-              meta.primaryColor || existing?.primaryColor || "#06C755",
-            currency: meta.currency || existing?.currency || "IDR",
+              meta.primaryColor || existing?.primaryColor || DEFAULT_BRANDING.primaryColor,
+            currency: tenantSettings.defaultCurrency,
+            settings: tenantSettings,
             domainSlug: org.slug,
-            isDefault: org.slug === "adapundi" || Boolean(existing?.isDefault),
+            isDefault: Boolean(existing?.isDefault),
             spreadsheetId:
               existing?.spreadsheetId ||
               meta.spreadsheetId ||
-              (org.slug === "adapundi" ||
-              org.id === "org-adapundi" ||
-              org.id === "org_1789542306289_b3a4f3"
+              (existing?.isDefault
                 ? db.googleConfig?.spreadsheetId
                 : void 0),
             spreadsheetUrl:
@@ -7592,9 +7344,7 @@ function syncTenantsWithSqlite() {
               meta.spreadsheetUrl ||
               (existing?.spreadsheetId ||
               meta.spreadsheetId ||
-              (org.slug === "adapundi" ||
-              org.id === "org-adapundi" ||
-              org.id === "org_1789542306289_b3a4f3"
+              (existing?.isDefault
                 ? db.googleConfig?.spreadsheetId
                 : void 0)
                 ? `https://docs.google.com/spreadsheets/d/${existing?.spreadsheetId || meta.spreadsheetId || db.googleConfig?.spreadsheetId}/edit`
@@ -7602,9 +7352,7 @@ function syncTenantsWithSqlite() {
             driveFolderId:
               existing?.driveFolderId ||
               meta.driveFolderId ||
-              (org.slug === "adapundi" ||
-              org.id === "org-adapundi" ||
-              org.id === "org_1789542306289_b3a4f3"
+              (existing?.isDefault
                 ? db.googleConfig?.driveFolderId
                 : void 0),
             driveFolderLink:
@@ -7612,9 +7360,7 @@ function syncTenantsWithSqlite() {
               meta.driveFolderLink ||
               (existing?.driveFolderId ||
               meta.driveFolderId ||
-              (org.slug === "adapundi" ||
-              org.id === "org-adapundi" ||
-              org.id === "org_1789542306289_b3a4f3"
+              (existing?.isDefault
                 ? db.googleConfig?.driveFolderId
                 : void 0)
                 ? `https://drive.google.com/drive/folders/${existing?.driveFolderId || meta.driveFolderId || db.googleConfig?.driveFolderId}`
@@ -7624,7 +7370,7 @@ function syncTenantsWithSqlite() {
         });
         db.tenants = updatedTenants;
         if (!db.tenants.some((t) => t.id === db.activeTenantId)) {
-          db.activeTenantId = db.tenants[0]?.id || "org_1789542306289_b3a4f3";
+          db.activeTenantId = db.tenants[0]?.id || getDefaultTenantId();
         }
         saveDb();
       }
@@ -7669,7 +7415,7 @@ app.get("/api/tenants", requirePermission("workspace.view", "tenant"), async (re
     !db.activeTenantId ||
     !db.tenants.some((t) => t.id === db.activeTenantId)
   ) {
-    db.activeTenantId = db.tenants[0]?.id || "org_1789542306289_b3a4f3";
+    db.activeTenantId = db.tenants[0]?.id || getDefaultTenantId();
     saveDb();
   }
   const actor = (req as any).actor;
@@ -7728,15 +7474,24 @@ app.post("/api/tenants", requirePermission("tenant.create", "global"), (req: exp
     return res.status(400).json({ error: "Tenant name is required." });
   }
   if (!db.tenants) db.tenants = [...DEFAULT_TENANTS];
+  const settings = resolveTenantSettings({
+    settings: {
+      ...(tenantData.settings || {}),
+      ...(tenantData.countryCode ? { countryCode: tenantData.countryCode } : {}),
+      ...(tenantData.industry ? { industry: tenantData.industry } : {}),
+    },
+    currency: tenantData.currency,
+  });
   const newTenant = {
     id: `tenant-${Date.now()}`,
     name: tenantData.name,
-    legalEntity: tenantData.legalEntity || "PT",
+    legalEntity: tenantData.legalEntity || "",
     brandName: tenantData.brandName || tenantData.name,
     tagline: tenantData.tagline || "",
     logoUrl: tenantData.logoUrl || "/favicon.png",
-    primaryColor: tenantData.primaryColor || "#06C755",
-    currency: tenantData.currency || "IDR",
+    primaryColor: tenantData.primaryColor || DEFAULT_BRANDING.primaryColor,
+    currency: settings.defaultCurrency,
+    settings,
     domainSlug:
       tenantData.domainSlug ||
       tenantData.name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
@@ -7756,11 +7511,16 @@ app.put("/api/tenants/:id", requirePermission("tenant.edit", "global"), (req: ex
   if (index === -1) {
     return res.status(404).json({ error: "Tenant not found." });
   }
-  db.tenants[index] = {
-    ...db.tenants[index],
-    ...updates,
-    updated_at: new Date().toISOString(),
-  };
+  const { id: _ignoredId, isDefault: _ignoredDefault, settings: incomingSettings, ...safeUpdates } = updates || {};
+  const merged = { ...db.tenants[index], ...safeUpdates };
+  merged.settings = resolveTenantSettings({
+    settings: { ...(db.tenants[index].settings || {}), ...(incomingSettings || {}) },
+    currency: safeUpdates.currency || db.tenants[index].currency,
+  });
+  if (safeUpdates.currency) merged.settings.defaultCurrency = normalizeCurrencyCode(safeUpdates.currency, merged.settings.defaultCurrency);
+  merged.currency = merged.settings.defaultCurrency;
+  merged.updated_at = new Date().toISOString();
+  db.tenants[index] = merged;
   saveDb();
   return res.json({ success: true, tenants: db.tenants });
 });
@@ -7768,14 +7528,14 @@ app.delete("/api/tenants/:id", requirePermission("tenant.delete", "global"), (re
   const { id } = req.params;
   if (!db.tenants) db.tenants = [...DEFAULT_TENANTS];
   const target = db.tenants.find((t) => t.id === id);
-  if (target?.isDefault || target?.domainSlug === "adapundi") {
+  if (target?.isDefault) {
     return res.status(400).json({ error: "Default tenant cannot be deleted." });
   }
   db.tenants = db.tenants.filter(
     (t) => t.id !== id && t.domainSlug !== target?.domainSlug,
   );
   if (db.activeTenantId === id) {
-    db.activeTenantId = db.tenants[0]?.id || "tenant-adapundi";
+    db.activeTenantId = db.tenants[0]?.id || getDefaultTenantId();
   }
   try {
     if (sqliteDb) {
@@ -7893,140 +7653,119 @@ app.post("/api/branding", (req: express.Request, res: express.Response) => {
   saveDb();
   return res.json({ success: true, branding: db.branding });
 });
+/** Mask all but the last `keep` characters, e.g. bank account numbers. */
+function maskTail(value: unknown, keep = 4): string {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  return text.length <= keep ? "•".repeat(text.length) : `${"•".repeat(Math.min(6, text.length - keep))}${text.slice(-keep)}`;
+}
 app.post("/api/chat", async (req: express.Request, res: express.Response) => {
+  if (!ensureAiAvailable(req, res)) return;
   try {
     const { query, history } = req.body;
     if (!query && (!history || history.length === 0)) {
       return res.status(400).json({ error: "Query is required" });
     }
-    const ai = getGenAIClient();
+    const tenantId = getRequestTenantId(req);
+    const settings = getTenantSettings(tenantId);
+    const ctx = aiPolicyContext(tenantId);
+    const inTenant = (row: any) => isMatchingOrg(row?.organizationId, tenantId);
+    /*
+     * Privacy by design (PRD §3.4.1, §5.1): only the active tenant's records
+     * are sent, and direct identifiers — phone numbers, e-mail addresses,
+     * postal addresses, identity/tax numbers and bank account numbers — are
+     * stripped or masked before anything leaves this server.
+     */
     const dbContext = {
-      partners: (db.partners || []).map((p: any) => ({
+      organization: { name: ctx.organizationName, country: ctx.countryName, industry: ctx.industryName },
+      partners: (db.partners || []).filter(inTenant).map((p: any) => ({
         partner_id: p.partner_id || p.id,
-        nama_partner: p.nama_partner,
-        codename_channel:
-          p.codename || p.partner_channel || p.media_network || "",
-        jenis_partner: p.jenis_partner || "Vendor",
-        badan_hukum: p.badan_hukum || "BHI",
-        status_dd: p.status_dd || "Belum Lengkap",
-        tanggal_dd_diverifikasi: p.tanggal_dd_diverifikasi || "",
-        pic_internal: p.pic_internal || p.internal_pic || "",
-        pic_partner: p.pic_partner || p.nama_pic || p.kontak_pic || "",
-        email_pic: p.email_pic || "",
-        telepon_pic: p.telepon_pic || "",
-        alamat_pic: p.alamat_pic || "",
-        tags_kategori: p.tags || [],
-        internal_notes_partner: p.catatan || p.internal_notes || p.notes || "",
-        daftar_dokumen_dd: Array.isArray(p.daftar_dokumen_dd)
+        name: p.nama_partner,
+        codename: p.codename || p.partner_channel || "",
+        type: p.jenis_partner || "Vendor",
+        country: p.country || "",
+        entity_type: p.entity_type || "",
+        dd_status: p.status_dd,
+        dd_verified_at: p.tanggal_dd_diverifikasi || "",
+        internal_owner: p.pic_internal || p.internal_pic || "",
+        contact_name: p.nama_pic || "",
+        categories: p.tags || [],
+        internal_notes: p.catatan || p.internal_notes || p.notes || "",
+        dd_documents: Array.isArray(p.daftar_dokumen_dd)
           ? p.daftar_dokumen_dd.map((d: any) => ({
-              nama: d.nama,
+              name: d.nama,
               status: d.status,
-              wajib: d.wajib,
-              nomorDokumen: d.nomorDokumen || "",
-              tanggalKadaluarsa: d.tanggalKadaluarsa || "",
+              required: d.wajib,
+              expires_at: d.tanggalKadaluarsa || "",
             }))
           : [],
       })),
-      contracts: (db.contracts || []).map((c: any) => ({
+      contracts: (db.contracts || []).filter(inTenant).map((c: any) => ({
         contract_id: c.contract_id || c.id,
-        nomor_kontrak: c.nomor_kontrak,
-        judul_kontrak: c.judul_kontrak,
-        partner_nama: c.partner_nama || c.nama_partner || "",
+        reference: c.nomor_kontrak,
+        title: c.judul_kontrak,
+        counterparty: c.partner_nama || c.nama_partner || "",
         partner_id: c.partner_id || "",
-        jenis_dokumen: c.jenis_dokumen || "Master Agreement",
-        parent_contract_nomor: c.parent_contract_nomor || c.parent_nomor || "",
-        kategori_kerjasama: c.kategori_kerjasama || [],
-        tanggal_mulai: c.tanggal_mulai,
-        tanggal_berakhir: c.tanggal_berakhir,
-        currency: c.currency || c.mata_uang || "IDR",
-        nilai_kontrak: c.nilai_kontrak || 0,
-        nilai_kontrak_usd: c.nilai_kontrak_usd || 0,
+        document_type: c.jenis_dokumen || "Master Agreement",
+        parent_reference: c.parent_contract_nomor || c.parent_nomor || "",
+        categories: c.kategori_kerjasama || [],
+        start_date: c.tanggal_mulai,
+        end_date: c.tanggal_berakhir,
+        currency: c.currency,
+        value: c.nilai_kontrak || 0,
+        value_usd: c.nilai_kontrak_usd || 0,
         auto_renewal: Boolean(c.auto_renewal),
-        notice_period_hari: c.notice_period_hari || c.notice_period_days || 30,
-        notice_type_required: c.notice_type_required || "Termination",
-        status: c.status || c.status_kontrak || "Aktif",
-        status_approval: c.status_approval || "Aktif",
-        pic_internal: c.pic_internal || "",
-        internal_notes_kontrak:
-          c.internal_notes || c.notes || c.catatan || c.ringkasan_kontrak || "",
-        ringkasan_perubahan: c.ringkasan_perubahan || "",
-        field_yang_berubah: c.field_yang_berubah || [],
-        sisa_hari: c.sisa_hari,
+        notice_period_days: c.notice_period_hari || c.notice_period_days || 30,
+        notice_type: c.notice_type_required || "Termination",
+        status: c.status,
+        approval_status: c.status_approval,
+        internal_owner: c.pic_internal || "",
+        internal_notes: c.internal_notes || c.notes || c.catatan || "",
+        change_summary: c.ringkasan_perubahan || "",
+        changed_fields: c.field_yang_berubah || [],
+        days_remaining: c.sisa_hari,
       })),
-      ios: (db.ios || []).map((i: any) => {
-        const endDateStr =
-          i.tanggal_berakhir || i.tanggal_selesai || i.period_end || "";
-        let sisaHari = i.sisa_hari;
-        let computedStatus = i.status || "Aktif";
-        if (endDateStr) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const endDate = new Date(endDateStr);
-          if (!isNaN(endDate.getTime())) {
-            endDate.setHours(0, 0, 0, 0);
-            sisaHari = Math.ceil(
-              (endDate.getTime() - today.getTime()) / (1e3 * 60 * 60 * 24),
-            );
-            if (computedStatus !== "Terminated") {
-              if (sisaHari < 0) computedStatus = "Expired";
-              else if (sisaHari <= 90) computedStatus = "Akan Berakhir";
-              else computedStatus = "Aktif";
-            }
-          }
-        }
+      commercial_documents: (db.ios || []).filter(inTenant).map((i: any) => {
+        const endDateStr = i.tanggal_berakhir || i.tanggal_selesai || i.period_end || "";
+        const lifecycle = computeLifecycle(i.organizationId, endDateStr, i.status);
         return {
-          io_id: i.io_id || i.id,
-          nomor_io: i.nomor_io,
-          judul_io: i.judul_io,
-          partner_nama: i.partner_nama || i.nama_partner || "",
+          id: i.io_id || i.id,
+          reference: i.nomor_io,
+          title: i.judul_io,
+          counterparty: i.partner_nama || i.nama_partner || "",
           partner_id: i.partner_id || "",
-          contract_nomor: i.contract_nomor || "",
-          kanal_media: i.kanal_media || i.channel || "",
-          tanggal_mulai: i.tanggal_mulai || i.period_start || "",
-          tanggal_berakhir: endDateStr,
-          tanggal_selesai: endDateStr,
-          pricing_model: i.pricing_model || "Flat Fee",
-          charging_type: i.charging_type || "Prepaid",
-          skema_pembayaran: i.skema_pembayaran || i.model_pembayaran || "",
-          currency: i.currency || i.mata_uang || "IDR",
-          nilai_io: i.nilai_io || i.total_nominal || 0,
-          nilai_io_usd: i.nilai_io_usd || 0,
+          contract_reference: i.contract_nomor || "",
+          scope: i.kanal_media || i.channel || "",
+          start_date: i.tanggal_mulai || i.period_start || "",
+          end_date: endDateStr,
+          pricing_model: i.pricing_model || "",
+          charging_type: i.charging_type || "",
+          payment_scheme: i.skema_pembayaran || i.model_pembayaran || "",
+          currency: i.currency,
+          value: i.nilai_io || i.total_nominal || 0,
+          value_usd: i.nilai_io_usd || 0,
           deliverables: i.deliverables || "",
-          notice_period_hari:
-            i.notice_period_hari || i.notice_period_days || 14,
-          notice_type_required: i.notice_type_required || "Termination",
-          status: computedStatus,
-          internal_notes_io: i.internal_notes || i.notes || i.catatan || "",
-          sisa_hari: sisaHari,
+          notice_period_days: i.notice_period_hari || i.notice_period_days || 14,
+          status: lifecycle.status,
+          internal_notes: i.internal_notes || i.notes || i.catatan || "",
+          days_remaining: lifecycle.daysRemaining,
         };
       }),
-      spendings_and_invoices: (db.spendings || []).map((s: any) => ({
+      spendings_and_invoices: (db.spendings || []).filter(inTenant).map((s: any) => ({
         spending_id: s.id,
         vendor_name: s.vendor_name || s.partner_name || "",
         vendor_id: s.vendor_id || s.partner_id || "",
         invoice_number: s.invoice_number || "",
         invoice_date: s.invoice_date || "",
         invoice_month: s.invoice_month || s.month || "",
-        currency: s.currency || "IDR",
+        currency: s.currency,
         total_amount: s.total_amount || s.amount || 0,
         total_amount_usd: s.total_amount_usd || s.amount_usd || 0,
-        invoice_description: s.invoice_description || s.description || "",
-        internal_notes_invoice:
-          s.internal_notes ||
-          s.notes ||
-          s.catatan ||
-          s.invoice_description ||
-          "",
-        payment_status: s.payment_status || "Paid",
-        bank_info: [
-          s.bank_name,
-          s.bank_account_number,
-          s.bank_account_holder_name,
-        ]
-          .filter(Boolean)
-          .join(" - "),
+        description: s.invoice_description || s.description || "",
+        payment_status: s.payment_status || "",
+        bank: [s.bank_name, maskTail(s.bank_account_number)].filter(Boolean).join(" "),
       })),
-      evaluations: (db.evaluations || []).map((e: any) => ({
+      evaluations: (db.evaluations || []).filter(inTenant).map((e: any) => ({
         evaluation_id: e.id,
         supplier_name: e.supplier_name,
         review_date: e.review_date,
@@ -8037,41 +7776,26 @@ app.post("/api/chat", async (req: express.Request, res: express.Response) => {
         pricing: e.pricing,
         calculated_score: e.calculated_score,
         final_evaluation: e.final_evaluation,
-        internal_notes_evaluasi: e.notes || e.catatan || "",
-        evaluator_name: e.evaluator_name || "",
+        internal_notes: e.notes || e.catatan || "",
       })),
     };
-    const systemInstruction = `You are a highly capable, context-aware AI Legal, Commercial & Business Assistant integrated into the SiLegal Dashboard (Contract, Partner, Insertion Order, Invoice Spending, and Vendor Evaluation Management System).
-Your job is to answer the user's questions based strictly and comprehensively on the provided sheet database JSON and the ongoing multi-turn conversation session context.
+    const moduleNote = settings.modules.commercialDocuments
+      ? `"commercial_documents" are ${ctx.commercialDocumentLabel}s issued under master agreements.`
+      : "";
+    const systemInstruction = `You are a context-aware legal, commercial and business assistant embedded in the Silegal contract lifecycle management workspace of ${ctx.organizationName}.
+Answer strictly from the workspace JSON below and the ongoing conversation. ${moduleNote}
+Contact details, identity/tax numbers and full bank account numbers are intentionally withheld for privacy; if asked for them, say they are not available to the assistant.
 
-You have full, transparent access to ALL data fields from the sheet database, including:
-- **Partners**: Nama, status DD, dokumen legalitas, kontak PIC, dan **Internal Notes Partner** (\`internal_notes_partner\`).
-- **Contracts**: Nomor kontrak, judul, jenis dokumen, nilai komersial, tanggal mulai & selesai, notice period, auto-renewal, dan **Internal Notes Kontrak** (\`internal_notes_kontrak\` / rangkuman khusus).
-- **Insertion Orders (IO)**: Nomor IO, kanal media, pricing model, deliverables, skema pembayaran, dan **Internal Notes IO** (\`internal_notes_io\`).
-- **Spendings & Invoices**: Nomor invoice, tanggal, deskripsi penagihan, rekening bank, nilai pengeluaran, dan **Internal Notes Invoice / Penagihan** (\`internal_notes_invoice\`).
-- **Evaluasi Vendor**: Skor SLA, status rekomendasi, dan **Internal Notes Evaluasi** (\`internal_notes_evaluasi\`).
-
-Current Database JSON:
+Workspace JSON:
 ${JSON.stringify(dbContext, null, 2)}
 
-Context & Retrieval Guidelines:
-1. Thorough Inspection: When asked about any notes, remarks, legal comments, or summaries, check the relevant \`internal_notes_*\` fields across partners, contracts, IOs, spendings, and evaluations.
-2. Maintain Session Context: Remember and understand prior questions and answers in this conversation. If the user asks follow-up questions referencing a previously discussed item (e.g., "dia", "kontrak itu", "notes-nya apa", "yang tadi"), resolve the reference seamlessly.
-3. Be concise, direct, professional, and accurate.
-4. For calculations (sums, totals, active counts, currency breakdowns), calculate strictly from the JSON.
-5. If a specific note or item is blank or not found in the records, state so clearly and politely.
-6. FORMAT ATURAN WAJIB (SANGAT PENTING - BEBAS TABEL):
-   - DILARANG menggunakan atau menghasilkan respon dalam bentuk TABEL Markdown (| col1 | col2 |) untuk perbandingan atau data apa pun karena tabel tidak dapat dimuat sempurna di lebar chat widget.
-   - Sebagai alternatif, SELALU gunakan format BULLET LIST / POIN-POIN TERSTRUKTUR (bullet points dan sub-bullet berinden) dengan judul/nama entitas dan kategori ditebalkan (bold).
-   Contoh format perbandingan yang rapi:
-   * **[Item / Kontrak / Partner A]**:
-     - Status / Nilai: ...
-     - Klausul / Detail: ...
-   * **[Item / Kontrak / Partner B]**:
-     - Status / Nilai: ...
-     - Klausul / Detail: ...
-   * **Kesimpulan / Rekomendasi**: Ringkasan singkat poin pembeda
-7. Answer in Indonesian unless requested otherwise.`;
+Guidelines:
+1. When asked about notes, remarks or summaries, check every "internal_notes" field.
+2. Keep conversational context; resolve follow-up references ("that contract", "its notes") to previously discussed items.
+3. Be concise, direct, professional and accurate. Compute sums, counts and currency breakdowns strictly from the JSON and state the currency of every amount.
+4. If a record or note is missing, say so clearly.
+5. Never answer with Markdown tables (the chat widget is narrow). Use bullet lists with bold entity names and indented sub-bullets instead.
+6. Answer in ${ctx.responseLanguage} unless the user writes in, or asks for, another language.`;
     const contents = [];
     if (Array.isArray(history) && history.length > 0) {
       for (const msg of history) {
@@ -8106,6 +7830,155 @@ Context & Retrieval Guidelines:
       .json({ error: error?.message || "Failed to process AI request" });
   }
 });
+/* ------------------------------------------------------------------ */
+/* Health, first-run status, policy packs and tenant settings          */
+/* ------------------------------------------------------------------ */
+app.get("/api/health", (_req: express.Request, res: express.Response) => {
+  res.json({ status: "ok", time: new Date().toISOString() });
+});
+
+/** True while the bootstrap superuser still uses the documented password. */
+async function isBootstrapPasswordActive(): Promise<boolean> {
+  try {
+    const row: any = sqliteDb.prepare(`
+      SELECT a.password FROM account a JOIN user u ON u.id = a.userId
+      WHERE LOWER(u.email) = LOWER(?) AND a.providerId = 'credential' LIMIT 1
+    `).get(demoAdminEmail);
+    if (!row?.password) return false;
+    return await verifyPassword({ hash: row.password, password: DEFAULT_ADMIN_PASSWORD });
+  } catch {
+    return false;
+  }
+}
+
+// Unauthenticated: lets the sign-in page show the first-run login hint
+// only while the documented default credentials still work.
+app.get("/api/system/public-status", async (_req: express.Request, res: express.Response) => {
+  const defaultCredentialsActive = shouldSeedDemoAdmin && demoAdminEmail === DEFAULT_ADMIN_EMAIL && (await isBootstrapPasswordActive());
+  res.json({
+    appName: db.branding?.appName || DEFAULT_BRANDING.appName,
+    defaultCredentialsActive,
+    defaultAdminEmail: defaultCredentialsActive ? DEFAULT_ADMIN_EMAIL : undefined,
+  });
+});
+
+app.get("/api/system/status", async (req: express.Request, res: express.Response) => {
+  const actor = (req as any).actor;
+  const isSuperuser = actor?.role === "superuser";
+  res.json({
+    isSuperuser,
+    defaultAdminPasswordActive: isSuperuser ? await isBootstrapPasswordActive() : false,
+    tenantCount: (db.tenants || []).length,
+  });
+});
+
+app.get("/api/policy-packs", (_req: express.Request, res: express.Response) => {
+  res.json({
+    countries: listCountryPacks().map((c) => ({
+      code: c.code,
+      name: c.name,
+      region: c.region,
+      defaultCurrency: c.defaultCurrency,
+      timezone: c.timezone,
+      legalForms: c.legalForms,
+      identifierSchemes: c.identifierSchemes,
+      dataProtectionLaw: c.dataProtectionLaw,
+      governingLaw: c.governingLaw,
+      disputeVenue: c.disputeVenue,
+    })),
+    industries: listIndustryPacks().map((i) => ({
+      key: i.key,
+      name: i.name,
+      partnerCategories: i.partnerCategories,
+      commercialDocument: i.commercialDocument,
+    })),
+  });
+});
+
+function tenantSettingsPayload(tenantId: string) {
+  const tenant = findTenant(tenantId);
+  const settings = resolveTenantSettings(tenant);
+  const country = getCountryPack(settings.countryCode);
+  const industry = getIndustryPack(settings.industry);
+  return {
+    tenantId: tenant?.id || tenantId,
+    tenantName: tenant?.name || "",
+    settings,
+    country: {
+      code: country.code,
+      name: country.name,
+      legalForms: country.legalForms,
+      identifierSchemes: country.identifierSchemes,
+      governingLaw: country.governingLaw,
+      disputeVenue: country.disputeVenue,
+      dataProtectionLaw: country.dataProtectionLaw,
+      indirectTaxName: country.indirectTaxName,
+      stampDutyConvention: country.stampDutyConvention || null,
+      weekend: country.weekend,
+      callingCode: country.callingCode,
+      formattingLocale: country.formattingLocale,
+    },
+    industry: {
+      key: industry.key,
+      name: industry.name,
+      partnerCategories: industry.partnerCategories,
+      commercialDocument: industry.commercialDocument,
+    },
+    dueDiligenceChecklist: buildDueDiligenceChecklist(settings, { includeDisabled: true }),
+  };
+}
+
+app.get("/api/tenant-settings", (req: express.Request, res: express.Response) => {
+  res.json(tenantSettingsPayload(getRequestTenantId(req)));
+});
+
+app.put("/api/tenant-settings", (req: express.Request, res: express.Response) => {
+  const actor = (req as any).actor;
+  if (!actor || !["admin", "superuser"].includes(String(actor.role))) {
+    return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "Only administrators can change organization settings." });
+  }
+  const tenantId = getRequestTenantId(req);
+  const tenant = findTenant(tenantId);
+  if (!tenant) return res.status(404).json({ error: "Organization not found." });
+  const incoming = req.body?.settings && typeof req.body.settings === "object" ? req.body.settings : {};
+  const merged = resolveTenantSettings({
+    settings: { ...(tenant.settings || {}), ...incoming },
+    currency: tenant.currency,
+  });
+  const previous = resolveTenantSettings(tenant);
+  tenant.settings = merged;
+  tenant.currency = merged.defaultCurrency;
+  if (typeof req.body?.legalEntity === "string") tenant.legalEntity = req.body.legalEntity.slice(0, 120);
+  tenant.updated_at = new Date().toISOString();
+  // Policy changes re-derive checklists and lifecycle statuses immediately.
+  (db.partners || []).forEach((p: any) => {
+    if (!isMatchingOrg(p.organizationId, tenant.id)) return;
+    p.daftar_dokumen_dd = normalizePartnerDocuments(p);
+    p.status_dd = computeDueDiligenceStatus(p.daftar_dokumen_dd);
+  });
+  recalculateStatuses();
+  saveDb();
+  try {
+    const row: any = sqliteDb.prepare("SELECT metadata FROM organization WHERE id = ?").get(tenant.id);
+    if (row) {
+      let meta: any = {};
+      try { meta = row.metadata ? JSON.parse(row.metadata) : {}; } catch { meta = {}; }
+      meta.settings = merged;
+      meta.currency = merged.defaultCurrency;
+      if (tenant.legalEntity !== undefined) meta.legalEntity = tenant.legalEntity;
+      sqliteDb.prepare("UPDATE organization SET metadata = ? WHERE id = ?").run(JSON.stringify(meta), tenant.id);
+    }
+  } catch (err) {
+    console.warn("Could not persist tenant settings to organization metadata:", err);
+  }
+  addActivityLog(
+    "", "", actor.role, "UPDATE", "ADMIN",
+    `Updated organization settings for ${tenant.name}: country ${previous.countryCode} → ${merged.countryCode}, industry ${previous.industry} → ${merged.industry}, currency ${merged.defaultCurrency}, timezone ${merged.timezone}.`,
+    req,
+  );
+  res.json({ success: true, ...tenantSettingsPayload(tenant.id) });
+});
+
 app.use("/api/auth-console", authConsoleRouter);
 app.all("/api/*", (req: express.Request, res: express.Response) => {
   res

@@ -6,15 +6,42 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 
-let defaultGoogleClientId = process.env.GOOGLE_CLIENT_ID || "";
-if (!defaultGoogleClientId) {
+const googleClientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
+const googleClientSecret = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
+
+/*
+ * Deployment URL configuration (PRD §5.4). BETTER_AUTH_URL is the public
+ * base URL; TRUSTED_ORIGINS (comma separated) adds extra origins such as a
+ * separate front-end host. Localhost is trusted only outside production.
+ */
+const isProduction = process.env.NODE_ENV === "production";
+const publicBaseUrl = (process.env.BETTER_AUTH_URL || "").trim().replace(/\/$/, "");
+const extraOrigins = (process.env.TRUSTED_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+const hostOf = (url: string) => {
   try {
-    const cfgPath = path.join(process.cwd(), "firebase-applet-config.json");
-    if (fs.existsSync(cfgPath)) {
-      const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf-8"));
-      defaultGoogleClientId = cfg.oAuthClientId || "";
-    }
-  } catch (_) {}
+    return new URL(url).host;
+  } catch {
+    return "";
+  }
+};
+const allowedHosts = Array.from(new Set([
+  ...[publicBaseUrl, ...extraOrigins].map(hostOf).filter(Boolean),
+  ...(isProduction ? [] : ["localhost:*", "127.0.0.1:*"]),
+]));
+const trustedOrigins = Array.from(new Set([
+  ...(publicBaseUrl ? [publicBaseUrl] : []),
+  ...extraOrigins,
+  ...(isProduction ? [] : ["http://localhost:*", "http://127.0.0.1:*"]),
+]));
+const authSecret = process.env.BETTER_AUTH_SECRET || "";
+if (!authSecret && isProduction) {
+  throw new Error("BETTER_AUTH_SECRET must be set in production (use a long random value).");
+}
+if (!authSecret) {
+  console.warn("[auth] BETTER_AUTH_SECRET is not set — using an insecure development secret.");
 }
 
 // --- Access Control ---
@@ -702,72 +729,23 @@ try {
   throw err;
 }
 
-// Seed default organization only if table is completely empty
-try {
-  const orgCount = (sqliteDb.prepare('SELECT COUNT(*) as count FROM organization').get() as any)?.count || 0;
-  if (orgCount === 0) {
-    const insertOrg = sqliteDb.prepare(`
-      INSERT OR IGNORE INTO organization (id, name, slug, logo, createdAt, metadata)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    const now = new Date().toISOString();
-
-    insertOrg.run(
-      'org_1789542306289_b3a4f3',
-      'Adapundi',
-      'adapundi',
-      '/favicon.png',
-      now,
-      JSON.stringify({
-        currency: 'IDR',
-        brandName: 'Adapundi',
-        legalEntity: 'PT',
-        tagline: 'Legal & Commercial Contract Management',
-        primaryColor: '#06C755',
-        driveFolderId: '1FpW5eMbZ-4LAvR2k_sC39VcKmnTDaopY',
-        driveFolderLink: 'https://drive.google.com/drive/folders/1FpW5eMbZ-4LAvR2k_sC39VcKmnTDaopY',
-      })
-    );
-
-    // Also seed default teams if team table is empty
-    const teamCount = (sqliteDb.prepare('SELECT COUNT(*) as count FROM team').get() as any)?.count || 0;
-    if (teamCount === 0) {
-      const insertTeam = sqliteDb.prepare(`
-        INSERT OR IGNORE INTO team (id, name, memberCount, organizationId, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-      insertTeam.run('team-commercial', 'Commercial & Marketing', 4, 'org_1789542306289_b3a4f3', now, now);
-      insertTeam.run('team-legal', 'Legal & Compliance', 3, 'org_1789542306289_b3a4f3', now, now);
-      insertTeam.run('team-procurement', 'Procurement & Operations', 3, 'org_1789542306289_b3a4f3', now, now);
-    }
-  }
-} catch (err) {
-  console.warn("Could not seed default organizations:", err);
-}
+// Organizations are not seeded here: server startup hydrates them from the
+// tenant list (the demo dataset on first run, or the admin's own setup).
 
 // --- Better Auth Instance ---
 export const auth = betterAuth({
   baseURL: {
-    allowedHosts: [
-      "localhost:3000",
-      "localhost:5173",
-      "silegal.ai.studio",
-      "*.ai.studio",
-      "*.run.app",
-      "*.vercel.app",
-    ],
-    protocol: process.env.NODE_ENV === "development" ? "http" : "https",
+    allowedHosts: allowedHosts.length > 0 ? allowedHosts : ["localhost:*"],
+    protocol: publicBaseUrl.startsWith("https://") ? "https" : isProduction ? "https" : "http",
   },
   database: sqliteDb,
   emailAndPassword: {
     enabled: true,
   },
-  socialProviders: {
-    google: {
-      clientId: defaultGoogleClientId || process.env.GOOGLE_CLIENT_ID || "259981060417-4p303aonqodjom27jbd7pk8bnk3s3nfi.apps.googleusercontent.com",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "mock_google_secret",
-    },
-  },
+  // Google sign-in is optional and only enabled when credentials exist.
+  socialProviders: googleClientId && googleClientSecret
+    ? { google: { clientId: googleClientId, clientSecret: googleClientSecret } }
+    : {},
   plugins: [
     admin({
       ac,
@@ -780,7 +758,7 @@ export const auth = betterAuth({
       creatorRole: "owner",
       teams: { enabled: true },
     }),
-    ...(process.env.BETTER_AUTH_ENABLE_INFRA === 'true' && process.env.BETTER_AUTH_API_KEY && process.env.BETTER_AUTH_API_KEY !== 'ba_vk0v6kcwjqk2dwfl7d2alxgec6wi9r3r'
+    ...(process.env.BETTER_AUTH_ENABLE_INFRA === 'true' && process.env.BETTER_AUTH_API_KEY && true
       ? [
           dash({
             apiKey: process.env.BETTER_AUTH_API_KEY,
@@ -863,14 +841,6 @@ export const auth = betterAuth({
       },
     },
   },
-  trustedOrigins: [
-    ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
-    "http://localhost:*",
-    "http://127.0.0.1:*",
-    "https://*.run.app",
-    "https://*.google.com",
-    "https://*",
-    "http://*",
-  ],
-  secret: process.env.BETTER_AUTH_SECRET || "development_secret_key_1234567890",
+  trustedOrigins,
+  secret: authSecret || "insecure-development-secret-change-me",
 });

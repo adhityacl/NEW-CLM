@@ -1,48 +1,62 @@
-// Standalone currency rates helper without external Google Sheets dependency
+/**
+ * Server-side exchange-rate provider (PRD §4.1 `ExchangeRateProvider`).
+ *
+ * The provider URL is configurable through `EXCHANGE_RATE_API_URL` and can be
+ * disabled with `EXCHANGE_RATE_API_URL=off` for air-gapped deployments, in
+ * which case reference fallback rates are used and flagged.
+ */
+import { getDefaultUsdRate, normalizeCurrencyCode } from './currencyUtils';
+
+const DEFAULT_PROVIDER_URL = 'https://api.exchangerate-api.com/v4/latest/USD';
+
 let globalRatesCache: Record<string, number> = {};
 let lastGlobalRatesFetch = 0;
 
+function providerUrl(): string | null {
+  const configured = typeof process !== 'undefined' ? process.env?.EXCHANGE_RATE_API_URL : undefined;
+  if (configured && configured.trim().toLowerCase() === 'off') return null;
+  return (configured && configured.trim()) || DEFAULT_PROVIDER_URL;
+}
+
+/** Units of each currency per 1 USD, cached for an hour. */
 export async function fetchRealRates(): Promise<Record<string, number>> {
-  if (Date.now() - lastGlobalRatesFetch < 3600000 && Object.keys(globalRatesCache).length > 0) {
+  if (Date.now() - lastGlobalRatesFetch < 3_600_000 && Object.keys(globalRatesCache).length > 0) {
     return globalRatesCache;
   }
+  const url = providerUrl();
+  if (!url) return globalRatesCache;
   try {
-    const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
       globalRatesCache = data.rates || {};
       lastGlobalRatesFetch = Date.now();
     }
   } catch (e) {
-    console.warn('Failed to fetch real-time exchange rates, using defaults', e);
+    console.warn('Failed to fetch exchange rates, using reference fallback rates', e);
   }
   return globalRatesCache;
+}
+
+/** USD value of one unit of `currency`, with a flag when it is a fallback. */
+export async function getUsdRate(currency: string): Promise<{ rate: number; isFallback: boolean }> {
+  const code = normalizeCurrencyCode(currency);
+  if (code === 'USD') return { rate: 1, isFallback: false };
+  const rates = await fetchRealRates();
+  if (rates[code]) return { rate: 1 / rates[code], isFallback: false };
+  return { rate: getDefaultUsdRate(code), isFallback: true };
 }
 
 export async function getHistoricalExchangeRatesBatch(
   _spreadsheetId: string,
   _token: string,
-  items: { currency: string; invoice_date?: string }[]
+  items: { currency: string; invoice_date?: string }[],
 ): Promise<Record<string, number>> {
   const map: Record<string, number> = {};
-  const rates = await fetchRealRates();
-  
   for (const item of items) {
-    const cur = (item.currency || 'IDR').toUpperCase();
-    if (cur === 'USD') {
-      map[`USD_${item.invoice_date || ''}`] = 1;
-      continue;
-    }
-    
-    // Convert to USD multiplier (e.g. 1 / 15000 for IDR)
-    let rate = cur === 'IDR' ? 0.000062 : 1;
-    if (rates[cur]) {
-      rate = 1 / rates[cur];
-    }
-    
-    map[`${cur}_${item.invoice_date || ''}`] = rate;
+    const code = normalizeCurrencyCode(item.currency);
+    map[`${code}_${item.invoice_date || ''}`] = (await getUsdRate(code)).rate;
   }
-  
   return map;
 }
 
@@ -50,26 +64,17 @@ export async function getHistoricalExchangeRate(
   spreadsheetId: string,
   token: string,
   currency: string,
-  invoiceDateStr?: string
+  invoiceDateStr?: string,
 ): Promise<number> {
-  const map = await getHistoricalExchangeRatesBatch(spreadsheetId, token, [{ currency, invoice_date: invoiceDateStr }]);
-  return map[`${(currency || 'IDR').toUpperCase()}_${invoiceDateStr || ''}`] || ((currency || 'IDR').toUpperCase() === 'IDR' ? 0.000062 : 1);
+  const code = normalizeCurrencyCode(currency);
+  const map = await getHistoricalExchangeRatesBatch(spreadsheetId, token, [{ currency: code, invoice_date: invoiceDateStr }]);
+  return map[`${code}_${invoiceDateStr || ''}`] || getDefaultUsdRate(code);
 }
 
 export async function getExchangeRates(_spreadsheetId: string, _token: string, currencies: string[]): Promise<Record<string, number>> {
-  const targetCurrencies = Array.from(new Set(currencies.filter(c => c && c !== 'USD')));
-  if (targetCurrencies.length === 0) return {};
-  
-  const rates = await fetchRealRates();
   const result: Record<string, number> = {};
-  
-  targetCurrencies.forEach(cur => {
-    if (rates[cur]) {
-      result[cur] = 1 / rates[cur];
-    } else {
-      result[cur] = cur === 'IDR' ? 0.000062 : 1;
-    }
-  });
-  
+  for (const cur of Array.from(new Set(currencies.map((c) => normalizeCurrencyCode(c)).filter((c) => c !== 'USD')))) {
+    result[cur] = (await getUsdRate(cur)).rate;
+  }
   return result;
 }

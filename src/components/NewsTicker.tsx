@@ -9,19 +9,10 @@ const SCROLL_SPEED_PX_PER_SEC = 45;
 const NUDGE_PX = 220;
 
 /**
- * Dashboard news ticker: 5 short headlines about current Indonesian
- * fintech-lending (Pindar/Pinjol) regulation, generated server-side via
- * Gemini and cached for 7 days (see GET /api/dashboard/news-ticker in
- * server.ts).
- *
- * Layout/style follows "Style 7" of exclusiveaddons.com's news-ticker demo
- * (a diagonally-cut label badge + a continuously scrolling marquee + prev/
- * next controls), recolored to this app's own palette: the reference's
- * orange-red badge becomes the brand green (#06C755) gradient used
- * elsewhere on this dashboard, and the reference's dark outer frame is
- * dropped in favor of this app's own plain white-card convention (every
- * other dashboard card is a white/bordered box directly on the page
- * background, not a dark double-frame).
+ * Optional dashboard news ticker: 5 short regulatory headlines for the
+ * tenant's industry and country, generated server-side by the configured AI
+ * provider and cached for 7 days (GET /api/dashboard/news-ticker). Hidden
+ * when the tenant's `newsTicker` module is off or no AI key is configured.
  */
 export const NewsTicker: React.FC = () => {
   const { t } = useLanguage();

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { Contract, RedlineAnalysisData } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -267,7 +268,7 @@ ${analysis.analyzedClauses
                   <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                     <CheckCircle2 className="size-3 text-emerald-500 shrink-0" />
                     {analyzedAt
-                      ? `${t('redline.saved_indicator', 'Hasil Tersimpan')} • ${new Date(analyzedAt).toLocaleDateString('id-ID', {
+                      ? `${t('redline.saved_indicator', 'Hasil Tersimpan')} • ${new Date(analyzedAt).toLocaleDateString(getActiveFormattingLocale(), {
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric',

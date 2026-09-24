@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getActiveFormattingLocale, convertToUsdWithFallback } from '../lib/currencyUtils';
 import { Contract, Partner, InsertionOrder } from '../types';
 import { formatMoney } from '../lib/currencyUtils';
 import { ActionMenu } from './ui/action-menu';
@@ -289,9 +290,9 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
         (c.kategori_kerjasama || []).join('; '),
         c.tanggal_mulai,
         c.tanggal_selesai,
-        c.currency || 'IDR',
+        c.currency || '',
         c.nilai_kontrak,
-        c.nilai_kontrak_usd ?? (c.currency === 'USD' ? c.nilai_kontrak : c.nilai_kontrak * 0.000062),
+        c.nilai_kontrak_usd ?? convertToUsdWithFallback(c.nilai_kontrak, c.currency || 'USD'),
         c.status,
         c.sisa_hari !== undefined ? c.sisa_hari : '',
         c.pic_internal,
@@ -406,8 +407,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
             className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('contracts.all_status')}</option>
-            <option value="Aktif">{t('contracts.active')}</option>
-            <option value="Akan Berakhir">{t('contracts.expiring')}</option>
+            <option value="Active">{t('contracts.active')}</option>
+            <option value="Expiring">{t('contracts.expiring')}</option>
             <option value="Expired">{t('contracts.expired')}</option>
             <option value="Terminated">{t('contracts.terminated')}</option>
           </select>
@@ -540,7 +541,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                               Agreement Addendum
                             </span>
                           ) : (
-                            <span className={`text-xs font-normal px-3 py-0.5 rounded-full border shadow-2xs whitespace-nowrap ${getStatusBadgeClass('Aktif')}`}>
+                            <span className={`text-xs font-normal px-3 py-0.5 rounded-full border shadow-2xs whitespace-nowrap ${getStatusBadgeClass('Active')}`}>
                               Master Agreement
                             </span>
                           )}
@@ -582,14 +583,14 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                       {/* Nilai */}
                       {visibleColumns.nilai && (
                         <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left whitespace-nowrap">
-                          {formatMoney(ctr.nilai_kontrak, ctr.currency || 'IDR')}
+                          {formatMoney(ctr.nilai_kontrak, ctr.currency)}
                         </td>
                       )}
 
                       {/* Tanggal Mulai */}
                       {visibleColumns.tanggal_mulai && (
                         <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left whitespace-nowrap">
-                          {new Date(ctr.tanggal_mulai).toLocaleDateString(language === 'EN' ? 'en-US' : 'id-ID', {
+                          {new Date(ctr.tanggal_mulai).toLocaleDateString(getActiveFormattingLocale(), {
                             day: 'numeric', month: 'short', year: 'numeric'
                           })}
                         </td>
@@ -597,7 +598,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                       {/* Tanggal Selesai */}
                       {visibleColumns.tanggal_selesai && (
                         <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left whitespace-nowrap">
-                          {new Date(ctr.tanggal_berakhir).toLocaleDateString(language === 'EN' ? 'en-US' : 'id-ID', {
+                          {new Date(ctr.tanggal_berakhir).toLocaleDateString(getActiveFormattingLocale(), {
                             day: 'numeric', month: 'short', year: 'numeric'
                           })}
                         </td>
@@ -732,8 +733,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block">Nilai Komersial:</span>
                   <span className="font-bold text-[#048C3B] dark:text-emerald-400">
-                    {formatMoney(detailContract.nilai_kontrak, detailContract.currency || 'IDR')}
-                    {(detailContract.currency || 'IDR') !== 'USD' && (
+                    {formatMoney(detailContract.nilai_kontrak, detailContract.currency)}
+                    {(detailContract.currency || 'USD') !== 'USD' && (
                       <span className="text-slate-500 dark:text-slate-400 text-xs font-mono ml-1.5 font-normal">
                         (≈ {formatMoney(detailContract.nilai_kontrak_usd, 'USD')})
                       </span>
@@ -809,9 +810,9 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                               <span className="text-slate-700 dark:text-slate-300 text-[11px] block mt-0.5 truncate">{add.judul_kontrak}</span>
                               <span className="text-slate-500 dark:text-slate-400 text-[10px] block mt-0.5">
                                 {language === 'EN' ? 'Validity:' : 'Berlaku:'}{' '}
-                                {add.tanggal_mulai ? new Date(add.tanggal_mulai).toLocaleDateString(language === 'EN' ? 'en-US' : 'id-ID') : '-'}{' '}
+                                {add.tanggal_mulai ? new Date(add.tanggal_mulai).toLocaleDateString(getActiveFormattingLocale()) : '-'}{' '}
                                 -{' '}
-                                {add.tanggal_berakhir ? new Date(add.tanggal_berakhir).toLocaleDateString(language === 'EN' ? 'en-US' : 'id-ID') : '-'}
+                                {add.tanggal_berakhir ? new Date(add.tanggal_berakhir).toLocaleDateString(getActiveFormattingLocale()) : '-'}
                               </span>
                             </div>
                             {add.link_file_kontrak && (
@@ -862,7 +863,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                             <div className="flex items-center justify-between mb-1.5">
                               <span className="font-bold text-indigo-900 dark:text-indigo-300 text-xs font-mono">{add.nomor_kontrak}</span>
                               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                                {add.tanggal_mulai ? new Date(add.tanggal_mulai).toLocaleDateString(language === 'EN' ? 'en-US' : 'id-ID') : '-'}
+                                {add.tanggal_mulai ? new Date(add.tanggal_mulai).toLocaleDateString(getActiveFormattingLocale()) : '-'}
                               </span>
                             </div>
                             {fieldsChanged.length > 0 && (
@@ -908,7 +909,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                             <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">{io.judul_io}</div>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">Rp {(Number(io.nilai_io) || 0).toLocaleString('id-ID')}</div>
+                            <div className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">{formatMoney(Number(io.nilai_io) || 0, io.currency || io.mata_uang)}</div>
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{io.pricing_model || 'Flat Fee'} • {io.charging_type || '-'}</div>
                           </div>
                         </div>

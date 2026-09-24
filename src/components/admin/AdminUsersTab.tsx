@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getActiveFormattingLocale } from '../../lib/currencyUtils';
 import {
   Users,
   Search,
@@ -381,7 +382,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
 
                   {/* Joined Date */}
                   <td className="py-4 px-4 text-left align-middle text-slate-500 dark:text-slate-400 text-[11px]">
-                    {new Date(user.createdAt).toLocaleDateString(language === 'ID' ? 'id-ID' : 'en-US', {
+                    {new Date(user.createdAt).toLocaleDateString(getActiveFormattingLocale(), {
                       day: 'numeric',
                       month: 'short',
                       year: 'numeric',

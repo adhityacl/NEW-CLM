@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SignInForm } from './components/SignInForm';
 import InteractiveGridBackground from './components/lightswind/interactive-grid-background';
@@ -8,29 +8,30 @@ import { ConfirmDialogProvider, useConfirm } from './context/ConfirmDialogContex
 import { AlertToastProvider, useAlertToast } from './context/AlertToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { TenantProvider, useTenant } from './context/TenantContext';
+import { TenantSettingsProvider, useTenantSettings } from './context/TenantSettingsContext';
+import { DefaultPasswordBanner } from './components/DefaultPasswordBanner';
 import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 
-import { DashboardView } from './components/DashboardView';
-import { HierarchyTreemapView } from './components/HierarchyTreemapView';
-import { ContractsView } from './components/ContractsView';
-import { ContractCreatorView } from './components/ContractCreatorView';
-import { IOView } from './components/IOView';
-import { PartnersView } from './components/PartnersView';
-import { PartnerSpendingView } from './components/PartnerSpendingView';
-import { AmendmentsView } from './components/AmendmentsView';
-import { NotificationsView } from './components/NotificationsView';
-import { AdminUsersView } from './components/AdminUsersView';
-import { BulkImportView } from './components/BulkImportView';
-import { ActivityLogsView } from './components/ActivityLogsView';
 import { ConsoleSubmenu } from './components/admin/types';
-import { TenantDashboard } from './components/TenantDashboard';
-import { SettingsView } from './components/SettingsView';
-import { AIChatWidget } from './components/AIChatWidget';
-import { PrivacyPolicyView } from './components/PrivacyPolicyView';
-import { TermsOfServiceView } from './components/TermsOfServiceView';
-import { AlertTriangle, CheckCircle2, Info, X, ExternalLink } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, X, ExternalLink } from 'lucide-react';
+
+const LazyDashboardView = lazy(() => import('./components/DashboardView').then((m) => ({ default: m.DashboardView })));
+const LazyHierarchyTreemapView = lazy(() => import('./components/HierarchyTreemapView').then((m) => ({ default: m.HierarchyTreemapView })));
+const LazyContractsView = lazy(() => import('./components/ContractsView').then((m) => ({ default: m.ContractsView })));
+const LazyContractCreatorView = lazy(() => import('./components/ContractCreatorView').then((m) => ({ default: m.ContractCreatorView })));
+const LazyIOView = lazy(() => import('./components/IOView').then((m) => ({ default: m.IOView })));
+const LazyPartnersView = lazy(() => import('./components/PartnersView').then((m) => ({ default: m.PartnersView })));
+const LazyPartnerSpendingView = lazy(() => import('./components/PartnerSpendingView').then((m) => ({ default: m.PartnerSpendingView })));
+const LazyNotificationsView = lazy(() => import('./components/NotificationsView').then((m) => ({ default: m.NotificationsView })));
+const LazyAdminUsersView = lazy(() => import('./components/AdminUsersView').then((m) => ({ default: m.AdminUsersView })));
+const LazyBulkImportView = lazy(() => import('./components/BulkImportView').then((m) => ({ default: m.BulkImportView })));
+const LazyActivityLogsView = lazy(() => import('./components/ActivityLogsView').then((m) => ({ default: m.ActivityLogsView })));
+const LazySettingsView = lazy(() => import('./components/SettingsView').then((m) => ({ default: m.SettingsView })));
+const LazyAIChatWidget = lazy(() => import('./components/AIChatWidget').then((m) => ({ default: m.AIChatWidget })));
+const LazyPrivacyPolicyView = lazy(() => import('./components/PrivacyPolicyView').then((m) => ({ default: m.PrivacyPolicyView })));
+const LazyTermsOfServiceView = lazy(() => import('./components/TermsOfServiceView').then((m) => ({ default: m.TermsOfServiceView })));
 
 import { ContractModal } from './components/ContractModal';
 import { IOModal } from './components/IOModal';
@@ -104,9 +105,16 @@ export const getAuthHeaders = () => {
 
 const MainApp: React.FC = () => {
   const { user, logout } = useAuth();
+
+  if (!user) {
+    return null;
+  }
+
   const { hasPermission, role, tenantId, loading: permissionsLoading } = usePermissions();
   const { activeTenantId, activeTenant } = useTenant();
   const { activeTab, setActiveTab } = useNavigation();
+  const { policy } = useTenantSettings();
+  const modules = policy.settings.modules;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const queryClient = useQueryClient();
   const confirmDialog = useConfirm();
@@ -137,7 +145,15 @@ const MainApp: React.FC = () => {
     if (activeTab === 'settings' && !hasPermission('admin.access')) {
       setActiveTab('dashboard');
     }
-  }, [activeTab, hasPermission, role, setActiveTab]);
+    // Modules switched off for this organization are not reachable.
+    if (
+      ((activeTab === 'ios' || activeTab === 'io') && !modules.commercialDocuments) ||
+      (activeTab === 'partner-spending' && !modules.spending) ||
+      (activeTab === 'partner-evaluation' && !modules.evaluation)
+    ) {
+      setActiveTab('dashboard');
+    }
+  }, [activeTab, hasPermission, role, setActiveTab, modules.commercialDocuments, modules.spending, modules.evaluation]);
 
   // Data States
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -653,7 +669,7 @@ const MainApp: React.FC = () => {
     loadAllData();
   };
 
-  const expiringContractsCount = contracts.filter((c) => c.status === 'Akan Berakhir').length;
+  const expiringContractsCount = contracts.filter((c) => c.status === 'Expiring').length;
   const unreadNotifsCount = notifications.filter((n) => !n.is_read).length;
 
   if (!permissionsLoading && role !== 'superuser' && !tenantId) {
@@ -689,7 +705,7 @@ const MainApp: React.FC = () => {
         onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+      <div className="flex flex-1 min-w-0 flex-col overflow-hidden">
         <Header
           notifications={notifications}
           googleConfig={googleConfig}
@@ -698,205 +714,208 @@ const MainApp: React.FC = () => {
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
         />
 
-        <main className="flex-1 p-3.5 sm:p-5 md:p-7 overflow-y-auto bg-[#F3F4F0] dark:bg-[#0B0F19]">
-          <section className="w-full space-y-6">
-            {activeTab === 'dashboard' && (
-            <DashboardView
-              contracts={contracts}
-              ios={ios}
-              partners={partners}
-              spendings={spendings}
-              notifications={notifications}
-              onNavigateTab={setActiveTab}
-              onSelectContract={(ctr) => {
-                setActiveTab('contracts');
-              }}
-              onSelectPartner={(p) => {
-                setActiveTab('partners');
-              }}
-            />
-          )}
+        <main className="flex-1 min-h-0 p-3.5 sm:p-5 md:p-7 overflow-y-auto overflow-x-hidden bg-[#F3F4F0] dark:bg-[#0B0F19] overscroll-contain">
+          <DefaultPasswordBanner onOpenSecurity={() => setActiveTab('admin-organization-users')} />
+          <Suspense fallback={<div className="flex h-full min-h-70 items-center justify-center text-sm text-slate-500">Memuat halaman...</div>}>
+            <section className="w-full space-y-6">
+              {activeTab === 'dashboard' && (
+                <LazyDashboardView
+                  contracts={contracts}
+                  ios={ios}
+                  partners={partners}
+                  spendings={spendings}
+                  notifications={notifications}
+                  onNavigateTab={setActiveTab}
+                  onSelectContract={() => {
+                    setActiveTab('contracts');
+                  }}
+                  onSelectPartner={() => {
+                    setActiveTab('partners');
+                  }}
+                />
+              )}
 
-          {activeTab === 'hierarchy' && (
-            <HierarchyTreemapView
-              partners={partners}
-              contracts={contracts}
-              ios={ios}
-              evaluations={evaluations}
-              spendings={spendings}
-              onOpenAddPartner={() => {
-                setPartnerToEdit(null);
-                setShowPartnerModal(true);
-              }}
-              onOpenAddContract={(partnerId) => {
-                setContractToEdit(partnerId ? ({ partner_id: partnerId } as any) : null);
-                setShowContractModal(true);
-              }}
-              onOpenAddIO={(contractId, partnerId) => {
-                setIoToEdit(
-                  contractId || partnerId
-                    ? ({ contract_id: contractId, partner_id: partnerId } as any)
-                    : null
-                );
-                setShowIOModal(true);
-              }}
-              onSelectPartner={(p) => {
-                setPartnerToEdit(p);
-                setShowPartnerModal(true);
-              }}
-              onSelectContract={(ctr) => {
-                setContractToEdit(ctr);
-                setShowContractModal(true);
-              }}
-              onSelectIO={(io) => {
-                setIoToEdit(io);
-                setShowIOModal(true);
-              }}
-            />
-          )}
+              {activeTab === 'hierarchy' && (
+                <LazyHierarchyTreemapView
+                  partners={partners}
+                  contracts={contracts}
+                  ios={ios}
+                  evaluations={evaluations}
+                  spendings={spendings}
+                  onOpenAddPartner={() => {
+                    setPartnerToEdit(null);
+                    setShowPartnerModal(true);
+                  }}
+                  onOpenAddContract={(partnerId) => {
+                    setContractToEdit(partnerId ? ({ partner_id: partnerId } as any) : null);
+                    setShowContractModal(true);
+                  }}
+                  onOpenAddIO={(contractId, partnerId) => {
+                    setIoToEdit(
+                      contractId || partnerId
+                        ? ({ contract_id: contractId, partner_id: partnerId } as any)
+                        : null
+                    );
+                    setShowIOModal(true);
+                  }}
+                  onSelectPartner={(p) => {
+                    setPartnerToEdit(p);
+                    setShowPartnerModal(true);
+                  }}
+                  onSelectContract={(ctr) => {
+                    setContractToEdit(ctr);
+                    setShowContractModal(true);
+                  }}
+                  onSelectIO={(io) => {
+                    setIoToEdit(io);
+                    setShowIOModal(true);
+                  }}
+                />
+              )}
 
-          {activeTab === 'contracts' && (
-            <ContractsView
-              contracts={contracts}
-              partners={partners}
-              ios={ios}
-              onAddContract={() => {
-                setContractToEdit(null);
-                setShowContractModal(true);
-              }}
-              onEditContract={(ctr) => {
-                setContractToEdit(ctr);
-                setShowContractModal(true);
-              }}
-              onDeleteContract={handleDeleteContract}
-              onOpenAddendumModal={(ctr) => {
-                setAmendmentParent(ctr);
-                setShowAmendmentModal(true);
-              }}
-              onUpdateContractData={(updated) => {
-                setContracts((prev) =>
-                  prev.map((c) => (c.contract_id === updated.contract_id ? updated : c))
-                );
-              }}
-            />
-          )}
+              {activeTab === 'contracts' && (
+                <LazyContractsView
+                  contracts={contracts}
+                  partners={partners}
+                  ios={ios}
+                  onAddContract={() => {
+                    setContractToEdit(null);
+                    setShowContractModal(true);
+                  }}
+                  onEditContract={(ctr) => {
+                    setContractToEdit(ctr);
+                    setShowContractModal(true);
+                  }}
+                  onDeleteContract={handleDeleteContract}
+                  onOpenAddendumModal={(ctr) => {
+                    setAmendmentParent(ctr);
+                    setShowAmendmentModal(true);
+                  }}
+                  onUpdateContractData={(updated) => {
+                    setContracts((prev) =>
+                      prev.map((c) => (c.contract_id === updated.contract_id ? updated : c))
+                    );
+                  }}
+                />
+              )}
 
-          {activeTab === 'create-contract' && (
-            <ContractCreatorView
-              partners={partners}
-              contracts={contracts}
-              onSaveToSystem={async (data) => {
-                await handleSaveContract(data);
-              }}
-              onNavigateToContracts={() => setActiveTab('contracts')}
-            />
-          )}
+              {activeTab === 'create-contract' && (
+                <LazyContractCreatorView
+                  partners={partners}
+                  contracts={contracts}
+                  onSaveToSystem={async (data) => {
+                    await handleSaveContract(data);
+                  }}
+                  onNavigateToContracts={() => setActiveTab('contracts')}
+                />
+              )}
 
-          {(activeTab === 'ios' || activeTab === 'io') && (
-            <IOView
-              ios={ios}
-              contracts={contracts}
-              partners={partners}
-              onAddIO={() => {
-                setIoToEdit(null);
-                setShowIOModal(true);
-              }}
-              onEditIO={(io) => {
-                setIoToEdit(io);
-                setShowIOModal(true);
-              }}
-              onDeleteIO={handleDeleteIO}
-            />
-          )}
+              {(activeTab === 'ios' || activeTab === 'io') && modules.commercialDocuments && (
+                <LazyIOView
+                  ios={ios}
+                  contracts={contracts}
+                  partners={partners}
+                  onAddIO={() => {
+                    setIoToEdit(null);
+                    setShowIOModal(true);
+                  }}
+                  onEditIO={(io) => {
+                    setIoToEdit(io);
+                    setShowIOModal(true);
+                  }}
+                  onDeleteIO={handleDeleteIO}
+                />
+              )}
 
-          {(activeTab === 'partners' || activeTab === 'partner-evaluation') && (
-            <PartnersView
-              partners={partners}
-              contracts={contracts}
-              evaluations={evaluations}
-              onRefreshData={loadAllData}
-              initialSubTab={activeTab === 'partner-evaluation' ? 'evaluation' : 'list'}
-              onAddPartner={() => {
-                setPartnerToEdit(null);
-                setShowPartnerModal(true);
-              }}
-              onEditPartner={(p) => {
-                setPartnerToEdit(p);
-                setShowPartnerModal(true);
-              }}
-              onDeletePartner={handleDeletePartner}
-              onUploadDDDoc={handleUploadDDDoc}
-            />
-          )}
+              {(activeTab === 'partners' || activeTab === 'partner-evaluation') && (
+                <LazyPartnersView
+                  partners={partners}
+                  contracts={contracts}
+                  evaluations={evaluations}
+                  onRefreshData={loadAllData}
+                  initialSubTab={activeTab === 'partner-evaluation' ? 'evaluation' : 'list'}
+                  onAddPartner={() => {
+                    setPartnerToEdit(null);
+                    setShowPartnerModal(true);
+                  }}
+                  onEditPartner={(p) => {
+                    setPartnerToEdit(p);
+                    setShowPartnerModal(true);
+                  }}
+                  onDeletePartner={handleDeletePartner}
+                  onUploadDDDoc={handleUploadDDDoc}
+                />
+              )}
 
-          {activeTab === 'partner-spending' && (
-            <PartnerSpendingView
-              partners={partners}
-              spendings={spendings}
-              onRefreshData={loadAllData}
-              userEmail={user.email}
-              userName={user.name}
-              userRole={user.role}
-            />
-          )}
+              {activeTab === 'partner-spending' && modules.spending && (
+                <LazyPartnerSpendingView
+                  partners={partners}
+                  spendings={spendings}
+                  onRefreshData={loadAllData}
+                  userEmail={user.email}
+                  userName={user.name}
+                  userRole={user.role}
+                />
+              )}
 
-          {activeTab === 'notifikasi' && (
-            <NotificationsView
-              notifications={notifications}
-              onTriggerCheck={handleTriggerCheck}
-              onMarkRead={handleMarkReadNotifications}
-              onDeleteNotif={handleDeleteNotifications}
-            />
-          )}
+              {activeTab === 'notifikasi' && (
+                <LazyNotificationsView
+                  notifications={notifications}
+                  onTriggerCheck={handleTriggerCheck}
+                  onMarkRead={handleMarkReadNotifications}
+                  onDeleteNotif={handleDeleteNotifications}
+                />
+              )}
 
-          {(activeTab.startsWith('admin-system-') || activeTab.startsWith('admin-organization-')) && (
-            <AdminUsersView
-              area={activeTab.startsWith('admin-system-') ? 'system' : 'organization'}
-              initialTab={
-                activeTab === 'admin-users'
-                  ? (role === 'superuser' ? 'dashboard' : 'users')
-                  : (activeTab.replace(/^admin-(system|organization)-/, '') as ConsoleSubmenu)
-              }
-            />
-          )}
+              {(activeTab.startsWith('admin-system-') || activeTab.startsWith('admin-organization-')) && (
+                <LazyAdminUsersView
+                  area={activeTab.startsWith('admin-system-') ? 'system' : 'organization'}
+                  initialTab={
+                    activeTab === 'admin-users'
+                      ? (role === 'superuser' ? 'dashboard' : 'users')
+                      : (activeTab.replace(/^admin-(system|organization)-/, '') as ConsoleSubmenu)
+                  }
+                />
+              )}
 
-          {activeTab === 'bulk-import' && hasPermission('admin.department.manage') && (
-            <BulkImportView
-              partners={partners}
-              contracts={contracts}
-              ios={ios}
-              onRefreshData={loadAllData}
-              userEmail={user.email}
-              userName={user.name}
-              userRole={user.role}
-            />
-          )}
+              {activeTab === 'bulk-import' && hasPermission('admin.department.manage') && (
+                <LazyBulkImportView
+                  partners={partners}
+                  contracts={contracts}
+                  ios={ios}
+                  onRefreshData={loadAllData}
+                  userEmail={user.email}
+                  userName={user.name}
+                  userRole={user.role}
+                />
+              )}
 
-          {activeTab === 'activity-logs' && hasPermission('audit.view') && <ActivityLogsView />}
+              {activeTab === 'activity-logs' && hasPermission('audit.view') && <LazyActivityLogsView />}
 
-          {hasPermission('admin.access') && (activeTab === 'settings' || activeTab.startsWith('settings-')) && (
-            <SettingsView
-              config={googleConfig}
-              onSaveConfig={handleSaveGoogleConfig}
-              onSyncNow={handleSyncNow}
-              initialSection={
-                activeTab.startsWith('settings-')
-                  ? (activeTab.replace('settings-', '') as any)
-                  : undefined
-              }
-            />
-          )}
+              {hasPermission('admin.access') && (activeTab === 'settings' || activeTab.startsWith('settings-')) && (
+                <LazySettingsView
+                  config={googleConfig}
+                  onSaveConfig={handleSaveGoogleConfig}
+                  onSyncNow={handleSyncNow}
+                  initialSection={
+                    activeTab.startsWith('settings-')
+                      ? (activeTab.replace('settings-', '') as any)
+                      : undefined
+                  }
+                />
+              )}
 
-          {activeTab === 'privacy' && (
-            <PrivacyPolicyView onBack={() => setActiveTab('dashboard')} />
-          )}
+              {activeTab === 'privacy' && (
+                <LazyPrivacyPolicyView onBack={() => setActiveTab('dashboard')} />
+              )}
 
-          {activeTab === 'terms' && (
-            <TermsOfServiceView onBack={() => setActiveTab('dashboard')} />
-          )}
-        </section>
-      </main>
-    </div>
+              {activeTab === 'terms' && (
+                <LazyTermsOfServiceView onBack={() => setActiveTab('dashboard')} />
+              )}
+            </section>
+          </Suspense>
+        </main>
+      </div>
 
       {/* Modals */}
       {showContractModal && (
@@ -978,7 +997,7 @@ const MainApp: React.FC = () => {
             <button
               type="button"
               onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="min-w-[44px] min-h-[44px] -mr-2 -mt-2 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 shrink-0 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+              className="min-w-11 min-h-11 -mr-2 -mt-2 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 shrink-0 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
               aria-label="Tutup notifikasi"
             >
               <X className="w-4 h-4" />
@@ -986,7 +1005,11 @@ const MainApp: React.FC = () => {
           </div>
         ))}
       </div>
-      <AIChatWidget />
+      {modules.aiAssistant && (
+        <Suspense fallback={null}>
+          <LazyAIChatWidget />
+        </Suspense>
+      )}
     </div>
   );
 };
@@ -1079,11 +1102,19 @@ const AppContent = () => {
   }
 
   if (showPrivacyPolicy) {
-    return <PrivacyPolicyView onBack={handleBackToMain} />;
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Memuat kebijakan...</div>}>
+        <LazyPrivacyPolicyView onBack={handleBackToMain} />
+      </Suspense>
+    );
   }
 
   if (showTermsOfService) {
-    return <TermsOfServiceView onBack={handleBackToMain} />;
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Memuat syarat & ketentuan...</div>}>
+        <LazyTermsOfServiceView onBack={handleBackToMain} />
+      </Suspense>
+    );
   }
 
   if (!user) {
@@ -1132,9 +1163,11 @@ export default function App() {
               <ConfirmDialogProvider>
                 <AlertToastProvider>
                   <TenantProvider>
-                    <NavigationProvider>
-                      <AppContent />
-                    </NavigationProvider>
+                    <TenantSettingsProvider>
+                      <NavigationProvider>
+                        <AppContent />
+                      </NavigationProvider>
+                    </TenantSettingsProvider>
                   </TenantProvider>
                 </AlertToastProvider>
               </ConfirmDialogProvider>

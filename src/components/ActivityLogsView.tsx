@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { ActivityLog } from '../types';
 import { Clock, Search, RefreshCw, Shield, Monitor, Filter, CheckCircle2, Eye, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -90,14 +91,14 @@ export const ActivityLogsView: React.FC = () => {
     switch (action) {
       case 'LOGIN':
       case 'UPLOAD_SUCCESS':
-        return getStatusBadgeClass('Aktif');
+        return getStatusBadgeClass('Active');
       case 'LOGOUT':
         return getStatusBadgeClass('Neutral');
       case 'CREATE':
         return getStatusBadgeClass('Legal');
       case 'UPDATE':
       case 'DD_UPDATE':
-        return getStatusBadgeClass('Akan Berakhir');
+        return getStatusBadgeClass('Expiring');
       case 'DELETE':
       case 'UPLOAD_FAILED':
       case 'SYSTEM_ERROR':
@@ -302,7 +303,7 @@ export const ActivityLogsView: React.FC = () => {
                     {/* 1. Waktu */}
                     {visibleColumns.time && (
                       <td className="py-4 px-4 text-xs font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap text-left">
-                        {new Date(log.timestamp).toLocaleString(language === 'EN' ? 'en-US' : 'id-ID', {
+                        {new Date(log.timestamp).toLocaleString(getActiveFormattingLocale(), {
                           dateStyle: 'medium',
                           timeStyle: 'short',
                         })}
@@ -400,7 +401,7 @@ export const ActivityLogsView: React.FC = () => {
                 <div>
                   <span className="text-slate-400 font-medium block mb-1">Waktu</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {new Date(selectedLogForDetail.timestamp).toLocaleString(language === 'EN' ? 'en-US' : 'id-ID', {
+                    {new Date(selectedLogForDetail.timestamp).toLocaleString(getActiveFormattingLocale(), {
                       dateStyle: 'full',
                       timeStyle: 'medium',
                     })}
@@ -428,7 +429,7 @@ export const ActivityLogsView: React.FC = () => {
 
               <div>
                 <span className="text-slate-500 font-semibold block mb-1.5">Deskripsi / Detail Teknis:</span>
-                <div className="p-3.5 bg-slate-900 text-slate-100 rounded-xl font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap max-h-48 overflow-y-auto">
+                <div className="p-3.5 bg-slate-900 text-slate-100 rounded-xl font-mono text-[11px] leading-relaxed wrap-break-word whitespace-pre-wrap max-h-48 overflow-y-auto">
                   {selectedLogForDetail.description}
                 </div>
               </div>

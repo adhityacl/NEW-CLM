@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { NotificationLog } from '../types';
 import {
   RefreshCw,
@@ -488,7 +489,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                       {visibleColumns.time && (
                         <td className="py-4 px-4 text-xs font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap align-middle">
                           {new Date(notif.tanggal_terkirim).toLocaleString(
-                            language === 'EN' ? 'en-US' : 'id-ID',
+                            getActiveFormattingLocale(),
                             {
                               year: 'numeric',
                               month: '2-digit',

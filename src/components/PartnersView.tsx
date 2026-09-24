@@ -1,4 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { CONTRACT_STATUS_LABEL_KEY, DD_STATUS_LABEL_KEY, DOC_STATUS_LABEL_KEY } from '../lib/domainStatus';
+import { useTenantSettings } from '../context/TenantSettingsContext';
+import { getCountryPack } from '../lib/policy';
+
+/** Country of incorporation, falling back to the legacy BHI flag (BHI = Indonesia). */
+const partnerCountry = (p: Partner): string => p.country ?? (p.badan_hukum === 'BHI' ? 'ID' : '');
 import { Partner, Contract, DDDokumenItem, PartnerEvaluation } from '../types';
 import {
   MoreHorizontal,
@@ -91,6 +97,9 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDDStatus, setSelectedDDStatus] = useState<string>('ALL');
   const [selectedBadanHukum, setSelectedBadanHukum] = useState<string>('ALL');
+  const { policy } = useTenantSettings();
+  const homeCountry = policy.settings.countryCode;
+  const countryLabel = (code: string) => (code ? `${code} · ${getCountryPack(code).code === code ? getCountryPack(code).name : code}` : t('common.unknown', 'Unknown'));
   const [selectedPartnerStatus, setSelectedPartnerStatus] = useState<string>('ALL');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('ALL');
   const [selectedPartnerDetail, setSelectedPartnerDetail] = useState<Partner | null>(null);
@@ -143,12 +152,12 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
   const getPartnerActiveContractsCount = (partnerId: string): number => {
     if (!contracts || contracts.length === 0) return 0;
     return contracts.filter(
-      (c) => c.partner_id === partnerId && (c.status === 'Aktif' || c.status === 'Akan Berakhir')
+      (c) => c.partner_id === partnerId && (c.status === 'Active' || c.status === 'Expiring')
     ).length;
   };
 
-  const getPartnerStatus = (partnerId: string): 'Aktif' | 'Nonaktif' => {
-    return getPartnerActiveContractsCount(partnerId) > 0 ? 'Aktif' : 'Nonaktif';
+  const getPartnerStatus = (partnerId: string): 'Active' | 'Inactive' => {
+    return getPartnerActiveContractsCount(partnerId) > 0 ? 'Active' : 'Inactive';
   };
 
   const filteredPartners = partners.filter((p) => {
@@ -158,19 +167,23 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
     }
 
     const partnerTags = getValidPartnerTags(p.tags);
-    const pBadanHukum = p.badan_hukum === 'BHA' ? 'BHA' : 'BHI';
+    const pCountry = partnerCountry(p);
 
     const matchSearch =
       p.nama_partner.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.codename && p.codename.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      pBadanHukum.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      countryLabel(pCountry).toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.pic_partner.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.pic_internal && p.pic_internal.toLowerCase().includes(searchTerm.toLowerCase())) ||
       p.partner_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       partnerTags.some((t) => t.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchStatus = selectedDDStatus === 'ALL' || p.status_dd === selectedDDStatus;
-    const matchBadanHukum = selectedBadanHukum === 'ALL' || pBadanHukum === selectedBadanHukum;
+    const matchBadanHukum =
+      selectedBadanHukum === 'ALL' ||
+      (selectedBadanHukum === 'DOMESTIC' && pCountry === homeCountry) ||
+      (selectedBadanHukum === 'FOREIGN' && pCountry !== homeCountry) ||
+      pCountry === selectedBadanHukum;
 
     const pStatus = getPartnerStatus(p.partner_id);
     const matchPartnerStatus =
@@ -284,7 +297,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
       'Nama Partner',
       'Status Partner',
       'Kontrak Aktif',
-      'Badan Hukum',
+      'Country',
       'Tags',
       'PIC & Kontak',
       'Status Due Diligence',
@@ -298,9 +311,9 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
 
     const rows = currentPartners.map((p) => {
       const wajibDocs = p.daftar_dokumen_dd.filter((d) => d.wajib);
-      const adaWajib = wajibDocs.filter((d) => d.status === 'Ada');
+      const adaWajib = wajibDocs.filter((d) => d.status === 'Available');
       const totalDocs = p.daftar_dokumen_dd.length || 1;
-      const adaDocs = p.daftar_dokumen_dd.filter((d) => d.status === 'Ada').length;
+      const adaDocs = p.daftar_dokumen_dd.filter((d) => d.status === 'Available').length;
       const progress = wajibDocs.length > 0
         ? Math.round((adaWajib.length / wajibDocs.length) * 100)
         : Math.round((adaDocs / totalDocs) * 100);
@@ -314,7 +327,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
         `"${(p.nama_partner || '').replace(/"/g, '""')}"`,
         `"${pStatus}"`,
         `${activeContractsCount}`,
-        `"${p.badan_hukum || 'BHI'}"`,
+        `"${partnerCountry(p)}"`,
         `"${pTags.replace(/"/g, '""')}"`,
         `"${(p.pic_partner || '').replace(/"/g, '""')}"`,
         `"${(p.status_dd || '').replace(/"/g, '""')}"`,
@@ -443,7 +456,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                 className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
               >
                 <option value="ALL">{t('partners.all_status')}</option>
-                <option value="Aktif">{t('partners.active')}</option>
+                <option value="Active">{t('partners.active')}</option>
                 <option value="Nonaktif">{t('partners.inactive')}</option>
               </select>
 
@@ -457,13 +470,14 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                 className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
               >
                 <option value="ALL">{t('partners.all_dd_status')}</option>
-                <option value="Lengkap">{t('partners.dd_complete')}</option>
-                <option value="Belum Lengkap">{t('partners.dd_incomplete')}</option>
-                <option value="Kadaluarsa">{t('partners.dd_expired')}</option>
+                <option value="Complete">{t('partners.dd_complete')}</option>
+                <option value="Incomplete">{t('partners.dd_incomplete')}</option>
+                <option value="Expired">{t('partners.dd_expired')}</option>
               </select>
 
-              {/* Badan Hukum Filter */}
+              {/* Country of incorporation filter */}
               <select
+                aria-label={t('partners.country_filter', 'Country of incorporation')}
                 value={selectedBadanHukum}
                 onChange={(e) => {
                   setSelectedBadanHukum(e.target.value);
@@ -472,8 +486,11 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                 className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
               >
                 <option value="ALL">{t('partners.all_legal_entity')}</option>
-                <option value="BHI">{t('partners.bhi')}</option>
-                <option value="BHA">{t('partners.bha')}</option>
+                <option value="DOMESTIC">{t('partners.domestic', 'Domestic')}</option>
+                <option value="FOREIGN">{t('partners.foreign', 'Foreign')}</option>
+                {Array.from(new Set(partners.map(partnerCountry).filter(Boolean))).sort().map((code) => (
+                  <option key={code} value={code}>{countryLabel(code)}</option>
+                ))}
               </select>
 
               {/* Column Toggle */}
@@ -581,11 +598,11 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                               </td>
                             )}
 
-                            {/* 2. Badan Hukum */}
+                            {/* 2. Country */}
                             {visibleColumns.badan_hukum && (
                               <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left">
-                                <span className={`text-xs font-normal px-3 py-0.5 rounded-full border inline-flex items-center justify-center whitespace-nowrap shadow-2xs ${getStatusBadgeClass(partner.badan_hukum === 'BHA' ? 'BHA' : 'BHI')}`}>
-                                  {partner.badan_hukum || 'BHI'}
+                                <span className={`text-xs font-normal px-3 py-0.5 rounded-full border inline-flex items-center justify-center whitespace-nowrap shadow-2xs ${getStatusBadgeClass(partnerCountry(partner) === homeCountry ? 'BHI' : 'BHA')}`}>
+                                  {partnerCountry(partner) || '—'}
                                 </span>
                               </td>
                             )}
@@ -600,7 +617,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                             {/* 4. Status Partner */}
                             {visibleColumns.status && (
                               <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left">
-                                {pStatus === 'Aktif' ? (
+                                {pStatus === 'Active' ? (
                                   <span className={`text-xs font-normal px-3 py-0.5 rounded-full border inline-flex items-center gap-1.5 shadow-2xs whitespace-nowrap ${getStatusBadgeClass('Aktif')}`}>
                                     <span>{t('status.aktif', 'Aktif')}</span>
                                   </span>
@@ -622,10 +639,10 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                                   )}`}
                                   title="Klik untuk Audit Checklist Due Diligence"
                                 >
-                                  {partner.status_dd === 'Lengkap' && <CheckCircle2 className="w-3.5 h-3.5 text-[#06C755]" />}
-                                  {partner.status_dd === 'Belum Lengkap' && <Clock className="w-3.5 h-3.5 text-amber-500" />}
-                                  {partner.status_dd === 'Kadaluarsa' && <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />}
-                                  <span>{partner.status_dd}</span>
+                                  {partner.status_dd === 'Complete' && <CheckCircle2 className="w-3.5 h-3.5 text-[#06C755]" />}
+                                  {partner.status_dd === 'Incomplete' && <Clock className="w-3.5 h-3.5 text-amber-500" />}
+                                  {partner.status_dd === 'Expired' && <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />}
+                                  <span>{t(DD_STATUS_LABEL_KEY[partner.status_dd] || 'status.dd_incomplete', partner.status_dd)}</span>
                                 </button>
                               </td>
                             )}
@@ -773,14 +790,14 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                           {/* Status Ada / Belum / Kadaluarsa Pill Badge */}
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                              doc.status === 'Ada'
+                              doc.status === 'Available'
                                 ? 'border-emerald-500/40 bg-emerald-500/10 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
-                                : doc.status === 'Kadaluarsa'
+                                : doc.status === 'Expired'
                                 ? 'border-rose-500/40 bg-rose-500/10 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300'
                                 : 'border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300'
                             }`}
                           >
-                            {doc.status === 'Ada' ? 'Ada' : doc.status === 'Kadaluarsa' ? 'Kadaluarsa' : 'Belum'}
+                            {t(DOC_STATUS_LABEL_KEY[doc.status] || 'status.doc_missing', doc.status)}
                           </span>
                         </div>
 

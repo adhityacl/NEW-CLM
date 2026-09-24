@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useTenantSettings } from '../context/TenantSettingsContext';
 import { Partner, PartnerSpending } from '../types';
 import {
   DollarSign,
@@ -110,7 +111,8 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
   const [formInvoiceMonths, setFormInvoiceMonths] = useState<string[]>([]);
   const [monthInput, setMonthInput] = useState('');
   const [formInvoiceDesc, setFormInvoiceDesc] = useState('');
-  const [formCurrency, setFormCurrency] = useState('IDR');
+  const tenantCurrency = useTenantSettings().policy.settings.defaultCurrency;
+  const [formCurrency, setFormCurrency] = useState(tenantCurrency);
   const [formTotalAmount, setFormTotalAmount] = useState<number | ''>('');
   const [formBankName, setFormBankName] = useState('');
   const [formBankAccountNumber, setFormBankAccountNumber] = useState('');
@@ -134,7 +136,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
     setFormInvoiceMonths(initialMonths);
     setMonthInput('');
     setFormInvoiceDesc(item?.invoice_description || '');
-    setFormCurrency(item?.currency || 'IDR');
+    setFormCurrency(item?.currency || tenantCurrency);
     setFormTotalAmount(item?.total_amount ?? '');
     setFormBankName(item?.bank_name || '');
     setFormBankAccountNumber(item?.bank_account_number || '');
@@ -355,7 +357,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
     }
   };
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 1 });
-  const [historicalRate, setHistoricalRate] = useState<number>(() => getDefaultUsdRate('IDR'));
+  const [historicalRate, setHistoricalRate] = useState<number>(() => getDefaultUsdRate(tenantCurrency));
 
   useEffect(() => {
     let isMounted = true;
@@ -647,12 +649,6 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
     setVisibleColumns((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const formatMoney = (amount: number, currency = 'IDR') => {
-    if (currency === 'USD') {
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
-    }
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
-  };
 
   return (
     <div className="space-y-6">
@@ -900,7 +896,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                     {/* 5. Amount */}
                     {visibleColumns.amount && (
                       <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left whitespace-nowrap">
-                        {formatMoney(s.total_amount, s.currency || 'IDR')}
+                        {formatMoney(s.total_amount, s.currency)}
                       </td>
                     )}
 
@@ -1151,7 +1147,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                   >
                     {SUPPORTED_CURRENCIES.map((c) => (
                       <option key={c.code} value={c.code}>
-                        {c.code} - ({c.symbol})
+                        {c.code} — {c.label}
                       </option>
                     ))}
                   </select>

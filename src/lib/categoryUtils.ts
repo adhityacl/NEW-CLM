@@ -1,32 +1,32 @@
 export const CATEGORY_STORAGE_KEY = 'LMS_SAVED_PARTNERSHIP_CATEGORIES';
 
+/** Industry-neutral defaults; the active industry pack adds its own. */
 export const DEFAULT_CATEGORIES = [
-  'Advertising',
+  'Supplier',
+  'Service Provider',
+  'Customer',
+  'Consulting',
   'IT',
   'Logistics',
   'Marketing',
-  'Consulting',
-  'Media & Content',
-  'Production',
-  'Supplier',
   'Legal Services',
   'Finance & Accounting',
 ];
 
-export function getSavedCategories(): string[] {
+/**
+ * Categories offered in pickers: the user's saved ones, then the industry
+ * pack's categories (`extra`), then neutral defaults.
+ */
+export function getSavedCategories(extra: string[] = []): string[] {
+  let saved: string[] = [];
   try {
     const raw = localStorage.getItem(CATEGORY_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const combined = Array.from(new Set([...parsed, ...DEFAULT_CATEGORIES]));
-        return combined;
-      }
-    }
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(parsed)) saved = parsed.filter((c) => typeof c === 'string');
   } catch (e) {
     console.error('Error reading saved categories:', e);
   }
-  return DEFAULT_CATEGORIES;
+  return Array.from(new Set([...saved, ...extra, ...DEFAULT_CATEGORIES]));
 }
 
 export function saveCategory(newCategory: string): string[] {

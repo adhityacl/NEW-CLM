@@ -46,9 +46,12 @@ import { useLanguage } from '../context/LanguageContext';
 import { useConfirm } from '../context/ConfirmDialogContext';
 import { useAlertToast } from '../context/AlertToastContext';
 import { useTenant } from '../context/TenantContext';
+import { useTenantSettings } from '../context/TenantSettingsContext';
 import { getAuthHeaders } from '../App';
 import {
-  buildIndonesianAgreementHtml,
+  buildAgreementHtml,
+  jurisdictionFromSettings,
+  setAgreementJurisdiction,
   COOPERATION_AGREEMENT_FIELDS,
   renderFillableSlot,
   stripFillableSlotsToPlainText,
@@ -175,17 +178,23 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const confirmDialog = useConfirm();
   const showAlert = useAlertToast();
   const { activeTenant } = useTenant();
+  const { policy } = useTenantSettings();
+  // Document language and jurisdiction wording follow the organization settings.
+  const docLanguage = policy.settings.language;
+  setAgreementJurisdiction(jurisdictionFromSettings(policy.settings));
   const paperSheetRef = useRef<HTMLDivElement>(null);
 
   // Compute First Party details dynamically from activeTenant
   const tenantEntityName = activeTenant
     ? `${activeTenant.legalEntity ? activeTenant.legalEntity + ' ' : ''}${activeTenant.name}`
-    : 'PT INFO TEKNO SIAGA';
+    : 'Organization';
   const tenantBrand = activeTenant?.brandName || activeTenant?.name || 'ITS';
 
   // General Cooperation Agreement titles
-  const defaultDocTitle = `PERJANJIAN KERJASAMA - ${tenantEntityName} & Mitra`;
-  const defaultContractNo = `${tenantBrand.toUpperCase().replace(/\s+/g, '')}/PKS/2026/09/${String(contracts.length + 1).padStart(3, '0')}`;
+  const agreementTitle = docLanguage === 'ID' ? 'PERJANJIAN KERJASAMA' : 'COOPERATION AGREEMENT';
+  const defaultDocTitle = `${agreementTitle} - ${tenantEntityName} & ${docLanguage === 'ID' ? 'Mitra' : 'Partner'}`;
+  const now = new Date();
+  const defaultContractNo = `${tenantBrand.toUpperCase().replace(/\s+/g, '')}/AGR/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(contracts.length + 1).padStart(3, '0')}`;
 
   const [docTitle, setDocTitle] = useState(defaultDocTitle);
   const [contractNumber, setContractNumber] = useState('');
@@ -536,7 +545,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   // Render or re-render the 15-article template into the editor
   const renderTemplateToEditor = (vals: Record<string, string>, cNo: string) => {
     if (!editor) return;
-    const initialHtml = buildIndonesianAgreementHtml({
+    const initialHtml = buildAgreementHtml({
       contractNo: cNo,
       firstPartyName: vals.firstPartyName,
       firstPartyAlias: vals.firstPartyAlias,
@@ -558,7 +567,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       bankAccount: vals.bankAccount,
       bankHolder: vals.bankHolder,
       partnerEmail: vals.partnerEmail,
-    });
+    }, docLanguage);
     editor.commands.setContent(initialHtml);
     updateStats();
   };
@@ -630,7 +639,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     if (key === 'partnerName' || key === 'firstPartyName') {
       const p1 = (key === 'firstPartyName' ? value : fieldValues.firstPartyName) || tenantEntityName;
       const p2 = (key === 'partnerName' ? value : fieldValues.partnerName) || 'Mitra';
-      setDocTitle(`PERJANJIAN KERJASAMA - ${p1} & ${p2}`);
+      setDocTitle(`${agreementTitle} - ${p1} & ${p2}`);
     }
 
     if (!editor) return;
@@ -661,7 +670,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     setSelectedPartner(partner);
     const p = partner as any;
     const pName = partner?.nama_partner || 'Mitra';
-    const pAddress = p?.alamat_pic || p?.alamat || 'Jakarta, Indonesia';
+    const pAddress = p?.alamat_pic || p?.alamat || '';
     const pPic = p?.nama_pic || p?.pic_name || partner?.pic_partner || 'Direktur';
     const pPosition = p?.pic_position || 'Direktur Utama';
     const pEmail = p?.email_pic || p?.email || 'legal@mitra.co.id';
@@ -677,7 +686,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
     setFieldValues(updated);
     const p1 = fieldValues.firstPartyName || tenantEntityName;
-    setDocTitle(`PERJANJIAN KERJASAMA - ${p1} & ${pName}`);
+    setDocTitle(`${agreementTitle} - ${p1} & ${pName}`);
     renderTemplateToEditor(updated, contractNumber);
 
     setExportMessage({
@@ -686,66 +695,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     });
   };
 
-  // Insert standard clause or custom fillable field into editor
-  const handleInsertClause = (clauseType: string) => {
-    let html = '';
-    if (clauseType === 'confidentiality') {
-      html = `<div style="background-color: #f8fafc; border-left: 4px solid #10b981; padding: 12px; margin: 14px 0; font-size: 10pt;">
-  <strong>Klausul Tambahan Kerahasiaan (NDA Ketat & UU PDP):</strong><br/>
-  Para Pihak sepakat bahwa seluruh data pengguna Adapundi, informasi teknis, dan rahasia dagang merupakan Informasi Rahasia yang dilindungi selama 5 (lima) tahun sejak pengakhiran Perjanjian ini, serta tunduk penuh pada UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP).
-</div>`;
-    } else if (clauseType === 'indonesian_law') {
-      html = `<p style="margin: 12px 0; text-align: justify; line-height: 1.6; font-size: 10pt;">
-  <strong>Pengesampingan Pasal 1266 KUHPerdata:</strong> Para Pihak dengan ini secara tegas mengesampingkan berlakunya ketentuan Pasal 1266 Kitab Undang-Undang Hukum Perdata Indonesia sepanjang diperlukannya suatu putusan atau penetapan pengadilan untuk mengakhiri Perjanjian Kerjasama ini.
-</p>`;
-    } else if (clauseType === 'arbitration') {
-      html = `<p style="margin: 12px 0; text-align: justify; line-height: 1.6; font-size: 10pt;">
-  <strong>Domisili Hukum:</strong> Perjanjian Kerjasama ini diatur oleh hukum Republik Indonesia. Setiap perselisihan diselesaikan terlebih dahulu melalui musyawarah mufakat dalam waktu 14 (empat belas) hari kalender, dan apabila tidak tercapai kesepakatan, maka diselesaikan secara eksklusif di Pengadilan Negeri Jakarta Selatan.
-</p>`;
-    } else if (clauseType === 'bank_account') {
-      const bName = fieldValues.bankName || 'PT Bank Central Asia Tbk (BCA)';
-      const bAcc = fieldValues.bankAccount || '5271-889-001';
-      const bHolder = fieldValues.bankHolder || fieldValues.firstPartyName || tenantEntityName;
-      html = `<div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin: 14px 0; font-size: 10pt;">
-  <strong>Rekening Bank Penampungan Pembayaran Resmi:</strong><br/>
-  Bank: <strong>${bName}</strong><br/>
-  Nomor Rekening: <strong>${bAcc}</strong><br/>
-  Atas Nama: <strong>${bHolder}</strong><br/>
-  SWIFT Code: <strong>CENAIDJA</strong>
-</div>`;
-    } else if (clauseType === 'sign_block') {
-      const p1Name = fieldValues.firstPartyName || tenantEntityName;
-      const p1Pic = fieldValues.firstPartyPic || 'Achmad Indrawan';
-      const p1Pos = fieldValues.firstPartyPosition || 'Direktur Utama';
-      const pName = fieldValues.partnerName || '[Nama Perusahaan Mitra]';
-      const pPic = fieldValues.partnerPic || '[Nama Penandatangan Mitra]';
-      const pPos = fieldValues.partnerPosition || '[Jabatan Mitra]';
-      html = `<table style="width: 100%; border-collapse: collapse; margin-top: 30px; border: none;">
-  <tr>
-    <td style="width: 50%; vertical-align: top; padding: 15px; border: none; text-align: center;">
-      <p style="margin-bottom: 4px; font-size: 9.5pt; color: #4b5563;">Pihak Pertama:</p>
-      <p style="font-weight: bold; margin-bottom: 60px;">${p1Name}</p>
-      <p style="font-weight: bold; text-decoration: underline; margin-bottom: 2px;">${p1Pic}</p>
-      <p style="font-size: 9.5pt; color: #4b5563;">${p1Pos}</p>
-    </td>
-    <td style="width: 50%; vertical-align: top; padding: 15px; border: none; text-align: center;">
-      <p style="margin-bottom: 4px; font-size: 9.5pt; color: #4b5563;">Pihak Kedua (Mitra):</p>
-      <p style="font-weight: bold; margin-bottom: 60px;">${pName}</p>
-      <p style="font-weight: bold; text-decoration: underline; margin-bottom: 2px;">${pPic}</p>
-      <p style="font-size: 9.5pt; color: #4b5563;">${pPos}</p>
-    </td>
-  </tr>
-</table>`;
-    } else if (clauseType === 'insert_text_slot') {
-      html = renderFillableSlot('text', 'customText', 'Teks Isian Baru');
-    } else if (clauseType === 'insert_date_slot') {
-      html = renderFillableSlot('date', 'customDate', 'DD/MM/YYYY');
-    } else if (clauseType === 'insert_amount_slot') {
-      html = renderFillableSlot('currency', 'customAmount', 'Rp 0');
-    }
 
-    insertHTMLAtCursor(html);
-  };
 
   // Reset document to default template
   const handleResetDocument = async () => {
@@ -874,7 +824,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
         partner_id: selectedPartnerId || (partners[0] ? partners[0].partner_id : 'PTR-DEFAULT'),
         tanggal_mulai: '2026-09-19',
         tanggal_berakhir: '2027-09-18',
-        status: 'Aktif',
+        status: 'Active',
         jenis_dokumen: 'Master Agreement',
         kategori_kerjasama: ['Perjanjian Kerjasama', 'General Cooperation'],
         nilai_kontrak: 100000000,
@@ -882,7 +832,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
         notice_period_hari: 30,
         notice_type_required: 'Both',
         pic_internal: p1Pic,
-        internal_notes: `Perjanjian Kerjasama (General Cooperation Agreement) antara ${p1Name} dengan ${pName}. Memuat 15 pasal lengkap sesuai standar hukum Indonesia dan pengesampingan 1266 KUHPerdata. Dibuat via WYSIWYG Editor Kontrak SILEGAL.`,
+        internal_notes: `Cooperation agreement between ${p1Name} and ${pName}, generated from the built-in template (governing law: ${jurisdictionFromSettings(policy.settings).governingLaw.en}).`,
       };
 
       await onSaveToSystem(newContractPayload);
@@ -1183,7 +1133,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                         setFillableSlotValue(editor, 'contractNo', val);
                       }}
                       className="w-full text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      placeholder={defaultContractNo || "ITS/PKS/2026/09/001"}
+                      placeholder={defaultContractNo}
                     />
                   </div>
 

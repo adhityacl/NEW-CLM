@@ -45,15 +45,17 @@ interface BulkImportViewProps {
 
 // ─── CSV Templates ─────────────────────────────────────────────────────────────
 
+// Neutral, fictional examples (example.com, RFC 2606). `country` is an
+// ISO 3166-1 alpha-2 code; currency is an ISO 4217 code; dates are ISO 8601.
 const TEMPLATES: Record<ImportType, { headers: string[]; example: string[] }> = {
   partners: {
     headers: [
       'nama_partner', 'partner_channel', 'internal_pic', 'jenis_partner', 'pic_partner', 'nama_pic', 'email_pic',
-      'telepon_pic', 'alamat_pic', 'badan_hukum', 'catatan', 'tags',
+      'telepon_pic', 'alamat_pic', 'country', 'entity_type', 'catatan', 'tags',
     ],
     example: [
-      'PT Contoh Mitra Sejati', 'Digital Ads / Media Channel', 'Budi Santoso (Legal)', 'Vendor', 'Budi Santoso', 'Budi Santoso', 'budi@contoh.com',
-      '081234567890', 'Jl. Sudirman No. 1', 'BHI', 'Vendor media digital', 'Advertising',
+      'Acme Supplies Pte. Ltd.', 'Office supplies', 'Procurement', 'Vendor', 'Jane Tan', 'Jane Tan', 'jane@acme.example.com',
+      '+6560000000', '1 Example Road, Singapore 000001', 'SG', 'Private Limited (Pte. Ltd.)', 'Preferred supplier', 'Supplier',
     ],
   },
   contracts: {
@@ -63,8 +65,8 @@ const TEMPLATES: Record<ImportType, { headers: string[]; example: string[] }> = 
       'notice_period_hari', 'notice_type_required', 'pic_internal', 'internal_notes',
     ],
     example: [
-      '001/PKS/I/2026', 'Kontrak Kerjasama Media', 'PT Contoh Mitra Sejati', 'Master Agreement',
-      'Advertising', '2026-01-01', '2027-01-01', 'IDR', '500000000', '30', 'Both', 'Legal Team', 'Kontrak tahunan',
+      'MSA-2026-001', 'Master Supply Agreement', 'Acme Supplies Pte. Ltd.', 'Master Agreement',
+      'Supplier', '2026-01-01', '2026-12-31', 'SGD', '120000', '30', 'Both', 'Procurement', 'Annual agreement',
     ],
   },
   ios: {
@@ -74,9 +76,9 @@ const TEMPLATES: Record<ImportType, { headers: string[]; example: string[] }> = 
       'nilai_io', 'deliverables', 'notice_period_hari', 'notice_type_required', 'internal_notes',
     ],
     example: [
-      'IO-001/2026', 'Campaign Q1 2026', 'PT Contoh Mitra Sejati', '001/PKS/I/2026', 'Social Media',
-      '2026-01-01', '2026-03-31', 'Flat Fee', 'Prepaid', 'IDR', '100000000',
-      '10 konten/bulan', '14', 'Termination', '',
+      'PO-2026-001', 'Q1 stationery order', 'Acme Supplies Pte. Ltd.', 'MSA-2026-001', 'Stationery',
+      '2026-01-01', '2026-03-31', 'Unit Price', 'Postpaid', 'SGD', '15000',
+      'Monthly delivery', '14', 'Termination', '',
     ],
   },
   evaluations: {
@@ -85,8 +87,8 @@ const TEMPLATES: Record<ImportType, { headers: string[]; example: string[] }> = 
       'obligation_target', 'incident_frequency', 'communication', 'pricing', 'final_evaluation', 'notes',
     ],
     example: [
-      'PT Contoh Mitra Sejati', '2026-06-30', 'Media Placement', '85',
-      'Baik', 'Rare', 'Baik', 'Moderate', 'Recommended', 'Performa baik secara keseluruhan',
+      'Acme Supplies Pte. Ltd.', '2026-06-30', 'Office supplies', '85',
+      'Met', 'Rare', 'Good', 'Moderate', 'Recommended', 'Good overall performance',
     ],
   },
   spendings: {
@@ -95,8 +97,8 @@ const TEMPLATES: Record<ImportType, { headers: string[]; example: string[] }> = 
       'currency', 'total_amount', 'bank_name', 'bank_account_number', 'bank_account_holder_name',
     ],
     example: [
-      'PT Contoh Mitra Sejati', 'INV/2026/001', '2026-01-31', '012026',
-      'Biaya media placement Januari 2026', 'IDR', '100000000', 'Bank BCA', '1234567890', 'PT Contoh Mitra Sejati',
+      'Acme Supplies Pte. Ltd.', 'INV-2026-001', '2026-01-31', '2026-01',
+      'Stationery — January 2026', 'SGD', '5000', 'Example Bank', '000-000000-0', 'Acme Supplies Pte. Ltd.',
     ],
   },
 };

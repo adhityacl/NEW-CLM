@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { CONTRACT_STATUS_LABEL_KEY, DD_STATUS_LABEL_KEY, DOC_STATUS_LABEL_KEY } from '../lib/domainStatus';
 import { InsertionOrder, Contract, Partner } from '../types';
 import { formatMoney } from '../lib/currencyUtils';
 import { FileDown, FileSpreadsheet,
@@ -302,7 +303,7 @@ export const IOView: React.FC<IOViewProps> = ({
         i.skema_pembayaran || '-',
         i.tanggal_mulai,
         i.tanggal_berakhir || i.tanggal_selesai || '-',
-        i.mata_uang || 'IDR',
+        i.currency || i.mata_uang || '',
         i.nilai_io,
         i.status,
         i.deliverables || '-',
@@ -638,9 +639,9 @@ export const IOView: React.FC<IOViewProps> = ({
                               io.status
                             )}`}
                           >
-                            {io.status === 'Aktif' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                            {io.status === 'Active' && <CheckCircle2 className="w-3.5 h-3.5" />}
                             {io.status === 'Expired' && <Clock className="w-3.5 h-3.5" />}
-                            <span>{io.status}</span>
+                            <span>{t(CONTRACT_STATUS_LABEL_KEY[io.status] || 'status.active', io.status)}</span>
                           </span>
                         </td>
                       )}

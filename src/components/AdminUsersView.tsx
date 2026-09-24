@@ -455,6 +455,8 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
     logo?: string;
     tagline?: string;
     currency?: string;
+    countryCode?: string;
+    industry?: string;
   }) => {
     const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
     const res = await fetch('/api/auth-console/organizations', {
@@ -468,6 +470,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         metadata: {
           tagline: data.tagline,
           currency: data.currency,
+          settings: { countryCode: data.countryCode, industry: data.industry, defaultCurrency: data.currency },
         },
       }),
     });

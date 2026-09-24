@@ -1,3 +1,49 @@
+import { getCountryPack, localize, type TenantSettings } from '../lib/policy';
+
+/**
+ * Jurisdiction wording used by the built-in cooperation agreement. It comes
+ * from the organization's country pack (and its overrides) instead of being
+ * hardcoded, so the same template works for any supported jurisdiction.
+ */
+export interface AgreementJurisdiction {
+  governingLaw: { en: string; id: string };
+  disputeVenue: { en: string; id: string };
+  holidayJurisdiction: { en: string; id: string };
+  dataProtectionLaw: string;
+  indirectTaxName: string;
+  stampDuty: { en: string; id: string } | null;
+}
+
+export function jurisdictionFromSettings(settings: Pick<TenantSettings, 'countryCode' | 'governingLaw' | 'disputeVenue'>): AgreementJurisdiction {
+  const pack = getCountryPack(settings.countryCode);
+  const neutral = pack.code === 'INTL';
+  return {
+    governingLaw: settings.governingLaw
+      ? { en: settings.governingLaw, id: settings.governingLaw }
+      : { en: localize(pack.governingLaw, 'EN'), id: localize(pack.governingLaw, 'ID') },
+    disputeVenue: settings.disputeVenue
+      ? { en: settings.disputeVenue, id: settings.disputeVenue }
+      : { en: localize(pack.disputeVenue, 'EN'), id: localize(pack.disputeVenue, 'ID') },
+    holidayJurisdiction: neutral
+      ? { en: 'the place where the relevant obligation is to be performed', id: 'tempat kewajiban yang bersangkutan dilaksanakan' }
+      : { en: pack.name, id: pack.name },
+    dataProtectionLaw: pack.dataProtectionLaw,
+    indirectTaxName: pack.indirectTaxName,
+    stampDuty: pack.stampDutyConvention
+      ? { en: localize(pack.stampDutyConvention, 'EN'), id: localize(pack.stampDutyConvention, 'ID') }
+      : null,
+  };
+}
+
+let activeJurisdiction: AgreementJurisdiction = jurisdictionFromSettings({ countryCode: 'INTL' });
+
+/** Set before rendering the template (the contract creator does this from tenant settings). */
+export function setAgreementJurisdiction(next: AgreementJurisdiction): void {
+  activeJurisdiction = next;
+}
+
+const J = () => activeJurisdiction;
+
 export interface AgreementArticle {
   id: string;
   articleNumber?: number;
@@ -172,8 +218,8 @@ export const COOPERATION_AGREEMENT_FIELDS: FillableFieldDef[] = [
     label: 'Nilai Kerjasama / Biaya Jasa',
     type: 'currency',
     icon: '💰',
-    placeholder: 'Rp 100.000.000 (Seratus Juta Rupiah) belum termasuk PPN',
-    defaultValue: 'Rp 100.000.000 (Seratus Juta Rupiah) belum termasuk PPN',
+    placeholder: '100.000 (seratus ribu) belum termasuk pajak',
+    defaultValue: '',
     description: 'Kompensasi atau imbalan jasa yang disepakati (Pasal 5)',
   },
   {
@@ -181,8 +227,8 @@ export const COOPERATION_AGREEMENT_FIELDS: FillableFieldDef[] = [
     label: 'Nama Bank Pembayaran',
     type: 'text',
     icon: '🏦',
-    placeholder: 'PT Bank Central Asia Tbk (BCA)',
-    defaultValue: 'PT Bank Central Asia Tbk (BCA)',
+    placeholder: 'Nama bank',
+    defaultValue: '',
     description: 'Bank penampung pembayaran resmi (Pasal 5)',
   },
   {
@@ -190,8 +236,8 @@ export const COOPERATION_AGREEMENT_FIELDS: FillableFieldDef[] = [
     label: 'Nomor Rekening Bank',
     type: 'text',
     icon: '#️⃣',
-    placeholder: '5271-889-001',
-    defaultValue: '5271-889-001',
+    placeholder: 'Nomor rekening / IBAN',
+    defaultValue: '',
     description: 'Nomor rekening tujuan pembayaran transfer',
   },
   {
@@ -276,13 +322,13 @@ export const COOPERATION_AGREEMENT_PREAMBLE = {
 This Cooperation Agreement (hereinafter referred to as the &ldquo;<strong>Agreement</strong>&rdquo;) is made and entered into on this day ${slot('date', 'dateStr', 'DD/MM/YYYY', slots?.dateStr)}, by and between:
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 10px;">
-1. <strong>${slot('entity', 'firstPartyName', 'First Party Corporate Name', p1Name)}</strong>, a limited liability company duly incorporated under the laws of the Republic of Indonesia, having its registered domicile at ${slot('location', 'firstPartyAddress', 'First Party Domicile Address', p1Address)}, represented by <strong>${slot('person', 'firstPartyPic', 'First Party Signatory Name', p1Pic)}</strong> in their capacity as the <strong>${slot('text', 'firstPartyPosition', 'First Party Signatory Position', p1Pos)}</strong>, therefore lawfully acting for and on behalf of ${slot('entity', 'firstPartyName', 'First Party Name', p1Name)} (hereinafter referred to as &ldquo;<strong>${slot('text', 'firstPartyAlias', 'First Party Alias', p1Alias)}</strong>&rdquo; or the &ldquo;<strong>First Party</strong>&rdquo;);
+1. <strong>${slot('entity', 'firstPartyName', 'First Party Corporate Name', p1Name)}</strong>, a company duly incorporated under ${J().governingLaw.en}, having its registered domicile at ${slot('location', 'firstPartyAddress', 'First Party Domicile Address', p1Address)}, represented by <strong>${slot('person', 'firstPartyPic', 'First Party Signatory Name', p1Pic)}</strong> in their capacity as the <strong>${slot('text', 'firstPartyPosition', 'First Party Signatory Position', p1Pos)}</strong>, therefore lawfully acting for and on behalf of ${slot('entity', 'firstPartyName', 'First Party Name', p1Name)} (hereinafter referred to as &ldquo;<strong>${slot('text', 'firstPartyAlias', 'First Party Alias', p1Alias)}</strong>&rdquo; or the &ldquo;<strong>First Party</strong>&rdquo;);
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 10px;">
 And
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 10px;">
-2. <strong>${slot('entity', 'partnerName', 'Second Party Corporate Name', slots?.partnerName)}</strong>, a legal entity incorporated under the laws of the Republic of Indonesia, having its registered domicile at ${slot('location', 'partnerAddress', 'Second Party Domicile Address', slots?.partnerAddress)}, represented in this matter by ${slot('person', 'partnerPic', 'Second Party Signatory Name', slots?.partnerPic)} in their capacity as ${slot('text', 'partnerPosition', 'Director / Authorized Representative', slots?.partnerPosition)}, therefore lawfully acting for and on behalf of ${slot('entity', 'partnerName', 'Second Party Corporate Name', slots?.partnerName)} (hereinafter referred to as the &ldquo;<strong>Second Party</strong>&rdquo;).
+2. <strong>${slot('entity', 'partnerName', 'Second Party Corporate Name', slots?.partnerName)}</strong>, a legal entity duly incorporated under the laws of its jurisdiction of incorporation, having its registered domicile at ${slot('location', 'partnerAddress', 'Second Party Domicile Address', slots?.partnerAddress)}, represented in this matter by ${slot('person', 'partnerPic', 'Second Party Signatory Name', slots?.partnerPic)} in their capacity as ${slot('text', 'partnerPosition', 'Director / Authorized Representative', slots?.partnerPosition)}, therefore lawfully acting for and on behalf of ${slot('entity', 'partnerName', 'Second Party Corporate Name', slots?.partnerName)} (hereinafter referred to as the &ldquo;<strong>Second Party</strong>&rdquo;).
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
 The First Party and the Second Party are collectively referred to as the &ldquo;<strong>Parties</strong>&rdquo; and individually as a &ldquo;<strong>Party</strong>&rdquo;.
@@ -320,13 +366,13 @@ WHEREAS, the Parties have agreed to execute this Cooperation Agreement to govern
 Perjanjian Kerjasama ini (selanjutnya disebut sebagai &ldquo;<strong>Perjanjian</strong>&rdquo;) dibuat dan ditandatangani pada hari ${slot('date', 'dateStr', 'Hari, DD/MM/YYYY (Contoh: Senin, 19 September 2026)', slots?.dateStr)}, oleh dan antara:
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 10px;">
-1. <strong>${slot('entity', 'firstPartyName', 'Nama Perusahaan Pihak Pertama', p1Name)}</strong>, suatu perseroan terbatas yang didirikan berdasarkan hukum Republik Indonesia, berkedudukan di ${slot('location', 'firstPartyAddress', 'Alamat Lengkap Kantor Pihak Pertama', p1Address)}, dalam hal ini diwakili oleh <strong>${slot('person', 'firstPartyPic', 'Nama Penandatangan Pihak Pertama', p1Pic)}</strong> dalam kapasitasnya selaku <strong>${slot('text', 'firstPartyPosition', 'Jabatan Penandatangan Pihak Pertama', p1Pos)}</strong>, oleh karenanya sah bertindak untuk dan atas nama ${slot('entity', 'firstPartyName', 'Nama Perusahaan Pihak Pertama', p1Name)} (selanjutnya disebut &ldquo;<strong>${slot('text', 'firstPartyAlias', 'Singkatan Pihak Pertama', p1Alias)}</strong>&rdquo; atau &ldquo;<strong>Pihak Pertama</strong>&rdquo;);
+1. <strong>${slot('entity', 'firstPartyName', 'Nama Perusahaan Pihak Pertama', p1Name)}</strong>, suatu badan usaha yang didirikan berdasarkan ${J().governingLaw.id}, berkedudukan di ${slot('location', 'firstPartyAddress', 'Alamat Lengkap Kantor Pihak Pertama', p1Address)}, dalam hal ini diwakili oleh <strong>${slot('person', 'firstPartyPic', 'Nama Penandatangan Pihak Pertama', p1Pic)}</strong> dalam kapasitasnya selaku <strong>${slot('text', 'firstPartyPosition', 'Jabatan Penandatangan Pihak Pertama', p1Pos)}</strong>, oleh karenanya sah bertindak untuk dan atas nama ${slot('entity', 'firstPartyName', 'Nama Perusahaan Pihak Pertama', p1Name)} (selanjutnya disebut &ldquo;<strong>${slot('text', 'firstPartyAlias', 'Singkatan Pihak Pertama', p1Alias)}</strong>&rdquo; atau &ldquo;<strong>Pihak Pertama</strong>&rdquo;);
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 10px;">
 Dan
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 10px;">
-2. <strong>${slot('entity', 'partnerName', 'Nama Perusahaan Mitra', slots?.partnerName)}</strong>, suatu badan hukum / badan usaha yang didirikan berdasarkan hukum Republik Indonesia, berkedudukan di ${slot('location', 'partnerAddress', 'Alamat Lengkap Perusahaan Mitra', slots?.partnerAddress)}, dalam hal ini diwakili oleh ${slot('person', 'partnerPic', 'Nama Penandatangan Mitra', slots?.partnerPic)} dalam kapasitasnya selaku ${slot('text', 'partnerPosition', 'Direktur / Jabatan Penandatangan', slots?.partnerPosition)}, oleh karenanya sah bertindak untuk dan atas nama ${slot('entity', 'partnerName', 'Nama Perusahaan Mitra', slots?.partnerName)} (selanjutnya disebut &ldquo;<strong>MITRA</strong>&rdquo; atau &ldquo;<strong>Pihak Kedua</strong>&rdquo;).
+2. <strong>${slot('entity', 'partnerName', 'Nama Perusahaan Mitra', slots?.partnerName)}</strong>, suatu badan hukum / badan usaha yang didirikan berdasarkan hukum negara tempat pendiriannya, berkedudukan di ${slot('location', 'partnerAddress', 'Alamat Lengkap Perusahaan Mitra', slots?.partnerAddress)}, dalam hal ini diwakili oleh ${slot('person', 'partnerPic', 'Nama Penandatangan Mitra', slots?.partnerPic)} dalam kapasitasnya selaku ${slot('text', 'partnerPosition', 'Direktur / Jabatan Penandatangan', slots?.partnerPosition)}, oleh karenanya sah bertindak untuk dan atas nama ${slot('entity', 'partnerName', 'Nama Perusahaan Mitra', slots?.partnerName)} (selanjutnya disebut &ldquo;<strong>MITRA</strong>&rdquo; atau &ldquo;<strong>Pihak Kedua</strong>&rdquo;).
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
 Pihak Pertama dan Pihak Kedua secara bersama-sama disebut sebagai &ldquo;<strong>Para Pihak</strong>&rdquo; dan masing-masing disebut sebagai &ldquo;<strong>Pihak</strong>&rdquo;.
@@ -379,7 +425,7 @@ In this Agreement, unless the context otherwise requires, the following terms sh
 1.5. &ldquo;<strong>Confidential Information</strong>&rdquo; means any and all technical, commercial, financial, operational data, customer data, and personal data disclosed by one Party to the other Party in connection with this Agreement.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
-1.6. &ldquo;<strong>Business Day</strong>&rdquo; means any day other than Saturday, Sunday, or official national public holidays recognized in the Republic of Indonesia.
+1.6. &ldquo;<strong>Business Day</strong>&rdquo; means any day other than Saturday, Sunday, or official public holidays in ${J().holidayJurisdiction.en}.
 </p>`,
     contentId: `<p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 Dalam Perjanjian ini, kecuali konteksnya menentukan lain, istilah-istilah di bawah ini memiliki arti sebagai berikut:
@@ -400,7 +446,7 @@ Dalam Perjanjian ini, kecuali konteksnya menentukan lain, istilah-istilah di baw
 1.5. &ldquo;<strong>Informasi Rahasia</strong>&rdquo; berarti setiap dan seluruh informasi bisnis, keuangan, teknis, operasional, kode pemrograman, data pengguna, dan data pribadi yang dipertukarkan oleh Para Pihak sehubungan dengan Perjanjian ini.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
-1.6. &ldquo;<strong>Hari Kerja</strong>&rdquo; berarti hari selain Sabtu, Minggu, atau hari libur nasional resmi yang ditetapkan oleh Pemerintah Republik Indonesia.
+1.6. &ldquo;<strong>Hari Kerja</strong>&rdquo; berarti hari selain Sabtu, Minggu, atau hari libur resmi yang berlaku di ${J().holidayJurisdiction.id}.
 </p>`,
   },
   {
@@ -507,12 +553,12 @@ ${slot('text', 'scopeDescId', 'Uraikan ruang lingkup kerjasama / penyediaan jasa
     contentEn: `<p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 5.1. The value of this Cooperation is agreed as:
 <br/>
-${slot('currency', 'feeAmountEn', 'Total Fee / Rate Scheme (e.g. IDR [Amount] or Based on executed Work Orders / Monthly fee IDR ...)', slots?.feeAmountEn)}
+${slot('currency', 'feeAmountEn', 'Total fee / rate scheme (amount and currency, or per executed work order)', slots?.feeAmountEn)}
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 5.2. Payment shall be made via electronic bank transfer to the official bank account designated by the PARTNER as follows:
 <br/>
-Bank Name: ${slot('text', 'bankName', 'Nama Bank (Contoh: Bank BCA / Mandiri / BNI)', slots?.bankName)}
+Bank Name: ${slot('text', 'bankName', 'Bank name', slots?.bankName)}
 <br/>
 Account Number: ${slot('number', 'bankAccount', 'Nomor Rekening Bank', slots?.bankAccount)}
 <br/>
@@ -524,7 +570,7 @@ Account Holder: ${slot('text', 'bankHolder', 'Nama Pemilik Rekening (Atas Nama)'
     contentId: `<p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 5.1. Nilai Kerjasama atau imbalan jasa dalam Perjanjian ini disepakati sebesar:
 <br/>
-${slot('currency', 'feeAmountId', 'Nilai Biaya Kerjasama (Contoh: Rp. [Jumlah Rupiah] atau Berdasarkan Formulir Pelaksanaan / Tarif Bulanan Rp. ...)', slots?.feeAmountId)}
+${slot('currency', 'feeAmountId', 'Nilai biaya kerja sama (jumlah dan mata uang, atau berdasarkan formulir pelaksanaan)', slots?.feeAmountId)}
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 5.2. Pembayaran akan dilakukan melalui transfer bank ke rekening resmi MITRA sebagai berikut:
@@ -545,16 +591,16 @@ Atas Nama: ${slot('text', 'bankHolder', 'Nama Pemegang Rekening (Harus Sesuai En
     titleEn: 'ARTICLE 6 TAXATION',
     titleId: 'PASAL 6 PERPAJAKAN',
     contentEn: `<p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
-6.1. Each Party shall be individually responsible for its own tax liabilities arising out of the performance of this Agreement in accordance with the prevailing tax laws of the Republic of Indonesia.
+6.1. Each Party shall be individually responsible for its own tax liabilities arising out of the performance of this Agreement in accordance with the tax laws applicable to that Party.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
-6.2. All taxes, including Value Added Tax (VAT / PPN) and withholding taxes (Income Tax / PPh), shall be handled in compliance with statutory regulations. The paying Party shall provide lawful tax withholding receipts (Bukti Potong Pajak) to the other Party in a timely manner.
+6.2. All taxes, including ${J().indirectTaxName} and any applicable withholding taxes, shall be handled in compliance with statutory regulations. The paying Party shall provide lawful tax withholding receipts to the other Party in a timely manner.
 </p>`,
     contentId: `<p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
-6.1. Masing-masing Pihak bertanggung jawab secara mandiri atas segala kewajiban perpajakan yang timbul dari pelaksanaan Perjanjian ini sesuai dengan ketentuan perundang-undangan perpajakan yang berlaku di Republik Indonesia.
+6.1. Masing-masing Pihak bertanggung jawab secara mandiri atas segala kewajiban perpajakan yang timbul dari pelaksanaan Perjanjian ini sesuai dengan ketentuan perundang-undangan perpajakan yang berlaku bagi masing-masing Pihak.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
-6.2. Seluruh pajak, termasuk Pajak Pertambahan Nilai (PPN) dan pemotongan Pajak Penghasilan (PPh), wajib diperlakukan sesuai hukum yang berlaku. Pihak yang memotong pajak wajib menerbitkan dan menyerahkan Bukti Potong Pajak yang sah kepada Pihak lainnya tepat pada waktunya.
+6.2. Seluruh pajak, termasuk ${J().indirectTaxName} dan pemotongan pajak yang berlaku, wajib diperlakukan sesuai hukum yang berlaku. Pihak yang memotong pajak wajib menerbitkan dan menyerahkan Bukti Potong Pajak yang sah kepada Pihak lainnya tepat pada waktunya.
 </p>`,
   },
   {
@@ -569,7 +615,7 @@ Atas Nama: ${slot('text', 'bankHolder', 'Nama Pemegang Rekening (Harus Sesuai En
 7.2. The confidentiality obligations herein shall remain in full force and effect during the Term and shall survive for a period of 5 (five) years following any termination or expiration of this Agreement.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
-7.3. The Parties strictly commit to comply with Law No. 27 of 2022 on Personal Data Protection (&ldquo;PDP Law&rdquo;) and all implementing regulations. Each Party shall implement robust administrative and technical security measures to safeguard personal data against unauthorized access, loss, or leakage.
+7.3. The Parties strictly commit to comply with ${J().dataProtectionLaw} and any other data protection laws applicable to the processing of personal data under this Agreement. Each Party shall implement robust administrative and technical security measures to safeguard personal data against unauthorized access, loss, or leakage.
 </p>`,
     contentId: `<p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 7.1. Masing-masing Pihak wajib menjaga kerahasiaan seluruh Informasi Rahasia yang diterima dari Pihak lainnya dengan penuh kehati-hatian, serta tidak diperkenankan mengungkapkan, menggandakan, atau menyebarluaskan informasi tersebut kepada pihak ketiga mana pun tanpa persetujuan tertulis terlebih dahulu.
@@ -578,7 +624,7 @@ Atas Nama: ${slot('text', 'bankHolder', 'Nama Pemegang Rekening (Harus Sesuai En
 7.2. Kewajiban kerahasiaan ini berlaku penuh selama masa berlakunya Perjanjian dan tetap mengikat Para Pihak untuk jangka waktu 5 (lima) tahun setelah Perjanjian ini berakhir atau diakhiri karena sebab apa pun.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
-7.3. Para Pihak berkomitmen tunduk sepenuhnya pada Undang-Undang Nomor 27 Tahun 2022 tentang Perlindungan Data Pribadi (UU PDP). Para Pihak wajib menerapkan standar pengamanan teknis dan organisasi yang memadai untuk mencegah terjadinya akses tanpa hak, perusakan, atau kebocoran data pribadi.
+7.3. Para Pihak berkomitmen tunduk sepenuhnya pada ${J().dataProtectionLaw} serta peraturan perlindungan data pribadi lain yang berlaku. Para Pihak wajib menerapkan standar pengamanan teknis dan organisasi yang memadai untuk mencegah terjadinya akses tanpa hak, perusakan, atau kebocoran data pribadi.
 </p>`,
   },
   {
@@ -605,7 +651,7 @@ Atas Nama: ${slot('text', 'bankHolder', 'Nama Pemegang Rekening (Harus Sesuai En
     titleEn: 'ARTICLE 9 REPRESENTATIONS AND WARRANTIES',
     titleId: 'PASAL 9 PERNYATAAN DAN JAMINAN',
     contentEn: `<p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
-9.1. Each Party represents and warrants that it is a legal entity duly established, validly existing, and in good standing under the laws of the Republic of Indonesia.
+9.1. Each Party represents and warrants that it is a legal entity duly established, validly existing, and in good standing under the laws of its jurisdiction of incorporation.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 9.2. Each signatory represents that they have full legal power, corporate authorization, and capacity to execute this Agreement and bind their respective entity.
@@ -614,7 +660,7 @@ Atas Nama: ${slot('text', 'bankHolder', 'Nama Pemegang Rekening (Harus Sesuai En
 9.3. The execution and performance of this Agreement do not violate any applicable laws, court judgements, government regulations, or other contractual obligations binding upon either Party.
 </p>`,
     contentId: `<p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
-9.1. Masing-masing Pihak menyatakan dan menjamin bahwa dirinya merupakan badan hukum / badan usaha yang didirikan secara sah dan memiliki izin usaha yang masih berlaku menurut hukum Negara Republik Indonesia.
+9.1. Masing-masing Pihak menyatakan dan menjamin bahwa dirinya merupakan badan hukum / badan usaha yang didirikan secara sah dan memiliki izin usaha yang masih berlaku menurut hukum negara tempat pendiriannya.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 9.2. Masing-masing penandatangan menyatakan dan menjamin bahwa dirinya memiliki kewenangan hukum dan persetujuan korporasi yang sah untuk menandatangani dan mengikatkan perusahaannya pada Perjanjian ini.
@@ -733,7 +779,7 @@ Atas Nama: ${slot('text', 'bankHolder', 'Nama Pemegang Rekening (Harus Sesuai En
 14.2. Neither Party shall directly or indirectly offer, promise, give, or authorize any financial inducement or unlawful gratuity to any officer, employee, or representative of the other Party or government officials.
 </p>`,
     contentId: `<p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
-14.1. Para Pihak berkomitmen untuk senantiasa menjalankan seluruh kegiatan bisnis berdasarkan standar integritas tertinggi dan mematuhi seluruh peraturan perundang-undangan anti-suap, anti-korupsi, serta pencegahan tindak pidana pencucian uang (TPPU) yang berlaku di Republik Indonesia.
+14.1. Para Pihak berkomitmen untuk senantiasa menjalankan seluruh kegiatan bisnis berdasarkan standar integritas tertinggi dan mematuhi seluruh peraturan perundang-undangan anti-suap, anti-korupsi, serta pencegahan tindak pidana pencucian uang yang berlaku bagi masing-masing Pihak.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
 14.2. Tidak ada Pihak yang diperkenankan secara langsung maupun tidak langsung untuk menawarkan, menjanjikan, atau memberikan suap, gratifikasi ilegal, atau imbalan tidak sah kepada direksi, karyawan, atau perwakilan Pihak lainnya maupun pejabat pemerintahan.
@@ -745,22 +791,22 @@ Atas Nama: ${slot('text', 'bankHolder', 'Nama Pemegang Rekening (Harus Sesuai En
     titleEn: 'ARTICLE 15 GOVERNING LAW AND DISPUTE RESOLUTION',
     titleId: 'PASAL 15 HUKUM YANG BERLAKU DAN PENYELESAIAN SENGKETA',
     contentEn: `<p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
-15.1. This Agreement shall be governed by, construed, and enforced in accordance with the laws of the Republic of Indonesia.
+15.1. This Agreement shall be governed by, construed, and enforced in accordance with ${J().governingLaw.en}.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 15.2. Any dispute, controversy, or claim arising out of or relating to this Agreement shall first be resolved amicably through good faith consultations between the Parties within 30 (thirty) calendar days.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
-15.3. If such dispute cannot be settled amicably, the Parties agree to submit the dispute to the exclusive jurisdiction of the District Court of South Jakarta (Pengadilan Negeri Jakarta Selatan).
+15.3. If such dispute cannot be settled amicably, the Parties agree to submit the dispute for final resolution to ${J().disputeVenue.en}.
 </p>`,
     contentId: `<p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
-15.1. Perjanjian ini tunduk pada, diatur oleh, dan ditafsirkan berdasarkan hukum Negara Republik Indonesia.
+15.1. Perjanjian ini tunduk pada, diatur oleh, dan ditafsirkan berdasarkan ${J().governingLaw.id}.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 15.2. Segala perselisihan atau sengketa yang timbul dari penafsiran atau pelaksanaan Perjanjian ini wajib diselesaikan terlebih dahulu secara musyawarah untuk mufakat dalam waktu 30 (tiga puluh) hari kalender.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
-15.3. Apabila penyelesaian secara musyawarah tidak mencapai mufakat, maka Para Pihak sepakat untuk memilih domisili hukum yang tetap dan umum pada Kantor Kepaniteraan Pengadilan Negeri Jakarta Selatan.
+15.3. Apabila penyelesaian secara musyawarah tidak mencapai mufakat, maka Para Pihak sepakat untuk menyerahkan penyelesaiannya kepada ${J().disputeVenue.id}.
 </p>`,
   },
 ];
@@ -807,7 +853,7 @@ IN WITNESS WHEREOF, the Parties hereto have caused this Agreement to be executed
     const p1Pos = slots?.firstPartyPosition || '';
 
     return `<p style="text-align: justify; line-height: 1.6; margin-bottom: 24px;">
-DEMIKIANLAH Perjanjian ini dibuat dan ditandatangani oleh Para Pihak melalui perwakilan yang berwenang pada hari dan tanggal sebagaimana disebutkan di bagian awal Perjanjian, dibuat dalam 2 (dua) rangkap asli bermeterai cukup, masing-masing mempunyai kekuatan hukum yang sama.
+DEMIKIANLAH Perjanjian ini dibuat dan ditandatangani oleh Para Pihak melalui perwakilan yang berwenang pada hari dan tanggal sebagaimana disebutkan di bagian awal Perjanjian, ${J().stampDuty ? J().stampDuty!.id : 'dibuat dalam 2 (dua) rangkap asli'}, masing-masing mempunyai kekuatan hukum yang sama.
 </p>
 <table style="width: 100%; border-collapse: collapse; margin-top: 15px; border: none;">
   <tr>
@@ -831,7 +877,12 @@ DEMIKIANLAH Perjanjian ini dibuat dan ditandatangani oleh Para Pihak melalui per
 /**
  * Builds the default HTML loaded in the WYSIWYG editor (Versi Asli Bahasa Indonesia - PERJANJIAN KERJASAMA).
  */
-export function buildIndonesianAgreementHtml(vars?: {
+/** Indonesian-language agreement (kept for compatibility). */
+export function buildIndonesianAgreementHtml(vars?: AgreementVars): string {
+  return buildAgreementHtml(vars, 'ID');
+}
+
+export type AgreementVars = {
   contractNo?: string;
   firstPartyName?: string;
   firstPartyAlias?: string;
@@ -853,7 +904,13 @@ export function buildIndonesianAgreementHtml(vars?: {
   bankAccount?: string;
   bankHolder?: string;
   partnerEmail?: string;
-}): string {
+};
+
+/**
+ * Single-language agreement HTML for the editor. English uses the `*En`
+ * article bodies; the scope/fee values entered once are reused for both.
+ */
+export function buildAgreementHtml(vars?: AgreementVars, language: 'EN' | 'ID' = 'EN'): string {
   const contractNo = vars?.contractNo || '';
 
   const slots: Record<string, string> = {
@@ -879,26 +936,33 @@ export function buildIndonesianAgreementHtml(vars?: {
     partnerEmail: vars?.partnerEmail || '',
   };
 
-  const preamble = COOPERATION_AGREEMENT_PREAMBLE.id(slots);
+  const EN = language === 'EN';
+  if (EN) {
+    slots.scopeDescEn = slots.scopeDescEn || slots.scopeDescId;
+    slots.feeAmountEn = slots.feeAmountEn || slots.feeAmountId;
+  }
+  const preamble = EN ? COOPERATION_AGREEMENT_PREAMBLE.en(slots) : COOPERATION_AGREEMENT_PREAMBLE.id(slots);
 
   const articles = COOPERATION_AGREEMENT_ARTICLES(slots);
   let articlesHtml = '';
   for (const article of articles) {
     articlesHtml += `
 <h2 style="font-size: 12.5pt; font-weight: bold; margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.3); padding-bottom: 4px; color: inherit;">
-  ${article.titleId}
+  ${EN ? article.titleEn : article.titleId}
 </h2>
-${article.contentId}
+${EN ? article.contentEn : article.contentId}
 `;
   }
 
-  const sigHtml = COOPERATION_AGREEMENT_SIGNATURES.id(slots);
+  const sigHtml = EN ? COOPERATION_AGREEMENT_SIGNATURES.en(slots) : COOPERATION_AGREEMENT_SIGNATURES.id(slots);
+  const title = EN ? COOPERATION_AGREEMENT_HEADER.titleEn : COOPERATION_AGREEMENT_HEADER.titleId;
+  const numberLabel = EN ? 'Agreement No.' : 'Nomor Perjanjian';
 
   return `<h1 style="text-align: center; font-size: 20pt; font-weight: bold; margin-bottom: 4px; letter-spacing: -0.5px; color: inherit;">
-  PERJANJIAN KERJASAMA
+  ${title}
 </h1>
 <div style="text-align: center; font-size: 11pt; font-weight: bold; opacity: 0.85; margin-bottom: 24px;">
-  Nomor Perjanjian: ${renderFillableSlot('number', 'contractNo', 'Nomor Perjanjian', contractNo)}
+  ${numberLabel}: ${renderFillableSlot('number', 'contractNo', numberLabel, contractNo)}
 </div>
 
 ${preamble}

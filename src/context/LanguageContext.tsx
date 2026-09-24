@@ -1,11 +1,47 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useState } from 'react';
+import { EXTRA_TRANSLATIONS } from '../i18n/extraTranslations';
 
 export type Language = 'ID' | 'EN';
+
+export interface DocumentTerminology {
+  doc: string;
+  docs: string;
+  docShort: string;
+}
+
+const LEGACY_TERMS: DocumentTerminology = { doc: 'Insertion Order', docs: 'Insertion Orders', docShort: 'IO' };
+
+/**
+ * Older UI strings hardcode the advertising term "Insertion Order (IO)".
+ * For organizations whose industry uses another commercial document
+ * (order form, purchase order, statement of work, ...), rewrite the term.
+ */
+function applyTerminology(text: string, terms: DocumentTerminology): string {
+  let out = text
+    .replace(/\{docs\}/g, terms.docs)
+    .replace(/\{doc\}/g, terms.doc)
+    .replace(/\{docShort\}/g, terms.docShort);
+  if (terms.doc !== LEGACY_TERMS.doc) {
+    out = out
+      .replace(/Insertion Orders/g, terms.docs)
+      .replace(/Insertion Order/g, terms.doc)
+      .replace(/\bIOs\b/g, `${terms.docShort}s`)
+      .replace(/\bIO\b/g, terms.docShort);
+  }
+  return out;
+}
 
 export interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string, defaultText?: string) => string;
+  /**
+   * Translate `key`. `{name}` placeholders are filled from `vars`; `{doc}`,
+   * `{docs}` and `{docShort}` are filled with the active organization's
+   * commercial-document terminology (e.g. "Purchase Order").
+   */
+  t: (key: string, defaultText?: string, vars?: Record<string, string | number>) => string;
+  /** Set by the organization settings: the label used for commercial documents. */
+  setDocumentTerminology: (terms: DocumentTerminology) => void;
   translations: Record<Language, Record<string, string>>;
   customTranslations: Record<Language, Record<string, string>>;
   exportToCSV: () => void;
@@ -14,7 +50,7 @@ export interface LanguageContextType {
   updateSingleTranslation: (key: string, lang: Language, value: string) => void;
 }
 
-const translations: Record<Language, Record<string, string>> = {
+const baseTranslations: Record<Language, Record<string, string>> = {
   ID: {
     'status.aktif': 'Aktif',
     'status.nonaktif': 'Nonaktif',
@@ -3526,6 +3562,12 @@ const translations: Record<Language, Record<string, string>> = {
   }
 };
 
+/** Built-in catalog: base keys plus newer feature keys kept in src/i18n. */
+const translations: Record<Language, Record<string, string>> = {
+  ID: { ...baseTranslations.ID, ...EXTRA_TRANSLATIONS.ID },
+  EN: { ...baseTranslations.EN, ...EXTRA_TRANSLATIONS.EN },
+};
+
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 // Utility functions for CSV parsing
@@ -3584,7 +3626,7 @@ function splitCSVLines(text: string): string[] {
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
     const saved = localStorage.getItem('app_language');
-    return saved === 'EN' || saved === 'ID' ? saved : 'ID';
+    return saved === 'EN' || saved === 'ID' ? saved : 'EN';
   });
 
   const [customTranslations, setCustomTranslations] = useState<Record<Language, Record<string, string>>>(() => {
@@ -3608,24 +3650,41 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('app_language', lang);
   };
 
-  const t = (key: string, defaultText?: string): string => {
-    // 1. Check custom overrides for current language
+  const [terms, setTerms] = useState<DocumentTerminology>(LEGACY_TERMS);
+  const setDocumentTerminology = useCallback((next: DocumentTerminology) => {
+    setTerms((prev) => (prev.doc === next.doc && prev.docs === next.docs && prev.docShort === next.docShort ? prev : next));
+  }, []);
+
+  const resolve = (key: string, defaultText?: string): string => {
+    // 1. Custom overrides for the current language
     const customPrimary = customTranslations[language]?.[key];
     if (customPrimary !== undefined && customPrimary !== '') return customPrimary;
 
-    // 2. Check built-in translations for current language
+    // 2. Built-in catalog for the current language
     const primary = translations[language]?.[key];
     if (primary !== undefined && primary !== '') return primary;
 
-    // 3. Fallback language checks
-    const fallbackLang = language === 'ID' ? 'EN' : 'ID';
-    const customFallback = customTranslations[fallbackLang]?.[key];
+    // 3. English UI with no English entry: use the caller's default text,
+    //    then the Indonesian catalog as a last resort.
+    if (language === 'EN') {
+      return defaultText || translations.ID[key] || key;
+    }
+    // 4. Indonesian UI falls back to English.
+    const customFallback = customTranslations.EN?.[key];
     if (customFallback !== undefined && customFallback !== '') return customFallback;
-
-    const fallback = translations[fallbackLang]?.[key];
+    const fallback = translations.EN?.[key];
     if (fallback !== undefined && fallback !== '') return fallback;
-
     return defaultText || key;
+  };
+
+  const t = (key: string, defaultText?: string, vars?: Record<string, string | number>): string => {
+    let text = applyTerminology(resolve(key, defaultText), terms);
+    if (vars) {
+      for (const [name, value] of Object.entries(vars)) {
+        text = text.split(`{${name}}`).join(String(value));
+      }
+    }
+    return text;
   };
 
   const exportToCSV = () => {
@@ -3743,6 +3802,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         language,
         setLanguage,
         t,
+        setDocumentTerminology,
         translations,
         customTranslations,
         exportToCSV,

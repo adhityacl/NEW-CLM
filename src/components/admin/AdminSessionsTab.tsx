@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getActiveFormattingLocale } from '../../lib/currencyUtils';
 import {
   Radio,
   Search,
@@ -139,7 +140,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
 
                       {/* Created At */}
                       <td className="py-3 px-4 text-slate-500 text-[11px]">
-                        {new Date(s.createdAt).toLocaleString(language === 'ID' ? 'id-ID' : 'en-US', {
+                        {new Date(s.createdAt).toLocaleString(getActiveFormattingLocale(), {
                           day: 'numeric',
                           month: 'short',
                           hour: '2-digit',
@@ -155,7 +156,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
                           </span>
                         ) : (
                           <span className="text-slate-600 dark:text-slate-400 text-[11px]">
-                            {new Date(s.expiresAt).toLocaleDateString(language === 'ID' ? 'id-ID' : 'en-US', {
+                            {new Date(s.expiresAt).toLocaleDateString(getActiveFormattingLocale(), {
                               day: 'numeric',
                               month: 'short',
                               year: 'numeric',

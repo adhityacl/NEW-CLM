@@ -16,19 +16,19 @@ export const INITIAL_COLUMNS = [
   { id: 'vendorPicPhone', label: 'PIC Phone', group: 'Vendor' },
   { id: 'vendorPicAlamat', label: 'PIC Alamat', group: 'Vendor' },
   { id: 'vendorPicInternal', label: 'PIC Internal', group: 'Vendor' },
-  { id: 'vendorBadanHukum', label: 'Badan Hukum', group: 'Vendor' },
+  { id: 'vendorBadanHukum', label: 'Country', group: 'Vendor' },
   { id: 'vendorStatusDD', label: 'Status Due Diligence', group: 'Vendor' },
   { id: 'vendorLinkNDA', label: 'Link NDA', group: 'Vendor' },
-  { id: 'vendorLinkCOR', label: 'Link COR', group: 'Vendor' },
-  { id: 'vendorLinkDGT', label: 'Link DGT', group: 'Vendor' },
+  { id: 'vendorLinkCOR', label: 'Link Tax Residence Certificate', group: 'Vendor' },
+  { id: 'vendorLinkDGT', label: 'Link Treaty Relief Form', group: 'Vendor' },
   { id: 'vendorLinkTermination', label: 'Link Termination Notice', group: 'Vendor' },
   { id: 'vendorLinkAssessment', label: 'Link Vendor Assessment', group: 'Vendor' },
   { id: 'vendorLinkPlacement', label: 'Link Placement Doc', group: 'Vendor' },
   { id: 'vendorLinkInvoice', label: 'Link Invoice & Billing', group: 'Vendor' },
-  { id: 'vendorLinkNIB', label: 'Link NIB/SIUP', group: 'Vendor' },
+  { id: 'vendorLinkNIB', label: 'Link Business Registration', group: 'Vendor' },
   { id: 'vendorLinkLicense', label: 'Link Business License', group: 'Vendor' },
-  { id: 'vendorLinkNPWP', label: 'Link NPWP', group: 'Vendor' },
-  { id: 'vendorLinkAkta', label: 'Link Akta Pendirian', group: 'Vendor' },
+  { id: 'vendorLinkNPWP', label: 'Link Tax Registration', group: 'Vendor' },
+  { id: 'vendorLinkAkta', label: 'Link Incorporation Deed / Certificate', group: 'Vendor' },
 
   { id: 'evalReviewDate', label: 'Tanggal Review Evaluasi', group: 'Evaluation' },
   { id: 'evalTypeOfWork', label: 'Jenis Pekerjaan (Eval)', group: 'Evaluation' },
@@ -76,7 +76,12 @@ export const INITIAL_COLUMNS = [
 ];
 
 import { Partner, Contract, InsertionOrder, PartnerEvaluation, PartnerSpending } from '../types';
-import { formatMoney } from '../lib/currencyUtils';
+import { convertToUsdWithFallback, formatMoney, getActiveFormattingLocale } from '../lib/currencyUtils';
+
+/** Requirement keys (all country packs) grouped for the generic Explore columns. */
+const BUSINESS_REGISTRATION_KEYS = ['id_nib', 'sg_bizfile', 'my_ssm_profile', 'th_dbd_affidavit', 'vn_erc', 'ph_sec_certificate', 'ph_business_permit', 'in_incorporation', 'jp_registry_certificate', 'kr_business_registration', 'kr_corporate_registry', 'cn_business_licence', 'hk_br_certificate', 'ae_trade_licence', 'certificate_of_incorporation'];
+const TAX_REGISTRATION_KEYS = ['id_npwp', 'sg_gst_certificate', 'my_sst_certificate', 'th_vat_certificate', 'ph_bir_2303', 'in_gst_certificate', 'in_pan_card', 'jp_invoice_registration', 'ae_vat_certificate', 'tax_registration'];
+const INCORPORATION_KEYS = ['id_akta', 'hk_incorporation', 'in_incorporation', 'certificate_of_incorporation'];
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { getStatusBadgeClass } from './ui/badge';
@@ -195,7 +200,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
   });
 
   // Helper stats
-  const totalVerifiedDD = partners.filter((p) => p.status_dd === 'Lengkap').length;
+  const totalVerifiedDD = partners.filter((p) => p.status_dd === 'Complete').length;
   const totalContractDocs = contracts.filter((c) => c.link_file_kontrak || c.fileName).length;
   const totalIODocs = ios.filter((i) => i.link_file_io || i.fileName).length;
 
@@ -295,8 +300,8 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
 
               // DD Document stats
               const ddDocs = partner.daftar_dokumen_dd || [];
-              const verifiedDocsCount = ddDocs.filter((d) => d.status === 'Ada').length;
-              const isDDComplete = partner.status_dd === 'Lengkap';
+              const verifiedDocsCount = ddDocs.filter((d) => d.status === 'Available').length;
+              const isDDComplete = partner.status_dd === 'Complete';
 
               return (
                 <div
@@ -366,7 +371,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                             <div
                               key={idx}
                               className={`p-2.5 rounded-xl border flex items-center justify-between transition-all ${
-                                doc.status === 'Ada'
+                                doc.status === 'Available'
                                   ? 'bg-[#EBFBF0] dark:bg-emerald-950/60 border-[#06C755]/30 dark:border-emerald-500/40 text-[#048C3B] dark:text-emerald-300'
                                   : 'bg-slate-100 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200'
                               }`}
@@ -374,10 +379,10 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                               <div className="truncate pr-1">
                                 <span className="font-bold block truncate text-slate-900 dark:text-slate-100">{doc.nama}</span>
                                 <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                                  {doc.status === 'Ada' ? (doc.nomorDokumen || 'Ada') : t('hierarchy.no_document', 'No Document')}
+                                  {doc.status === 'Available' ? (doc.nomorDokumen || t('status.doc_available', 'Available')) : t('hierarchy.no_document', 'No Document')}
                                 </span>
                               </div>
-                              {doc.status === 'Ada' ? (
+                              {doc.status === 'Available' ? (
                                 <CheckCircle2 className="w-4 h-4 text-[#06C755] dark:text-emerald-400 shrink-0" />
                               ) : (
                                 <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
@@ -386,7 +391,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                           ))
                         ) : (
                           <div className="col-span-4 text-xs text-slate-500 dark:text-slate-400 italic">
-                            {t('hierarchy.standard_dd_docs_hint', 'Dokumen standar: NIB, NPWP, Akta Pendirian, KTP Direksi (Belum dikonfigurasi).')}
+                            {t('hierarchy.standard_dd_docs_hint', 'The due-diligence checklist comes from your organization settings.')}
                           </div>
                         )}
                       </div>
@@ -474,9 +479,9 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                         </span>
                                         <span
                                           className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                            contract.status === 'Aktif'
+                                            contract.status === 'Active'
                                               ? 'bg-[#EBFBF0] text-[#048C3B] border border-[#06C755]/30'
-                                              : contract.status === 'Akan Berakhir'
+                                              : contract.status === 'Expiring'
                                               ? 'bg-amber-100 text-amber-800'
                                               : 'bg-rose-100 text-rose-800'
                                           }`}
@@ -526,7 +531,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                   <div>
                                     <span className="text-[10px] text-slate-500 block">{t('hierarchy.commercial_value', 'Nilai Komersial:')}</span>
                                     <span className="font-bold text-[#048C3B]">
-                                      Rp {contract.nilai_kontrak.toLocaleString('id-ID')}
+                                      {formatMoney(contract.nilai_kontrak, contract.currency)}
                                     </span>
                                   </div>
                                   <div>
@@ -637,7 +642,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                             <div>
                                               <span className="text-[10px] text-slate-500 block">{t('hierarchy.commercial_value', 'Nilai Komersial:')}</span>
                                               <span className="font-bold text-[#048C3B]">
-                                                Rp {io.nilai_io.toLocaleString('id-ID')}
+                                                {formatMoney(io.nilai_io, io.currency || io.mata_uang)}
                                               </span>
                                             </div>
                                             <div>
@@ -715,7 +720,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
           if (!dateStr) return '-';
           const d = new Date(dateStr);
           if (isNaN(d.getTime())) return '-';
-          return d.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
+          return d.toLocaleDateString(getActiveFormattingLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
         };
 
 
@@ -748,7 +753,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
               if (colId === 'vendorCodename') return <td key={colId} rowSpan={rowSpan} className={`${className} text-slate-600`}>{row.vendorCodename || '-'}</td>;
               if (colId === 'vendorStatus') {
                  if (!row.vendorStart || !row.vendorEnd) return <td key={colId} rowSpan={rowSpan} className={`${className} text-slate-400 text-center font-medium`}>-</td>;
-                 const vendorStatusStr = row.vendorTerminated ? 'Terminated' : row.vendorActive ? 'Aktif' : 'Expired';
+                 const vendorStatusStr = row.vendorTerminated ? 'Terminated' : row.vendorActive ? 'Active' : 'Expired';
                  return <td key={colId} rowSpan={rowSpan} className={`${className} whitespace-nowrap`}>{renderStatusBadge(vendorStatusStr)}</td>;
               }
               if (colId === 'vendorStartDate') return <td key={colId} rowSpan={rowSpan} className={`${className} text-slate-600`}>{formatDate(row.vendorStart)}</td>;
@@ -800,7 +805,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
               if (colId === 'spendAmount') {
                   const amtUsd = row.spending.total_amount_usd !== undefined && row.spending.total_amount_usd !== null && !isNaN(Number(row.spending.total_amount_usd))
                      ? Number(row.spending.total_amount_usd)
-                     : (row.spending.currency === 'USD' ? Number(row.spending.total_amount) || 0 : (Number(row.spending.total_amount) || 0) * (row.spending.currency === 'IDR' ? 0.000062 : 1));
+                     : convertToUsdWithFallback(Number(row.spending.total_amount) || 0, row.spending.currency || 'USD');
                   return <td key={colId} className={`${className} font-bold text-slate-900 whitespace-nowrap text-right`}>{amtUsd ? `US$ ${amtUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '-'}</td>;
                }
               if (colId === 'spendInvoiceLink') return <td key={colId} className={`${className} text-center`}>{row.spending.invoice_file_url ? <a href={row.spending.invoice_file_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
@@ -822,7 +827,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
               if (colId === 'contractValue') {
                   const cUsd = row.contract.nilai_kontrak_usd !== undefined && row.contract.nilai_kontrak_usd !== null && !isNaN(Number(row.contract.nilai_kontrak_usd))
                      ? Number(row.contract.nilai_kontrak_usd)
-                     : (row.contract.currency === 'USD' ? Number(row.contract.nilai_kontrak) || 0 : (Number(row.contract.nilai_kontrak) || 0) * (row.contract.currency === 'IDR' ? 0.000062 : 1));
+                     : convertToUsdWithFallback(Number(row.contract.nilai_kontrak) || 0, row.contract.currency || 'USD');
                   return <td key={colId} rowSpan={rowSpan} className={`${className} font-bold text-slate-900 whitespace-nowrap text-right`}>{cUsd ? `US$ ${cUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '-'}</td>;
                }
               if (colId === 'contractKategori') return <td key={colId} rowSpan={rowSpan} className={`${className} text-slate-600`}>{row.contract.kategori_kerjasama?.join(', ') || '-'}</td>;
@@ -852,7 +857,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
               if (colId === 'ioValue') {
                   const ioUsd = row.io.nilai_io_usd !== undefined && row.io.nilai_io_usd !== null && !isNaN(Number(row.io.nilai_io_usd))
                      ? Number(row.io.nilai_io_usd)
-                     : (row.io.currency === 'USD' ? Number(row.io.nilai_io) || 0 : (Number(row.io.nilai_io) || 0) * (row.io.currency === 'IDR' ? 0.000062 : 1));
+                     : convertToUsdWithFallback(Number(row.io.nilai_io) || 0, row.io.currency || 'USD');
                   return <td key={colId} rowSpan={rowSpan} className={`${className} font-bold text-slate-900 whitespace-nowrap text-right`}>{ioUsd ? `US$ ${ioUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '-'}</td>;
                }
               if (colId === 'ioLink') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.io.link_file_io ? <a href={row.io.link_file_io} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
@@ -893,9 +898,12 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
               }
            }
 
-           const getDDLink = (nama: string) => {
-              const doc = (p.daftar_dokumen_dd || []).find(d => d.nama.toLowerCase() === nama.toLowerCase() || d.nama.includes(nama));
-              return doc?.linkDrive || '';
+           // Match by policy-pack requirement key first, then by legacy name.
+           const getDDLink = (nama: string, keys: string[] = []) => {
+              const docs = p.daftar_dokumen_dd || [];
+              const doc = docs.find(d => d.key && keys.includes(d.key) && (d.linkDrive || d.files?.length))
+                || docs.find(d => d.nama.toLowerCase() === nama.toLowerCase() || d.nama.includes(nama));
+              return doc?.linkDrive || doc?.files?.[0]?.linkDrive || '';
            };
 
            const cioRows: any[] = [];
@@ -937,18 +945,18 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
 
               baseRows.push({
                  vendorName: p.nama_partner, vendorType: p.jenis_partner, vendorChannelName: (p.tags && p.tags.length > 0) ? p.tags.join(', ') : '-', vendorCodename: p.codename || '-', vendorStart, vendorEnd, vendorDuration, vendorActive, vendorTerminated,
-                 vendorPicName: p.nama_pic, vendorPicEmail: p.email_pic, vendorPicPhone: p.telepon_pic, vendorPicAlamat: p.alamat_pic, vendorPicInternal: p.pic_internal, vendorBadanHukum: p.badan_hukum, vendorStatusDD: p.status_dd,
-                 vendorLinkNDA: getDDLink('NDA'),
-                 vendorLinkCOR: getDDLink('COR'),
-                 vendorLinkDGT: getDDLink('DGT'),
-                 vendorLinkTermination: getDDLink('Termination notice'),
-                 vendorLinkAssessment: getDDLink('Vendor assessment form'),
-                 vendorLinkPlacement: getDDLink('Placement Documentation'),
+                 vendorPicName: p.nama_pic, vendorPicEmail: p.email_pic, vendorPicPhone: p.telepon_pic, vendorPicAlamat: p.alamat_pic, vendorPicInternal: p.pic_internal, vendorBadanHukum: p.country ?? (p.badan_hukum === 'BHI' ? 'ID' : ''), vendorStatusDD: p.status_dd,
+                 vendorLinkNDA: getDDLink('NDA', ['nda']),
+                 vendorLinkCOR: getDDLink('COR', ['id_cor']),
+                 vendorLinkDGT: getDDLink('DGT', ['id_dgt']),
+                 vendorLinkTermination: getDDLink('Termination notice', ['termination_notice']),
+                 vendorLinkAssessment: getDDLink('Vendor assessment form', ['vendor_assessment']),
+                 vendorLinkPlacement: getDDLink('Placement Documentation', ['media_placement_docs']),
                  vendorLinkInvoice: getDDLink('Invoice and Billing'),
-                 vendorLinkNIB: getDDLink('NIB'),
+                 vendorLinkNIB: getDDLink('NIB', BUSINESS_REGISTRATION_KEYS),
                  vendorLinkLicense: getDDLink('Business license'),
-                 vendorLinkNPWP: getDDLink('NPWP'),
-                 vendorLinkAkta: getDDLink('Akta'),
+                 vendorLinkNPWP: getDDLink('NPWP', TAX_REGISTRATION_KEYS),
+                 vendorLinkAkta: getDDLink('Akta', INCORPORATION_KEYS),
                  contract: cio.contract, contractDuration: cio.contractDuration, 
                  io: cio.io, ioDuration: cio.ioDuration,
                  evaluation: ev, spending: sp
@@ -983,14 +991,14 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                 
                 case 'spendInvoiceNo': return row.spending?.invoice_number || '';
                 case 'spendInvDate': return row.spending?.invoice_date || '';
-                case 'spendAmount': return row.spending?.total_amount_usd !== undefined && row.spending?.total_amount_usd !== null ? Number(row.spending.total_amount_usd) : (row.spending?.currency === 'USD' ? Number(row.spending?.total_amount) || 0 : (Number(row.spending?.total_amount) || 0) * (row.spending?.currency === 'IDR' ? 0.000062 : 1));
+                case 'spendAmount': return row.spending?.total_amount_usd !== undefined && row.spending?.total_amount_usd !== null ? Number(row.spending.total_amount_usd) : convertToUsdWithFallback(Number(row.spending?.total_amount) || 0, row.spending?.currency || 'USD');
 
                 case 'contractNo': return row.contract?.nomor_kontrak || '';
                 case 'contractTitle': return row.contract?.judul_kontrak || '';
                 case 'contractStatus': return row.contract?.status || '';
                 case 'contractStartDate': return row.contract?.tanggal_mulai || '';
                 case 'contractEndDate': return row.contract?.tanggal_berakhir || '';
-                case 'contractValue': return row.contract?.nilai_kontrak_usd !== undefined && row.contract?.nilai_kontrak_usd !== null && !isNaN(Number(row.contract.nilai_kontrak_usd)) ? Number(row.contract.nilai_kontrak_usd) : (row.contract?.currency === 'USD' ? Number(row.contract?.nilai_kontrak) || 0 : (Number(row.contract?.nilai_kontrak) || 0) * (row.contract?.currency === 'IDR' ? 0.000062 : 1));
+                case 'contractValue': return row.contract?.nilai_kontrak_usd !== undefined && row.contract?.nilai_kontrak_usd !== null && !isNaN(Number(row.contract.nilai_kontrak_usd)) ? Number(row.contract.nilai_kontrak_usd) : convertToUsdWithFallback(Number(row.contract?.nilai_kontrak) || 0, row.contract?.currency || 'USD');
                 
                 case 'ioNo': return row.io?.nomor_io || '';
                 case 'ioTitle': return row.io?.judul_io || '';
@@ -998,7 +1006,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                 case 'ioChannel': return row.io?.kanal_media || '';
                 case 'ioStartDate': return row.io?.tanggal_mulai || '';
                 case 'ioEndDate': return row.io?.tanggal_berakhir || '';
-                case 'ioValue': return row.io?.nilai_io_usd !== undefined && row.io?.nilai_io_usd !== null && !isNaN(Number(row.io.nilai_io_usd)) ? Number(row.io.nilai_io_usd) : (row.io?.currency === 'USD' ? Number(row.io?.nilai_io) || 0 : (Number(row.io?.nilai_io) || 0) * (row.io?.currency === 'IDR' ? 0.000062 : 1));
+                case 'ioValue': return row.io?.nilai_io_usd !== undefined && row.io?.nilai_io_usd !== null && !isNaN(Number(row.io.nilai_io_usd)) ? Number(row.io.nilai_io_usd) : convertToUsdWithFallback(Number(row.io?.nilai_io) || 0, row.io?.currency || 'USD');
                 default: return '';
               }
             };
@@ -1117,7 +1125,7 @@ const exportToCSV = () => {
               spendInvoiceNo: row.spending?.invoice_number || '',
               spendInvDate: formatDate(row.spending?.invoice_date),
               spendInvoiceDesc: `"${(row.spending?.invoice_description || '').replace(/"/g, '""')}"`,
-              spendAmount: row.spending ? (row.spending.total_amount_usd !== undefined && row.spending.total_amount_usd !== null ? row.spending.total_amount_usd : (row.spending.currency === 'USD' ? row.spending.total_amount : (row.spending.total_amount || 0) * (row.spending.currency === 'IDR' ? 0.000062 : 1))).toString() : '',
+              spendAmount: row.spending ? (row.spending.total_amount_usd !== undefined && row.spending.total_amount_usd !== null ? row.spending.total_amount_usd : convertToUsdWithFallback(row.spending.total_amount || 0, row.spending.currency || 'USD')).toString() : '',
               spendInvoiceLink: row.spending?.invoice_file_url || '',
               spendBillingLink: row.spending?.billing_file_url || '',
 
@@ -1127,7 +1135,7 @@ const exportToCSV = () => {
               contractStartDate: formatDate(row.contract?.tanggal_mulai),
               contractEndDate: formatDate(row.contract?.tanggal_berakhir),
               contractDuration: row.contractDuration || '',
-              contractValue: row.contract ? (row.contract.nilai_kontrak_usd !== undefined && row.contract.nilai_kontrak_usd !== null && !isNaN(Number(row.contract.nilai_kontrak_usd)) ? row.contract.nilai_kontrak_usd : (row.contract.currency === 'USD' ? row.contract.nilai_kontrak : (row.contract.nilai_kontrak || 0) * (row.contract.currency === 'IDR' ? 0.000062 : 1))).toString() : '',
+              contractValue: row.contract ? (row.contract.nilai_kontrak_usd !== undefined && row.contract.nilai_kontrak_usd !== null && !isNaN(Number(row.contract.nilai_kontrak_usd)) ? row.contract.nilai_kontrak_usd : convertToUsdWithFallback(row.contract.nilai_kontrak || 0, row.contract.currency || 'USD')).toString() : '',
               contractKategori: row.contract?.kategori_kerjasama || '',
               contractAutoRenewal: row.contract?.auto_renewal ? 'Ya' : 'Tidak',
               contractNoticePeriod: (row.contract?.notice_period_days || '').toString(),
@@ -1145,7 +1153,7 @@ const exportToCSV = () => {
               ioPricingModel: row.io?.pricing_model || '',
               ioChargingType: row.io?.charging_type || '',
               ioDeliverables: `"${(row.io?.deliverables || '').replace(/"/g, '""')}"`,
-              ioValue: row.io ? (row.io.nilai_io_usd !== undefined && row.io.nilai_io_usd !== null && !isNaN(Number(row.io.nilai_io_usd)) ? row.io.nilai_io_usd : (row.io.currency === 'USD' ? row.io.nilai_io : (row.io.nilai_io || 0) * (row.io.currency === 'IDR' ? 0.000062 : 1))).toString() : '',
+              ioValue: row.io ? (row.io.nilai_io_usd !== undefined && row.io.nilai_io_usd !== null && !isNaN(Number(row.io.nilai_io_usd)) ? row.io.nilai_io_usd : convertToUsdWithFallback(row.io.nilai_io || 0, row.io.currency || 'USD')).toString() : '',
               ioLink: row.io?.link_file_io || '',
             };
             return columns.filter(c => auditVisibleCols[c.id]).map(c => rowData[c.id]).join(',');

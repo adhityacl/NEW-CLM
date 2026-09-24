@@ -56,13 +56,23 @@ export interface ContractDraftData {
     bankAddress: string;
     swiftCode: string;
   };
+  /** e.g. "the laws of the Republic of Singapore" (see the country pack's governingLaw). */
   governingLaw: string;
   disputeForumEn: string;
   disputeForumId: string;
+  /**
+   * ISO country of the governing law. Jurisdiction-specific clauses (e.g.
+   * Indonesia's Civil Code art. 1266 waiver and Law 24/2009 language rule)
+   * are only added for that country.
+   */
+  countryCode?: string;
+  /** Jurisdiction under which Party 1 is incorporated, e.g. "the Republic of Singapore". */
+  party1Jurisdiction?: string;
   customClauses?: BilingualContractClause[];
 }
 
 export async function generateContractDocxBlob(data: ContractDraftData): Promise<Blob> {
+  const isIndonesianLaw = String(data.countryCode || '').toUpperCase() === 'ID';
   const thinBorder = {
     style: BorderStyle.SINGLE,
     size: 4,
@@ -236,20 +246,20 @@ export async function generateContractDocxBlob(data: ContractDraftData): Promise
     titleId: 'KOMPARISI PARA PIHAK & PENDAHULUAN',
     contentEn: [
       `This Agreement is made and entered into on ${data.effectiveDate || '[Date]'} by and between:`,
-      `1. ${data.party1.companyName}, a limited liability company duly established under the laws of Republic of Indonesia, having its registered office at ${data.party1.address}, represented by ${data.party1.signatoryName} in his capacity as ${data.party1.signatoryTitle}, therefore validly acting for and on behalf of ${data.party1.companyName} (hereinafter referred to as "${data.party1.brandName}"); and`,
-      `2. ${data.party2.companyName || '[Partner/Vendor Company]'}, a company duly established under the laws of ${data.party2.legalJurisdiction || 'Republic of Indonesia'}, having its registered office at ${data.party2.address || '[Address]'}, represented by ${data.party2.signatoryName || '[Signatory Name]'} in his capacity as ${data.party2.signatoryTitle || '[Position]'} (hereinafter referred to as "PARTNER").`,
+      `1. ${data.party1.companyName}, a company duly established under the laws of ${data.party1Jurisdiction || '[Jurisdiction]'}, having its registered office at ${data.party1.address}, represented by ${data.party1.signatoryName} in his capacity as ${data.party1.signatoryTitle}, therefore validly acting for and on behalf of ${data.party1.companyName} (hereinafter referred to as "${data.party1.brandName}"); and`,
+      `2. ${data.party2.companyName || '[Partner/Vendor Company]'}, a company duly established under the laws of ${data.party2.legalJurisdiction || '[Jurisdiction]'}, having its registered office at ${data.party2.address || '[Address]'}, represented by ${data.party2.signatoryName || '[Signatory Name]'} in his capacity as ${data.party2.signatoryTitle || '[Position]'} (hereinafter referred to as "PARTNER").`,
       `WITNESSETH:`,
-      `WHEREAS, ${data.party1.brandName} is a company conducting business activities in ${data.party1.licenseInfo || 'financial technology services'}.`,
+      `WHEREAS, ${data.party1.brandName} is a company conducting business activities in ${data.party1.licenseInfo || '[line of business]'}.`,
       `WHEREAS, PARTNER is a professional company providing ${data.commercials.scopeOfServices || 'services and strategic partnership'}.`,
       `WHEREAS, the Parties agree to protect personal data and maintain confidentiality in accordance with applicable laws.`,
       `THEREFORE, the Parties agree to enter into this Agreement under the following terms:`,
     ],
     contentId: [
       `Perjanjian ini dibuat dan ditandatangani pada tanggal ${data.effectiveDate || '[Tanggal]'} oleh dan antara:`,
-      `1. ${data.party1.companyName}, suatu perseroan terbatas yang didirikan berdasarkan hukum Republik Indonesia, berkedudukan di ${data.party1.address}, dalam hal ini diwakili oleh ${data.party1.signatoryName} dalam kapasitasnya sebagai ${data.party1.signatoryTitle}, oleh karenanya sah bertindak untuk dan atas nama ${data.party1.companyName} (selanjutnya disebut "${data.party1.brandName}"); dan`,
-      `2. ${data.party2.companyName || '[Perusahaan Partner/Vendor]'}, suatu perusahaan yang didirikan berdasarkan hukum ${data.party2.legalJurisdiction || 'Republik Indonesia'}, berkedudukan di ${data.party2.address || '[Alamat]'}, diwakili oleh ${data.party2.signatoryName || '[Nama Penandatangan]'} dalam kapasitasnya sebagai ${data.party2.signatoryTitle || '[Jabatan]'} (selanjutnya disebut "PARTNER").`,
+      `1. ${data.party1.companyName}, suatu badan usaha yang didirikan berdasarkan hukum ${data.party1Jurisdiction || '[Yurisdiksi]'}, berkedudukan di ${data.party1.address}, dalam hal ini diwakili oleh ${data.party1.signatoryName} dalam kapasitasnya sebagai ${data.party1.signatoryTitle}, oleh karenanya sah bertindak untuk dan atas nama ${data.party1.companyName} (selanjutnya disebut "${data.party1.brandName}"); dan`,
+      `2. ${data.party2.companyName || '[Perusahaan Partner/Vendor]'}, suatu perusahaan yang didirikan berdasarkan hukum ${data.party2.legalJurisdiction || '[Yurisdiksi]'}, berkedudukan di ${data.party2.address || '[Alamat]'}, diwakili oleh ${data.party2.signatoryName || '[Nama Penandatangan]'} dalam kapasitasnya sebagai ${data.party2.signatoryTitle || '[Jabatan]'} (selanjutnya disebut "PARTNER").`,
       `PENDAHULUAN:`,
-      `BAHWA, ${data.party1.brandName} adalah perusahaan yang bergerak dalam bidang ${data.party1.licenseInfo || 'layanan teknologi finansial'}.`,
+      `BAHWA, ${data.party1.brandName} adalah perusahaan yang bergerak dalam bidang ${data.party1.licenseInfo || '[bidang usaha]'}.`,
       `BAHWA, PARTNER adalah perusahaan profesional yang menyediakan ${data.commercials.scopeOfServicesId || 'layanan dan kerjasama strategis'}.`,
       `BAHWA, Para Pihak sepakat untuk mematuhi perlindungan data pribadi dan menjaga kerahasiaan sesuai peraturan perundang-undangan.`,
       `OLEH KARENA ITU, Para Pihak dengan ini menyepakati Perjanjian dengan ketentuan sebagai berikut:`,
@@ -335,12 +345,12 @@ export async function generateContractDocxBlob(data: ContractDraftData): Promise
     contentEn: [
       `This Agreement shall be effective from ${data.effectiveDate || '[Start Date]'} until ${data.expiryDate || '[End Date]'} and shall automatically renew for successive 1 (one) year terms unless terminated with 30 days prior written notice.`,
       `Either Party may terminate this Agreement if the other Party commits a material breach and fails to cure such breach within 15 calendar days of notice.`,
-      `The Parties expressly agree to waive Article 1266 of the Indonesian Civil Code to the extent a court judgment is required for termination.`,
+      ...(isIndonesianLaw ? [`The Parties expressly agree to waive Article 1266 of the Indonesian Civil Code to the extent a court judgment is required for termination.`] : []),
     ],
     contentId: [
       `Perjanjian ini berlaku efektif sejak ${data.effectiveDate || '[Tanggal Mulai]'} sampai dengan ${data.expiryDate || '[Tanggal Berakhir]'} dan otomatis diperpanjang untuk periode 1 (satu) tahun berikutnya kecuali diakhiri dengan pemberitahuan tertulis 30 hari sebelumnya.`,
       `Salah satu Pihak dapat mengakhiri Perjanjian jika Pihak lain melakukan pelanggaran material dan tidak memperbaikinya dalam waktu 15 hari kalender sejak pemberitahuan.`,
-      `Para Pihak sepakat mengesampingkan berlakunya ketentuan Pasal 1266 KUHPerdata sepanjang mengenai diperlukannya putusan pengadilan untuk pengakhiran perjanjian.`,
+      ...(isIndonesianLaw ? [`Para Pihak sepakat mengesampingkan berlakunya ketentuan Pasal 1266 KUHPerdata sepanjang mengenai diperlukannya putusan pengadilan untuk pengakhiran perjanjian.`] : []),
     ],
   });
 
@@ -349,12 +359,12 @@ export async function generateContractDocxBlob(data: ContractDraftData): Promise
     titleEn: 'ARTICLE 6 - GOVERNING LAW & DISPUTE SETTLEMENT',
     titleId: 'PASAL 6 - HUKUM YANG BERLAKU & PENYELESAIAN SENGKETA',
     contentEn: [
-      `This Agreement shall be governed by and construed in accordance with the laws of ${data.governingLaw || 'the Republic of Indonesia'}.`,
-      `Any dispute arising out of or in connection with this Agreement shall be resolved through good faith negotiations within 10 days, failing which the dispute shall be submitted to the jurisdiction of the ${data.disputeForumEn || 'District Court of South Jakarta (Pengadilan Negeri Jakarta Selatan)'}.`,
+      `This Agreement shall be governed by and construed in accordance with ${data.governingLaw || '[governing law]'}.`,
+      `Any dispute arising out of or in connection with this Agreement shall be resolved through good faith negotiations within 10 days, failing which the dispute shall be submitted to the jurisdiction of the ${data.disputeForumEn || '[dispute forum]'}.`,
     ],
     contentId: [
-      `Perjanjian ini diatur oleh dan ditafsirkan sesuai dengan hukum ${data.governingLaw || 'Republik Indonesia'}.`,
-      `Setiap perselisihan yang timbul dari atau sehubungan dengan Perjanjian ini diselesaikan melalui musyawarah mufakat dalam waktu 10 hari, apabila tidak tercapai kesepakatan maka akan diselesaikan melalui yurisdiksi ${data.disputeForumId || 'Pengadilan Negeri Jakarta Selatan'}.`,
+      `Perjanjian ini diatur oleh dan ditafsirkan sesuai dengan ${data.governingLaw || '[hukum yang berlaku]'}.`,
+      `Setiap perselisihan yang timbul dari atau sehubungan dengan Perjanjian ini diselesaikan melalui musyawarah mufakat dalam waktu 10 hari, apabila tidak tercapai kesepakatan maka akan diselesaikan melalui yurisdiksi ${data.disputeForumId || '[forum sengketa]'}.`,
     ],
   });
 
@@ -363,12 +373,16 @@ export async function generateContractDocxBlob(data: ContractDraftData): Promise
     titleEn: 'ARTICLE 7 - MISCELLANEOUS & LANGUAGE',
     titleId: 'PASAL 7 - KETENTUAN LAIN-LAIN & BAHASA',
     contentEn: [
-      `Language: In compliance with Law No. 24 of 2009, this Agreement is executed in English and Indonesian versions. In the event of any discrepancy, the Indonesian version shall prevail.`,
+      isIndonesianLaw
+        ? `Language: In compliance with Law No. 24 of 2009, this Agreement is executed in English and Indonesian versions. In the event of any discrepancy, the Indonesian version shall prevail.`
+        : `Language: This Agreement is executed in English and Indonesian versions. In the event of any discrepancy, the English version shall prevail.`,
       `Entire Agreement: This Agreement supersedes all prior discussions, representations, and understandings between the Parties.`,
       `Electronic Execution: This Agreement may be executed in counterparts and transmitted electronically with equal legal binding force.`,
     ],
     contentId: [
-      `Bahasa: Untuk memenuhi UU No. 24 Tahun 2009, Perjanjian ini dibuat dalam versi Bahasa Inggris dan Bahasa Indonesia. Apabila terdapat perbedaan penafsiran, versi Bahasa Indonesia yang berlaku.`,
+      isIndonesianLaw
+        ? `Bahasa: Untuk memenuhi UU No. 24 Tahun 2009, Perjanjian ini dibuat dalam versi Bahasa Inggris dan Bahasa Indonesia. Apabila terdapat perbedaan penafsiran, versi Bahasa Indonesia yang berlaku.`
+        : `Bahasa: Perjanjian ini dibuat dalam versi Bahasa Inggris dan Bahasa Indonesia. Apabila terdapat perbedaan penafsiran, versi Bahasa Inggris yang berlaku.`,
       `Keseluruhan Perjanjian: Perjanjian ini menggantikan seluruh pembicaraan, pernyataan, dan kesepakatan terdahulu di antara Para Pihak.`,
       `Penandatanganan Elektronik: Perjanjian ini dapat ditandatangani dalam salinan elektronik dengan kekuatan hukum pembuktian yang sah dan mengikat.`,
     ],

@@ -7,7 +7,7 @@ import viteCompression from 'vite-plugin-compression';
 export default defineConfig(() => {
   return {
     plugins: [
-      react(), 
+      react(),
       tailwindcss(),
       viteCompression({ algorithm: 'gzip', ext: '.gz' }),
       viteCompression({ algorithm: 'brotliCompress', ext: '.br' })
@@ -15,6 +15,23 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+      },
+    },
+    build: {
+      sourcemap: false,
+      chunkSizeWarningLimit: 800,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('recharts')) return 'chart-vendor';
+            if (id.includes('@tiptap') || id.includes('prosemirror')) return 'editor-vendor';
+            if (id.includes('googleapis') || id.includes('firebase')) return 'external-api-vendor';
+            if (id.includes('docx') || id.includes('pdf-lib') || id.includes('pdf-parse') || id.includes('react-markdown')) return 'doc-vendor';
+            if (id.includes('react') || id.includes('@tanstack/react-query')) return 'react-vendor';
+            return 'vendor';
+          },
+        },
       },
     },
 

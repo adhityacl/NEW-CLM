@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getActiveFormattingLocale } from '../../lib/currencyUtils';
 import { KeyRound, Shield, Search, CheckCircle2, Lock, Mail, Globe } from 'lucide-react';
 import { ConsoleAccount } from './types';
 import { useLanguage } from '../../context/LanguageContext';
@@ -152,7 +153,7 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
                       )}
                     </td>
                     <td className="py-3 px-4 text-slate-500 text-[11px]">
-                      {new Date(acc.createdAt).toLocaleString(language === 'ID' ? 'id-ID' : 'en-US', {
+                      {new Date(acc.createdAt).toLocaleString(getActiveFormattingLocale(), {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',

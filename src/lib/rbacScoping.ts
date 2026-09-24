@@ -140,12 +140,13 @@ export function canViewContract(
   const deptMatch = matchesDepartment(pic, user.department);
   if (!deptMatch) return false;
 
-  // Viewer rule: Viewer can only view documents that are Final/Aktif/Signed
+  // Viewer rule: Viewer can only view documents that are final (Active/Expiring/Signed)
   if (role === 'viewer') {
     const isFinal =
-      contract.status === 'Aktif' ||
+      contract.status === 'Active' ||
+      contract.status === 'Expiring' ||
       contract.status_approval === 'Signed' ||
-      contract.status_approval === 'Aktif';
+      contract.status_approval === 'Active';
     return isFinal;
   }
 

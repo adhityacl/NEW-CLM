@@ -8,6 +8,7 @@ import { getAuthHeaders } from '../App';
 import { UITextManagerModal } from './UITextManagerModal';
 import { SQLiteDatabaseCard } from './SQLiteDatabaseCard';
 import {
+  Globe2,
   FileSpreadsheet,
   Folder,
   Save,
@@ -66,6 +67,9 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
+import { usePermissions } from '../lib/permissions';
+import { OrganizationRegionSettings } from './settings/OrganizationRegionSettings';
+import { ResetWorkspaceDialog } from './settings/ResetWorkspaceDialog';
 
 interface SettingsViewProps {
   config: GoogleSheetsConfig;
@@ -80,7 +84,7 @@ interface SettingsViewProps {
   initialSection?: SettingsSection;
 }
 
-type SettingsSection = 'google' | 'ai' | 'notifications' | 'language' | 'security' | 'better_auth';
+type SettingsSection = 'region' | 'google' | 'ai' | 'notifications' | 'language' | 'security' | 'better_auth';
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   config,
@@ -89,11 +93,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   initialSection,
 }) => {
   const { user, isAdmin } = useAuth();
+  const { role: permissionRole } = usePermissions();
+  const isSuperuser = permissionRole === 'superuser';
   const { language, t, exportToCSV, importFromCSV, resetCustomTranslations } = useLanguage();
   const confirmDialog = useConfirm();
 
-  // Active Settings Section / Group Tab
-  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection || 'google');
+  // Active Settings Section / Group Tab. "Organization & region" is the
+  // primary section and the default landing tab for admins; non-admins
+  // can only see "Google & Database" (every other section is adminOnly),
+  // so they still land there.
+  const [activeSection, setActiveSection] = useState<SettingsSection>(
+    initialSection || (isAdmin ? 'region' : 'google'),
+  );
 
   useEffect(() => {
     if (initialSection) {
@@ -108,13 +119,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [autoSync, setAutoSync] = useState(config.autoSync ?? true);
   const [isLocked, setIsLocked] = useState<boolean>(config.isLocked ?? true);
   const [notificationEmails, setNotificationEmails] = useState(
-    config.notificationEmails || 'legal.head@perusahaan.co.id, finance.team@perusahaan.co.id'
+    config.notificationEmails || ''
   );
   const [legalNotificationEmail, setLegalNotificationEmail] = useState(
-    config.legalNotificationEmail || 'legal.head@perusahaan.co.id'
+    config.legalNotificationEmail || ''
   );
   const [financeNotificationEmail, setFinanceNotificationEmail] = useState(
-    config.financeNotificationEmail || 'finance.team@perusahaan.co.id'
+    config.financeNotificationEmail || ''
   );
   const [aiModel, setAiModel] = useState<string>(config.aiModel || 'gemini-3.8-flash');
   const [savingAiModel, setSavingAiModel] = useState(false);
@@ -954,72 +965,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleOpenResetModal = () => {
-    if (!isAdmin) {
-      setErrorMsg(t('settings.reset_admin_only', 'Hanya Admin yang berhak mereset data aplikasi.'));
+    if (!isSuperuser) {
+      setErrorMsg(t('settings.reset_superuser_only', 'Only a superuser can reset the workspace.'));
       return;
     }
     setResetConfirmationText('');
     setShowResetModal(true);
-  };
-
-  const handleExecuteReset = async () => {
-    if (!isAdmin) {
-      setErrorMsg(t('settings.reset_admin_only', 'Hanya Admin yang berhak mereset data aplikasi.'));
-      return;
-    }
-    if (resetConfirmationText.trim() !== 'RESET NOW') {
-      setErrorMsg('Harap ketik "RESET NOW" untuk mengonfirmasi reset database.');
-      return;
-    }
-
-    setResettingData(true);
-    setErrorMsg(null);
-    setSuccessMsg(null);
-
-    try {
-      const token = getCachedAccessToken();
-      const headers = {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      };
-
-      const res = await fetch('/api/admin/reset-database', {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({
-          userEmail: user?.email,
-          userName: user?.name,
-          userRole: user?.role,
-          accessToken: token,
-          confirmKeyword: resetConfirmationText.trim(),
-        }),
-      });
-      let data: any = {};
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        data = await res.json();
-      }
-      if (res.ok) {
-        setShowResetModal(false);
-        setResetConfirmationText('');
-        setSpreadsheetId('');
-        setDriveFolderId('');
-        setMasterSpreadsheetId('');
-        try {
-          localStorage.removeItem('silegal_custom_translations');
-          localStorage.removeItem('silegal_active_org_id');
-        } catch (e) {}
-        setSuccessMsg(data.message || t('settings.reset_success', 'Seluruh pengaturan sistem, organisasi, departemen, dan data transaksi berhasil direset ke kondisi awal bawaan.'));
-        setTimeout(() => window.location.reload(), 1200);
-      } else {
-        setErrorMsg(data.error || 'Gagal mereset database.');
-      }
-    } catch (err: any) {
-      setErrorMsg('Gagal mereset database: ' + (err.message || String(err)));
-    } finally {
-      setResettingData(false);
-    }
   };
 
   const handleQuickImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1049,6 +1000,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   // Settings navigation groups
   const navigationItems: { id: SettingsSection; label: string; icon: React.ElementType; desc: string; adminOnly?: boolean }[] = [
+    {
+      id: 'region',
+      label: t('settings.nav_region', 'Organization & region'),
+      icon: Globe2,
+      desc: t('settings.nav_region_desc', 'Country, industry, currency, time zone, reminders and modules'),
+      adminOnly: true,
+    },
     {
       id: 'google',
       label: t('settings.nav_google', 'Google Drive & SQLite'),
@@ -1096,6 +1054,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span>{t('nav.settings', 'Pengaturan Sistem')}</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            {activeSection === 'region' && t('settings.nav_region', 'Organization & region')}
             {activeSection === 'google' && t('settings.nav_google', 'Google Drive & SQLite Engine')}
             {activeSection === 'ai' && t('settings.nav_ai', 'Model AI & Parser')}
             {activeSection === 'notifications' && t('settings.nav_notifications', 'Penerima Notifikasi')}
@@ -1140,6 +1099,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Full-width Content Layout */}
       <div className="w-full space-y-6">
         {/* GROUP 1: GOOGLE INTEGRATION & DATABASE */}
+          {activeSection === 'region' && <OrganizationRegionSettings />}
+
           {activeSection === 'google' && (
             <div className="space-y-6">
               {/* Google OAuth Account Card */}
@@ -2121,7 +2082,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       variant="destructive"
                       size="sm"
                       onClick={handleOpenResetModal}
-                      disabled={resettingData}
+                      disabled={resettingData || !isSuperuser}
                       className="h-9 px-4 rounded-full text-xs font-bold bg-red-500 text-white hover:bg-red-600 cursor-pointer shrink-0"
                     >
                       {resettingData ? t('settings.resetting_db', 'Mereset Database...') : t('settings.reset_db_btn', 'Reset Database Sistem')}
@@ -2134,83 +2095,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
       {/* Confirmation Modal for Reset Database */}
-      {showResetModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-in fade-in-50">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full shadow-2xl border border-rose-200 dark:border-rose-900/50 overflow-hidden">
-            {/* Header */}
-            <div className="p-5 border-b border-rose-100 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 flex items-center gap-3">
-              <div className="p-2 bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-300 rounded-xl border border-rose-200 dark:border-rose-800 shrink-0">
-                <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-              </div>
-              <div>
-                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                  {t('settings.reset_modal_title', 'Reset Database Sistem')}
-                </h3>
-                <p className="text-xs text-rose-600 dark:text-rose-400 font-medium mt-0.5">
-                  {t('settings.reset_modal_warning', 'Tindakan ini permanen dan tidak dapat dibatalkan.')}
-                </p>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div className="p-5 space-y-3 text-xs">
-              <label className="block text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
-                {t(
-                  'settings.reset_modal_desc',
-                  'Seluruh pengaturan sistem, organisasi, departemen, konfigurasi, dan data transaksi akan direset permanen ke bawaan awal. Akun pengguna terdaftar tetap aman. Ketik RESET NOW untuk konfirmasi:'
-                )}
-              </label>
-
-              <div>
-                <input
-                  type="text"
-                  value={resetConfirmationText}
-                  onChange={(e) => setResetConfirmationText(e.target.value)}
-                  placeholder={t('settings.reset_modal_input_placeholder', 'RESET NOW')}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold placeholder:font-mono placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all"
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            {/* Footer Buttons */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowResetModal(false);
-                  setResetConfirmationText('');
-                }}
-                disabled={resettingData}
-                className="h-9 px-4 rounded-xl text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                {t('common.cancel', 'Batal')}
-              </Button>
-
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleExecuteReset}
-                disabled={resetConfirmationText.trim() !== 'RESET NOW' || resettingData}
-                className="h-9 px-4 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed gap-1.5"
-              >
-                {resettingData ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>{t('settings.resetting_db', 'Mereset Database...')}</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>{t('settings.confirm_reset_btn', 'Reset Database')}</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ResetWorkspaceDialog
+        open={showResetModal}
+        onOpenChange={setShowResetModal}
+        onDone={(message, defaultOrgId) => {
+          setShowResetModal(false);
+          try {
+            localStorage.removeItem('app_custom_translations');
+            if (defaultOrgId) localStorage.setItem('activeOrganizationId', defaultOrgId);
+            else localStorage.removeItem('activeOrganizationId');
+          } catch {
+            /* storage unavailable */
+          }
+          setSuccessMsg(message || t('settings.reset_success', 'The workspace was reset.'));
+          setTimeout(() => window.location.reload(), 1200);
+        }}
+      />
 
       {/* Confirmation Modal for Editing Database Configuration */}
       {showEditConfirmModal && (

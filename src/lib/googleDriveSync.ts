@@ -497,7 +497,7 @@ export async function uploadFileToDrive(
 
 /**
  * Traverses or creates nested folders level by level:
- * e.g., pathSegments = ['PT Info Tekno Siaga', 'PT Telkom Indonesia', 'Folder Contract']
+ * e.g., pathSegments = ['Acme Holdings', 'Example Supplier Ltd', 'Folder Contract']
  * starting inside `rootFolderId`.
  */
 export async function getOrCreateHierarchicalFolder(

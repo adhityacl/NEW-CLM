@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Globe2,
   LayoutDashboard,
   Building2,
   ClipboardCheck,
@@ -37,6 +38,7 @@ import { GoogleSheetsConfig } from '../types';
 import { isGoogleTokenValid, getGoogleTokenRemainingMinutes } from '../lib/googleAuthService';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { usePermissions } from '../lib/permissions';
+import { useTenantSettings } from '../context/TenantSettingsContext';
 
 interface SidebarProps {
   activeTab: string;
@@ -74,6 +76,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { standardRole } = useAuth();
   const { hasPermission } = usePermissions();
   const { t } = useLanguage();
+  const { policy } = useTenantSettings();
+  const modules = policy.settings.modules;
   const { theme, toggleTheme } = useTheme();
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -146,11 +150,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: expiringContractsCount > 0 ? `${expiringContractsCount}` : null,
       badgeColor: 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800',
     },
-    {
-      id: 'ios',
-      label: t('nav.ios', 'Insertion Order'),
-      icon: FileSpreadsheet,
-    },
+    ...(modules.commercialDocuments
+      ? [{
+          id: 'ios',
+          label: t('nav.ios', '{docs}'),
+          icon: FileSpreadsheet,
+        }]
+      : []),
     {
       id: 'notifikasi',
       label: t('nav.notifications', 'Notifikasi'),
@@ -257,12 +263,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Submenu definition for Partners
   const partnerSubItems = [
     { id: 'partners', label: t('nav.partners_list', 'Daftar Mitra'), icon: Building2 },
-    { id: 'partner-evaluation', label: t('nav.partner_eval', 'Evaluasi Kinerja'), icon: ClipboardCheck },
-    { id: 'partner-spending', label: t('nav.partner_spending', 'Pengeluaran Mitra'), icon: CreditCard },
+    ...(modules.evaluation ? [{ id: 'partner-evaluation', label: t('nav.partner_eval', 'Evaluasi Kinerja'), icon: ClipboardCheck }] : []),
+    ...(modules.spending ? [{ id: 'partner-spending', label: t('nav.partner_spending', 'Pengeluaran Mitra'), icon: CreditCard }] : []),
   ];
 
   // Submenu definition for Settings
   const settingsSubItems = [
+    { id: 'settings-region', label: t('settings.nav_region', 'Organization & region'), icon: Globe2, adminOnly: true },
     { id: 'settings-google', label: t('settings.nav_google', 'Google & Database'), icon: Database },
     { id: 'settings-ai', label: t('settings.nav_ai', 'Model AI & Parser'), icon: Bot, adminOnly: true },
     { id: 'settings-notifications', label: t('settings.nav_notifications', 'Penerima Notifikasi'), icon: Bell, adminOnly: true },
@@ -330,7 +337,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             : item.id === 'admin-organization'
                             ? 'admin-organization-users'
                             : item.id === 'settings'
-                            ? 'settings-google'
+                            ? 'settings-region'
                             : item.id
                         )
                       }
@@ -359,7 +366,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div key={item.id} className="space-y-0.5">
                       <div
                         className={`w-full flex items-center justify-between px-3 py-2 ${
-                          isMobile ? 'min-h-[44px]' : 'min-h-[38px]'
+                          isMobile ? 'min-h-11' : 'min-h-9.5'
                         } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                           isPartnerActive
                             ? 'bg-[#06C755] text-white shadow-2xs'
@@ -404,7 +411,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 onClick={() => handleNavClick(sub.id)}
                                 aria-current={isSubActive ? 'page' : undefined}
                                 className={`w-full flex items-center gap-2 px-2.5 py-1.5 ${
-                                  isMobile ? 'min-h-[40px]' : 'min-h-[32px]'
+                                  isMobile ? 'min-h-10' : 'min-h-8'
                                 } rounded-lg text-xs font-medium transition-colors cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
                                   isSubActive
                                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold'
@@ -431,7 +438,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div key={item.id} className="space-y-0.5">
                       <div
                         className={`w-full flex items-center justify-between px-3 py-2 ${
-                          isMobile ? 'min-h-[44px]' : 'min-h-[38px]'
+                          isMobile ? 'min-h-11' : 'min-h-9.5'
                         } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                           isAdminActive
                             ? 'bg-[#06C755] text-white shadow-2xs'
@@ -477,7 +484,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 onClick={() => handleNavClick(subTab)}
                                 aria-current={isSubActive ? 'page' : undefined}
                                 className={`w-full flex items-center gap-2 px-2.5 py-1.5 ${
-                                  isMobile ? 'min-h-[40px]' : 'min-h-[32px]'
+                                  isMobile ? 'min-h-10' : 'min-h-8'
                                 } rounded-lg text-xs font-medium transition-colors cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
                                   isSubActive
                                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold'
@@ -501,14 +508,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div key={item.id} className="space-y-0.5">
                       <div
                         className={`w-full flex items-center justify-between px-3 py-2 ${
-                          isMobile ? 'min-h-[44px]' : 'min-h-[38px]'
+                          isMobile ? 'min-h-11' : 'min-h-9.5'
                         } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                           isSettingsActive
                             ? 'bg-[#06C755] text-white shadow-2xs'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                         }`}
                         onClick={() => {
-                          handleNavClick('settings-google');
+                          handleNavClick('settings-region');
                           setIsSettingsExpanded((prev) => !prev);
                         }}
                       >
@@ -540,7 +547,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             const SubIcon = sub.icon;
                             const isSubActive =
                               activeTab === sub.id ||
-                              (sub.id === 'settings-google' && activeTab === 'settings');
+                              (sub.id === 'settings-region' && activeTab === 'settings');
                             return (
                               <button
                                 key={sub.id}
@@ -548,7 +555,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 onClick={() => handleNavClick(sub.id)}
                                 aria-current={isSubActive ? 'page' : undefined}
                                 className={`w-full flex items-center gap-2 px-2.5 py-1.5 ${
-                                  isMobile ? 'min-h-[40px]' : 'min-h-[32px]'
+                                  isMobile ? 'min-h-10' : 'min-h-8'
                                 } rounded-lg text-xs font-medium transition-colors cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
                                   isSubActive
                                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold'
@@ -574,7 +581,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => handleNavClick(item.id)}
                     aria-current={isActive ? 'page' : undefined}
                     className={`w-full flex items-center justify-between px-3 py-2 ${
-                      isMobile ? 'min-h-[44px]' : 'min-h-[38px]'
+                      isMobile ? 'min-h-11' : 'min-h-9.5'
                     } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
                       isActive
                         ? 'bg-[#06C755] text-white shadow-2xs'
@@ -612,7 +619,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <aside
         className={`hidden md:flex ${
           isCollapsed ? 'w-18' : 'w-64'
-        } bg-white dark:bg-slate-900 flex-col shrink-0 text-slate-900 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800 transition-all duration-300 ease-in-out z-30`}
+        } bg-white dark:bg-slate-900 flex-col shrink-0 text-slate-900 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800 transition-all duration-300 ease-in-out z-30 sticky top-0 h-screen`}
       >
         {/* Workspace Switcher + Collapse Button */}
         <div
@@ -624,7 +631,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={toggleCollapse}
-              className="min-w-[44px] min-h-[44px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#06C755] dark:hover:text-[#06C755] flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+              className="min-w-11 min-h-11 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#06C755] dark:hover:text-[#06C755] flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
               title={t('nav.expand_menu', 'Perluas Menu')}
               aria-label={t('nav.expand_menu', 'Perluas Menu')}
             >
@@ -642,7 +649,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={toggleCollapse}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+                className="min-w-11 min-h-11 flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
                 title={t('nav.collapse_menu', 'Kecilkan Menu')}
                 aria-label={t('nav.collapse_menu', 'Kecilkan Menu')}
               >
@@ -716,7 +723,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onCloseMobile}
-            className="min-w-[44px] min-h-[44px] rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+            className="min-w-11 min-h-11 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
             aria-label="Tutup Menu"
           >
             <X className="w-5 h-5" />

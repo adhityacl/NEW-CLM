@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTenantSettings } from '../context/TenantSettingsContext';
 import { InsertionOrder, Contract, Partner, PricingModel, ChargingType } from '../types';
 import { FileSpreadsheet, Upload, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
@@ -55,9 +56,10 @@ export const IOModal: React.FC<IOModalProps> = ({
   };
   const [tanggalMulai, setTanggalMulai] = useState(ioToEdit?.tanggal_mulai || '2026-08-01');
   const [tanggalBerakhir, setTanggalBerakhir] = useState(ioToEdit?.tanggal_berakhir || '2026-11-30');
-  const [currency, setCurrency] = useState<string>(ioToEdit?.currency || 'IDR');
+  const tenantCurrency = useTenantSettings().policy.settings.defaultCurrency;
+  const [currency, setCurrency] = useState<string>(ioToEdit?.currency || tenantCurrency);
   const [nilaiIO, setNilaiIO] = useState<number>(ioToEdit?.nilai_io ?? 0);
-  const [historicalRate, setHistoricalRate] = useState<number>(() => getDefaultUsdRate(ioToEdit?.currency || 'IDR'));
+  const [historicalRate, setHistoricalRate] = useState<number>(() => getDefaultUsdRate(ioToEdit?.currency || tenantCurrency));
 
   useEffect(() => {
     let isMounted = true;
@@ -570,7 +572,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                 >
                   {SUPPORTED_CURRENCIES.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.code} - ({c.symbol})
+                      {c.code} — {c.label}
                     </option>
                   ))}
                 </select>

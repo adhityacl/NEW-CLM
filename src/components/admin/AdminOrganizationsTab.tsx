@@ -145,7 +145,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                     <div>
                       <div className="text-[10px] text-slate-400 uppercase">{t('admin.org_currency', 'Mata Uang')}</div>
                       <div className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
-                        {org.metadata?.currency || 'IDR'}
+                        {org.metadata?.settings?.defaultCurrency || org.metadata?.currency || '—'}
                       </div>
                     </div>
                   </div>
@@ -173,16 +173,16 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                   <button
                     type="button"
                     onClick={() => onDeleteOrg(org)}
-                    disabled={isActive || org.slug === 'adapundi'}
+                    disabled={isActive || Boolean(org.metadata?.isDefault)}
                     title={
-                      org.slug === 'adapundi'
+                      Boolean(org.metadata?.isDefault)
                         ? t('admin.cant_delete_default_org', 'Organisasi default sistem tidak dapat dihapus.')
                         : isActive
                         ? t('admin.cant_delete_active_org', 'Beralih ke organisasi lain terlebih dahulu sebelum menghapus.')
                         : t('admin.btn_delete_org', 'Hapus Organisasi')
                     }
                     className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                      isActive || org.slug === 'adapundi'
+                      isActive || Boolean(org.metadata?.isDefault)
                         ? 'text-slate-400 dark:text-slate-600 opacity-40 cursor-not-allowed'
                         : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-300 cursor-pointer'
                     }`}

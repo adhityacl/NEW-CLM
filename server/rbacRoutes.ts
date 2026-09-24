@@ -73,8 +73,10 @@ export function createRbacRouter(opts: RbacRouterOptions): Router {
       resource: resource ?? undefined,
       scope: (scope ?? 'department') as ScopeKind,
     });
-    if (decision.allow) return res.json({ ok: true, allow: true });
-    return res.status(decision.error.status).json({ ok: false, allow: false, ...decision.error });
+    if ('error' in decision) {
+      return res.status(decision.error.status).json({ ok: false, allow: false, ...decision.error });
+    }
+    return res.json({ ok: true, allow: true });
   });
 
   /** Simulasi aturan hierarki (untuk QC impersonasi). */
@@ -83,8 +85,8 @@ export function createRbacRouter(opts: RbacRouterOptions): Router {
     if (!actor) return res.status(401).json(authzError('UNAUTHENTICATED'));
     const { targetRole, tenantId, departmentId } = req.body ?? {};
     const r = canInvite(actor, targetRole, { tenantId, departmentId });
-    if (r.allowed) return res.json({ ok: true, allowed: true });
-    return res.status(403).json({ ok: false, ...authzError(r.error) });
+    if ('error' in r) return res.status(403).json({ ok: false, ...authzError(r.error) });
+    return res.json({ ok: true, allowed: true });
   });
 
   router.post('/simulate/role-change', (req, res) => {
@@ -94,8 +96,8 @@ export function createRbacRouter(opts: RbacRouterOptions): Router {
     const r = canChangeRole(actor, {
       id: String(targetId), tenantId: targetTenantId, departmentId: targetDepartmentId,
     }, newRole);
-    if (r.allowed) return res.json({ ok: true, allowed: true });
-    return res.status(403).json({ ok: false, ...authzError(r.error) });
+    if ('error' in r) return res.status(403).json({ ok: false, ...authzError(r.error) });
+    return res.json({ ok: true, allowed: true });
   });
 
   return router;
@@ -118,7 +120,7 @@ export function requirePermission(permission: string, scope: ScopeKind = 'depart
     // Paksa ke scope tepercaya (mengabaikan tenant/department palsu dari client).
     const resource = actor ? resolveTrustedScope(actor, requested) : requested;
     const decision = decide({ actor, permission, resource, scope });
-    if (decision.allow) return next();
-    return res.status(decision.error.status).json(decision.error);
+    if ('error' in decision) return res.status(decision.error.status).json(decision.error);
+    return next();
   };
 }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getActiveFormattingLocale } from '../../lib/currencyUtils';
 import { Mail, Search, Clock, CheckCircle2, XCircle, RotateCw, Trash2, Copy, Check, Send, ShieldCheck, AlertCircle } from 'lucide-react';
 import { ConsoleInvitation, ConsoleOrganization } from './types';
 import { useLanguage } from '../../context/LanguageContext';
@@ -119,7 +120,7 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
                         )}
                       </td>
                       <td className="py-3 px-4 text-slate-500 text-[11px]">
-                        {new Date(inv.expiresAt).toLocaleDateString(language === 'ID' ? 'id-ID' : 'en-US')}
+                        {new Date(inv.expiresAt).toLocaleDateString(getActiveFormattingLocale())}
                       </td>
                       <td className="py-3 px-4 text-slate-500 text-[11px]">
                         {inv.inviterName || 'Admin'}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTenantSettings } from '../context/TenantSettingsContext';
 import { Contract, Partner, NoticeType, JenisDokumenContract, ContractStatus } from '../types';
 import { FileText, Upload, Plus, X, Tag, Link2, Shield, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -50,9 +51,10 @@ export const ContractModal: React.FC<ContractModalProps> = ({
   });
   const [tanggalMulai, setTanggalMulai] = useState(contractToEdit?.tanggal_mulai || '2026-08-01');
   const [tanggalBerakhir, setTanggalBerakhir] = useState(contractToEdit?.tanggal_berakhir || '2027-07-31');
-  const [currency, setCurrency] = useState<string>(contractToEdit?.currency || 'IDR');
+  const tenantCurrency = useTenantSettings().policy.settings.defaultCurrency;
+  const [currency, setCurrency] = useState<string>(contractToEdit?.currency || tenantCurrency);
   const [nilaiKontrak, setNilaiKontrak] = useState<number>(contractToEdit?.nilai_kontrak ?? 0);
-  const [historicalRate, setHistoricalRate] = useState<number>(() => getDefaultUsdRate(contractToEdit?.currency || 'IDR'));
+  const [historicalRate, setHistoricalRate] = useState<number>(() => getDefaultUsdRate(contractToEdit?.currency || tenantCurrency));
 
   useEffect(() => {
     let isMounted = true;
@@ -107,7 +109,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
 
   const [autoRenewal, setAutoRenewal] = useState(contractToEdit?.auto_renewal || false);
   const [status, setStatus] = useState<ContractStatus>(
-    contractToEdit?.status === 'Terminated' ? 'Terminated' : 'Aktif'
+    contractToEdit?.status === 'Terminated' ? 'Terminated' : 'Active'
   );
   const [noticePeriodHari, setNoticePeriodHari] = useState(contractToEdit?.notice_period_hari || 30);
   const [noticeTypeRequired, setNoticeTypeRequired] = useState<NoticeType>(
@@ -256,7 +258,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
         if (parsed.tanggal_mulai) setTanggalMulai(parsed.tanggal_mulai);
         if (parsed.tanggal_berakhir) setTanggalBerakhir(parsed.tanggal_berakhir);
         if (parsed.nilai_kontrak !== undefined && parsed.nilai_kontrak !== null) setNilaiKontrak(Number(parsed.nilai_kontrak) || 0);
-        if (parsed.currency) setCurrency(parsed.currency === 'USD' ? 'USD' : 'IDR');
+        if (parsed.currency && SUPPORTED_CURRENCIES.some((c) => c.code === String(parsed.currency).toUpperCase())) setCurrency(String(parsed.currency).toUpperCase());
         if (parsed.notice_period_hari !== undefined && parsed.notice_period_hari !== null) setNoticePeriodHari(Number(parsed.notice_period_hari) || 30);
         if (parsed.auto_renewal !== undefined) setAutoRenewal(Boolean(parsed.auto_renewal));
         if (parsed.internal_notes) setInternalNotes(String(parsed.internal_notes).trim());
@@ -741,7 +743,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                 >
                   {SUPPORTED_CURRENCIES.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.code} - ({c.symbol})
+                      {c.code} — {c.label}
                     </option>
                   ))}
                 </select>
@@ -823,11 +825,11 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                 {t('form.contract.status_kontrak', 'Status Kontrak *')}
               </label>
               <select
-                value={status === 'Terminated' ? 'Terminated' : 'Aktif'}
+                value={status === 'Terminated' ? 'Terminated' : 'Active'}
                 onChange={(e) => setStatus(e.target.value as ContractStatus)}
                 className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
               >
-                <option value="Aktif">{t('form.contract.status_normal', 'Normal (Sesuai tanggal berlaku)')}</option>
+                <option value="Active">{t('form.contract.status_normal', 'Normal (Sesuai tanggal berlaku)')}</option>
                 <option value="Terminated">{t('form.contract.status_terminated', 'Dihentikan (Penghentian Perjanjian)')}</option>
               </select>
             </div>

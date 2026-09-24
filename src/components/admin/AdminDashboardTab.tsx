@@ -1,4 +1,5 @@
 import React from 'react';
+import { getActiveFormattingLocale } from '../../lib/currencyUtils';
 import {
   Users,
   Radio,
@@ -383,7 +384,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                       </span>
                     ) : (
                       <span className="text-[10px] text-slate-400">
-                        {new Date(user.createdAt).toLocaleDateString(language === 'ID' ? 'id-ID' : 'en-US', {
+                        {new Date(user.createdAt).toLocaleDateString(getActiveFormattingLocale(), {
                           day: 'numeric',
                           month: 'short',
                         })}
@@ -442,7 +443,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
 
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-[10px] text-slate-400 hidden sm:inline">
-                      {t('admin.expires_prefix', 'Kadaluarsa:')} {new Date(session.expiresAt).toLocaleDateString(language === 'ID' ? 'id-ID' : 'en-US')}
+                      {t('admin.expires_prefix', 'Kadaluarsa:')} {new Date(session.expiresAt).toLocaleDateString(getActiveFormattingLocale())}
                     </span>
                     <button
                       type="button"

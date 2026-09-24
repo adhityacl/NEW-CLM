@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { Upload, FileText, X, AlertCircle, Calendar, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useConfirm } from '../context/ConfirmDialogContext';
@@ -250,7 +251,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                         </p>
                         <p className="text-[10px] text-slate-500">
                           {f.year ? `Tahun ${f.year} • ` : ''}
-                          Diunggah: {f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString('id-ID') : '-'}
+                          Diunggah: {f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString(getActiveFormattingLocale()) : '-'}
                           {f.tanggalKadaluarsa ? ` • Exp: ${f.tanggalKadaluarsa}` : ''}
                         </p>
                       </div>

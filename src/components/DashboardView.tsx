@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { useTenantSettings } from '../context/TenantSettingsContext';
+import { convertToUsdWithFallback, getActiveFormattingLocale, getDefaultUsdRate } from '../lib/currencyUtils';
 import { Contract, InsertionOrder, Partner, NotificationLog, PartnerSpending } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -93,7 +95,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Stacked Spending Chart State & Filter Controls
   const [spendingFilterYear, setSpendingFilterYear] = useState<string>('ALL');
   const [spendingCategoryFilter, setSpendingCategoryFilter] = useState<string>('ALL');
-  const [spendingCurrencyView, setSpendingCurrencyView] = useState<'USD' | 'IDR'>('USD');
+  const { policy } = useTenantSettings();
+  // Reporting toggles between USD and the organization's own currency.
+  const localCurrency = policy.settings.defaultCurrency;
+  const [spendingCurrencyView, setSpendingCurrencyView] = useState<string>('USD');
+  const currencyViews = Array.from(new Set(['USD', localCurrency]));
+  const viewCurrency = currencyViews.includes(spendingCurrencyView) ? spendingCurrencyView : 'USD';
+  const toViewCurrency = (s: PartnerSpending): number => {
+    const usd = s.total_amount_usd ?? convertToUsdWithFallback(s.total_amount, s.currency || localCurrency);
+    if (viewCurrency === 'USD') return usd;
+    if ((s.currency || localCurrency) === viewCurrency) return s.total_amount;
+    return usd / (getDefaultUsdRate(viewCurrency) || 1);
+  };
+  const formatView = (value: number, compact = false) => {
+    try {
+      return new Intl.NumberFormat(getActiveFormattingLocale(), {
+        style: 'currency',
+        currency: viewCurrency,
+        maximumFractionDigits: compact ? 1 : 0,
+        ...(compact ? { notation: 'compact' as const } : {}),
+      }).format(value);
+    } catch {
+      return `${viewCurrency} ${Math.round(value)}`;
+    }
+  };
 
   // Available Cooperation Categories directly and exclusively from Contracts (c.kategori_kerjasama)
   const categoryOptions = useMemo(() => {
@@ -173,9 +198,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
 
     (scopedSpendings || []).forEach((s) => {
-      const amt = spendingCurrencyView === 'USD'
-        ? (s.total_amount_usd ?? (s.currency === 'USD' ? s.total_amount : s.total_amount * 0.000062))
-        : (s.currency === 'IDR' ? s.total_amount : (s.total_amount_usd || s.total_amount) * 16000);
+      const amt = toViewCurrency(s);
 
       let usageMonths: { monthKey: string; year: string }[] = [];
       if (s.invoice_month && s.invoice_month.length > 0) {
@@ -216,7 +239,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       if (matchingMonths.length === 0) return;
 
       const perMonthAmt = amt / usageMonths.length;
-      const curKey = s.currency || 'IDR';
+      const curKey = s.currency || localCurrency;
       presentCurrencies.add(curKey);
 
       const sCats = getSpendingCategories(s);
@@ -237,9 +260,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const hasOtherVendors = sortedVendors.length > 5;
 
     (spendings || []).forEach((s) => {
-      const amt = spendingCurrencyView === 'USD'
-        ? (s.total_amount_usd ?? (s.currency === 'USD' ? s.total_amount : s.total_amount * 0.000062))
-        : (s.currency === 'IDR' ? s.total_amount : (s.total_amount_usd || s.total_amount) * 16000);
+      const amt = toViewCurrency(s);
 
       let usageMonths: { monthKey: string; year: string }[] = [];
       if (s.invoice_month && s.invoice_month.length > 0) {
@@ -290,7 +311,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       matchingMonths.forEach((um) => {
         if (spendingCategoryFilter === 'CURRENCY') {
-          const curKey = s.currency || 'IDR';
+          const curKey = s.currency || localCurrency;
           monthBuckets[um.monthKey][curKey] = (monthBuckets[um.monthKey][curKey] || 0) + Math.round(perMonthAmt);
         } else {
           // Both 'ALL' and specific category filter stack by partner (vendor)
@@ -319,17 +340,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }));
 
     return { stackedData: chartData, stackKeys: keys, stackColors: colorsMap };
-  }, [scopedSpendings, scopedPartners, scopedContracts, spendingFilterYear, spendingCategoryFilter, spendingCurrencyView]);
+  }, [scopedSpendings, scopedPartners, scopedContracts, spendingFilterYear, spendingCategoryFilter, viewCurrency, localCurrency]);
 
   // Calculations
-  const activeContracts = scopedContracts.filter((c) => c.status === 'Aktif' || c.status === 'Akan Berakhir');
-  const activeIOs = scopedIOs.filter((i) => i.status === 'Aktif' || i.status === 'Akan Berakhir');
-  const expiringContracts = scopedContracts.filter((c) => c.status === 'Akan Berakhir');
+  const activeContracts = scopedContracts.filter((c) => c.status === 'Active' || c.status === 'Expiring');
+  const activeIOs = scopedIOs.filter((i) => i.status === 'Active' || i.status === 'Expiring');
+  const expiringContracts = scopedContracts.filter((c) => c.status === 'Expiring');
   const expiredContracts = scopedContracts.filter((c) => c.status === 'Expired');
 
-  // Partner Aktif = minimal 1 kontrak dengan status 'Aktif' atau 'Akan Berakhir'
+  // Partner Aktif = minimal 1 kontrak dengan status Active atau Expiring
   const activePartnersCount = scopedPartners.filter((p) =>
-    scopedContracts.some((c) => c.partner_id === p.partner_id && (c.status === 'Aktif' || c.status === 'Akan Berakhir'))
+    scopedContracts.some((c) => c.partner_id === p.partner_id && (c.status === 'Active' || c.status === 'Expiring'))
   ).length;
 
   const totalNilaiKontrak = activeContracts.reduce((acc, curr) => acc + (curr.nilai_kontrak || 0), 0);
@@ -577,7 +598,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                     {/* 4. Tanggal Berakhir */}
                     <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left whitespace-nowrap">
-                      {new Date(ctr.tanggal_berakhir).toLocaleDateString(language === 'ID' ? 'id-ID' : 'en-US', {
+                      {new Date(ctr.tanggal_berakhir).toLocaleDateString(getActiveFormattingLocale(), {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
@@ -659,29 +680,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </select>
 
             {/* 3. Currency Toggle */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-              <button
-                type="button"
-                onClick={() => setSpendingCurrencyView('USD')}
-                className={`px-2.5 py-1 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer ${
-                  spendingCurrencyView === 'USD'
-                    ? 'bg-[#06C755] text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
-                USD ($)
-              </button>
-              <button
-                type="button"
-                onClick={() => setSpendingCurrencyView('IDR')}
-                className={`px-2.5 py-1 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer ${
-                  spendingCurrencyView === 'IDR'
-                    ? 'bg-[#06C755] text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
-                IDR (Rp)
-              </button>
+            <div role="group" aria-label={t('settings.region.reporting_currency', 'Reporting currency')} className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+              {currencyViews.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  aria-pressed={viewCurrency === code}
+                  onClick={() => setSpendingCurrencyView(code)}
+                  className={`px-2.5 py-1 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer ${
+                    viewCurrency === code
+                      ? 'bg-[#06C755] text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {code}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -711,35 +725,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   width={50}
                   tick={({ y, payload }: any) => {
                     const val = payload?.value;
-                    let label = '';
-                    if (val === 0) label = spendingCurrencyView === 'USD' ? '$0' : 'Rp 0';
-                    else if (spendingCurrencyView === 'USD') {
-                      if (val >= 1000000000) {
-                        const num = parseFloat((val / 1000000000).toFixed(1));
-                        label = `$${num}B`;
-                      } else if (val >= 1000000) {
-                        const num = parseFloat((val / 1000000).toFixed(1));
-                        label = `$${num}M`;
-                      } else if (val >= 1000) {
-                        const num = parseFloat((val / 1000).toFixed(1));
-                        label = `$${num}k`;
-                      } else {
-                        label = `$${val}`;
-                      }
-                    } else {
-                      if (val >= 1000000000) {
-                        const num = parseFloat((val / 1000000000).toFixed(1));
-                        label = language === 'EN' ? `Rp ${num}B` : `Rp ${num}M`;
-                      } else if (val >= 1000000) {
-                        const num = parseFloat((val / 1000000).toFixed(1));
-                        label = language === 'EN' ? `Rp ${num}M` : `Rp ${num}Jt`;
-                      } else if (val >= 1000) {
-                        const num = parseFloat((val / 1000).toFixed(1));
-                        label = language === 'EN' ? `Rp ${num}k` : `Rp ${num}Rb`;
-                      } else {
-                        label = `Rp ${val}`;
-                      }
-                    }
+                    const label = formatView(Number(val) || 0, true);
 
                     return (
                       <text x={0} y={y} dy={4} fill="#94A3B8" fontSize={11} fontWeight={500} textAnchor="start">
@@ -752,9 +738,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   content={({ active, payload, label }: any) => {
                     if (active && payload && payload.length) {
                       const total = payload.reduce((sum: number, entry: any) => sum + (Number(entry.value) || 0), 0);
-                      const formattedTotal = spendingCurrencyView === 'USD'
-                        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(total)
-                        : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(total);
+                      const formattedTotal = formatView(total);
 
                       return (
                         <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 shadow-xl text-xs text-slate-100 min-w-[170px]">
@@ -766,9 +750,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             {payload.map((entry: any, index: number) => {
                               const val = Number(entry.value) || 0;
                               if (val === 0) return null;
-                              const formattedVal = spendingCurrencyView === 'USD'
-                                ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val)
-                                : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+                              const formattedVal = formatView(val);
 
                               return (
                                 <div key={`item-${index}`} className="flex items-center justify-between gap-3 text-[11px]">

@@ -75,8 +75,8 @@ function guard(actor: Actor | null, permission: string, scope: ScopeKind = 'depa
     return null; // baca selalu lolos -> inilah kebocoran yang terbukti di QA live
   }
   const d = decide({ actor, permission, resource, scope });
-  if (d.allow) return null;
-  return d.error;
+  if ('error' in d) return d.error;
+  return null;
 }
 
 const server = createServer(async (req, res) => {
@@ -169,14 +169,14 @@ const server = createServer(async (req, res) => {
       if (!actor) return send(res, 401, authzError('UNAUTHENTICATED'));
       const body = await readBody(req);
       const r = canInvite(actor, body.targetRole, { tenantId: body.tenantId, departmentId: body.departmentId });
-      return r.allowed ? send(res, 200, { ok: true, allowed: true })
-        : send(res, 403, authzError(r.error));
+      return 'error' in r ? send(res, 403, authzError(r.error))
+        : send(res, 200, { ok: true, allowed: true });
     }
     if (req.method === 'POST' && path === '/api/rbac/simulate/role-change') {
       if (!actor) return send(res, 401, authzError('UNAUTHENTICATED'));
       const body = await readBody(req);
       const r = canChangeRole(actor, { id: String(body.targetId), tenantId: body.targetTenantId, departmentId: body.targetDepartmentId }, body.newRole);
-      return r.allowed ? send(res, 200, { ok: true, allowed: true }) : send(res, 403, authzError(r.error));
+      return 'error' in r ? send(res, 403, authzError(r.error)) : send(res, 200, { ok: true, allowed: true });
     }
     if (req.method === 'GET' && path === '/api/audit-logs') {
       return send(res, 200, { ok: true, count: audit.length, items: audit });

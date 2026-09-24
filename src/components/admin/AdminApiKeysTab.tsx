@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getActiveFormattingLocale } from '../../lib/currencyUtils';
 import {
   KeyRound,
   Plus,
@@ -129,7 +130,7 @@ export const AdminApiKeysTab: React.FC<AdminApiKeysTabProps> = ({
                       )}
                     </td>
                     <td className="py-3 px-4 text-slate-500 text-[11px]">
-                      {new Date(k.createdAt).toLocaleDateString(language === 'ID' ? 'id-ID' : 'en-US')}
+                      {new Date(k.createdAt).toLocaleDateString(getActiveFormattingLocale())}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">

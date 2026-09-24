@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getActiveFormattingLocale } from '../../lib/currencyUtils';
 import {
   Layers,
   Plus,
@@ -196,7 +197,7 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
                 </div>
 
                 <span className="text-[11px] text-slate-400">
-                  {t('admin.team_created_prefix', 'Dibuat')}: {new Date(team.createdAt).toLocaleDateString(language === 'ID' ? 'id-ID' : 'en-US')}
+                  {t('admin.team_created_prefix', 'Dibuat')}: {new Date(team.createdAt).toLocaleDateString(getActiveFormattingLocale())}
                 </span>
               </div>
             </div>

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useTenantSettings } from '../../context/TenantSettingsContext';
+import { SUPPORTED_CURRENCIES } from '../../lib/currencyUtils';
 import {
   X,
   UserPlus,
@@ -197,7 +199,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@adapundi.com"
+              placeholder="name@example.com"
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -825,7 +827,7 @@ export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
 interface CreateOrgModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { name: string; slug: string; logo?: string; tagline?: string; currency?: string }) => Promise<void>;
+  onSubmit: (data: { name: string; slug: string; logo?: string; tagline?: string; currency?: string; countryCode?: string; industry?: string }) => Promise<void>;
 }
 
 export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
@@ -838,7 +840,10 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
   const [slug, setSlug] = useState('');
   const [logo, setLogo] = useState('');
   const [tagline, setTagline] = useState('');
-  const [currency, setCurrency] = useState('IDR');
+  const { countries, industries } = useTenantSettings();
+  const [countryCode, setCountryCode] = useState('INTL');
+  const [industry, setIndustry] = useState('general');
+  const [currency, setCurrency] = useState('USD');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -866,7 +871,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
     setIsSubmitting(true);
     setError('');
     try {
-      await onSubmit({ name: name.trim(), slug: slug.trim().toLowerCase(), logo: logo.trim(), tagline, currency });
+      await onSubmit({ name: name.trim(), slug: slug.trim().toLowerCase(), logo: logo.trim(), tagline, currency, countryCode, industry });
       setName('');
       setSlug('');
       setLogo('');
@@ -954,9 +959,39 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
               >
-                <option value="IDR">IDR (Rupiah)</option>
-                <option value="USD">USD (US Dollar)</option>
-                <option value="SGD">SGD (Singapore Dollar)</option>
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.code} — {c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="create-org-country" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {t('settings.region.country', 'Country / jurisdiction pack')}
+              </label>
+              <select
+                id="create-org-country"
+                value={countryCode}
+                onChange={(e) => {
+                  setCountryCode(e.target.value);
+                  const pack = countries.find((c) => c.code === e.target.value);
+                  if (pack) setCurrency(pack.defaultCurrency);
+                }}
+                className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+              >
+                {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="create-org-industry" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {t('settings.region.industry', 'Industry pack')}
+              </label>
+              <select
+                id="create-org-industry"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+              >
+                {industries.map((i) => <option key={i.key} value={i.key}>{i.name.en}</option>)}
               </select>
             </div>
             <div>
@@ -1015,7 +1050,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [logo, setLogo] = useState('');
-  const [currency, setCurrency] = useState('IDR');
+  const [currency, setCurrency] = useState('USD');
   const [tagline, setTagline] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1025,7 +1060,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
       setName(org.name || '');
       setSlug(org.slug || '');
       setLogo(org.logo && org.logo !== '/favicon.png' ? org.logo : '');
-      setCurrency(org.metadata?.currency || 'IDR');
+      setCurrency(org.metadata?.settings?.defaultCurrency || org.metadata?.currency || 'USD');
       setTagline(org.metadata?.tagline || '');
       setError(null);
     }
@@ -1054,6 +1089,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
         metadata: {
           ...(org.metadata || {}),
           currency,
+          settings: { ...(org.metadata?.settings || {}), defaultCurrency: currency },
           tagline: tagline.trim(),
         },
       });
@@ -1100,7 +1136,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Contoh: PT Info Tekno Siaga"
+              placeholder="e.g. Acme Holdings Pte. Ltd."
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-emerald-500 outline-none"
             />
           </div>
@@ -1125,7 +1161,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
                 required
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                placeholder="adapundi"
+                placeholder="acme"
                 className="w-full pl-7 pr-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono focus:ring-1 focus:ring-emerald-500 outline-none"
               />
             </div>
@@ -1144,10 +1180,9 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 outline-none"
               >
-                <option value="IDR">IDR (Rupiah)</option>
-                <option value="USD">USD (US Dollar)</option>
-                <option value="SGD">SGD (Singapore Dollar)</option>
-                <option value="EUR">EUR (Euro)</option>
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.code} — {c.label}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -1176,7 +1211,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
           </div>
 
           <div className="pt-2 flex items-center justify-between gap-2">
-            {onDelete && org.slug !== 'adapundi' ? (
+            {onDelete && !org.metadata?.isDefault ? (
               <button
                 type="button"
                 onClick={() => {
@@ -1235,7 +1270,7 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
 
   if (!isOpen || !org) return null;
 
-  const isDefault = org.slug === 'adapundi';
+  const isDefault = Boolean(org.metadata?.isDefault);
 
   const handleDelete = async () => {
     if (isDefault || isActive) return;
@@ -1899,7 +1934,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="colleague@adapundi.com"
+              placeholder="colleague@example.com"
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
             />
           </div>
@@ -2184,7 +2219,7 @@ export const auth = betterAuth({
 export default [
   {
     id: "production",
-    name: "Production (Adapundi Enterprise)",
+    name: "Production",
     env: "production",
     auth,
   },

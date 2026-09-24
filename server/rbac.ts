@@ -623,7 +623,7 @@ export function decide({ actor, permission, resource, scope = 'department' }: Au
   if (!resource) return { allow: true };
 
   const scoped = checkScope(actor, resource, scope);
-  if (!scoped.allowed) return { allow: false, error: authzError(scoped.error) };
+  if ('error' in scoped) return { allow: false, error: authzError(scoped.error) };
 
   return { allow: true };
 }

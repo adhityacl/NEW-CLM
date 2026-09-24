@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Partner, BadanHukum } from '../types';
+import { Partner, PartyIdentifier } from '../types';
 import { Building2, User, Mail, Phone, X, MapPin, Upload, Sparkles, Loader2, Shield } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { isGlobalRole } from '../lib/rbacScoping';
 import { getSavedCategories, saveCategory, saveMultipleCategories } from '../lib/categoryUtils';
 import { useDepartments } from '../hooks/useDepartments';
+import { useTenantSettings } from '../context/TenantSettingsContext';
+import { PartnerJurisdictionFields } from './partners/PartnerJurisdictionFields';
 
 export const ENTERPRISE_DEPARTMENTS = [
   'Executive Office',
@@ -74,10 +76,6 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
     return '';
   };
 
-  const getInitialBadanHukum = (): BadanHukum => {
-    if (partnerToEdit?.badan_hukum === 'BHA') return 'BHA';
-    return 'BHI';
-  };
 
   const { user } = useAuth();
   const isGlobal = isGlobalRole(user?.role);
@@ -86,7 +84,13 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
 
   const [namaPartner, setNamaPartner] = useState(partnerToEdit?.nama_partner || '');
   const [codename, setCodename] = useState(partnerToEdit?.codename || '');
-  const [badanHukum, setBadanHukum] = useState<BadanHukum>(getInitialBadanHukum);
+  const { policy } = useTenantSettings();
+  // New partners default to the organization's own country.
+  const [country, setCountry] = useState<string>(
+    partnerToEdit ? (partnerToEdit.country ?? (partnerToEdit.badan_hukum === 'BHI' ? 'ID' : '')) : (policy.settings.countryCode === 'INTL' ? '' : policy.settings.countryCode),
+  );
+  const [entityType, setEntityType] = useState(partnerToEdit?.entity_type || '');
+  const [identifiers, setIdentifiers] = useState<PartyIdentifier[]>(partnerToEdit?.identifiers || []);
   const [picInternal, setPicInternal] = useState(partnerToEdit?.pic_internal || userDept);
   
   // Update custom dept flag dynamically when departments load
@@ -108,10 +112,10 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
   const [alamatPic, setAlamatPic] = useState(partnerToEdit?.alamat_pic || '');
   const [catatan, setCatatan] = useState(partnerToEdit?.catatan || '');
   const [tags, setTags] = useState<string[]>(
-    partnerToEdit?.tags && partnerToEdit.tags.length > 0 ? partnerToEdit.tags : ['Advertising']
+    partnerToEdit?.tags && partnerToEdit.tags.length > 0 ? partnerToEdit.tags : []
   );
   const [savedTemplates, setSavedTemplates] = useState<string[]>(() => {
-    const loaded = getSavedCategories();
+    const loaded = getSavedCategories(policy.industry.partnerCategories);
     if (partnerToEdit?.tags && partnerToEdit.tags.length > 0) {
       return saveMultipleCategories(partnerToEdit.tags);
     }
@@ -140,7 +144,8 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nama_partner: namaPartner.trim(),
-          badan_hukum: badanHukum,
+          country,
+          entity_type: entityType,
           tags: tags,
           pdfBase64: fileData || undefined,
         }),
@@ -213,7 +218,8 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
       if (result.success && result.data) {
         const parsed = result.data;
         if (parsed.nama_partner) setNamaPartner(parsed.nama_partner);
-        if (parsed.badan_hukum === 'BHA' || parsed.badan_hukum === 'BHI') setBadanHukum(parsed.badan_hukum);
+        if (typeof parsed.country === 'string' && /^[A-Z]{2}$/.test(parsed.country)) setCountry(parsed.country);
+        if (parsed.entity_type) setEntityType(parsed.entity_type);
         if (parsed.nama_pic) setNamaPic(parsed.nama_pic);
         if (parsed.email_pic) setEmailPic(parsed.email_pic);
         if (parsed.telepon_pic) setTeleponPic(parsed.telepon_pic);
@@ -286,8 +292,10 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
     await onSave({
       nama_partner: namaPartner.trim(),
       codename: codename.trim(),
-      badan_hukum: badanHukum,
-      jenis_partner: 'Vendor',
+      country,
+      entity_type: entityType.trim(),
+      identifiers: identifiers.filter((i) => i.value.trim()).map((i) => ({ ...i, value: i.value.trim() })),
+      jenis_partner: partnerToEdit?.jenis_partner || 'Vendor',
       pic_partner: fullPicString,
       nama_pic: namaPic.trim(),
       email_pic: emailPic.trim(),
@@ -296,7 +304,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
       kontak_pic: kontakString,
       pic_internal: picInternal.trim(),
       catatan: catatan.trim(),
-      tags: tags.length > 0 ? tags : ['Advertising'],
+      tags,
     });
 
     setSubmitting(false);
@@ -358,21 +366,16 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs">
-                  {t('form.partner.badan_hukum', 'Badan Hukum *')}
-                </label>
-                <select
-                  value={badanHukum}
-                  onChange={(e) => setBadanHukum(e.target.value as BadanHukum)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
-                >
-                  <option value="BHI">{t('form.partner.badan_hukum_bhi', 'BHI (Badan Hukum Indonesia)')}</option>
-                  <option value="BHA">{t('form.partner.badan_hukum_bha', 'BHA (Badan Hukum Asing)')}</option>
-                </select>
-              </div>
+            <PartnerJurisdictionFields
+              country={country}
+              entityType={entityType}
+              identifiers={identifiers}
+              onCountryChange={setCountry}
+              onEntityTypeChange={setEntityType}
+              onIdentifiersChange={setIdentifiers}
+            />
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs flex items-center justify-between">
                   <span>{t('form.partner.department', 'Department')}</span>
