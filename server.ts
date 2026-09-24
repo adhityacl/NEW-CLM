@@ -15,7 +15,13 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { OAuth2Client } from "google-auth-library";
 import { toNodeHandler } from "better-auth/node";
 import { hashPassword } from "better-auth/crypto";
-import { auth as betterAuthInstance, sqliteDb } from "./src/lib/auth";
+import {
+  auth as betterAuthInstance,
+  sqliteDb,
+  hydrateCoreDataFromJson,
+  syncDbToSqlite,
+  loadCoreDataFromSqlite,
+} from "./src/lib/auth";
 import {
   authConsoleRouter,
   setConsoleDbReference,
@@ -1539,98 +1545,65 @@ function normalizePartnerDDDocs(docs) {
     return { ...def, wajib: isNDA ? true : false, files: [] };
   });
 }
-if (fs.existsSync(dataFilePath)) {
+const sqliteInitialData = loadCoreDataFromSqlite();
+const sqliteHasCoreData = Object.values(sqliteInitialData).some((value) =>
+  Array.isArray(value) ? value.length > 0 : Boolean(value),
+);
+
+if (sqliteHasCoreData) {
+  db = { ...db, ...sqliteInitialData };
+  console.log("Database loaded from SQLite as the source of truth.");
+} else if (fs.existsSync(dataFilePath)) {
   try {
     const raw = fs.readFileSync(dataFilePath, "utf-8");
     const parsed = JSON.parse(raw);
     db = { ...db, ...parsed };
-    if (Array.isArray(db.partners)) {
-      db.partners.forEach((p) => {
-        if (!p.organizationId) p.organizationId = "org-adapundi";
-        p.daftar_dokumen_dd = normalizePartnerDDDocs(p.daftar_dokumen_dd);
-        const wajibItems = p.daftar_dokumen_dd.filter((d) => d.wajib);
-        const adaWajib = wajibItems.filter((d) => d.status === "Ada");
-        if (wajibItems.length > 0) {
-          p.status_dd =
-            adaWajib.length === wajibItems.length ? "Lengkap" : "Belum Lengkap";
-        }
-      });
-    }
-    const defaultTenant =
-      (db.tenants || []).find((t) => t.isDefault) || db.tenants?.[0];
-    const defaultTenantId = defaultTenant?.id || "org-adapundi";
-    if (Array.isArray(db.partners)) {
-      db.partners.forEach((p) => {
-        if (!p.organizationId) p.organizationId = defaultTenantId;
-      });
-    }
-    if (Array.isArray(db.contracts)) {
-      db.contracts.forEach((c) => {
-        if (!c.organizationId) c.organizationId = defaultTenantId;
-      });
-    }
-    if (Array.isArray(db.ios)) {
-      db.ios.forEach((io) => {
-        if (!io.organizationId) io.organizationId = defaultTenantId;
-      });
-    }
-    if (Array.isArray(db.spendings)) {
-      db.spendings.forEach((sp) => {
-        if (!sp.organizationId) sp.organizationId = defaultTenantId;
-      });
-    }
-    if (Array.isArray(db.evaluations)) {
-      db.evaluations.forEach((ev) => {
-        if (!ev.organizationId) ev.organizationId = defaultTenantId;
-      });
-    }
-    if (!db.tenants || db.tenants.length === 0) {
-      db.tenants = [...DEFAULT_TENANTS];
-    }
-    if (!db.templates) {
-      db.templates = [];
-    }
-    const defaultOrg = db.tenants.find(
-      (t) => t.id === "org-adapundi" || t.isDefault,
-    );
-    if (defaultOrg) {
-      if (!defaultOrg.spreadsheetId && db.googleConfig?.spreadsheetId) {
-        defaultOrg.spreadsheetId = db.googleConfig.spreadsheetId;
-        defaultOrg.spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${db.googleConfig.spreadsheetId}/edit`;
-      }
-      if (!defaultOrg.driveFolderId && db.googleConfig?.driveFolderId) {
-        defaultOrg.driveFolderId = db.googleConfig.driveFolderId;
-        defaultOrg.driveFolderLink = `https://drive.google.com/drive/folders/${db.googleConfig.driveFolderId}`;
-      }
-    }
-    saveDb();
-    console.log(
-      "Database loaded successfully from data_store.json with multi-tenant partitioning.",
-    );
+    hydrateCoreDataFromJson(db);
+    console.log("Imported legacy data_store.json into SQLite.");
   } catch (err) {
-    console.error("Error reading data_store.json, using seed defaults", err);
+    console.error("Error importing data_store.json, using seed defaults", err);
   }
 } else {
-  const defaultOrg = db.tenants?.find(
-    (t) => t.id === "org-adapundi" || t.isDefault,
-  );
-  if (defaultOrg) {
+  console.log("SQLite is empty; using seed defaults for the first initialization.");
+}
+
+if (Array.isArray(db.partners)) {
+  db.partners.forEach((p) => {
+    if (!p.organizationId) p.organizationId = "org-adapundi";
+    p.daftar_dokumen_dd = normalizePartnerDDDocs(p.daftar_dokumen_dd);
+    const wajibItems = p.daftar_dokumen_dd.filter((d) => d.wajib);
+    const adaWajib = wajibItems.filter((d) => d.status === "Ada");
+    if (wajibItems.length > 0) {
+      p.status_dd = adaWajib.length === wajibItems.length ? "Lengkap" : "Belum Lengkap";
+    }
+  });
+}
+const defaultTenant = (db.tenants || []).find((t) => t.isDefault) || db.tenants?.[0];
+const defaultTenantId = defaultTenant?.id || "org-adapundi";
+for (const collection of [db.partners, db.contracts, db.ios, db.spendings, db.evaluations]) {
+  if (Array.isArray(collection)) {
+    collection.forEach((row) => {
+      if (!row.organizationId) row.organizationId = defaultTenantId;
+    });
+  }
+}
+if (!db.tenants || db.tenants.length === 0) db.tenants = [...DEFAULT_TENANTS];
+if (!db.templates) db.templates = [];
+const defaultOrg = db.tenants.find((t) => t.id === "org-adapundi" || t.isDefault);
+if (defaultOrg) {
+  if (!defaultOrg.spreadsheetId && db.googleConfig?.spreadsheetId) {
     defaultOrg.spreadsheetId = db.googleConfig.spreadsheetId;
     defaultOrg.spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${db.googleConfig.spreadsheetId}/edit`;
+  }
+  if (!defaultOrg.driveFolderId && db.googleConfig?.driveFolderId) {
     defaultOrg.driveFolderId = db.googleConfig.driveFolderId;
     defaultOrg.driveFolderLink = `https://drive.google.com/drive/folders/${db.googleConfig.driveFolderId}`;
   }
-  saveDb();
 }
+saveDb();
 // Hydrate the Better Auth SQLite tables (user/organization/team/member) from
-// the just-loaded `db` — this MUST run after data_store.json has been read
-// above, not before. It used to run right after `db`'s hardcoded seed-default
-// literal (before this file's disk contents were merged in), so every server
-// restart silently blew away any name/role/department a user had actually
-// been given, back to the seed defaults in src/data/initialData.ts. This is
-// what caused the "my name keeps reverting" report — hydrateAuthConsoleFromDataStore
-// does `INSERT OR REPLACE INTO user` keyed on whatever `db.allowedUsers` held
-// at the moment it ran.
+// the SQLite-backed `db` projection after startup normalization. This keeps
+// auth-console records aligned with the same source of truth as app data.
 setConsoleDbReference(db, saveDb);
 ensureUserAccountsExist();
 ensureAllPartnersFolders().catch((err) =>
@@ -1758,11 +1731,9 @@ if (db.partners && Array.isArray(db.partners)) {
 }
 function saveDb() {
   try {
-    const tempPath = `${dataFilePath}.tmp`;
-    fs.writeFileSync(tempPath, JSON.stringify(db, null, 2), "utf-8");
-    fs.renameSync(tempPath, dataFilePath);
+    syncDbToSqlite(db);
   } catch (err) {
-    console.error("Failed to save db to disk", err);
+    console.error("Failed to save core data to SQLite", err);
   }
 }
 function triggerAutoPushToGoogleSheet(_req?: any, _options?: any): Promise<void> {

@@ -699,32 +699,7 @@ authConsoleRouter.put('/users/:id/role', (req: Request, res: Response) => {
       }
     }
 
-    // Sync data_store.json allowedUsers if exists
     recordRbacAudit(req, actor, 'user.role.assign', 'USER', id, { newRole: normRole });
-    try {
-      const dataStorePath = path.join(process.cwd(), 'data_store.json');
-      if (fs.existsSync(dataStorePath)) {
-        const raw = fs.readFileSync(dataStorePath, 'utf-8');
-        const ds = JSON.parse(raw);
-        if (Array.isArray(ds.allowedUsers)) {
-          const target = ds.allowedUsers.find(
-            (u: any) => u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase()
-          );
-          if (target) {
-            target.role = normRole.charAt(0).toUpperCase() + normRole.slice(1);
-            if (normRole === 'superuser' || normRole === 'admin') {
-              target.department = null;
-            } else if (department !== undefined && String(department).trim()) {
-              target.department = String(department).trim();
-            }
-            fs.writeFileSync(dataStorePath, JSON.stringify(ds, null, 2), 'utf-8');
-          }
-        }
-      }
-    } catch (dsErr) {
-      console.warn('Could not sync data_store.json from authConsole:', dsErr);
-    }
-
     syncUsersToDataStoreAndSheet();
     const updatedUser = sqliteDb.prepare('SELECT * FROM user WHERE id = ?').get(id);
     return res.json({ success: true, user: updatedUser });
@@ -999,16 +974,11 @@ authConsoleRouter.get('/organizations', (req: Request, res: Response) => {
   }
 });
 
-// Helper function to keep data_store.json tenants in sync with SQLite organization table
+// Keep the app's tenant projection in the same SQLite-backed store as auth.
 function syncTenantsToDataStore(): void {
   try {
-    const dataStorePath = path.join(process.cwd(), 'data_store.json');
-    if (!fs.existsSync(dataStorePath)) return;
-    const raw = fs.readFileSync(dataStorePath, 'utf-8');
-    const ds = JSON.parse(raw);
-
     const orgRows = sqliteDb.prepare('SELECT * FROM organization ORDER BY createdAt ASC').all() as any[];
-    if (orgRows && orgRows.length > 0) {
+    if (orgRows && orgRows.length > 0 && globalDbRef) {
       const updatedTenants = orgRows.map((org: any) => {
         let meta: any = {};
         try {
@@ -1017,7 +987,7 @@ function syncTenantsToDataStore(): void {
           }
         } catch {}
 
-        const existing = (ds.tenants || []).find((t: any) => t.id === org.id || t.domainSlug === org.slug);
+        const existing = (globalDbRef.tenants || []).find((t: any) => t.id === org.id || t.domainSlug === org.slug);
         return {
           id: org.id,
           name: org.name,
@@ -1029,21 +999,21 @@ function syncTenantsToDataStore(): void {
           currency: meta.currency || existing?.currency || 'IDR',
           domainSlug: org.slug,
           isDefault: org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' || Boolean(existing?.isDefault),
-          spreadsheetId: existing?.spreadsheetId || meta.spreadsheetId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? ds.googleConfig?.spreadsheetId : undefined),
-          spreadsheetUrl: existing?.spreadsheetUrl || meta.spreadsheetUrl || ((existing?.spreadsheetId || meta.spreadsheetId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? ds.googleConfig?.spreadsheetId : undefined)) ? `https://docs.google.com/spreadsheets/d/${existing?.spreadsheetId || meta.spreadsheetId || ds.googleConfig?.spreadsheetId}/edit` : undefined),
-          driveFolderId: existing?.driveFolderId || meta.driveFolderId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? ds.googleConfig?.driveFolderId : undefined),
-          driveFolderLink: existing?.driveFolderLink || meta.driveFolderLink || ((existing?.driveFolderId || meta.driveFolderId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? ds.googleConfig?.driveFolderId : undefined)) ? `https://drive.google.com/drive/folders/${existing?.driveFolderId || meta.driveFolderId || ds.googleConfig?.driveFolderId}` : undefined),
+          spreadsheetId: existing?.spreadsheetId || meta.spreadsheetId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? globalDbRef.googleConfig?.spreadsheetId : undefined),
+          spreadsheetUrl: existing?.spreadsheetUrl || meta.spreadsheetUrl || ((existing?.spreadsheetId || meta.spreadsheetId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? globalDbRef.googleConfig?.spreadsheetId : undefined)) ? `https://docs.google.com/spreadsheets/d/${existing?.spreadsheetId || meta.spreadsheetId || globalDbRef.googleConfig?.spreadsheetId}/edit` : undefined),
+          driveFolderId: existing?.driveFolderId || meta.driveFolderId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? globalDbRef.googleConfig?.driveFolderId : undefined),
+          driveFolderLink: existing?.driveFolderLink || meta.driveFolderLink || ((existing?.driveFolderId || meta.driveFolderId || (org.slug === 'adapundi' || org.id === 'org-adapundi' || org.id === 'org_1789542306289_b3a4f3' ? globalDbRef.googleConfig?.driveFolderId : undefined)) ? `https://drive.google.com/drive/folders/${existing?.driveFolderId || meta.driveFolderId || globalDbRef.googleConfig?.driveFolderId}` : undefined),
         };
       });
 
-      ds.tenants = updatedTenants;
-      if (!ds.tenants.some((t: any) => t.id === ds.activeTenantId)) {
-        ds.activeTenantId = ds.tenants[0]?.id || 'org_1789542306289_b3a4f3';
+      globalDbRef.tenants = updatedTenants;
+      if (!globalDbRef.tenants.some((t: any) => t.id === globalDbRef.activeTenantId)) {
+        globalDbRef.activeTenantId = globalDbRef.tenants[0]?.id || 'org_1789542306289_b3a4f3';
       }
-      fs.writeFileSync(dataStorePath, JSON.stringify(ds, null, 2), 'utf-8');
+      if (saveDbFnRef) saveDbFnRef();
     }
   } catch (err) {
-    console.warn('Error syncing tenants to data_store.json:', err);
+    console.warn('Error syncing tenant projection to SQLite:', err);
   }
 }
 
@@ -1192,23 +1162,7 @@ authConsoleRouter.delete('/organizations/:id', (req: Request, res: Response) => 
     sqliteDb.prepare('DELETE FROM invitation WHERE organizationId = ?').run(id);
     sqliteDb.prepare('DELETE FROM organization WHERE id = ?').run(id);
 
-    // Also remove from data_store.json if present to keep tenants synchronized
-    try {
-      const dataFilePath = path.join(process.cwd(), 'data_store.json');
-      if (fs.existsSync(dataFilePath)) {
-        const fileData = JSON.parse(fs.readFileSync(dataFilePath, 'utf-8'));
-        if (fileData.tenants && Array.isArray(fileData.tenants)) {
-          fileData.tenants = fileData.tenants.filter((t: any) => t.id !== id && t.domainSlug !== org?.slug);
-          if (fileData.activeTenantId === id) {
-            fileData.activeTenantId = fileData.tenants[0]?.id || 'tenant-adapundi';
-          }
-          fs.writeFileSync(dataFilePath, JSON.stringify(fileData, null, 2));
-        }
-      }
-    } catch (e) {
-      // non-fatal
-    }
-
+    syncTenantsToDataStore();
     return res.json({ success: true, message: 'Organization deleted successfully' });
   } catch (err: any) {
     console.error('Error deleting organization:', err);
