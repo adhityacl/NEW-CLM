@@ -1,4 +1,6 @@
-node_modules
+node_modules/
+dist/
+.vite/
 test-results
 playwright-report
 blob-report
@@ -18,3 +20,4 @@ data_store.json
 auth.db
 auth.db-shm
 auth.db-wal
+node_modules
