@@ -34,8 +34,9 @@ A multi-tenant Contract Lifecycle Management (CLM) application: contract, partne
 - `nodemailer` for outbound email (invitations, notifications)
 
 **Data storage**
-- SQLite (`auth.db`) — users, sessions, organizations, teams/departments (Better Auth's own tables)
-- A JSON file store (`data_store.json`) — contracts, partners, insertion orders, spendings, evaluations, notifications, activity logs, saved templates, and app settings
+- SQLite (`auth.db`) — the single source of truth for authentication, sessions, organizations, teams/departments, contracts, partners, insertion orders, spendings, evaluations, notifications, activity logs, saved templates, branding, tenants, and application settings
+- `data_store.json` — legacy import source only. It is read only when the SQLite core tables are empty; runtime writes are persisted to SQLite
+- Runtime files (`auth.db`, `data_store.json`, uploads, `.env`) are local and ignored by Git. Dependencies and build output (`node_modules/`, `dist/`) are also ignored and must be recreated locally
 
 **Testing**
 - Node's built-in test runner (`node:test`) for the RBAC permission-matrix unit tests (`tests/rbac.test.ts`)
@@ -93,7 +94,7 @@ npm run dev
 
 This starts a single Express server (with Vite mounted in middleware mode for the frontend) on **http://localhost:3000**.
 
-On first start the server creates `auth.db` (including the Better Auth tables — no `auth:migrate` step needed) and `data_store.json`, and seeds a superuser account.
+On first start the server creates `auth.db`, including the Better Auth and core application tables, and seeds the default organization and application data. If an existing `data_store.json` is present while the SQLite core tables are empty, it is imported once into SQLite. The JSON file is not used as the runtime write target.
 
 ## Testing
 
@@ -109,6 +110,8 @@ npm run build
 ```
 
 This builds the frontend with Vite and bundles `server.ts` with esbuild into `dist/server.cjs`.
+
+The `dist/` directory is generated locally and is not tracked in Git.
 
 To start the production build:
 
