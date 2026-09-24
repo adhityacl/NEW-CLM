@@ -95,9 +95,6 @@ This starts a single Express server (with Vite mounted in middleware mode for th
 
 On first start the server creates `auth.db` (including the Better Auth tables — no `auth:migrate` step needed) and `data_store.json`, and seeds a superuser account:
 
-| Email | Password |
-| --- | --- |
-| `adhitcl@gmail.com` | `123456789` |
 
 Change this password right after your first sign-in. For local use, set `BETTER_AUTH_URL=http://localhost:3000`.
 
