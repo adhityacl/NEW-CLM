@@ -68,7 +68,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const { isAdmin } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  // --- Nav label guard ---------------------------------------------------------
+  // The ID/EN dictionaries shipped English values for several `nav.*` keys
+  // (e.g. nav.hierarchy = 'Explore', nav.partners = 'Partners', nav.settings = 'Settings').
+  // Prefer an explicit, correct label per language for the sidebar.
+  const NAV_ID: Record<string, string> = {
+    'nav.dashboard': 'Dashboard Utama',
+    'nav.hierarchy': 'Struktur & Hirarki',
+    'nav.partners': 'Mitra Kerja',
+    'nav.partners_list': 'Daftar Mitra & DD',
+    'nav.partner_eval': 'Evaluasi Kinerja',
+    'nav.partner_spending': 'Pengeluaran Mitra',
+    'nav.contracts': 'Kontrak',
+    'nav.create_contract': 'Buat Kontrak',
+    'nav.ios': 'Insertion Order',
+    'nav.notifications': 'Notifikasi',
+    'nav.admin_users': 'Kelola Akses Admin',
+    'nav.bulk_import': 'Import Data',
+    'nav.activity_logs': 'Log Aktivitas Sesi',
+    'nav.settings': 'Pengaturan',
+  };
+  const NAV_EN: Record<string, string> = {
+    'nav.hierarchy': 'Structure & Hierarchy',
+    'nav.partners_list': 'Partner List',
+    'nav.partner_eval': 'Performance Evaluation',
+  };
+  const navT = (key: string, fallback: string) =>
+    language === 'ID' ? (NAV_ID[key] ?? t(key, fallback)) : (NAV_EN[key] ?? t(key, fallback));
   const { theme, toggleTheme } = useTheme();
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -121,34 +148,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const mainNavItems: SidebarNavItem[] = [
     {
       id: 'dashboard',
-      label: t('nav.dashboard', 'Dashboard'),
+      label: navT('nav.dashboard', 'Dashboard'),
       icon: LayoutDashboard,
     },
     {
       id: 'hierarchy',
-      label: t('nav.hierarchy', 'Struktur & Hirarki'),
+      label: navT('nav.hierarchy', 'Struktur & Hirarki'),
       icon: GitFork,
     },
     {
       id: 'partners',
-      label: t('nav.partners', 'Mitra Kerja'),
+      label: navT('nav.partners', 'Mitra Kerja'),
       icon: Building2,
     },
     {
       id: 'contracts',
-      label: t('nav.contracts', 'Kontrak'),
+      label: navT('nav.contracts', 'Kontrak'),
       icon: FileText,
       badge: expiringContractsCount > 0 ? `${expiringContractsCount}` : null,
       badgeColor: 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800',
     },
     {
       id: 'ios',
-      label: t('nav.ios', 'Insertion Order'),
+      label: navT('nav.ios', 'Insertion Order'),
       icon: FileSpreadsheet,
     },
     {
       id: 'notifikasi',
-      label: t('nav.notifications', 'Notifikasi'),
+      label: navT('nav.notifications', 'Notifikasi'),
       icon: Bell,
       badge: unresolvedNotifsCount > 0 ? `${unresolvedNotifsCount}` : null,
       badgeColor: 'bg-red-100 text-red-900 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800',
@@ -158,7 +185,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const docNavItems: SidebarNavItem[] = [
     {
       id: 'create-contract',
-      label: t('nav.create_contract', 'Buat Kontrak'),
+      label: navT('nav.create_contract', 'Buat Kontrak'),
       icon: FileSignature,
     },
   ];
@@ -166,25 +193,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const adminNavItems: SidebarNavItem[] = [
     {
       id: 'admin-users',
-      label: t('nav.admin_users', 'Akses & Admin'),
+      label: navT('nav.admin_users', 'Akses & Admin'),
       icon: Users,
       adminOnly: true,
     },
     {
       id: 'bulk-import',
-      label: t('nav.bulk_import', 'Import Data'),
+      label: navT('nav.bulk_import', 'Import Data'),
       icon: Upload,
       adminOnly: true,
     },
     {
       id: 'activity-logs',
-      label: t('nav.activity_logs', 'Log Aktivitas'),
+      label: navT('nav.activity_logs', 'Log Aktivitas'),
       icon: Clock,
       adminOnly: true,
     },
     {
       id: 'settings',
-      label: t('nav.settings', 'Pengaturan'),
+      label: navT('nav.settings', 'Pengaturan'),
       icon: Settings,
     },
   ];
@@ -221,9 +248,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Submenu definition for Partners
   const partnerSubItems = [
-    { id: 'partners', label: t('nav.partners_list', 'Daftar Mitra'), icon: Building2 },
-    { id: 'partner-evaluation', label: t('nav.partner_eval', 'Evaluasi Kinerja'), icon: ClipboardCheck },
-    { id: 'partner-spending', label: t('nav.partner_spending', 'Pengeluaran Mitra'), icon: CreditCard },
+    { id: 'partners', label: navT('nav.partners_list', 'Daftar Mitra'), icon: Building2 },
+    { id: 'partner-evaluation', label: navT('nav.partner_eval', 'Evaluasi Kinerja'), icon: ClipboardCheck },
+    { id: 'partner-spending', label: navT('nav.partner_spending', 'Pengeluaran Mitra'), icon: CreditCard },
   ];
 
   // Submenu definition for Settings

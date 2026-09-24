@@ -171,7 +171,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
                 <Label htmlFor="signin-name">{t('login.fullname_label')}</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none" />
-                  <Input id="signin-name" type="text" required value={name} onChange={(e) => setName(e.target.value)} className="pl-9" placeholder={t('login.fullname_placeholder')} />
+                  <Input id="signin-name" type="text" autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} className="pl-9" placeholder={t('login.fullname_placeholder')} />
                 </div>
               </div>
             )}
@@ -180,7 +180,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
               <Label htmlFor="signin-email">{t('login.email_label')}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none" />
-                <Input id="signin-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9" placeholder={t('login.email_placeholder')} />
+                <Input id="signin-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9" placeholder={t('login.email_placeholder')} />
               </div>
             </div>
 
@@ -188,7 +188,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
               <Label htmlFor="signin-password">{t('login.password_label')}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none" />
-                <Input id="signin-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="pl-9" placeholder="••••••••" />
+                <Input id="signin-password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="pl-9" placeholder="••••••••" />
               </div>
             </div>
 
