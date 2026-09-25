@@ -1,7 +1,6 @@
+import "dotenv/config";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
-import * as dotenv from "dotenv";
-dotenv.config();
 import express from "express";
 import path from "path";
 import fs from "fs";

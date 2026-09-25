@@ -19,10 +19,9 @@ function isSameOriginApi(url: string): boolean {
 
 export function installApiFetchInterceptor(): void {
   if (installed || typeof window === 'undefined' || typeof window.fetch !== 'function') return;
-  installed = true;
   const originalFetch = window.fetch.bind(window);
 
-  window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+  const interceptedFetch = (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
     if (!isSameOriginApi(url)) return originalFetch(input, init);
 
@@ -42,4 +41,21 @@ export function installApiFetchInterceptor(): void {
 
     return originalFetch(input, { ...init, headers, credentials: init?.credentials ?? 'include' });
   };
+
+  try {
+    window.fetch = interceptedFetch;
+  } catch {
+    try {
+      Object.defineProperty(window, 'fetch', {
+        configurable: true,
+        enumerable: true,
+        value: interceptedFetch,
+        writable: true,
+      });
+    } catch {
+      return;
+    }
+  }
+
+  installed = true;
 }
