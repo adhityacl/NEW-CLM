@@ -1,0 +1,496 @@
+import React, { useEffect, useId, useState } from 'react';
+import type { Editor } from '@tiptap/react';
+import { Check, CheckCheck, FileDown, History, MessageSquarePlus, PenLine, RefreshCw, RotateCcw, X } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
+import { useConfirm } from '../../context/ConfirmDialogContext';
+import { useAlertToast } from '../../context/AlertToastContext';
+import { documentsApi, errorMessage } from '../../lib/documentsApi';
+import type { CommentAction, CommentStatus, CommentType, DocumentComment } from '../../lib/documentModel';
+import {
+  addCommentAnchor,
+  applySuggestion,
+  focusComment,
+  getSelectionQuote,
+  removeCommentAnchor,
+  type SelectionQuote,
+} from '../../lib/tiptapCommentMark';
+import { RelativeTime } from './RelativeTime';
+import { INPUT_CLASS } from './documentLabels';
+
+interface CommentsPanelProps {
+  editor: Editor | null;
+  documentId: string | null;
+  canEdit: boolean;
+  /** Saves the document (creating it when new); resolves to its id, or null if saving failed. */
+  ensureSaved: () => Promise<string | null>;
+  /** Persists editor changes made here (anchors added/removed, suggestions applied). */
+  onContentChanged: (kind: 'auto' | 'manual') => void;
+  onExportRedline: (comments: DocumentComment[]) => void;
+}
+
+type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; comments: DocumentComment[] };
+
+interface Composer {
+  mode: CommentType;
+  range: SelectionQuote | null;
+  body: string;
+  newText: string;
+}
+
+const SMALL_BUTTON =
+  'inline-flex items-center gap-1 px-2 min-h-11 sm:min-h-7 rounded-lg text-[10px] font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer';
+const STATUS_BADGE: Record<CommentStatus, string> = {
+  open: 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-700',
+  resolved: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600',
+  accepted: 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-200 dark:border-emerald-700',
+  rejected: 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/50 dark:text-rose-200 dark:border-rose-700',
+};
+
+export const CommentsPanel: React.FC<CommentsPanelProps> = ({
+  editor,
+  documentId,
+  canEdit,
+  ensureSaved,
+  onContentChanged,
+  onExportRedline,
+}) => {
+  const { t } = useLanguage();
+  const confirmDialog = useConfirm();
+  const showAlert = useAlertToast();
+  const idPrefix = useId();
+  const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const [reloadKey, setReloadKey] = useState(0);
+  const [composer, setComposer] = useState<Composer | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: string; body: string } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [showClosed, setShowClosed] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
+
+  useEffect(() => {
+    if (!documentId) {
+      setState({ status: 'ready', comments: [] });
+      return;
+    }
+    let cancelled = false;
+    documentsApi
+      .listComments(documentId)
+      .then((comments) => !cancelled && setState({ status: 'ready', comments }))
+      .catch((err) => !cancelled && setState({ status: 'error', message: errorMessage(err) }));
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, reloadKey]);
+
+  const reload = () => setReloadKey((k) => k + 1);
+  const fail = (err: unknown) =>
+    showAlert({ title: t('documents.msg.action_failed', 'Aksi gagal'), description: errorMessage(err), variant: 'destructive' });
+
+  const comments = state.status === 'ready' ? state.comments : [];
+  const topLevel = comments.filter((c) => !c.parent_id);
+  const open = topLevel.filter((c) => c.status === 'open');
+  const closed = topLevel.filter((c) => c.status !== 'open');
+  const openSuggestions = open.filter((c) => c.comment_type === 'suggestion');
+  const repliesOf = (id: string) => comments.filter((c) => c.parent_id === id);
+  const count = (status: CommentStatus) => topLevel.filter((c) => c.status === status).length;
+
+  const statusLabel = (status: CommentStatus) =>
+    ({
+      open: t('documents.comments.status_open', 'Terbuka'),
+      resolved: t('documents.comments.status_resolved', 'Selesai'),
+      accepted: t('documents.comments.status_accepted', 'Diterima'),
+      rejected: t('documents.comments.status_rejected', 'Ditolak'),
+    })[status];
+
+  const startComposer = (mode: CommentType) => {
+    if (!editor) return;
+    const range = getSelectionQuote(editor);
+    if (mode === 'suggestion' && !range) {
+      showAlert({ title: t('documents.comments.select_first', 'Blok teks di dokumen terlebih dahulu'), variant: 'warning' });
+      return;
+    }
+    setComposer({ mode, range, body: '', newText: range?.text ?? '' });
+  };
+
+  const submitComposer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!composer || !editor) return;
+    setBusy('composer');
+    try {
+      const docId = documentId ?? (await ensureSaved());
+      if (!docId) return;
+      const created = await documentsApi.addComment(docId, {
+        comment_type: composer.mode,
+        body: composer.body,
+        quote: composer.range?.text,
+        new_text: composer.mode === 'suggestion' ? composer.newText : undefined,
+      });
+      const anchored =
+        composer.range !== null &&
+        addCommentAnchor(editor, composer.range, { commentId: created.id, kind: created.comment_type, suggestion: created.new_text });
+      if (composer.range && !anchored) {
+        showAlert({ title: t('documents.comments.anchor_moved', 'Teks yang dipilih berubah; komentar disimpan tanpa penanda di dokumen.'), variant: 'warning' });
+      }
+      setComposer(null);
+      if (anchored) onContentChanged('auto');
+      reload();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const applyToEditor = (comment: DocumentComment, action: CommentAction) => {
+    if (!editor || action === 'reopen') return false;
+    return action === 'accept' ? applySuggestion(editor, comment.id, comment.new_text ?? '') : removeCommentAnchor(editor, comment.id);
+  };
+
+  const act = async (comment: DocumentComment, action: CommentAction) => {
+    if (!documentId) return;
+    setBusy(comment.id);
+    try {
+      await documentsApi.commentAction(documentId, comment.id, action);
+      const changed = applyToEditor(comment, action);
+      if (action === 'accept' && !changed) {
+        showAlert({ title: t('documents.comments.accept_missing', 'Teks asli tidak ditemukan lagi di dokumen — terapkan perubahan secara manual.'), variant: 'warning' });
+      }
+      if (changed) onContentChanged(action === 'accept' ? 'manual' : 'auto');
+      reload();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const bulk = async (action: 'accept' | 'reject') => {
+    if (!documentId || openSuggestions.length === 0) return;
+    const ok = await confirmDialog({
+      description:
+        action === 'accept'
+          ? t('documents.comments.accept_all_confirm', 'Terima semua {n} usulan terbuka dan terapkan ke dokumen?', { n: openSuggestions.length })
+          : t('documents.comments.reject_all_confirm', 'Tolak semua {n} usulan terbuka?', { n: openSuggestions.length }),
+      tone: action === 'reject' ? 'danger' : undefined,
+    });
+    if (!ok) return;
+    setBusy('bulk');
+    let changed = false;
+    let failed = 0;
+    for (const suggestion of openSuggestions) {
+      try {
+        await documentsApi.commentAction(documentId, suggestion.id, action);
+        changed = applyToEditor(suggestion, action) || changed;
+      } catch {
+        failed++;
+      }
+    }
+    setBusy(null);
+    if (changed) onContentChanged(action === 'accept' ? 'manual' : 'auto');
+    if (failed) showAlert({ title: t('documents.comments.bulk_partial', '{n} usulan gagal diproses.', { n: failed }), variant: 'warning' });
+    reload();
+  };
+
+  const submitReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyTo || !documentId || !replyTo.body.trim()) return;
+    setBusy(replyTo.id);
+    try {
+      await documentsApi.addComment(documentId, { body: replyTo.body, parent_id: replyTo.id });
+      setReplyTo(null);
+      reload();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const jumpTo = (comment: DocumentComment) => {
+    if (editor && !focusComment(editor, comment.id)) {
+      showAlert({ title: t('documents.comments.not_in_document', 'Penanda komentar ini tidak ada lagi di dokumen.'), variant: 'warning' });
+    }
+  };
+
+  const renderCard = (comment: DocumentComment) => {
+    const isSuggestion = comment.comment_type === 'suggestion';
+    const isBusy = busy === comment.id || busy === 'bulk';
+    const replies = repliesOf(comment.id);
+    return (
+      <li key={comment.id} className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-1.5 text-xs" aria-busy={isBusy}>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[11px]">
+            <span className="font-bold text-slate-900 dark:text-white">{comment.author_name || '—'}</span>{' '}
+            <span className="text-slate-500 dark:text-slate-400">
+              · {isSuggestion ? t('documents.comments.suggestion', 'Usulan') : t('documents.comments.comment', 'Komentar')} ·{' '}
+              <RelativeTime iso={comment.created_at} />
+            </span>
+          </p>
+          <span className={`shrink-0 px-1.5 py-0.5 rounded-full border text-[9px] font-bold ${STATUS_BADGE[comment.status]}`}>{statusLabel(comment.status)}</span>
+        </div>
+
+        {comment.quote && (
+          <button
+            type="button"
+            onClick={() => jumpTo(comment)}
+            className="block w-full text-left border-l-2 border-amber-400 pl-2 text-[11px] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-r cursor-pointer"
+            title={t('documents.comments.jump', 'Lompat ke teks di dokumen')}
+          >
+            {isSuggestion ? <del className="text-rose-700 dark:text-rose-300">{comment.quote}</del> : <q>{comment.quote}</q>}
+          </button>
+        )}
+        {isSuggestion && (
+          <p className="text-[11px]">
+            →{' '}
+            {comment.new_text ? (
+              <ins className="text-emerald-800 dark:text-emerald-300 font-semibold">{comment.new_text}</ins>
+            ) : (
+              <em className="text-slate-500">{t('documents.comments.deletion', '(hapus teks)')}</em>
+            )}
+          </p>
+        )}
+        {comment.body && <p className="whitespace-pre-wrap text-slate-800 dark:text-slate-100">{comment.body}</p>}
+        {comment.resolved_at && (
+          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+            {statusLabel(comment.status)} · {comment.resolved_by_name || '—'} · <RelativeTime iso={comment.resolved_at} />
+          </p>
+        )}
+
+        {replies.length > 0 && (
+          <ul className="space-y-1 pl-3 border-l border-slate-200 dark:border-slate-700">
+            {replies.map((reply) => (
+              <li key={reply.id} className="text-[11px]">
+                <span className="font-bold text-slate-900 dark:text-white">{reply.author_name || '—'}</span>{' '}
+                <span className="text-slate-500 dark:text-slate-400">
+                  · <RelativeTime iso={reply.created_at} />
+                </span>
+                <p className="whitespace-pre-wrap text-slate-800 dark:text-slate-100">{reply.body}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {replyTo?.id === comment.id ? (
+          <form onSubmit={submitReply} className="space-y-1">
+            <label htmlFor={`${idPrefix}-reply-${comment.id}`} className="sr-only">
+              {t('documents.comments.reply', 'Balas')}
+            </label>
+            <textarea
+              id={`${idPrefix}-reply-${comment.id}`}
+              autoFocus
+              rows={2}
+              value={replyTo.body}
+              onChange={(e) => setReplyTo({ id: comment.id, body: e.target.value })}
+              className={INPUT_CLASS}
+            />
+            <div className="flex gap-1">
+              <button type="submit" disabled={isBusy || !replyTo.body.trim()} className={`${SMALL_BUTTON} bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700`}>
+                {t('documents.comments.send', 'Kirim')}
+              </button>
+              <button type="button" onClick={() => setReplyTo(null)} className={SMALL_BUTTON}>
+                {t('common.cancel', 'Batal')}
+              </button>
+            </div>
+          </form>
+        ) : (
+          canEdit &&
+          documentId && (
+            <div className="flex flex-wrap gap-1">
+              {comment.status === 'open' && isSuggestion && (
+                <>
+                  <button type="button" disabled={isBusy} onClick={() => act(comment, 'accept')} className={SMALL_BUTTON}>
+                    <Check className="w-3 h-3 text-emerald-600" aria-hidden /> {t('documents.comments.accept', 'Terima')}
+                  </button>
+                  <button type="button" disabled={isBusy} onClick={() => act(comment, 'reject')} className={SMALL_BUTTON}>
+                    <X className="w-3 h-3 text-rose-600" aria-hidden /> {t('documents.comments.reject', 'Tolak')}
+                  </button>
+                </>
+              )}
+              {comment.status === 'open' && !isSuggestion && (
+                <button type="button" disabled={isBusy} onClick={() => act(comment, 'resolve')} className={SMALL_BUTTON}>
+                  <CheckCheck className="w-3 h-3" aria-hidden /> {t('documents.comments.resolve', 'Selesaikan')}
+                </button>
+              )}
+              {comment.status === 'resolved' && (
+                <button type="button" disabled={isBusy} onClick={() => act(comment, 'reopen')} className={SMALL_BUTTON}>
+                  <RotateCcw className="w-3 h-3" aria-hidden /> {t('documents.comments.reopen', 'Buka lagi')}
+                </button>
+              )}
+              <button type="button" onClick={() => setReplyTo({ id: comment.id, body: '' })} className={SMALL_BUTTON}>
+                {t('documents.comments.reply', 'Balas')}
+              </button>
+            </div>
+          )
+        )}
+      </li>
+    );
+  };
+
+  return (
+    <div className="space-y-3">
+      {canEdit && !composer && (
+        <div className="grid grid-cols-2 gap-1.5">
+          <button type="button" onClick={() => startComposer('comment')} className={`${SMALL_BUTTON} justify-center`}>
+            <MessageSquarePlus className="w-3.5 h-3.5" aria-hidden /> {t('documents.comments.add_comment', 'Komentar')}
+          </button>
+          <button type="button" onClick={() => startComposer('suggestion')} className={`${SMALL_BUTTON} justify-center`}>
+            <PenLine className="w-3.5 h-3.5" aria-hidden /> {t('documents.comments.add_suggestion', 'Usulkan Perubahan')}
+          </button>
+          <p className="col-span-2 text-[10px] text-slate-500 dark:text-slate-400">
+            {t('documents.comments.hint', 'Blok teks di dokumen, lalu pilih Komentar atau Usulkan Perubahan. Dokumen asli tidak berubah sampai usulan diterima.')}
+          </p>
+        </div>
+      )}
+
+      {composer && (
+        <form onSubmit={submitComposer} className="space-y-2 p-2.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/10" aria-busy={busy === 'composer'}>
+          <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100">
+            {composer.mode === 'suggestion' ? t('documents.comments.add_suggestion', 'Usulkan Perubahan') : t('documents.comments.add_comment', 'Komentar')}
+          </p>
+          {composer.range ? (
+            <blockquote className="border-l-2 border-amber-400 pl-2 text-[11px] text-slate-600 dark:text-slate-300 line-clamp-3">{composer.range.text}</blockquote>
+          ) : (
+            <p className="text-[10px] text-slate-500">{t('documents.comments.general', 'Komentar umum (tanpa teks terpilih).')}</p>
+          )}
+          {composer.mode === 'suggestion' && (
+            <label className="block space-y-1 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+              <span>{t('documents.comments.replace_with', 'Ganti menjadi (kosongkan untuk menghapus)')}</span>
+              <textarea rows={2} value={composer.newText} onChange={(e) => setComposer({ ...composer, newText: e.target.value })} className={INPUT_CLASS} />
+            </label>
+          )}
+          <label className="block space-y-1 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+            <span>
+              {composer.mode === 'suggestion' ? t('documents.comments.reason', 'Alasan (opsional)') : t('documents.comments.comment_text', 'Komentar')}
+            </span>
+            <textarea
+              autoFocus={composer.mode === 'comment'}
+              required={composer.mode === 'comment'}
+              rows={3}
+              value={composer.body}
+              onChange={(e) => setComposer({ ...composer, body: e.target.value })}
+              className={INPUT_CLASS}
+            />
+          </label>
+          <div className="flex gap-1">
+            <button type="submit" disabled={busy === 'composer'} className={`${SMALL_BUTTON} bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700`}>
+              {busy === 'composer' ? t('common.saving', 'Menyimpan…') : t('documents.comments.send', 'Kirim')}
+            </button>
+            <button type="button" onClick={() => setComposer(null)} className={SMALL_BUTTON}>
+              {t('common.cancel', 'Batal')}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {state.status === 'loading' && (
+        <div role="status" className="space-y-2">
+          <span className="sr-only">{t('common.loading', 'Memuat…')}</span>
+          {[0, 1].map((i) => (
+            <div key={i} className="h-24 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse motion-reduce:animate-none" />
+          ))}
+        </div>
+      )}
+
+      {state.status === 'error' && (
+        <div role="alert" className="text-xs text-rose-700 dark:text-rose-300 space-y-2">
+          <p>{state.message}</p>
+          <button type="button" onClick={reload} className={SMALL_BUTTON}>
+            <RefreshCw className="w-3 h-3" aria-hidden /> {t('common.retry', 'Coba lagi')}
+          </button>
+        </div>
+      )}
+
+      {state.status === 'ready' && (
+        <>
+          <section aria-labelledby={`${idPrefix}-summary`} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-2">
+            <h3 id={`${idPrefix}-summary`} className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+              {t('documents.comments.summary', 'Ringkasan Perubahan')}
+            </h3>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-slate-700 dark:text-slate-200">
+              <dt>{t('documents.comments.total', 'Total')}</dt>
+              <dd className="text-right font-bold">{topLevel.length}</dd>
+              <dt>{statusLabel('open')}</dt>
+              <dd className="text-right font-bold">{count('open')}</dd>
+              <dt>{statusLabel('accepted')}</dt>
+              <dd className="text-right font-bold">{count('accepted')}</dd>
+              <dt>{statusLabel('rejected')}</dt>
+              <dd className="text-right font-bold">{count('rejected')}</dd>
+              <dt>{statusLabel('resolved')}</dt>
+              <dd className="text-right font-bold">{count('resolved')}</dd>
+            </dl>
+            {canEdit && openSuggestions.length > 1 && (
+              <div className="grid grid-cols-2 gap-1">
+                <button type="button" disabled={busy === 'bulk'} onClick={() => bulk('accept')} className={`${SMALL_BUTTON} justify-center`}>
+                  <Check className="w-3 h-3 text-emerald-600" aria-hidden /> {t('documents.comments.accept_all', 'Terima Semua')}
+                </button>
+                <button type="button" disabled={busy === 'bulk'} onClick={() => bulk('reject')} className={`${SMALL_BUTTON} justify-center`}>
+                  <X className="w-3 h-3 text-rose-600" aria-hidden /> {t('documents.comments.reject_all', 'Tolak Semua')}
+                </button>
+              </div>
+            )}
+            {documentId && (
+              <button type="button" onClick={() => onExportRedline(comments)} className={`${SMALL_BUTTON} w-full justify-center`}>
+                <FileDown className="w-3 h-3" aria-hidden /> {t('documents.comments.export_redline', 'Unduh dengan Redline (.doc)')}
+              </button>
+            )}
+          </section>
+
+          {open.length === 0 ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-4 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+              {t('documents.comments.empty', 'Tidak ada komentar atau usulan terbuka.')}
+            </p>
+          ) : (
+            <ul className="space-y-2" aria-label={statusLabel('open')}>
+              {open.map(renderCard)}
+            </ul>
+          )}
+
+          {closed.length > 0 && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowClosed((v) => !v)}
+                aria-expanded={showClosed}
+                className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 underline cursor-pointer min-h-8"
+              >
+                {showClosed
+                  ? t('documents.comments.hide_closed', 'Sembunyikan yang selesai')
+                  : t('documents.comments.show_closed', 'Tampilkan yang selesai ({n})', { n: closed.length })}
+              </button>
+              {showClosed && <ul className="space-y-2 opacity-90">{closed.map(renderCard)}</ul>}
+            </div>
+          )}
+
+          {topLevel.length > 0 && (
+            <section className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowTimeline((v) => !v)}
+                aria-expanded={showTimeline}
+                className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer min-h-8"
+              >
+                <History className="w-3.5 h-3.5 text-slate-400" aria-hidden />
+                {t('documents.comments.timeline', 'Riwayat Redline')}
+              </button>
+              {showTimeline && (
+                <ol className="space-y-1 text-[10px] text-slate-600 dark:text-slate-300">
+                  {[...topLevel]
+                    .sort((a, b) => (b.resolved_at ?? b.created_at).localeCompare(a.resolved_at ?? a.created_at))
+                    .map((c) => (
+                      <li key={c.id}>
+                        <strong className="text-slate-800 dark:text-slate-100">{c.author_name || '—'}</strong>:{' '}
+                        {c.comment_type === 'suggestion'
+                          ? `“${c.quote}” → “${c.new_text ?? ''}”`
+                          : c.body.slice(0, 80)}{' '}
+                        (<RelativeTime iso={c.created_at} />) — <strong>{statusLabel(c.status).toUpperCase()}</strong>
+                        {c.resolved_by_name && ` · ${c.resolved_by_name}`}
+                      </li>
+                    ))}
+                </ol>
+              )}
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+};

@@ -2057,6 +2057,7 @@ const SQLITE_BROWSER_REDACTED_COLUMNS: Record<string, string[]> = {
   account: ['password', 'accessToken', 'refreshToken', 'idToken'],
   verification: ['value'],
   apikey: ['keyHash'],
+  integration_credentials: ['payload'],
 };
 function redactSensitiveColumns(tableName: string, rows: any[]): any[] {
   const columnsToRedact = SQLITE_BROWSER_REDACTED_COLUMNS[tableName];
@@ -2099,10 +2100,14 @@ authConsoleRouter.get('/sqlite/table-data', (req: Request, res: Response) => {
     let rows: any[] = [];
     let total = 0;
 
-    if (search && columns.length > 0) {
-      const searchConditions = columns.map((c) => `CAST("${c.name}" AS TEXT) LIKE ?`).join(' OR ');
+    // Redacted columns are not searchable either: match counts would leak their contents.
+    const redacted = new Set(SQLITE_BROWSER_REDACTED_COLUMNS[tableName] ?? []);
+    const searchable = columns.filter((c) => !redacted.has(c.name));
+
+    if (search && searchable.length > 0) {
+      const searchConditions = searchable.map((c) => `CAST("${c.name}" AS TEXT) LIKE ?`).join(' OR ');
       const searchParam = `%${search}%`;
-      const searchParams = columns.map(() => searchParam);
+      const searchParams = searchable.map(() => searchParam);
 
       const totalRow = sqliteDb.prepare(`SELECT COUNT(*) as count FROM "${tableName}" WHERE ${searchConditions}`).get(...searchParams) as any;
       total = totalRow?.count || 0;

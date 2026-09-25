@@ -419,6 +419,69 @@
   .fillable-slot .slot-icon-badge {
     display: none !important;
   }
+  .comment-anchor {
+    background: transparent !important;
+    border: none !important;
+    text-decoration: none !important;
+  }
+  .comment-anchor::after {
+    content: none !important;
+  }
+}
+
+/* Comment & suggestion anchors (redlining). Strike-through / underline carry the meaning, not color alone. */
+.comment-anchor {
+  background-color: rgb(254 240 138 / 0.7);
+  border-bottom: 2px solid #ca8a04;
+  cursor: pointer;
+}
+.comment-anchor[data-comment-kind='suggestion'] {
+  background-color: rgb(254 202 202 / 0.6);
+  border-bottom: none;
+  text-decoration: line-through;
+  text-decoration-color: #b91c1c;
+  text-decoration-thickness: 2px;
+}
+/* inline-block stops the parent's line-through from striking the proposed text too. */
+.comment-anchor[data-comment-kind='suggestion']::after {
+  content: attr(data-suggestion);
+  display: inline-block;
+  margin-left: 2px;
+  padding: 0 2px;
+  background-color: rgb(187 247 208 / 0.8);
+  color: #14532d;
+  text-decoration: underline;
+}
+.dark .comment-anchor {
+  background-color: rgb(113 63 18 / 0.55);
+  border-bottom-color: #facc15;
+}
+.dark .comment-anchor[data-comment-kind='suggestion'] {
+  background-color: rgb(127 29 29 / 0.5);
+  text-decoration-color: #fca5a5;
+}
+.dark .comment-anchor[data-comment-kind='suggestion']::after {
+  background-color: rgb(20 83 45 / 0.8);
+  color: #dcfce7;
+}
+
+.diff-added {
+  background-color: rgb(187 247 208 / 0.6);
+  color: #14532d;
+  text-decoration: underline;
+}
+.diff-removed {
+  background-color: rgb(254 202 202 / 0.6);
+  color: #7f1d1d;
+  text-decoration: line-through;
+}
+.dark .diff-added {
+  background-color: rgb(20 83 45 / 0.6);
+  color: #dcfce7;
+}
+.dark .diff-removed {
+  background-color: rgb(127 29 29 / 0.5);
+  color: #fee2e2;
 }
 
 /* Ensure contenteditable lists show proper bullets and numbers */

@@ -110,9 +110,10 @@ export function parseServiceAccountString(rawInput: string): ServiceAccountCrede
  * Load and parse Google Service Account credentials.
  * Priority order:
  * 1. Provided parameter (Object, JSON string, or file path)
- * 2. GOOGLE_APPLICATION_CREDENTIALS environment variable or credentials.json file
- * 3. GOOGLE_SERVICE_ACCOUNT_KEY environment variable (JSON or base64 string)
- * 4. Individual env vars (GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY, GOOGLE_PROJECT_ID)
+ * 2. JSON key uploaded in the app (see setStoredServiceAccountProvider)
+ * 3. GOOGLE_APPLICATION_CREDENTIALS environment variable or credentials.json file
+ * 4. GOOGLE_SERVICE_ACCOUNT_KEY environment variable (JSON or base64 string)
+ * 5. Individual env vars (GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY, GOOGLE_PROJECT_ID)
  */
 export function loadServiceAccountCredentials(
   param?: string | ServiceAccountCredentials | boolean,
@@ -143,6 +144,9 @@ export function loadServiceAccountCredentials(
     const parsed = parseServiceAccountString(actualParam);
     if (parsed) return parsed;
   }
+
+  const stored = storedServiceAccountProvider?.();
+  if (stored?.client_email && stored.private_key) return stored;
 
   // Case 3: GOOGLE_APPLICATION_CREDENTIALS or default credentials.json in root
   const defaultCredentialsPath =
@@ -179,6 +183,13 @@ export function loadServiceAccountCredentials(
   }
 
   return null;
+}
+
+let storedServiceAccountProvider: (() => ServiceAccountCredentials | null) | null = null;
+
+/** Registers the source of a service-account key uploaded in the app; it takes priority over env/files. */
+export function setStoredServiceAccountProvider(provider: () => ServiceAccountCredentials | null) {
+  storedServiceAccountProvider = provider;
 }
 
 export function hasServiceAccountCredentials(): boolean {

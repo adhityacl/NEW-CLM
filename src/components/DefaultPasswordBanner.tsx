@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { GoogleCredentialsDialog } from './settings/GoogleCredentialsDialog';
 
 interface DefaultPasswordBannerProps {
   /** Opens the user administration screen, for changing other accounts. */
@@ -22,7 +23,7 @@ const MIN_PASSWORD_LENGTH = 8;
 /**
  * Warns a superuser while the documented bootstrap password
  * (admin@silegal.com / 123456789) is still active, and lets them change it
- * in place. Hidden for everyone else and once the password has changed.
+ * in place and upload the Google credential files during first-run setup. Hidden for everyone else and once the password has changed.
  */
 export const DefaultPasswordBanner: React.FC<DefaultPasswordBannerProps> = ({ onOpenSecurity }) => {
   const { t } = useLanguage();
@@ -164,6 +165,13 @@ export const DefaultPasswordBanner: React.FC<DefaultPasswordBannerProps> = ({ on
         <Button type="button" size="sm" variant="outline" className="min-h-11" onClick={onOpenSecurity}>
           {t('security.manage_users', 'Manage users')}
         </Button>
+        <GoogleCredentialsDialog
+          trigger={
+            <Button type="button" size="sm" variant="outline" className="min-h-11">
+              {t('google_setup.button', 'Hubungkan Google')}
+            </Button>
+          }
+        />
       </div>
     </div>
   );

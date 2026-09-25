@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleSheetsConfig, Tenant } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { GoogleCredentialsDialog } from './settings/GoogleCredentialsDialog';
 import { useLanguage } from '../context/LanguageContext';
 import { useConfirm } from '../context/ConfirmDialogContext';
 import { useTenant } from '../context/TenantContext';
@@ -1103,6 +1104,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           {activeSection === 'google' && (
             <div className="space-y-6">
+              {isSuperuser && (
+                <Card className="border-none shadow-[0_4px_16px_rgba(0,0,0,0.04)] rounded-[20px] overflow-hidden">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg font-bold">{t('google_setup.settings_title', 'Kredensial Google Cloud')}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
+                    <p>
+                      {t(
+                        'google_setup.settings_desc',
+                        'Unggah file JSON Service Account dan OAuth Client dari Google Cloud Console. Menggantikan variabel GOOGLE_* di .env.',
+                      )}
+                    </p>
+                    <GoogleCredentialsDialog
+                      trigger={
+                        <Button type="button" className="min-h-11 shrink-0">
+                          {t('google_setup.manage', 'Kelola file kredensial')}
+                        </Button>
+                      }
+                    />
+                  </CardContent>
+                </Card>
+              )}
               {/* Google OAuth Account Card */}
               <Card className="border-none shadow-[0_4px_16px_rgba(0,0,0,0.04)] rounded-[20px] overflow-hidden">
                 <CardHeader className="pb-3">

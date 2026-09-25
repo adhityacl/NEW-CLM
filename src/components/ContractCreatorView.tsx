@@ -40,6 +40,10 @@ import {
   Briefcase,
   FolderOpen,
   ListChecks,
+  ArrowLeft,
+  History,
+  Info,
+  MessageSquare,
 } from 'lucide-react';
 import { Partner, Contract } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -47,7 +51,17 @@ import { useConfirm } from '../context/ConfirmDialogContext';
 import { useAlertToast } from '../context/AlertToastContext';
 import { useTenant } from '../context/TenantContext';
 import { useTenantSettings } from '../context/TenantSettingsContext';
+import { useAuth } from '../context/AuthContext';
 import { getAuthHeaders } from '../App';
+import { CommentAnchor, renderRedlineHtml, stripCommentAnchors } from '../lib/tiptapCommentMark';
+import { documentsApi, errorMessage } from '../lib/documentsApi';
+import { formatDateTime, type DocumentComment, type DocumentDetail, type DocumentStatus, type DocumentType } from '../lib/documentModel';
+import { diffParagraphs, htmlToParagraphs, type DiffPart } from '../lib/paragraphDiff';
+import { DocumentExplorer } from './documents/DocumentExplorer';
+import { DraftHistoryPanel } from './documents/DraftHistoryPanel';
+import { DocumentInfoPanel } from './documents/DocumentInfoPanel';
+import { CommentsPanel } from './documents/CommentsPanel';
+import { RelativeTime } from './documents/RelativeTime';
 import {
   buildAgreementHtml,
   jurisdictionFromSettings,
@@ -168,16 +182,56 @@ function mergeTemplateCustomFields(
   return merged;
 }
 
+const BUILT_IN_FIELD_KEYS = new Set(COOPERATION_AGREEMENT_FIELDS.map((f) => f.key));
+
+const INITIAL_FIELD_VALUES: Record<string, string> = {
+  firstPartyName: '',
+  firstPartyAlias: '',
+  firstPartyAddress: '',
+  firstPartyPic: '',
+  firstPartyPosition: '',
+  firstPartyEmail: '',
+  firstPartyBusinessDesc: '',
+  partnerName: '',
+  partnerAddress: '',
+  partnerPic: '',
+  partnerPosition: '',
+  dateStr: '',
+  startDate: '',
+  endDate: '',
+  scopeDescId: '',
+  scopeDescEn: '',
+  feeAmountId: '',
+  feeAmountEn: '',
+  bankName: '',
+  bankAccount: '',
+  bankHolder: '',
+  partnerEmail: '',
+};
+
+const AUTOSAVE_INTERVAL_MS = 30_000;
+
+type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
+type PreviewOverride = { kind: 'version'; version: number; html: string } | { kind: 'diff'; version: number; parts: DiffPart[] };
+type Baseline = { html: string; title: string } | null;
+
+/** Baseline = the last content known to be on the server (or the untouched starting content of a new document). */
+const differsFrom = (baseline: Baseline, html: string, title: string) =>
+  baseline !== null && (html !== baseline.html || title.trim() !== baseline.title);
+
+const toComparableParagraphs = (html: string) => htmlToParagraphs(stripFillableSlotsToPlainText(stripCommentAnchors(html)));
+
 export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   partners,
   contracts,
   onSaveToSystem,
   onNavigateToContracts,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const confirmDialog = useConfirm();
   const showAlert = useAlertToast();
   const { activeTenant } = useTenant();
+  const { isEditor: canEdit, isManager: canManageFields } = useAuth();
   const { policy } = useTenantSettings();
   // Document language and jurisdiction wording follow the organization settings.
   const docLanguage = policy.settings.language;
@@ -201,9 +255,22 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const [selectedPartnerId, setSelectedPartnerId] = useState('');
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
 
+  // Document explorer, persistence and version state
+  const [screen, setScreen] = useState<'explorer' | 'editor'>('explorer');
+  const [currentDoc, setCurrentDoc] = useState<DocumentDetail | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
+  const [hasUnsaved, setHasUnsaved] = useState(false);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [previewOverride, setPreviewOverride] = useState<PreviewOverride | null>(null);
+  const currentDocRef = useRef<DocumentDetail | null>(null);
+  const baselineRef = useRef<Baseline>(null);
+  const docTitleRef = useRef(docTitle);
+  const inFlightSaveRef = useRef<Promise<string | null> | null>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
   // UI state
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<'fields' | 'partners' | 'templates'>('fields');
+  const [sidebarTab, setSidebarTab] = useState<'fields' | 'partners' | 'templates' | 'history' | 'info' | 'comments'>('fields');
   const [highlightFillable, setHighlightFillable] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
@@ -211,30 +278,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const [charCount, setCharCount] = useState(0);
 
   // Fillable slot field values state - dynamically initialized with activeTenant
-  const [fieldValues, setFieldValues] = useState<Record<string, string>>({
-    firstPartyName: '',
-    firstPartyAlias: '',
-    firstPartyAddress: '',
-    firstPartyPic: '',
-    firstPartyPosition: '',
-    firstPartyEmail: '',
-    firstPartyBusinessDesc: '',
-    partnerName: '',
-    partnerAddress: '',
-    partnerPic: '',
-    partnerPosition: '',
-    dateStr: '',
-    startDate: '',
-    endDate: '',
-    scopeDescId: '',
-    scopeDescEn: '',
-    feeAmountId: '',
-    feeAmountEn: '',
-    bankName: '',
-    bankAccount: '',
-    bankHolder: '',
-    partnerEmail: '',
-  });
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>(INITIAL_FIELD_VALUES);
 
   // Kept in sync with fieldValues via effect below; lets the editor's drop handler
   // (created once by useEditor) always read the latest values without forcing a
@@ -373,7 +417,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       showAlert({ title: t('contract_creator.msg.template_name_required', 'Nama template belum diisi'), variant: 'warning' });
       return;
     }
-    const content = editor?.getHTML() || '';
+    const content = stripCommentAnchors(editor?.getHTML() || '');
     if (!content.trim()) {
       showAlert({ title: t('contract_creator.msg.template_content_empty', 'Konten template masih kosong'), variant: 'warning' });
       return;
@@ -484,6 +528,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       CustomTableCell,
       CustomTableHeader,
       FillableSlot,
+      CommentAnchor,
     ],
     content: '',
     onUpdate: ({ editor: instance }) => {
@@ -493,9 +538,17 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
         const words = text.trim() ? text.trim().split(/\s+/).length : 0;
         setWordCount(words);
         setCharCount(text.length);
+        setHasUnsaved(differsFrom(baselineRef.current, instance.getHTML(), docTitleRef.current));
       }, 300);
     },
     editorProps: {
+      handleClick: (_view, _pos, event) => {
+        if ((event.target as HTMLElement | null)?.closest?.('[data-comment-id]')) {
+          setSidebarOpen(true);
+          setSidebarTab('comments');
+        }
+        return false;
+      },
       // Handles fields dragged in from the "Kolom Isian Drag & Drop" sidebar palette
       // (plain HTML5 dataTransfer JSON, not a ProseMirror-native drag). Moving an
       // existing fillableSlot node around inside the document is handled natively by
@@ -572,35 +625,233 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     updateStats();
   };
 
-  // Default template on first load: the first entry in the saved Template
-  // Library (Pustaka Template Terdaftar), not the built-in 15-article
-  // agreement — that template is now only reached via the explicit "Reset
-  // Template" button. Waits for the library fetch to settle (templatesReady)
-  // so it doesn't race the empty `savedTemplates` state that exists before
-  // the request resolves; if the library genuinely has no templates yet,
-  // the editor is left blank rather than falling back to the 15-article one.
-  useEffect(() => {
-    if (!editor || !editor.isEmpty || !templatesReady) return;
-    const defaultTemplate = savedTemplates[0];
-    if (defaultTemplate) {
-      editor.commands.setContent(defaultTemplate.contentId);
-      setIsCustomTemplateActive(true);
-      // Same recovery as handleLoadTemplate — this auto-load path hits the
-      // exact same "custom fields lost on fresh login" bug otherwise.
-      const builtInKeys = new Set(COOPERATION_AGREEMENT_FIELDS.map((f) => f.key));
+  const recoveredFieldDescription = t(
+    'contract_creator.custom_field_recovered_desc',
+    'Kolom kustom dipulihkan otomatis dari dokumen (label asli tidak tersimpan).',
+  );
+
+  const markClean = (title: string) => {
+    if (!editor) return;
+    baselineRef.current = { html: editor.getHTML(), title: title.trim() };
+    setHasUnsaved(false);
+  };
+
+  const isDirty = () =>
+    Boolean(editor) && !editor!.isDestroyed && differsFrom(baselineRef.current, editor!.getHTML(), docTitleRef.current);
+
+  const setDocument = (doc: DocumentDetail | null) => {
+    currentDocRef.current = doc;
+    setCurrentDoc(doc);
+  };
+
+  /**
+   * New documents start from the first entry of the template library (not the built-in
+   * 15-article agreement, which stays behind "Reset Template"); blank if the library is empty.
+   */
+  const resetToNewDocument = () => {
+    if (!editor) return;
+    const template = savedTemplates[0];
+    editor.commands.setContent(template?.contentId ?? '');
+    setIsCustomTemplateActive(Boolean(template));
+    if (template) {
       setCustomFields((prev) =>
-        mergeTemplateCustomFields(
-          prev,
-          defaultTemplate.customFields,
-          defaultTemplate.contentId,
-          builtInKeys,
-          t('contract_creator.custom_field_recovered_desc', 'Kolom kustom dipulihkan otomatis dari dokumen (label asli tidak tersimpan).'),
-        ),
+        mergeTemplateCustomFields(prev, template.customFields, template.contentId, BUILT_IN_FIELD_KEYS, recoveredFieldDescription),
       );
-      updateStats();
     }
+    setDocument(null);
+    setDocTitle(defaultDocTitle);
+    setContractNumber('');
+    setFieldValues(INITIAL_FIELD_VALUES);
+    setPreviewOverride(null);
+    setViewMode('editor');
+    setSaveState({ status: 'idle' });
+    markClean(defaultDocTitle);
+    updateStats();
+  };
+
+  const loadDocument = (doc: DocumentDetail) => {
+    if (!editor) return;
+    editor.commands.setContent(doc.content || '');
+    setCustomFields((prev) => mergeTemplateCustomFields(prev, undefined, doc.content, BUILT_IN_FIELD_KEYS, recoveredFieldDescription));
+    setIsCustomTemplateActive(true);
+    setDocument(doc);
+    setDocTitle(doc.name);
+    setContractNumber('');
+    setFieldValues(INITIAL_FIELD_VALUES);
+    setPreviewOverride(null);
+    setViewMode('editor');
+    setSaveState({ status: 'idle' });
+    markClean(doc.name);
+    setHistoryRefreshKey((k) => k + 1);
+    updateStats();
+  };
+
+  // Waits for the template library fetch to settle so a new document never races an empty `savedTemplates`.
+  useEffect(() => {
+    if (!editor || !templatesReady || baselineRef.current) return;
+    resetToNewDocument();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, viewMode, templatesReady, savedTemplates]);
+  }, [editor, templatesReady]);
+
+  useEffect(() => {
+    docTitleRef.current = docTitle;
+    if (editor && !editor.isDestroyed) setHasUnsaved(differsFrom(baselineRef.current, editor.getHTML(), docTitle));
+  }, [docTitle, editor]);
+
+  const performSave = async (kind: 'auto' | 'manual', keepalive: boolean): Promise<string | null> => {
+    const existing = currentDocRef.current;
+    if (!editor || editor.isDestroyed || !baselineRef.current || !canEdit) return existing?.id ?? null;
+    const html = editor.getHTML();
+    const title = docTitleRef.current.trim() || defaultDocTitle;
+    const dirty = differsFrom(baselineRef.current, html, title);
+    if (existing && !dirty) return existing.id;
+    if (!existing && !dirty && kind === 'auto') return null;
+
+    setSaveState({ status: 'saving' });
+    try {
+      const doc = existing
+        ? (await documentsApi.saveDraft(existing.id, { content: html, name: title, kind }, keepalive)).document
+        : await documentsApi.create({ name: title, content: html }, keepalive);
+      setDocument(doc);
+      baselineRef.current = { html, title };
+      if (!docTitleRef.current.trim()) setDocTitle(title);
+      setHasUnsaved(differsFrom(baselineRef.current, editor.getHTML(), docTitleRef.current));
+      setSaveState({ status: 'idle' });
+      setHistoryRefreshKey((k) => k + 1);
+      return doc.id;
+    } catch (err) {
+      setSaveState({ status: 'error', message: errorMessage(err) });
+      return null;
+    }
+  };
+
+  /** Serialized so autosave, manual save and leave-page saves never overlap. Resolves to the document id. */
+  const saveNow = async (kind: 'auto' | 'manual', keepalive = false): Promise<string | null> => {
+    if (inFlightSaveRef.current) await inFlightSaveRef.current;
+    const pending = performSave(kind, keepalive);
+    inFlightSaveRef.current = pending;
+    try {
+      return await pending;
+    } finally {
+      if (inFlightSaveRef.current === pending) inFlightSaveRef.current = null;
+    }
+  };
+
+  const saveNowRef = useRef(saveNow);
+  useEffect(() => {
+    saveNowRef.current = saveNow;
+  });
+
+  useEffect(() => {
+    if (screen !== 'editor' || !canEdit) return;
+    const id = setInterval(() => void saveNowRef.current('auto'), AUTOSAVE_INTERVAL_MS);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        void saveNowRef.current('manual');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [screen, canEdit]);
+
+  // ponytail: keepalive requests are capped at 64 KB by browsers; larger unsaved documents rely on the leave-page prompt.
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!editor || editor.isDestroyed || !differsFrom(baselineRef.current, editor.getHTML(), docTitleRef.current)) return;
+      void saveNowRef.current('auto', true);
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      // Leaving the Create Contract page inside the app also saves pending changes.
+      void saveNowRef.current('auto', true);
+    };
+  }, [editor]);
+
+  useEffect(() => {
+    if (screen === 'editor') titleInputRef.current?.focus({ preventScroll: true });
+  }, [screen]);
+
+  const startNewDocument = () => {
+    resetToNewDocument();
+    setScreen('editor');
+  };
+
+  const openDocument = async (id: string) => {
+    try {
+      loadDocument(await documentsApi.get(id));
+      setScreen('editor');
+    } catch (err) {
+      showAlert({ title: t('documents.msg.open_failed', 'Gagal membuka dokumen'), description: errorMessage(err), variant: 'destructive' });
+    }
+  };
+
+  const backToExplorer = async () => {
+    if (canEdit && isDirty() && !(await saveNow('auto'))) {
+      const leave = await confirmDialog({
+        description: t('documents.confirm.leave_unsaved', 'Perubahan gagal disimpan. Tetap kembali ke daftar dokumen dan buang perubahan?'),
+        tone: 'danger',
+        confirmLabel: t('documents.action.leave', 'Tetap kembali'),
+      });
+      if (!leave) return;
+    }
+    setScreen('explorer');
+  };
+
+  const showVersion = async (version: number, kind: PreviewOverride['kind']) => {
+    const doc = currentDocRef.current;
+    if (!doc || !editor) return;
+    try {
+      const draft = await documentsApi.getDraft(doc.id, version);
+      setPreviewOverride(
+        kind === 'version'
+          ? { kind, version, html: draft.content }
+          : { kind, version, parts: diffParagraphs(toComparableParagraphs(draft.content), toComparableParagraphs(editor.getHTML())) },
+      );
+      setViewMode('preview');
+    } catch (err) {
+      showAlert({ title: t('documents.msg.action_failed', 'Aksi gagal'), description: errorMessage(err), variant: 'destructive' });
+    }
+  };
+
+  const restoreVersion = async (version: number) => {
+    const doc = currentDocRef.current;
+    if (!doc) return;
+    const ok = await confirmDialog({
+      description: t('documents.confirm.restore', 'Pulihkan dokumen ke versi {v}? Isi saat ini tetap tersimpan di riwayat.', { v: version }),
+      confirmLabel: t('documents.history.restore', 'Pulihkan'),
+    });
+    if (!ok) return;
+    if (isDirty() && !(await saveNow('manual'))) return;
+    try {
+      const { document } = await documentsApi.restoreDraft(doc.id, version);
+      loadDocument(document);
+      showAlert({ title: t('documents.msg.restored', 'Versi {v} dipulihkan', { v: version }), variant: 'success' });
+    } catch (err) {
+      showAlert({ title: t('documents.msg.action_failed', 'Aksi gagal'), description: errorMessage(err), variant: 'destructive' });
+    }
+  };
+
+  const updateDocumentInfo = async (patch: { status?: DocumentStatus; type?: DocumentType }) => {
+    const doc = currentDocRef.current;
+    if (!doc) return;
+    try {
+      setDocument(await documentsApi.update(doc.id, patch));
+    } catch (err) {
+      showAlert({ title: t('documents.msg.action_failed', 'Aksi gagal'), description: errorMessage(err), variant: 'destructive' });
+    }
+  };
+
+  const switchViewMode = (mode: 'editor' | 'preview') => {
+    setPreviewOverride(null);
+    setViewMode(mode);
+  };
 
   const handleLoadTemplate = async (tpl: any) => {
     const confirmMsg = `${t('contract_creator.confirm.use_template_prefix', 'Gunakan template')} "${tpl.name}"${t('contract_creator.confirm.use_template_suffix', '? Teks kontrak saat ini akan diganti.')}`;
@@ -612,15 +863,8 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
         // templates saved before this existed, recover a generic definition
         // for any fillable-slot the content has that isn't otherwise known) —
         // see the comment on mergeTemplateCustomFields for why this exists.
-        const builtInKeys = new Set(COOPERATION_AGREEMENT_FIELDS.map((f) => f.key));
         setCustomFields((prev) =>
-          mergeTemplateCustomFields(
-            prev,
-            tpl.customFields,
-            tpl.contentId,
-            builtInKeys,
-            t('contract_creator.custom_field_recovered_desc', 'Kolom kustom dipulihkan otomatis dari dokumen (label asli tidak tersimpan).'),
-          ),
+          mergeTemplateCustomFields(prev, tpl.customFields, tpl.contentId, BUILT_IN_FIELD_KEYS, recoveredFieldDescription),
         );
         setExportMessage({
           type: 'info',
@@ -715,12 +959,8 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     }
   };
 
-  // Download DOCX in Single Indonesian Format (Direct from Editor)
-  const handleDownloadIndonesianDocx = () => {
-    setIsDownloadingDocx(true);
-    try {
-      const rawHtml = editor?.getHTML() || '';
-      const contentHtml = stripFillableSlotsToPlainText(rawHtml);
+  // Word-importable .doc download of already-cleaned document HTML
+  const downloadWordDocument = (contentHtml: string, fileSuffix: string) => {
       const docHtml = `<!DOCTYPE html>
 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
 <head>
@@ -782,12 +1022,18 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${docTitle.replace(/[^\w\s-]/gi, '').replace(/\s+/g, '_')}_ID.doc`;
+      link.download = `${docTitle.replace(/[^\w\s-]/gi, '').replace(/\s+/g, '_')}_${fileSuffix}.doc`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+  };
 
+  // Download DOCX in Single Indonesian Format (Direct from Editor)
+  const handleDownloadIndonesianDocx = () => {
+    setIsDownloadingDocx(true);
+    try {
+      downloadWordDocument(stripFillableSlotsToPlainText(stripCommentAnchors(editor?.getHTML() || '')), 'ID');
       setExportMessage({
         type: 'success',
         text: t('contract_creator.msg.docx_downloaded', 'File dokumen Word (.doc) versi Bahasa Indonesia berhasil diunduh!'),
@@ -801,6 +1047,17 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     } finally {
       setIsDownloadingDocx(false);
     }
+  };
+
+  const handleExportRedline = (comments: DocumentComment[]) => {
+    const html = renderRedlineHtml(editor?.getHTML() || '', comments, {
+      heading: t('documents.redline.heading', 'Komentar & Usulan Perubahan'),
+      suggestion: t('documents.comments.suggestion', 'Usulan'),
+      comment: t('documents.comments.comment', 'Komentar'),
+      deletion: t('documents.comments.deletion', '(hapus teks)'),
+      formatDate: (iso) => formatDateTime(iso, language),
+    });
+    downloadWordDocument(stripFillableSlotsToPlainText(html), 'redline');
   };
 
   // Print Document (Save as PDF)
@@ -858,21 +1115,63 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   ).length;
   const totalSlotsCount = COOPERATION_AGREEMENT_FIELDS.length;
 
+  const saveStatus =
+    saveState.status === 'saving' ? (
+      <>
+        <RefreshCw className="w-3 h-3 animate-spin motion-reduce:animate-none" aria-hidden />
+        {t('common.saving', 'Menyimpan…')}
+      </>
+    ) : saveState.status === 'error' ? (
+      <span className="text-rose-700 dark:text-rose-300 inline-flex items-center gap-1">
+        <AlertCircle className="w-3 h-3" aria-hidden />
+        {t('documents.save.failed', 'Gagal menyimpan')}: {saveState.message}
+      </span>
+    ) : hasUnsaved ? (
+      <>
+        <span className="w-2 h-2 rounded-full bg-amber-500" aria-hidden />
+        {t('documents.save.unsaved', 'Perubahan belum disimpan')}
+      </>
+    ) : currentDoc ? (
+      <>
+        {t('documents.save.draft_version', 'Draf v{v}', { v: currentDoc.current_version })} ·{' '}
+        {t('documents.save.last_saved', 'Terakhir disimpan')} <RelativeTime iso={currentDoc.modified_at} />{' '}
+        {t('documents.info.by', 'oleh {name}', { name: currentDoc.modified_by_name || '—' })}
+      </>
+    ) : (
+      t('documents.save.never', 'Belum disimpan')
+    );
+
   return (
     <div className="flex flex-col h-screen max-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 select-text overflow-hidden font-sans">
-      
+      {screen === 'explorer' && (
+        <DocumentExplorer canEdit={canEdit} canDelete={canEdit} onOpen={openDocument} onCreate={startNewDocument} />
+      )}
+
+      {/* The editor stays mounted (hidden) while the explorer is shown so TipTap keeps its state. */}
+      <div className={screen === 'explorer' ? 'hidden' : 'contents'}>
       {/* 1. TOP NAVBAR / HEADER */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0 z-20">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0 max-w-full">
+          <button
+            type="button"
+            onClick={backToExplorer}
+            className="inline-flex items-center justify-center h-11 w-11 sm:h-8 sm:w-8 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0 cursor-pointer"
+            aria-label={t('documents.action.back', 'Kembali ke daftar dokumen')}
+            title={t('documents.action.back', 'Kembali ke daftar dokumen')}
+          >
+            <ArrowLeft className="w-4 h-4" aria-hidden />
+          </button>
           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-[#06C755] flex items-center justify-center shrink-0 border border-emerald-500/20">
             <FileSignature className="w-4 h-4" />
           </div>
-          <div className="min-w-0 flex items-center">
+          <div className="min-w-0 flex-1 flex flex-col">
             <input
+              ref={titleInputRef}
+              aria-label={t('contract_creator.title_input_placeholder', 'Judul Dokumen Perjanjian')}
               type="text"
               value={docTitle}
               onChange={(e) => setDocTitle(e.target.value)}
-              className="borderless-title text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 bg-transparent dark:bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-none p-1 rounded-none transition-colors w-72 sm:w-96 md:w-[460px] lg:w-[540px] truncate cursor-text leading-normal placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              className="borderless-title text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 bg-transparent dark:bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-none p-1 rounded-none transition-colors w-full sm:w-96 md:w-[460px] lg:w-[540px] truncate cursor-text leading-normal placeholder:text-slate-400 dark:placeholder:text-slate-500"
               style={{
                 backgroundColor: 'transparent',
                 border: 'none',
@@ -882,17 +1181,33 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
               title={t('contract_creator.title_input_title', 'Klik untuk mengubah judul dokumen')}
               placeholder={t('contract_creator.title_input_placeholder', 'Judul Dokumen Perjanjian')}
             />
+            <p className="px-1 text-[10px] text-slate-500 dark:text-slate-400 inline-flex items-center gap-1 flex-wrap" aria-live="polite">
+              {saveStatus}
+            </p>
           </div>
         </div>
 
         {/* Action Controls & Mode Switcher */}
         <div className="flex items-center gap-2 flex-wrap">
 
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => void saveNow('manual')}
+              disabled={saveState.status === 'saving'}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
+              title={t('documents.save.manual_title', 'Simpan sebagai versi baru (Ctrl+S)')}
+            >
+              <Save className="w-3.5 h-3.5" aria-hidden />
+              <span>{t('common.save', 'Simpan')}</span>
+            </button>
+          )}
+
           {/* View Mode Toggle: Edit vs Pratinjau */}
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 mr-1">
             <button
               type="button"
-              onClick={() => setViewMode('editor')}
+              onClick={() => switchViewMode('editor')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 viewMode === 'editor'
                   ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
@@ -905,7 +1220,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('preview')}
+              onClick={() => switchViewMode('preview')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 viewMode === 'preview'
                   ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
@@ -1035,15 +1350,70 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
           }`}
         >
           <div className="w-full max-w-[850px] h-fit mb-16">
+            {previewOverride && (
+              <div
+                role="status"
+                className="mb-3 p-3 rounded-lg border border-blue-300 bg-blue-50 text-blue-950 dark:border-blue-700 dark:bg-blue-950/60 dark:text-blue-100 flex flex-wrap items-center justify-between gap-2 text-xs"
+              >
+                <span className="font-semibold">
+                  {previewOverride.kind === 'version'
+                    ? t('documents.preview.viewing', 'Melihat versi {v} (hanya baca). Dokumen yang sedang diedit tidak berubah.', { v: previewOverride.version })
+                    : t('documents.preview.comparing', 'Perbandingan versi {v} dengan dokumen saat ini: + ditambahkan, − dihapus.', { v: previewOverride.version })}
+                </span>
+                <span className="flex gap-1.5">
+                  {canEdit && previewOverride.version !== currentDoc?.current_version && (
+                    <button
+                      type="button"
+                      onClick={() => restoreVersion(previewOverride.version)}
+                      className="px-3 min-h-11 sm:min-h-8 rounded-lg bg-blue-700 text-white font-bold hover:bg-blue-800 cursor-pointer"
+                    >
+                      {t('documents.preview.restore', 'Pulihkan versi ini')}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => switchViewMode('editor')}
+                    className="px-3 min-h-11 sm:min-h-8 rounded-lg border border-blue-400 font-bold hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer"
+                  >
+                    {t('documents.preview.close', 'Tutup pratinjau')}
+                  </button>
+                </span>
+              </div>
+            )}
             {/* White Paper Sheet */}
             <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl rounded-sm border border-slate-300/80 dark:border-slate-800 min-h-[1150px] p-10 sm:p-16 md:p-20 relative">
               <div className="min-h-[900px] font-sans leading-relaxed text-slate-900 dark:text-slate-100">
                 {/* "ProseMirror" class reused so this read-only preview picks up the exact
                     same heading/paragraph/table typography rules as the live editor content. */}
-                <div
-                  className="ProseMirror"
-                  dangerouslySetInnerHTML={{ __html: stripFillableSlotsToPlainText(editor?.getHTML() || '') }}
-                />
+                {previewOverride?.kind === 'diff' ? (
+                  <div className="ProseMirror">
+                    {previewOverride.parts.every((part) => part.kind === 'same') && (
+                      <p className="font-semibold text-slate-500">{t('documents.preview.no_diff', 'Tidak ada perbedaan teks.')}</p>
+                    )}
+                    {previewOverride.parts.map((part, i) =>
+                      part.kind === 'same' ? (
+                        <p key={i}>{part.text}</p>
+                      ) : part.kind === 'added' ? (
+                        <p key={i}>
+                          <ins className="diff-added">+ {part.text}</ins>
+                        </p>
+                      ) : (
+                        <p key={i}>
+                          <del className="diff-removed">− {part.text}</del>
+                        </p>
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className="ProseMirror"
+                    dangerouslySetInnerHTML={{
+                      __html: stripFillableSlotsToPlainText(
+                        stripCommentAnchors(previewOverride?.kind === 'version' ? previewOverride.html : editor?.getHTML() || ''),
+                      ),
+                    }}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -1061,13 +1431,16 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                 </h2>
               </div>
 
-              {/* 3 Sub-tabs */}
+              {/* Sub-tabs */}
               <div role="tablist" aria-label={t('contract_creator.panel_title', 'Panel Asisten Kontrak')} className="grid grid-cols-3 gap-1 px-2 pb-2">
                 {(
                   [
                     { id: 'fields', label: t('contract_creator.tab.fields', 'Kolom Isian'), icon: ListChecks },
                     { id: 'partners', label: t('contract_creator.tab.partners', 'Mitra'), icon: Building2 },
                     { id: 'templates', label: t('contract_creator.tab.templates', 'Template'), icon: FolderOpen },
+                    { id: 'history', label: t('documents.tab.history', 'Riwayat'), icon: History },
+                    { id: 'info', label: t('documents.tab.info', 'Info'), icon: Info },
+                    { id: 'comments', label: t('documents.tab.comments', 'Komentar'), icon: MessageSquare },
                   ] as const
                 ).map((tab) => {
                   const Icon = tab.icon;
@@ -1094,7 +1467,41 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-3">
-              
+
+              {sidebarTab === 'history' && (
+                <DraftHistoryPanel
+                  documentId={currentDoc?.id ?? null}
+                  currentVersion={currentDoc?.current_version ?? null}
+                  refreshKey={historyRefreshKey}
+                  canEdit={canEdit}
+                  viewingVersion={previewOverride?.version ?? null}
+                  onView={(version) => showVersion(version, 'version')}
+                  onCompare={(version) => showVersion(version, 'diff')}
+                  onRestore={restoreVersion}
+                />
+              )}
+
+              {sidebarTab === 'info' && (
+                <DocumentInfoPanel
+                  document={currentDoc}
+                  organizationName={activeTenant?.name ?? '—'}
+                  canEdit={canEdit}
+                  canManageFields={canManageFields}
+                  onUpdate={updateDocumentInfo}
+                />
+              )}
+
+              {sidebarTab === 'comments' && (
+                <CommentsPanel
+                  editor={editor}
+                  documentId={currentDoc?.id ?? null}
+                  canEdit={canEdit}
+                  ensureSaved={() => saveNow('manual')}
+                  onContentChanged={(kind) => void saveNow(kind)}
+                  onExportRedline={handleExportRedline}
+                />
+              )}
+
               {/* TAB 1: QUICK FILL FORM (Baris yang harus diisi) */}
               {sidebarTab === 'fields' && (
                 <div className="space-y-2.5">
@@ -1670,6 +2077,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
           </button>
         </div>
       </footer>
+      </div>
     </div>
   );
 };

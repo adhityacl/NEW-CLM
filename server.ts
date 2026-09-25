@@ -27,6 +27,8 @@ import {
   hydrateAuthConsoleFromDataStore,
   ensureUserAccountsExist,
 } from "./src/server/authConsoleRoutes";
+import { createDocumentRouter } from "./src/server/documentRoutes";
+import { isDemoAccountEmail, removeDemoAccounts } from "./src/server/demoAccounts";
 import Database from "better-sqlite3";
 import {
   formatContractFileName,
@@ -56,7 +58,9 @@ import {
   loadServiceAccountCredentials,
   hasServiceAccountCredentials,
   getGoogleSheetsClient,
+  setStoredServiceAccountProvider,
 } from "./src/lib/googleServiceAccountAuth";
+import { createGoogleCredentialStore, createGoogleCredentialsRouter } from "./src/server/googleCredentials";
 import multer from "multer";
 import {
   bindTenantStore,
@@ -101,6 +105,9 @@ import {
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+// Google JSON credentials uploaded in the app win over the GOOGLE_* env vars.
+const googleCredentials = createGoogleCredentialStore(sqliteDb);
+setStoredServiceAccountProvider(googleCredentials.getServiceAccount);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 30 * 1024 * 1024 },
@@ -1178,9 +1185,7 @@ async function getFreshGoogleAccessToken() {
     return currentToken || null;
   }
   try {
-    const clientId =
-      process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const { clientId, clientSecret } = googleCredentials.getOAuthClient();
     const oauth2Client = new OAuth2Client(clientId, clientSecret);
     oauth2Client.setCredentials({
       refresh_token: refreshToken,
@@ -1637,6 +1642,13 @@ if (defaultOrg) {
     defaultOrg.driveFolderId = db.googleConfig.driveFolderId;
     defaultOrg.driveFolderLink = `https://drive.google.com/drive/folders/${db.googleConfig.driveFolderId}`;
   }
+}
+// Demo-dataset logins share DEMO_ADMIN_PASSWORD, so a production server never keeps them —
+// including servers that created them before this rule existed.
+if (process.env.NODE_ENV === "production") {
+  const { allowedUsers, removed } = removeDemoAccounts(sqliteDb, db.allowedUsers || []);
+  db.allowedUsers = allowedUsers;
+  if (removed) console.log(`Production: removed ${removed} demo login account(s).`);
 }
 saveDb();
 // Hydrate the Better Auth SQLite tables (user/organization/team/member) from
@@ -4730,6 +4742,11 @@ app.delete("/api/templates/:id", (req, res) => {
   res.json({ success: true });
 });
 
+app.use("/api", createGoogleCredentialsRouter(googleCredentials));
+
+// Create Contract documents: explorer, draft versions, metadata, comments/redlines.
+app.use("/api", createDocumentRouter({ db: sqliteDb, tenantOf: getRequestTenantId }));
+
 app.post("/api/contracts", async (req: express.Request, res: express.Response) => {
   const {
     nomor_kontrak,
@@ -5715,9 +5732,7 @@ app.post("/api/cron/trigger-check", (req: express.Request, res: express.Response
 app.get(
   ["/api/auth/google/client-id", "/api/google-auth/client-id"],
   (req: express.Request, res: express.Response) => {
-    const clientId =
-      process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "";
-    res.json({ clientId });
+    res.json({ clientId: googleCredentials.getOAuthClient().clientId });
   },
 );
 app.post(
@@ -5730,15 +5745,13 @@ app.post(
           .status(400)
           .json({ error: "Authorization code is required" });
       }
-      const clientId =
-        process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      const { clientId, clientSecret } = googleCredentials.getOAuthClient();
       if (!clientId) {
         return res
           .status(500)
           .json({
             error:
-              "GOOGLE_CLIENT_ID belum dikonfigurasi di environment server.",
+              "OAuth client Google belum dikonfigurasi. Unggah file JSON OAuth client di Settings → Google, atau isi GOOGLE_CLIENT_ID.",
           });
       }
       const oauth2Client = new OAuth2Client(
@@ -6704,7 +6717,7 @@ app.post("/api/admin/reset-database", async (req: express.Request, res: express.
   }
   const primaryTenantId = dataset.tenants[0].id;
 
-  // Keep every registered login account and attach it to the primary tenant.
+  // Keep every registered (non-demo) login account and attach it to the primary tenant.
   const authUsers: any[] = (() => {
     try {
       return sqliteDb.prepare("SELECT id, name, email, role, banned, createdAt FROM user").all() as any[];
@@ -6712,9 +6725,9 @@ app.post("/api/admin/reset-database", async (req: express.Request, res: express.
       return [];
     }
   })();
-  const demoEmails = new Set(dataset.allowedUsers.map((u: any) => String(u.email).toLowerCase()));
+  // Demo accounts are never carried over: "demo" mode re-adds them from the dataset.
   const preservedUsers = authUsers
-    .filter((u) => u.email && !demoEmails.has(String(u.email).toLowerCase()))
+    .filter((u) => u.email && !isDemoAccountEmail(u.email))
     .map((u) => ({
       id: u.id,
       organizationId: primaryTenantId,
@@ -6803,6 +6816,10 @@ app.post("/api/admin/reset-database", async (req: express.Request, res: express.
       accessToken: "",
     },
   });
+  // An empty workspace (and any production server) drops the demo logins; "demo" mode elsewhere reloads them.
+  if (mode === "empty" || process.env.NODE_ENV === "production") {
+    db.allowedUsers = removeDemoAccounts(sqliteDb, db.allowedUsers, actor.id).allowedUsers;
+  }
 
   if (fs.existsSync(uploadsDir)) {
     try {
@@ -6855,21 +6872,6 @@ app.get("/api/google-service-account/status", async (req: express.Request, res: 
     res
       .status(500)
       .json({ success: false, error: err?.message || String(err) });
-  }
-});
-app.get("/api/auth/google/client-id", (req: express.Request, res: express.Response) => {
-  try {
-    let clientId = process.env.GOOGLE_CLIENT_ID || "";
-    if (!clientId) {
-      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-      if (fs.existsSync(configPath)) {
-        const raw = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-        clientId = raw.oAuthClientId || "";
-      }
-    }
-    return res.json({ clientId });
-  } catch (err: any) {
-    return res.json({ clientId: "" });
   }
 });
 app.post("/api/bulk-import", async (req: express.Request, res: express.Response) => {
