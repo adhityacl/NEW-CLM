@@ -116,7 +116,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
 
   if (registrationSuccess) {
     return (
-      <div className="dark w-full max-w-md h-[calc(100dvh-var(--spacing)*20)]">
+      <div className="w-full max-w-md h-[calc(100dvh-var(--spacing)*20)]">
         <div className="w-full h-full flex flex-col rounded-t-[2rem] border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm overflow-hidden">
           <div className="px-8 py-6 flex-1 flex flex-col justify-center overflow-y-auto text-center">
             <div className="flex justify-center mb-6">
@@ -151,7 +151,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
   }
 
   return (
-    <div className="dark w-full max-w-md h-[calc(100dvh-var(--spacing)*20)]">
+    <div className="w-full max-w-md h-[calc(100dvh-var(--spacing)*20)]">
       <div className="w-full h-full flex flex-col rounded-t-[2rem] border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm overflow-hidden">
         <div className="px-8 py-6 flex-1 flex flex-col justify-center overflow-y-auto">
           <div className="flex justify-center mb-6">
