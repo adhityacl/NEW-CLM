@@ -17,6 +17,8 @@ import {
 interface GoogleCredentialsDialogProps {
   /** Element that opens the dialog (rendered through Dialog.Trigger asChild). */
   trigger: React.ReactElement;
+  /** Called after the dialog closes, e.g. to re-check whether setup is complete. */
+  onClose?: () => void;
 }
 
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: GoogleCredentialStatus };
@@ -35,7 +37,7 @@ async function requestStatus(path: string, init?: RequestInit): Promise<GoogleCr
  * Superuser setup for the two JSON files exported from Google Cloud Console. Uploaded files are
  * stored server-side and replace the GOOGLE_* variables in .env.
  */
-export const GoogleCredentialsDialog: React.FC<GoogleCredentialsDialogProps> = ({ trigger }) => {
+export const GoogleCredentialsDialog: React.FC<GoogleCredentialsDialogProps> = ({ trigger, onClose }) => {
   const { t } = useLanguage();
   const confirmDialog = useConfirm();
   const showAlert = useAlertToast();
@@ -244,6 +246,7 @@ export const GoogleCredentialsDialog: React.FC<GoogleCredentialsDialogProps> = (
         setOpen(value);
         setErrors({});
         if (value) load();
+        else onClose?.();
       }}
     >
       <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>

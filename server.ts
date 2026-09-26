@@ -151,6 +151,7 @@ export const rbacAuthMiddleware = (req: express.Request, res: express.Response, 
     req.path === "/api/auth" || req.path.startsWith("/api/auth/") ||
     req.path === "/api/health" ||
     req.path === "/api/system/public-status" ||
+    req.path === "/api/system/setup" ||
     req.path === "/api/exchange-rates" ||
     req.path === "/api/exchange-rate-historical"
   ) {
@@ -1113,15 +1114,16 @@ const DEFAULT_BRANDING = {
 // hand). A fresh install is seeded from the demo dataset instead.
 const DEFAULT_TENANTS = [DEMO_TENANTS[0]];
 /*
- * First-run bootstrap account. It exists so a fresh clone is usable
- * immediately; the UI warns while the default password is still active.
- * Disable with SEED_DEMO_ADMIN=false, or override the credentials.
+ * There are no default credentials. The first admin is created on the
+ * first-run setup page (POST /api/system/setup). For automated deploys,
+ * setting both DEMO_ADMIN_EMAIL and DEMO_ADMIN_PASSWORD pre-creates it
+ * instead; SEED_DEMO_ADMIN=false stops that once your own admin exists.
  */
-const DEFAULT_ADMIN_EMAIL = "admin@silegal.com";
-const DEFAULT_ADMIN_PASSWORD = "123456789";
-const demoAdminEmail = (process.env.DEMO_ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL).trim().toLowerCase();
-const demoAdminPassword = process.env.DEMO_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
+const demoAdminEmail = (process.env.DEMO_ADMIN_EMAIL || "").trim().toLowerCase();
+const demoAdminPassword = process.env.DEMO_ADMIN_PASSWORD || "";
 const shouldSeedDemoAdmin = process.env.SEED_DEMO_ADMIN !== "false";
+// The password older releases seeded the admin with; only kept to warn installs still using it.
+const LEGACY_DEFAULT_ADMIN_PASSWORD = "123456789";
 const demoData = buildDemoDataset();
 let db: any = {
   allowedUsers: demoData.allowedUsers,
@@ -6080,9 +6082,12 @@ app.post(
       if (!existingUser) {
         userId = allowedUser.id || `usr_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
         try {
+          // Upsert, not INSERT OR REPLACE: a REPLACE on an existing id cascades (FKs are on)
+          // and deletes that user's password and sessions.
           sqliteDb.prepare(`
-            INSERT OR REPLACE INTO user (id, name, email, emailVerified, image, role, banned, createdAt, updatedAt)
+            INSERT INTO user (id, name, email, emailVerified, image, role, banned, createdAt, updatedAt)
             VALUES (?, ?, ?, 1, ?, ?, 0, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET email = excluded.email, image = COALESCE(excluded.image, image), updatedAt = excluded.updatedAt
           `).run(userId, userName, cleanEmail, photoURL || null, userRole, now, now);
         } catch (e) {
           console.warn("Could not insert user to sqlite:", e);
@@ -6972,8 +6977,8 @@ app.post("/api/admin/reset-database", async (req: express.Request, res: express.
   migrateLegacyRecords();
   recalculateStatuses();
   saveDb();
-  // Recreate demo users/teams/memberships in the auth tables. Demo accounts
-  // get the bootstrap password (DEMO_ADMIN_PASSWORD) so they can be tried.
+  // Recreate demo users/teams/memberships in the auth tables. Demo accounts get a
+  // password only when DEMO_ADMIN_PASSWORD is set; otherwise set theirs in the admin console.
   hydrateAuthConsoleFromDataStore(db);
   await ensureUserAccountsExist();
   addActivityLog(
@@ -7976,37 +7981,87 @@ app.get("/api/health", (_req: express.Request, res: express.Response) => {
   res.json({ status: "ok", time: new Date().toISOString() });
 });
 
-/** True while the bootstrap superuser still uses the documented password. */
+/** True while an install upgraded from an older release still uses the old shipped admin password. */
 async function isBootstrapPasswordActive(): Promise<boolean> {
   try {
     const row: any = sqliteDb.prepare(`
-      SELECT a.password FROM account a JOIN user u ON u.id = a.userId
-      WHERE LOWER(u.email) = LOWER(?) AND a.providerId = 'credential' LIMIT 1
-    `).get(demoAdminEmail);
+      SELECT password FROM account WHERE userId = 'demo-admin' AND providerId = 'credential' LIMIT 1
+    `).get();
     if (!row?.password) return false;
-    return await verifyPassword({ hash: row.password, password: DEFAULT_ADMIN_PASSWORD });
+    return await verifyPassword({ hash: row.password, password: LEGACY_DEFAULT_ADMIN_PASSWORD });
   } catch {
     return false;
   }
 }
 
-// Unauthenticated: lets the sign-in page show the first-run login hint
-// only while the documented default credentials still work.
-app.get("/api/system/public-status", async (_req: express.Request, res: express.Response) => {
-  const defaultCredentialsActive = shouldSeedDemoAdmin && demoAdminEmail === DEFAULT_ADMIN_EMAIL && (await isBootstrapPasswordActive());
+/** A fresh install has no Superuser until someone completes the first-run setup page. */
+const needsFirstRunSetup = () => !sqliteDb.prepare(`SELECT 1 FROM user WHERE LOWER(role) = 'superuser' LIMIT 1`).get();
+
+// Unauthenticated: tells the sign-in page whether to show the first-run setup form instead.
+app.get("/api/system/public-status", (_req: express.Request, res: express.Response) => {
   res.json({
     appName: db.branding?.appName || DEFAULT_BRANDING.appName,
-    defaultCredentialsActive,
-    defaultAdminEmail: defaultCredentialsActive ? DEFAULT_ADMIN_EMAIL : undefined,
+    needsSetup: needsFirstRunSetup(),
   });
+});
+
+// Unauthenticated, and only usable while no Superuser exists: creates the first admin.
+app.post("/api/system/setup", async (req: express.Request, res: express.Response) => {
+  const name = String(req.body?.name || "").trim().slice(0, 200);
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const password = String(req.body?.password || "");
+  if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
+    return res.status(400).json({ error: "INVALID_SETUP", message: "Enter your name, a valid email, and a password of at least 8 characters." });
+  }
+  if (!needsFirstRunSetup()) {
+    return res.status(409).json({ error: "ALREADY_SET_UP", message: "An administrator already exists. Please sign in." });
+  }
+  const hashed = await hashPassword(password);
+  const id = `usr_${crypto.randomUUID()}`;
+  const now = new Date().toISOString();
+  try {
+    // Re-checked inside the transaction: hashing above yields, so a second request could have won.
+    const created = sqliteDb.transaction(() => {
+      if (!needsFirstRunSetup()) return false;
+      if (sqliteDb.prepare(`SELECT 1 FROM user WHERE LOWER(email) = ?`).get(email)) {
+        throw Object.assign(new Error("That email is already used by another account."), { status: 409 });
+      }
+      sqliteDb.prepare(`
+        INSERT INTO user (id, name, email, emailVerified, role, banned, createdAt, updatedAt)
+        VALUES (?, ?, ?, 1, 'superuser', 0, ?, ?)
+      `).run(id, name, email, now, now);
+      sqliteDb.prepare(`
+        INSERT INTO account (id, accountId, providerId, userId, password, createdAt, updatedAt, issuer)
+        VALUES (?, ?, 'credential', ?, ?, ?, ?, 'local:credential')
+      `).run(`acc_${id}`, id, id, hashed, now, now);
+      return true;
+    })();
+    if (!created) {
+      return res.status(409).json({ error: "ALREADY_SET_UP", message: "An administrator already exists. Please sign in." });
+    }
+  } catch (err: any) {
+    return res.status(err?.status || 500).json({ error: "SETUP_FAILED", message: err?.message || "Setup failed." });
+  }
+  db.allowedUsers = [
+    ...(db.allowedUsers || []),
+    { id, organizationId: getDefaultTenantId(), email, name, role: "Superuser", department: null, status: "Active", addedBy: "First-run setup", createdAt: now },
+  ];
+  saveDb();
+  // Outside production the demo-workspace logins stay usable with the same password.
+  await ensureUserAccountsExist(password);
+  console.log(`First-run setup: created superuser ${email}`);
+  res.status(201).json({ success: true });
 });
 
 app.get("/api/system/status", async (req: express.Request, res: express.Response) => {
   const actor = (req as any).actor;
   const isSuperuser = actor?.role === "superuser";
+  const google = isSuperuser ? googleCredentials.status() : null;
   res.json({
     isSuperuser,
     defaultAdminPasswordActive: isSuperuser ? await isBootstrapPasswordActive() : false,
+    // Drives the "finish setup: connect Google" banner for a fresh install's admin.
+    googleSetupIncomplete: Boolean(google && (!google.serviceAccount.source || !google.oauthClient.source)),
     tenantCount: (db.tenants || []).length,
   });
 });

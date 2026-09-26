@@ -1,30 +1,10 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  signOut,
-  onAuthStateChanged,
-  User,
-} from 'firebase/auth';
-import { firebaseConfig, isFirebaseConfigured } from './firebaseConfig';
 import { translateStatic as t } from '../context/LanguageContext';
 
-// Null when VITE_FIREBASE_* is unset: Google sign-in then uses the GIS code flow below instead.
-const auth = isFirebaseConfigured
-  ? getAuth(getApps().length > 0 ? getApp() : initializeApp(firebaseConfig))
-  : null;
-
-const provider = new GoogleAuthProvider();
-provider.addScope('https://www.googleapis.com/auth/drive');
-provider.addScope('https://www.googleapis.com/auth/drive.file');
-provider.addScope('https://www.googleapis.com/auth/drive.readonly');
-provider.addScope('https://www.googleapis.com/auth/spreadsheets');
-provider.addScope('https://www.googleapis.com/auth/spreadsheets.readonly');
-provider.setCustomParameters({
-  access_type: 'offline',
-  prompt: 'consent',
-});
+/*
+ * Google sign-in and Drive/Sheets access both go through Google Identity
+ * Services with the OAuth client a Superuser uploads in "Connect Google" (or
+ * GOOGLE_CLIENT_ID). No Firebase: nothing has to be configured in .env.
+ */
 
 export interface GoogleUserProfile {
   email: string;
@@ -105,7 +85,7 @@ export const getGoogleClientId = async (): Promise<string | null> => {
   return null;
 };
 
-export const signInWithGoogleCodeFlow = async (): Promise<{ user: User; accessToken: string; profile: GoogleUserProfile }> => {
+export const signInWithGoogleCodeFlow = async (): Promise<{ accessToken: string; profile: GoogleUserProfile }> => {
   await loadGoogleIdentityScript();
   const clientId = await getGoogleClientId();
   if (!clientId || !window.google?.accounts?.oauth2?.initCodeClient) {
@@ -162,17 +142,19 @@ export const signInWithGoogleCodeFlow = async (): Promise<{ user: User; accessTo
             // Sinkronisasi otomatis token & status ke backend
             syncTokenToServer(cachedAccessToken!, data.refreshToken, profile).catch(() => {});
 
-            resolve({
-              user: (auth?.currentUser as User) || ({ email: profile.email, displayName: profile.name, photoURL: profile.photoURL } as any),
-              accessToken: cachedAccessToken!,
-              profile,
-            });
+            resolve({ accessToken: cachedAccessToken!, profile });
           } catch (err: any) {
             reject(err);
           }
         },
         error_callback: (err) => {
-          reject(new Error(err?.message || t('google_auth.oauth_failed', 'Gagal melakukan otorisasi Google OAuth')));
+          if (err?.type === 'popup_closed') {
+            reject(new Error('Jendela login Google ditutup sebelum otorisasi selesai. Silakan coba lagi.'));
+          } else if (err?.type === 'popup_failed_to_open') {
+            reject(new Error('Jendela popup login diblokir oleh browser. Harap izinkan pop-up untuk situs ini.'));
+          } else {
+            reject(new Error(err?.message || t('google_auth.oauth_failed', 'Gagal melakukan otorisasi Google OAuth')));
+          }
         },
       });
 
@@ -217,51 +199,12 @@ export const getSavedGoogleUser = (): GoogleUserProfile | null => {
   }
 };
 
+/** Reports the Google account remembered from the last sign-in; returns an unsubscribe no-op. */
 export const onGoogleAuthStateChange = (
   callback: (userProfile: GoogleUserProfile | null, token: string | null) => void
 ) => {
-  if (!auth) {
-    callback(getSavedGoogleUser(), isGoogleTokenValid() ? cachedAccessToken : null);
-    return () => {};
-  }
-  return onAuthStateChanged(auth, (user) => {
-    if (user) {
-      const profile: GoogleUserProfile = {
-        email: user.email || 'Google User',
-        name: user.displayName || 'Pengguna Google',
-        photoURL: user.photoURL || undefined,
-      };
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('google_user_profile', JSON.stringify(profile));
-      }
-      const validToken = isGoogleTokenValid() ? cachedAccessToken : null;
-      callback(profile, validToken);
-    } else {
-      callback(null, null);
-    }
-  });
-};
-
-const formatGoogleAuthError = (error: any): string => {
-  const msg = (error?.message || '').toLowerCase();
-  const code = (error?.code || '').toLowerCase();
-
-  if (msg.includes('invalid_client') || msg.includes('client secret is invalid') || code === 'auth/invalid-credential') {
-    return 'Google OAuth Client Secret di Firebase Console tidak valid atau tidak cocok dengan Client ID di Google Cloud Console. Silakan periksa kembali konfigurasi Web Client ID & Secret di Firebase Console -> Authentication -> Sign-in method -> Google.';
-  }
-  if (code === 'auth/popup-closed-by-user' || msg.includes('popup-closed-by-user') || msg.includes('closed by user')) {
-    return 'Jendela login Google ditutup sebelum otorisasi selesai. Silakan coba lagi.';
-  }
-  if (code === 'auth/popup-blocked' || msg.includes('popup-blocked')) {
-    return 'Jendela popup login diblokir oleh browser. Harap izinkan pop-up untuk situs ini.';
-  }
-  if (code === 'auth/unauthorized-domain' || msg.includes('unauthorized-domain')) {
-    return 'Domain web ini belum terdaftar di daftar Authorized Domains Firebase. Tambahkan domain ini di Firebase Console -> Authentication -> Settings -> Authorized domains.';
-  }
-  if (code === 'auth/cancelled-popup-request') {
-    return 'Permintaan login dibatalkan karena ada popup lain yang sedang aktif.';
-  }
-  return error?.message || 'Gagal menghubungkan akun Google. Silakan coba lagi.';
+  callback(getSavedGoogleUser(), isGoogleTokenValid() ? cachedAccessToken : null);
+  return () => {};
 };
 
 export const syncTokenToServer = async (
@@ -292,13 +235,13 @@ export const syncTokenToServer = async (
 };
 
 /** Exchanges a verified Google access token for an app (Better Auth) session; '' if the server refused. */
-const createAppSession = async (profile: GoogleUserProfile, accessToken: string, idToken?: string): Promise<string> => {
+const createAppSession = async (profile: GoogleUserProfile, accessToken: string): Promise<string> => {
   try {
     const syncRes = await fetch('/api/auth/google/sync-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ email: profile.email, name: profile.name, photoURL: profile.photoURL, idToken, accessToken }),
+      body: JSON.stringify({ email: profile.email, name: profile.name, photoURL: profile.photoURL, accessToken }),
     });
     if (!syncRes.ok) return '';
     const syncData = await syncRes.json();
@@ -312,46 +255,9 @@ const createAppSession = async (profile: GoogleUserProfile, accessToken: string,
   }
 };
 
-export const signInWithGoogle = async (): Promise<{ user: User; accessToken: string; profile: GoogleUserProfile; sessionToken?: string }> => {
-  if (!auth) {
-    const result = await signInWithGoogleCodeFlow();
-    return { ...result, sessionToken: await createAppSession(result.profile, result.accessToken) };
-  }
-  try {
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    const oauthAccessToken = credential?.accessToken || '';
-    const idToken = await user.getIdToken();
-
-    cachedAccessToken = oauthAccessToken;
-    const profile: GoogleUserProfile = {
-      email: user.email || 'Google User',
-      name: user.displayName || user.email?.split('@')[0] || 'Pengguna Google',
-      photoURL: user.photoURL || undefined,
-    };
-
-    if (typeof window !== 'undefined') {
-      const expiresAt = Date.now() + 3500 * 1000; // 58 minutes
-      if (oauthAccessToken) {
-        localStorage.setItem('google_access_token', oauthAccessToken);
-        localStorage.setItem('google_token_expires_at', expiresAt.toString());
-      }
-      localStorage.setItem('google_user_profile', JSON.stringify(profile));
-    }
-
-    // Sinkronisasi otomatis ke backend Better Auth & SQLite
-    const sessionToken = await createAppSession(profile, oauthAccessToken, idToken);
-
-    if (!sessionToken && idToken && typeof window !== 'undefined') {
-      localStorage.setItem('auth_session_token', idToken);
-    }
-
-    return { user, accessToken: oauthAccessToken, profile, sessionToken };
-  } catch (error: any) {
-    console.error('Google Sign In Error:', error);
-    throw new Error(formatGoogleAuthError(error));
-  }
+export const signInWithGoogle = async (): Promise<{ accessToken: string; profile: GoogleUserProfile; sessionToken?: string }> => {
+  const result = await signInWithGoogleCodeFlow();
+  return { ...result, sessionToken: await createAppSession(result.profile, result.accessToken) };
 };
 
 export const getGoogleTokenRemainingMinutes = (): number => {
@@ -363,46 +269,7 @@ export const getGoogleTokenRemainingMinutes = (): number => {
   return Math.floor(remainingMs / (1000 * 60));
 };
 
-export const silentRefreshGoogleToken = async (): Promise<{ user: User; accessToken: string; profile: GoogleUserProfile }> => {
-  if (!auth) return signInWithGoogleCodeFlow();
-  const silentProvider = new GoogleAuthProvider();
-  silentProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
-  silentProvider.addScope('https://www.googleapis.com/auth/drive.file');
-  silentProvider.addScope('https://www.googleapis.com/auth/drive.readonly');
-  silentProvider.setCustomParameters({
-    prompt: 'select_account',
-  });
-
-  try {
-    const result = await signInWithPopup(auth, silentProvider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error(t('google_auth.refresh_failed', 'Gagal memperbarui Access Token Google.'));
-    }
-    cachedAccessToken = credential.accessToken;
-    const profile: GoogleUserProfile = {
-      email: result.user.email || 'Google User',
-      name: result.user.displayName || 'Pengguna Google',
-      photoURL: result.user.photoURL || undefined,
-    };
-
-    if (typeof window !== 'undefined') {
-      const expiresAt = Date.now() + 3500 * 1000; // 58 minutes
-      localStorage.setItem('google_access_token', cachedAccessToken);
-      localStorage.setItem('google_token_expires_at', expiresAt.toString());
-      localStorage.setItem('google_user_profile', JSON.stringify(profile));
-    }
-
-    // Sinkronisasi otomatis token hasil refresh ke server
-    const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('google_refresh_token') : null;
-    syncTokenToServer(cachedAccessToken, refreshToken, profile).catch(() => {});
-
-    return { user: result.user, accessToken: cachedAccessToken, profile };
-  } catch (error: any) {
-    console.error('Silent Refresh Google Token Error:', error);
-    throw new Error(formatGoogleAuthError(error));
-  }
-};
+export const silentRefreshGoogleToken = signInWithGoogleCodeFlow;
 
 export const logoutGoogle = async () => {
   // Beritahu backend untuk memutus koneksi Google secara bersih
@@ -416,7 +283,6 @@ export const logoutGoogle = async () => {
     console.warn('[GoogleAuth] Gagal mengirim disconnect ke server:', discErr);
   }
 
-  if (auth) await signOut(auth);
   cachedAccessToken = null;
   if (typeof window !== 'undefined') {
     localStorage.removeItem('google_access_token');
@@ -582,12 +448,7 @@ export const initBackgroundGoogleTokenRefresh = () => {
 
   const checkAndRefreshToken = async () => {
     try {
-      // 1. Keep Firebase ID Token alive
-      if (auth?.currentUser) {
-        await auth.currentUser.getIdToken(false);
-      }
-
-      // 2. Proactively refresh Google OAuth token before it expires
+      // Proactively refresh the Google OAuth token before it expires
       const hasToken = Boolean(localStorage.getItem('google_access_token'));
       const hasProfile = Boolean(localStorage.getItem('google_user_profile'));
       const remainingMinutes = getGoogleTokenRemainingMinutes();

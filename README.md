@@ -50,8 +50,10 @@ Silegal is a multi-tenant Contract Lifecycle Management (CLM) application. It ma
 - **Fix**: `npm install` no longer force-rebuilds `better-sqlite3` from source. That `postinstall` step needed a full native build toolchain (Python, a C/C++ compiler); minimal environments without one — e.g. Google Cloud's build images — failed to install at all, even though `better-sqlite3`'s own prebuilt binary already installs correctly on its own. Run `npm rebuild better-sqlite3` by hand only if you see a `NODE_MODULE_VERSION` error after upgrading Node (see Troubleshooting).
 - **Security**: demo-workspace logins (`*@example.com`, which share `DEMO_ADMIN_PASSWORD`) are no longer created with `NODE_ENV=production`, are removed on start from production servers that already have them, and are deleted by an empty-workspace reset.
 - **Security**: the SQLite browser in System Admin masks uploaded credentials. Its search no longer matches masked columns, which previously allowed their contents to be guessed from the number of results.
-- **Security**: `firebase-applet-config.json` is no longer committed. Its values (Firebase Web SDK config for Google Sign-In) now come from `VITE_FIREBASE_*` in `.env`, the same way every other credential in this app is configured; the file is gitignored going forward.
-- **Fix**: an empty `VITE_FIREBASE_*` no longer crashes the app on load (`auth/invalid-api-key` thrown while importing Firebase). Firebase is now optional: without it, "Sign in with Google" falls back to the Google OAuth client, and a fresh install or migrated server boots with no Firebase setup at all.
+- **Plug-and-play install, no default credentials**: nothing in `.env` has to be filled in. The first visit to a new install shows a *Create admin account* page, the Google credentials are uploaded as JSON files, and the Gemini key and SMTP are set in Settings. The old shipped login (`admin@silegal.com` / `123456789`) no longer exists; installs upgraded from it keep working and still get a banner asking to change it.
+- **Security**: users without a password are no longer given a shared default one on start (previously every such user, including invited colleagues, got `123456789`), and the first account registered on an empty install is no longer made an admin automatically.
+- **Firebase removed**: "Sign in with Google" uses the OAuth Client JSON you upload in *Connect Google*, so there is no Firebase project or `firebase-applet-config.json` to configure. This also fixes a fresh install crashing on load with `auth/invalid-api-key`.
+- **Fix**: production builds (`npm run build` / `npm start`) no longer render a blank page. A hand-written vendor chunk split made two bundles import each other, leaving React undefined; Vite's default chunking is used instead and first-load JavaScript is ~20% smaller.
 
 **Earlier**
 - Tenant policy packs, i18n and admin settings; hardened session authentication.
@@ -65,7 +67,7 @@ Silegal is a multi-tenant Contract Lifecycle Management (CLM) application. It ma
 | Backend | Express and TypeScript in a single process (`server.ts`). In development Vite runs inside Express as middleware, so the app uses one server and one port. |
 | Auth | Better Auth (sessions, organizations, teams) plus a custom RBAC engine (`server/rbac.ts`) |
 | Data | SQLite via `better-sqlite3`, stored in one file: `auth.db` |
-| Integrations | `@google/genai`, `googleapis`, Firebase Auth (Google Sign-In), `nodemailer`, `docx`, `pdf-lib`, `pdf-parse` |
+| Integrations | `@google/genai`, `googleapis`, Google Identity Services (Google Sign-In), `nodemailer`, `docx`, `pdf-lib`, `pdf-parse` |
 | Tests | Node's built-in test runner (`node:test`) and Playwright |
 
 ## Project layout
@@ -102,11 +104,9 @@ npm run dev
 
 `npm install` creates `.env` from `.env.example` and generates a random `BETTER_AUTH_SECRET` automatically (via its `postinstall` script), so there's no `.env` to hand-edit for local development. Re-run it any time with `npm run setup` — it never touches `.env` once `BETTER_AUTH_SECRET` has a real value, so it's safe on an `.env` carried over from another server (see [Moving an existing installation to a new server](#moving-an-existing-installation-to-a-new-server)).
 
-Open **http://localhost:3000** and sign in with `admin@silegal.com` / `123456789`.
+Open **http://localhost:3000**. On the very first visit you'll see *Create admin account*: enter your name, email and a password (8+ characters) and you're signed in as the Superuser. There are no default credentials.
 
-On first start the server creates `auth.db` with all tables and loads a three-country demo workspace. A yellow banner is shown while the default password is active. Use it to change the password, open user management, or connect Google.
-
-`GEMINI_API_KEY` is only needed for the AI features, and it can also be set later in Settings → AI Model & Parser.
+On first start the server creates `auth.db` with all tables and loads a three-country demo workspace. Until the Google credential files are uploaded, a banner offers **Connect Google**. The Gemini key (AI features) and SMTP are set in Settings — nothing goes in `.env`.
 
 ## Configuration reference
 
@@ -119,11 +119,10 @@ All variables are read from `.env` in the working directory (see `.env.example`)
 | `BETTER_AUTH_SECRET` | auto-generated | **Required in production.** `npm install`/`npm run setup` fills in a random value if it's still unset or the `.env.example` placeholder. Changing it signs everyone out. |
 | `BETTER_AUTH_URL` | — | Optional: pins the app to one exact public URL, e.g. `https://clm.example.com`. Left unset, the app trusts whatever host/scheme each request actually arrives on (nginx's documented config forwards the real `Host` and `X-Forwarded-Proto`), so login works out of the box on localhost, a Codespace, or any deployed domain — nothing to update when the domain changes or the app moves to a new server. |
 | `TRUSTED_ORIGINS` | — | Optional: additional trusted origins, comma separated — only needed for a genuinely separate origin, such as a standalone front-end domain. |
-| `SEED_DEMO_ADMIN` | `true` | Creates the bootstrap Superuser (and, on a fresh database, the demo workspace) on start. **This is not switched off automatically in production.** Set it to `false` once your own admin exists. |
-| `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` | `admin@silegal.com` / `123456789` | Bootstrap Superuser. Outside production the six demo-workspace users (`*@example.com`) get the same password. With `NODE_ENV=production` those demo logins are never created, and any left over from older installs are removed on start. |
-| `GEMINI_API_KEY` | — | Gemini API key. It can instead be set in Settings → AI Model & Parser. |
-| `GOOGLE_*` | — | Optional fallback for the Google credentials. Uploading the JSON files in the app is preferred. |
-| `VITE_FIREBASE_*` | — | Optional. Firebase Web SDK config for "Sign in with Google" (`PROJECT_ID`, `APP_ID`, `API_KEY`, `AUTH_DOMAIN`, `STORAGE_BUCKET`, `MESSAGING_SENDER_ID`), from Firebase Console → Project Settings. Left empty, Google sign-in uses the Google OAuth client (`GOOGLE_CLIENT_ID` or the uploaded OAuth JSON) instead; with neither, only email/password sign-in works. |
+| `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` | — | Optional, for automated deploys: pre-creates the first Superuser instead of using the *Create admin account* page. Outside production the six demo-workspace users (`*@example.com`) get the same password. |
+| `SEED_DEMO_ADMIN` | `true` | Only matters when `DEMO_ADMIN_*` are set: `false` stops re-applying them on start once your own admin exists. |
+| `GEMINI_API_KEY` | — | Optional fallback; normally set in Settings → AI Model & Parser. |
+| `GOOGLE_*` | — | Optional fallback; normally the JSON files are uploaded in *Connect Google*. |
 | `ALLOW_GOOGLE_SELF_SIGNUP` | `false` | When `true`, any Google account can sign in and gets a user created automatically. Otherwise an administrator must invite the user first. |
 | `BETTER_AUTH_ENABLE_INFRA` / `BETTER_AUTH_API_KEY` | — | Optional Better Auth Infra dashboard and Sentinel. |
 
@@ -141,7 +140,7 @@ A Superuser uploads the files from **Connect Google** in the first-login banner,
 - They take priority over `.env`. Removing an upload falls back to `.env`.
 - Secret values are never sent back to the browser.
 
-Sign-in with Google on the login page uses Firebase when the `VITE_FIREBASE_*` variables are set (see [Configuration reference](#configuration-reference)); on a new domain, add it under Firebase Console → Authentication → Settings → **Authorized domains**. Without them it uses the Google OAuth client above, whose **Authorized JavaScript origins** must include the domain instead.
+"Sign in with Google" on the login page uses the same uploaded OAuth client, so it works as soon as that file is uploaded and the domain is in its **Authorized JavaScript origins**. Google accounts must be invited first unless `ALLOW_GOOGLE_SELF_SIGNUP=true`.
 
 ## Testing
 
@@ -180,28 +179,13 @@ sudo -u silegal npm run build   # dist/ (frontend) + dist/server.cjs
 
 ### 3. Create `.env`
 
-`npm ci` already ran `.env`'s setup for you (its `postinstall` script creates `.env` from `.env.example` and fills in a random `BETTER_AUTH_SECRET`); re-run it explicitly if needed:
+There is nothing to fill in: `npm ci` already created `.env` with a random `BETTER_AUTH_SECRET` (its `postinstall` script). Just restrict its permissions:
 
 ```bash
-sudo -u silegal npm run setup   # creates .env from .env.example, generates BETTER_AUTH_SECRET if unset
 sudo -u silegal chmod 600 .env
 ```
 
-Then set at least:
-
-```env
-NODE_ENV=production
-PORT=3000
-
-# First start only: your real admin with a strong password
-SEED_DEMO_ADMIN=true
-DEMO_ADMIN_EMAIL=you@yourcompany.com
-DEMO_ADMIN_PASSWORD=<a long unique password>
-```
-
-`BETTER_AUTH_URL` doesn't need to be set here: the app trusts whatever domain nginx forwards the request as, so login works as soon as DNS and nginx (step 5) point at this server. Only set it if you want to pin the app to one exact URL.
-
-Leave the `GOOGLE_*` values empty; you will upload the JSON files in step 6.
+`NODE_ENV=production` comes from the service file in step 4, the admin account is created in the browser in step 6, and the Google credentials are uploaded there too.
 
 ### 4. Run it as a service
 
@@ -259,11 +243,10 @@ Keep port 3000 closed to the internet; only nginx should reach it.
 
 ### 6. First-run checklist (in the browser)
 
-1. Sign in with `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD`.
+1. Open `https://clm.example.com` and fill in **Create admin account** (it only appears while no admin exists — do this right after the site goes live).
 2. **Remove the demo data**: Settings → Security & Maintenance → *Reset System Database* → *Start empty with my organization*. The reset signs you out; sign in again. (The demo login accounts are never created in production, and an empty-workspace reset also deletes them.)
-3. **Connect Google**: upload the two JSON files (see [Google integration](#google-integration)). Add `https://clm.example.com` to the OAuth client's JavaScript origins and to Firebase's authorized domains.
+3. **Connect Google** (banner or Settings): upload the two JSON files (see [Google integration](#google-integration)), and add `https://clm.example.com` to the OAuth client's **Authorized JavaScript origins**.
 4. Optional: set the Gemini key (Settings → AI Model & Parser) and SMTP (Settings → Notification Recipients), and invite your users (Organization Admin → Invitations).
-5. Set `SEED_DEMO_ADMIN=false` in `.env`, then run `sudo systemctl restart silegal`.
 
 ## Moving an existing installation to a new server
 
@@ -278,9 +261,9 @@ All application data lives in `auth.db`, including users, organizations, contrac
    tar czf silegal-data.tgz auth-migrate.db uploads .env
    ```
 3. Copy `silegal-data.tgz` to the new server and unpack it into `/opt/silegal/app`. Rename `auth-migrate.db` to `auth.db`, then run `chown -R silegal: .` and `chmod 600 .env`.
-4. Update `.env` for the new host: `SEED_DEMO_ADMIN=false`, and `BETTER_AUTH_URL`/`TRUSTED_ORIGINS` too if the old `.env` had them pinned to the old domain (unset, the app just follows the new host automatically). Keep the same `BETTER_AUTH_SECRET` so existing sessions stay valid; a new secret only signs everyone out.
+4. If the old `.env` pinned `BETTER_AUTH_URL`/`TRUSTED_ORIGINS` to the old domain, remove or update them (unset, the app just follows the new host). Keep the same `BETTER_AUTH_SECRET` so existing sessions stay valid; a new secret only signs everyone out. Users and credentials come with `auth.db`, so no setup page appears.
 5. Continue with steps 4–5 above (service and nginx). New tables and columns are created automatically on start.
-6. If the domain changed, update the Google OAuth JavaScript origins and the Firebase authorized domains.
+6. If the domain changed, add it to the Google OAuth client's **Authorized JavaScript origins**.
 
 ## Backups and updates
 

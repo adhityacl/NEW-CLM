@@ -798,22 +798,9 @@ export const auth = betterAuth({
       create: {
         before: async (user) => {
           console.log('[AUTH HOOK] Creating user (before):', user.email);
-          // Check if this is the very first user, make them admin, don't ban
-          try {
-            const count = sqliteDb.prepare("SELECT COUNT(*) as cnt FROM user").get() as any;
-            if (!count || count.cnt === 0) {
-              return {
-                data: {
-                  ...user,
-                  role: "admin",
-                  banned: false,
-                  banReason: null,
-                },
-              };
-            }
-          } catch (e) {
-            // Table might not exist yet during migration, allow through
-          }
+          // No "first registrant becomes admin" shortcut: the first admin is created by
+          // the first-run setup page (POST /api/system/setup). With it, whoever hit the
+          // sign-up API first on an empty install would have been handed admin.
 
           // Read the SQLite whitelist before applying pending approval.
           try {
@@ -845,16 +832,14 @@ export const auth = betterAuth({
         },
         after: async (user) => {
           console.log('[AUTH HOOK] User created (after):', user.email);
-          // If this is NOT the first user and NOT whitelisted, we update the DB to ban them!
+          // Not whitelisted → hold for administrator approval.
           try {
-            const isFirst = user.role === 'admin';
-            
             const isAllowed = sqliteDb.prepare(
               'SELECT status FROM allowed_users WHERE LOWER(email) = LOWER(?)',
             ).get(user.email) as any;
             const isWhitelisted = isAllowed?.status === 'Active';
 
-            if (!isFirst && !isWhitelisted) {
+            if (!isWhitelisted) {
               console.log('[AUTH HOOK] Auto-banning user for pending approval:', user.email);
               sqliteDb.prepare("UPDATE user SET banned = 1, banReason = 'PENDING_APPROVAL' WHERE id = ?").run(user.id);
             }

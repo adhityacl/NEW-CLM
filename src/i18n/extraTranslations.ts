@@ -269,6 +269,7 @@ export const EXTRA_TRANSLATIONS: Record<'ID' | 'EN', Record<string, string>> = {
     'documents.type.other': 'Other',
     // Google credential files (service account + OAuth client)
     'google_setup.button': 'Connect Google',
+    'google_setup.finish_setup': 'Finish setup: upload your Google Service Account and OAuth Client JSON files to enable Drive, Sheets and Google sign-in.',
     'google_setup.choose': 'Choose JSON file',
     'google_setup.description': 'Upload the two JSON files exported from Google Cloud Console. They are stored on the server, replace the GOOGLE_* variables in .env, and their secret values are never shown again.',
     'google_setup.done': 'Done',
@@ -1783,6 +1784,7 @@ export const EXTRA_TRANSLATIONS: Record<'ID' | 'EN', Record<string, string>> = {
     'documents.type.other': 'Lainnya',
     // Google credential files (service account + OAuth client)
     'google_setup.button': 'Hubungkan Google',
+    'google_setup.finish_setup': 'Selesaikan penyiapan: unggah file JSON Service Account dan OAuth Client Google untuk mengaktifkan Drive, Sheets, dan login Google.',
     'google_setup.choose': 'Pilih file JSON',
     'google_setup.description': 'Unggah dua file JSON yang diekspor dari Google Cloud Console. File disimpan di server, menggantikan variabel GOOGLE_* di .env, dan isinya yang rahasia tidak pernah ditampilkan lagi.',
     'google_setup.done': 'Selesai',

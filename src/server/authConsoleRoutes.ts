@@ -8,6 +8,7 @@ import nodemailer from 'nodemailer';
 import { authzError, buildAuditEvent, canChangeRole, canInvite, type Actor } from '../../server/rbac';
 import { getDefaultTenantId } from '../../server/tenantPolicy';
 import { resolveTenantSettings } from '../lib/policy';
+import { isDemoAccountEmail } from './demoAccounts';
 
 export const authConsoleRouter = Router();
 function getConsoleTenantScope(req: Request): string | null {
@@ -75,18 +76,26 @@ export function setConsoleDbReference(dbStore: any, saveFn: () => void) {
 }
 
 
-export async function ensureUserAccountsExist(defaultPassword = process.env.DEMO_ADMIN_PASSWORD || '123456789') {
+/**
+ * Gives the env-configured bootstrap admin (`demo-admin`) and the demo-workspace
+ * logins a password. Nobody else ever gets one implicitly — this used to hand
+ * every password-less user (e.g. an invited colleague) a shared default password.
+ * No password configured → no-op; the first admin then comes from the setup page.
+ */
+export async function ensureUserAccountsExist(defaultPassword = process.env.DEMO_ADMIN_PASSWORD || '') {
+  if (!defaultPassword) return;
   try {
-    const users = sqliteDb.prepare('SELECT id, email FROM user').all() as any[];
-    if (!users || users.length === 0) return;
+    const users = (sqliteDb.prepare('SELECT id, email FROM user').all() as any[]).filter(
+      (u) => u.id === 'demo-admin' || isDemoAccountEmail(u.email),
+    );
+    if (users.length === 0) return;
     const now = new Date().toISOString();
     let hashedDef: string | null = null;
     // While the bootstrap admin is still seeded, its credential must track
     // DEMO_ADMIN_PASSWORD on every boot — otherwise editing .env after the
-    // account already exists (e.g. it was created once with the defaults, or
-    // auth.db was copied from another install) silently has no effect and
-    // the documented login just stops working with no error.
-    const reseedBootstrapAdmin = process.env.SEED_DEMO_ADMIN !== 'false';
+    // account already exists (e.g. auth.db was copied from another install)
+    // silently has no effect and the configured login just stops working.
+    const reseedBootstrapAdmin = process.env.SEED_DEMO_ADMIN !== 'false' && defaultPassword === process.env.DEMO_ADMIN_PASSWORD;
 
     for (const u of users) {
       const existing = sqliteDb.prepare("SELECT id FROM account WHERE userId = ? AND providerId = 'credential'").get(u.id) as any;
@@ -162,9 +171,15 @@ export function hydrateAuthConsoleFromDataStore(dbStore: any) {
         const banned = u.status === 'Inactive' || u.status === 'Banned' ? 1 : 0;
         const orgId = u.organizationId || getDefaultTenantId();
 
+        // Upsert, never INSERT OR REPLACE: better-sqlite3 enforces foreign keys, so REPLACE's
+        // delete-then-insert cascaded to account/session and wiped every user's password and
+        // sessions on each boot (they were then silently recreated with a shared default).
         sqliteDb.prepare(`
-          INSERT OR REPLACE INTO user (id, name, email, emailVerified, role, banned, createdAt, updatedAt)
+          INSERT INTO user (id, name, email, emailVerified, role, banned, createdAt, updatedAt)
           VALUES (?, ?, ?, 1, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name, email = excluded.email, role = excluded.role, banned = excluded.banned,
+            banReason = CASE WHEN excluded.banned = 0 THEN NULL ELSE banReason END, updatedAt = excluded.updatedAt
         `).run(userId, u.name || 'User', u.email.toLowerCase(), finalRole, banned, u.createdAt || now, now);
 
         sqliteDb.prepare(`
