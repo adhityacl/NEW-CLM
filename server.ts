@@ -105,6 +105,10 @@ import {
 } from "./src/lib/cheapOcrPipeline";
 
 const app = express();
+// This app is only ever meant to run behind a reverse proxy (nginx, Cloud
+// Run, Codespaces' tunnel — see README: "keep port 3000 closed to the
+// internet"), so trust its X-Forwarded-* headers for req.ip/req.protocol.
+app.set("trust proxy", true);
 const PORT = Number(process.env.PORT) || 3000;
 // Google JSON credentials uploaded in the app win over the GOOGLE_* env vars.
 const googleCredentials = createGoogleCredentialStore(sqliteDb);

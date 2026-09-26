@@ -30,17 +30,28 @@ const extraOrigins = (process.env.TRUSTED_ORIGINS || "")
   .filter(Boolean);
 /**
  * Trusts the request's own Origin header, but only once it's confirmed to
- * actually be this request's origin: its host must match the Host header of
- * the same request. Comparing hosts (not reconstructing a URL and guessing
+ * actually be this request's origin: its host must match the host this
+ * request arrived on. Comparing hosts (not reconstructing a URL and guessing
  * the scheme from `X-Forwarded-Proto`/`NODE_ENV`) sidesteps a real failure
  * seen behind tunnels that terminate TLS without forwarding that header
  * (e.g. GitHub Codespaces' port forwarding): guessing "http" there caused a
  * same-origin `https://` request to be rejected as a scheme mismatch. A
  * cross-site request still carries the attacker's own Origin, whose host
  * never matches, so this stays exactly as safe as a fixed allowlist.
+ *
+ * `X-Forwarded-Host` is checked first: Cloud Run (and similar managed
+ * reverse proxies) can present the container with an internal `Host` that
+ * differs from the public URL the browser actually used, while forwarding
+ * the real public host via `X-Forwarded-Host` — the plain `Host` header
+ * alone rejected every login there with "Invalid origin". Trusting it is
+ * safe under the same assumption the rest of this app already documents for
+ * production (README: "keep port 3000 closed to the internet; only
+ * nginx/the platform proxy should reach it") — a request that bypassed the
+ * proxy could otherwise forge this header, so it must never be reachable
+ * directly.
  */
 function selfOrigin(request?: Request): string[] {
-  const host = request?.headers.get("host");
+  const host = request?.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || request?.headers.get("host");
   const origin = request?.headers.get("origin");
   if (!host || !origin) return [];
   try {
