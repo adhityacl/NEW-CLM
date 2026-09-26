@@ -1230,7 +1230,10 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       {/* The editor stays mounted (hidden) while the explorer is shown so TipTap keeps its state. */}
       <div className={screen === 'explorer' ? 'hidden' : 'contents'}>
       {/* 1. TOP NAVBAR / HEADER */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0 z-20">
+      {/* No z-index here: as a flex item (via the `contents` wrapper above) it applies even at
+          position:static, and matching the app Header's z-20 let this later-in-DOM element win
+          the tie-break and paint over the Header's user-menu dropdown. */}
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2.5 min-w-0 max-w-full">
           <button
             type="button"
@@ -2179,7 +2182,8 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       </div>
 
       {/* 5. BOTTOM STATUS BAR */}
-      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 py-2 flex items-center justify-between text-xs text-slate-500 shrink-0 z-20">
+      {/* Same flex-item z-index gotcha as the top header above: no z-index needed here. */}
+      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 py-2 flex items-center justify-between text-xs text-slate-500 shrink-0">
         <div className="flex items-center gap-4">
           <span>{wordCount} {t('contract_creator.footer.words', 'kata')}</span>
           <span className="hidden sm:inline">{t('contract_creator.text_2', '•')}</span>

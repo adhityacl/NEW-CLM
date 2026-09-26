@@ -1132,7 +1132,8 @@ const AppContent = () => {
         glowRadius={28}
         showFade
         fadeIntensity={25}
-        className="min-h-screen w-full flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950"
+        className="min-h-dvh w-full flex items-start justify-center px-4 bg-slate-50 dark:bg-slate-950"
+        style={{ paddingTop: 'calc(var(--spacing) * 15)' }}
       >
         <SignInForm
           onOpenPrivacyPolicy={handleOpenPrivacy}

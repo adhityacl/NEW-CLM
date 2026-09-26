@@ -698,6 +698,7 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     // Login Page
     'login.google_button': 'Masuk dengan Akun Google',
     'login.welcome': 'Selamat Datang',
+    'login.welcome_app': 'Selamat Datang di {appName}',
     'login.create_account': 'Buat Akun',
     'login.fill_form_reg': 'Silakan isi formulir untuk registrasi',
     'login.fill_form_login': 'Silakan masuk untuk mengakses aplikasi',
@@ -1724,6 +1725,7 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     // Login Page
     'login.google_button': 'Sign in with Google Account',
     'login.welcome': 'Welcome',
+    'login.welcome_app': 'Welcome to {appName}',
     'login.create_account': 'Create Account',
     'login.fill_form_reg': 'Please fill in the form to register',
     'login.fill_form_login': 'Please sign in to access the application',

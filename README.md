@@ -45,6 +45,7 @@ Silegal is a multi-tenant Contract Lifecycle Management (CLM) application. It ma
 - **Contract Creator**: added the document explorer, autosaved drafts with version history, diff and restore, document metadata with organization custom fields, and redlining (comments, suggested changes, accept/reject, redline export). The data is stored in new SQLite tables that are created automatically on start.
 - **Google credentials without `.env`**: a Superuser can upload the service account and OAuth client JSON files from the first-login banner (*Connect Google*) or from Settings. Uploaded files take priority over the `GOOGLE_*` variables and apply without a restart.
 - **Fix**: `.env` is now loaded before any module reads it. Previously `BETTER_AUTH_SECRET` and the Google OAuth values were read before `.env` was loaded, so development silently used an insecure secret and production crashed at startup even with a correct `.env`.
+- **Fix**: the bootstrap Superuser's login now works on any host without editing `.env`. `BETTER_AUTH_URL`/`TRUSTED_ORIGINS` were previously required to match the exact deploy domain or login would fail; they're now optional overrides, since the app trusts whatever host/scheme each request actually arrives on. The bootstrap account's password is also now kept in sync with `DEMO_ADMIN_PASSWORD` on every restart (while `SEED_DEMO_ADMIN` isn't `false`), instead of only on first creation.
 - **Security**: demo-workspace logins (`*@example.com`, which share `DEMO_ADMIN_PASSWORD`) are no longer created with `NODE_ENV=production`, are removed on start from production servers that already have them, and are deleted by an empty-workspace reset.
 - **Security**: the SQLite browser in System Admin masks uploaded credentials. Its search no longer matches masked columns, which previously allowed their contents to be guessed from the number of results.
 
@@ -109,11 +110,11 @@ All variables are read from `.env` in the working directory (see `.env.example`)
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `NODE_ENV` | — | Set to `production` on servers. In production the app serves the built `dist/`, uses secure cookies, requires `BETTER_AUTH_SECRET`, and stops trusting `localhost` origins. |
+| `NODE_ENV` | — | Set to `production` on servers. In production the app serves the built `dist/` and uses secure cookies, and requires `BETTER_AUTH_SECRET`. |
 | `PORT` | `3000` | HTTP port. |
 | `BETTER_AUTH_SECRET` | auto-generated | **Required in production.** `npm install`/`npm run setup` fills in a random value if it's still unset or the `.env.example` placeholder. Changing it signs everyone out. |
-| `BETTER_AUTH_URL` | — | Public base URL, e.g. `https://clm.example.com`. It is also added as a trusted origin. |
-| `TRUSTED_ORIGINS` | — | Additional allowed origins, comma separated. |
+| `BETTER_AUTH_URL` | — | Optional: pins the app to one exact public URL, e.g. `https://clm.example.com`. Left unset, the app trusts whatever host/scheme each request actually arrives on (nginx's documented config forwards the real `Host` and `X-Forwarded-Proto`), so login works out of the box on localhost, a Codespace, or any deployed domain — nothing to update when the domain changes or the app moves to a new server. |
+| `TRUSTED_ORIGINS` | — | Optional: additional trusted origins, comma separated — only needed for a genuinely separate origin, such as a standalone front-end domain. |
 | `SEED_DEMO_ADMIN` | `true` | Creates the bootstrap Superuser (and, on a fresh database, the demo workspace) on start. **This is not switched off automatically in production.** Set it to `false` once your own admin exists. |
 | `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` | `admin@silegal.com` / `123456789` | Bootstrap Superuser. Outside production the six demo-workspace users (`*@example.com`) get the same password. With `NODE_ENV=production` those demo logins are never created, and any left over from older installs are removed on start. |
 | `GEMINI_API_KEY` | — | Gemini API key. It can instead be set in Settings → AI Model & Parser. |
@@ -186,13 +187,14 @@ Then set at least:
 ```env
 NODE_ENV=production
 PORT=3000
-BETTER_AUTH_URL=https://clm.example.com
 
 # First start only: your real admin with a strong password
 SEED_DEMO_ADMIN=true
 DEMO_ADMIN_EMAIL=you@yourcompany.com
 DEMO_ADMIN_PASSWORD=<a long unique password>
 ```
+
+`BETTER_AUTH_URL` doesn't need to be set here: the app trusts whatever domain nginx forwards the request as, so login works as soon as DNS and nginx (step 5) point at this server. Only set it if you want to pin the app to one exact URL.
 
 Leave the `GOOGLE_*` values empty; you will upload the JSON files in step 6.
 
@@ -271,7 +273,7 @@ All application data lives in `auth.db`, including users, organizations, contrac
    tar czf silegal-data.tgz auth-migrate.db uploads .env
    ```
 3. Copy `silegal-data.tgz` to the new server and unpack it into `/opt/silegal/app`. Rename `auth-migrate.db` to `auth.db`, then run `chown -R silegal: .` and `chmod 600 .env`.
-4. Update `.env` for the new host: `BETTER_AUTH_URL`, `TRUSTED_ORIGINS`, and `SEED_DEMO_ADMIN=false`. Keep the same `BETTER_AUTH_SECRET` so existing sessions stay valid; a new secret only signs everyone out.
+4. Update `.env` for the new host: `SEED_DEMO_ADMIN=false`, and `BETTER_AUTH_URL`/`TRUSTED_ORIGINS` too if the old `.env` had them pinned to the old domain (unset, the app just follows the new host automatically). Keep the same `BETTER_AUTH_SECRET` so existing sessions stay valid; a new secret only signs everyone out.
 5. Continue with steps 4–5 above (service and nginx). New tables and columns are created automatically on start.
 6. If the domain changed, update the Google OAuth JavaScript origins and the Firebase authorized domains.
 

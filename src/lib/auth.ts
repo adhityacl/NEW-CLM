@@ -10,9 +10,17 @@ const googleClientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
 
 /*
- * Deployment URL configuration (PRD §5.4). BETTER_AUTH_URL is the public
- * base URL; TRUSTED_ORIGINS (comma separated) adds extra origins such as a
- * separate front-end host. Localhost is trusted only outside production.
+ * Deployment URL configuration (PRD §5.4). BETTER_AUTH_URL / TRUSTED_ORIGINS
+ * are optional overrides for pinning or widening the allowed origins (e.g. a
+ * separate front-end domain). Left unset, `trustedOrigins` below trusts
+ * whatever host/scheme the request actually arrived on instead — `server.ts`'s
+ * toNodeHandler call builds every `/api/auth/*` request's URL from its real
+ * `Host`/`X-Forwarded-Proto` headers (see better-call's node adapter), and the
+ * documented nginx config forwards those unchanged. This is exactly the
+ * origin the browser is talking to, so it's as safe as a fixed allowlist — a
+ * cross-site page's forged request still carries *its own* Origin, which
+ * never matches — and it means there's nothing to "capture" at build/deploy
+ * time: a fresh clone logs in correctly on whatever domain it's reached at.
  */
 const isProduction = process.env.NODE_ENV === "production";
 const publicBaseUrl = (process.env.BETTER_AUTH_URL || "").trim().replace(/\/$/, "");
@@ -20,22 +28,27 @@ const extraOrigins = (process.env.TRUSTED_ORIGINS || "")
   .split(",")
   .map((o) => o.trim().replace(/\/$/, ""))
   .filter(Boolean);
-const hostOf = (url: string) => {
+/**
+ * Trusts the request's own Origin header, but only once it's confirmed to
+ * actually be this request's origin: its host must match the Host header of
+ * the same request. Comparing hosts (not reconstructing a URL and guessing
+ * the scheme from `X-Forwarded-Proto`/`NODE_ENV`) sidesteps a real failure
+ * seen behind tunnels that terminate TLS without forwarding that header
+ * (e.g. GitHub Codespaces' port forwarding): guessing "http" there caused a
+ * same-origin `https://` request to be rejected as a scheme mismatch. A
+ * cross-site request still carries the attacker's own Origin, whose host
+ * never matches, so this stays exactly as safe as a fixed allowlist.
+ */
+function selfOrigin(request?: Request): string[] {
+  const host = request?.headers.get("host");
+  const origin = request?.headers.get("origin");
+  if (!host || !origin) return [];
   try {
-    return new URL(url).host;
+    return new URL(origin).host === host ? [origin] : [];
   } catch {
-    return "";
+    return [];
   }
-};
-const allowedHosts = Array.from(new Set([
-  ...[publicBaseUrl, ...extraOrigins].map(hostOf).filter(Boolean),
-  ...(isProduction ? [] : ["localhost:*", "127.0.0.1:*"]),
-]));
-const trustedOrigins = Array.from(new Set([
-  ...(publicBaseUrl ? [publicBaseUrl] : []),
-  ...extraOrigins,
-  ...(isProduction ? [] : ["http://localhost:*", "http://127.0.0.1:*"]),
-]));
+}
 const authSecret = process.env.BETTER_AUTH_SECRET || "";
 if (!authSecret && isProduction) {
   throw new Error("BETTER_AUTH_SECRET must be set in production (use a long random value).");
@@ -734,10 +747,10 @@ try {
 
 // --- Better Auth Instance ---
 export const auth = betterAuth({
-  baseURL: {
-    allowedHosts: allowedHosts.length > 0 ? allowedHosts : ["localhost:*"],
-    protocol: publicBaseUrl.startsWith("https://") ? "https" : isProduction ? "https" : "http",
-  },
+  // Unset: Better Auth derives the base URL per request from its real
+  // Host/X-Forwarded-Proto headers (see the comment above) instead of a
+  // fixed host baked in at startup.
+  baseURL: publicBaseUrl || undefined,
   database: sqliteDb,
   emailAndPassword: {
     enabled: true,
@@ -841,6 +854,8 @@ export const auth = betterAuth({
       },
     },
   },
-  trustedOrigins,
+  // A function, not a static array, so Better Auth re-evaluates it per
+  // request instead of once at startup — see selfOrigin() above.
+  trustedOrigins: async (request?: Request) => [...extraOrigins, ...selfOrigin(request)],
   secret: authSecret || "insecure-development-secret-change-me",
 });

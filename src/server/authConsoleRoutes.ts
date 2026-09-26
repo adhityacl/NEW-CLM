@@ -81,13 +81,22 @@ export async function ensureUserAccountsExist(defaultPassword = process.env.DEMO
     if (!users || users.length === 0) return;
     const now = new Date().toISOString();
     let hashedDef: string | null = null;
+    // While the bootstrap admin is still seeded, its credential must track
+    // DEMO_ADMIN_PASSWORD on every boot — otherwise editing .env after the
+    // account already exists (e.g. it was created once with the defaults, or
+    // auth.db was copied from another install) silently has no effect and
+    // the documented login just stops working with no error.
+    const reseedBootstrapAdmin = process.env.SEED_DEMO_ADMIN !== 'false';
 
     for (const u of users) {
-      const existing = sqliteDb.prepare("SELECT id FROM account WHERE userId = ? AND providerId = 'credential'").get(u.id);
-      if (!existing) {
-        if (!hashedDef) {
-          hashedDef = await hashPassword(defaultPassword);
-        }
+      const existing = sqliteDb.prepare("SELECT id FROM account WHERE userId = ? AND providerId = 'credential'").get(u.id) as any;
+      if (existing && !(reseedBootstrapAdmin && u.id === 'demo-admin')) continue;
+      if (!hashedDef) {
+        hashedDef = await hashPassword(defaultPassword);
+      }
+      if (existing) {
+        sqliteDb.prepare('UPDATE account SET password = ?, updatedAt = ? WHERE id = ?').run(hashedDef, now, existing.id);
+      } else {
         const accountId = 'acc_' + u.id;
         sqliteDb.prepare(`
           INSERT OR IGNORE INTO account (id, accountId, providerId, userId, password, createdAt, updatedAt, issuer)

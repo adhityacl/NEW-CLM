@@ -70,6 +70,11 @@ export const documentsApi = {
   ) => request<DocumentComment>(`/documents/${id}/comments`, json('POST', input)),
   commentAction: (id: string, commentId: string, action: CommentAction) =>
     request<DocumentComment>(`/documents/${id}/comments/${commentId}/${action}`, json('POST')),
+  aiRedline: (id: string, plainText: string) =>
+    request<{ success: true; created: Array<{ id: string; quote: string; new_text: string }>; skipped: number }>(
+      `/documents/${id}/ai-redline`,
+      json('POST', { plainText }),
+    ),
 };
 
 export const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));

@@ -4713,6 +4713,106 @@ Return JSON with exactly:
   }
 });
 
+/**
+ * AI Redlining for the Contract Creator editor: reviews the whole document
+ * against the tenant's country/industry rules (same aiPolicyContext used by
+ * the contract-level redline analysis above) and files each finding as an
+ * ordinary suggestion in contract_comments — so it shows up, and is
+ * accepted/rejected, exactly like a manually authored "Suggest Change".
+ *
+ * The client sends plain text (editor.getText({blockSeparator: ' '})) rather
+ * than this route deriving it from the stored HTML: that guarantees the text
+ * the model reviews is byte-for-byte what the client will later search
+ * within to anchor each suggestion back into the live document.
+ */
+app.post("/api/documents/:id/ai-redline", async (req: express.Request, res: express.Response) => {
+  const document = sqliteDb
+    .prepare(`SELECT id, organization_id, name FROM contract_documents WHERE id = ?`)
+    .get(req.params.id) as { id: string; organization_id: string; name: string } | undefined;
+  if (!document || !isMatchingOrg(document.organization_id, getRequestTenantId(req))) {
+    return res.status(404).json({ error: "Document not found." });
+  }
+  if (!ensureAiAvailable(req, res)) return;
+  const plainText = String(req.body?.plainText || "").trim().slice(0, 40000);
+  if (!plainText) {
+    return res.status(400).json({ error: "The document has no text to review yet." });
+  }
+  const actor = (req as any).actor;
+  if (!actor) return res.status(401).json({ error: "UNAUTHENTICATED" });
+  try {
+    const selectedModel = getValidAiModel(req.body.model);
+    const ctx = aiPolicyContext(document.organization_id);
+    const regulatorLine = ctx.regulators.length > 0
+      ? `Regulators relevant to our industry in ${ctx.countryName}: ${ctx.regulators.join(", ")}. Flag wording that conflicts with outsourcing, audit-right or reporting expectations they typically impose.`
+      : "No specific sector regulator is configured; assess against general commercial law and good practice.";
+    const prompt = `You are a senior corporate legal counsel performing AI-assisted contract redlining for ${ctx.organizationName}, a ${ctx.industryName} organization whose primary jurisdiction is ${ctx.countryName}.
+Review the ENTIRE document below and propose specific clause-level redlines needed to align it with our governing-law position (${ctx.governingLaw}), our data-protection posture (${ctx.dataProtectionLaw}), and these industry rules — apply every rule that is actually triggered by the document's wording:
+${ctx.clauseRules.map((rule) => `- ${rule}`).join("\n")}
+${regulatorLine}
+Compliance standards to check against: ${ctx.complianceStandards.join("; ")}.
+Tax points to consider (${ctx.indirectTaxName} and withholding): ${ctx.taxConsiderations.join(" ")}
+Write every "rationale" in ${ctx.responseLanguage}. Do not invent statute or regulation numbers — cite them only when certain, otherwise describe the requirement in general terms. Skip clauses that are already compliant. Return at most 20 suggestions, most severe first.
+
+Each "quote" MUST be copied EXACTLY, character-for-character, from the document text below — a short excerpt (at most one sentence or clause), never paraphrased, never with added or removed whitespace, because it is used to locate the clause in the live document. "new_text" is the balanced replacement wording for that exact excerpt (or an empty string to recommend deleting it outright).
+
+=== DOCUMENT: ${document.name} ===
+${plainText}
+`;
+    const response = await generateContentWithRetryAndFallback({
+      model: selectedModel,
+      contents: [{ text: prompt }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            suggestions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  quote: { type: Type.STRING },
+                  new_text: { type: Type.STRING },
+                  rationale: { type: Type.STRING },
+                },
+                required: ["quote", "new_text", "rationale"],
+              },
+            },
+          },
+          required: ["suggestions"],
+        },
+      },
+    });
+    const parsed = JSON.parse((response as any).text);
+    const rawSuggestions = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
+    const nowIso = new Date().toISOString();
+    const created: Array<{ id: string; quote: string; new_text: string }> = [];
+    let skipped = 0;
+    for (const item of rawSuggestions.slice(0, 20)) {
+      const quote = String(item?.quote || "").trim();
+      const newText = String(item?.new_text ?? "").trim();
+      const rationale = String(item?.rationale || "").trim();
+      // The model sometimes paraphrases despite instructions; a quote that isn't a
+      // literal substring can never be anchored back into the document, so drop it
+      // rather than filing an orphaned suggestion nobody can act on.
+      if (!quote || !plainText.includes(quote)) {
+        skipped++;
+        continue;
+      }
+      const id = `cmt-${crypto.randomUUID()}`;
+      sqliteDb.prepare(`
+        INSERT INTO contract_comments (id, contract_id, parent_id, comment_type, body, quote, new_text, status, author_id, created_at)
+        VALUES (?, ?, NULL, 'suggestion', ?, ?, ?, 'open', ?, ?)
+      `).run(id, document.id, rationale ? `AI Redlining: ${rationale}` : "AI Redlining suggestion.", quote, newText, actor.id, nowIso);
+      created.push({ id, quote, new_text: newText });
+    }
+    res.status(201).json({ success: true, created, skipped });
+  } catch (error: any) {
+    console.error("Error during AI redlining:", error);
+    res.status(500).json({ error: error?.message || "AI redlining failed. Please try again." });
+  }
+});
+
 // Custom Template & Translation Endpoints
 // Contract templates are tenant-scoped (PRD §3.3.3, §3.4.1).
 app.get("/api/templates", (req, res) => {

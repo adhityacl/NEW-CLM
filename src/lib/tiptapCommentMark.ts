@@ -73,6 +73,41 @@ export function getSelectionQuote(editor: Editor): SelectionQuote | null {
   return text ? { from, to, text } : null;
 }
 
+/**
+ * Locates a plain-text quote (e.g. from an AI suggestion, which only knows text,
+ * never document positions) inside the live document, using the same `' '`
+ * block-separator convention `addCommentAnchor` validates against below. Returns
+ * the first match, or null if the quote can't be found verbatim anymore.
+ */
+export function findTextRange(editor: Editor, quote: string): SelectionQuote | null {
+  const trimmed = quote.trim();
+  if (!trimmed) return null;
+  const { doc } = editor.state;
+  let text = '';
+  const posAt: number[] = [];
+  let pendingSeparator = false;
+  doc.descendants((node, pos) => {
+    if (node.isText) {
+      if (pendingSeparator) {
+        posAt.push(pos);
+        text += ' ';
+        pendingSeparator = false;
+      }
+      const nodeText = node.text || '';
+      for (let i = 0; i < nodeText.length; i++) posAt.push(pos + i);
+      text += nodeText;
+      return false;
+    }
+    if (node.isTextblock && text.length > 0) pendingSeparator = true;
+    return true;
+  });
+  const index = text.indexOf(trimmed);
+  if (index === -1) return null;
+  const from = posAt[index];
+  const to = posAt[index + trimmed.length - 1] + 1;
+  return doc.textBetween(from, to, ' ').trim() === trimmed ? { from, to, text: trimmed } : null;
+}
+
 /** False when the quoted text moved or changed since it was selected. */
 export function addCommentAnchor(
   editor: Editor,

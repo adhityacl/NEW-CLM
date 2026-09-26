@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { Check, CheckCheck, FileDown, History, MessageSquarePlus, PenLine, RefreshCw, RotateCcw, X } from 'lucide-react';
+import { Check, CheckCheck, FileDown, History, MessageSquarePlus, PenLine, RefreshCw, RotateCcw, Sparkles, X } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useConfirm } from '../../context/ConfirmDialogContext';
 import { useAlertToast } from '../../context/AlertToastContext';
@@ -9,6 +9,7 @@ import type { CommentAction, CommentStatus, CommentType, DocumentComment } from 
 import {
   addCommentAnchor,
   applySuggestion,
+  findTextRange,
   focusComment,
   getSelectionQuote,
   removeCommentAnchor,
@@ -190,6 +191,36 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
     reload();
   };
 
+  const runAiRedlining = async () => {
+    if (!editor) return;
+    setBusy('ai-redline');
+    try {
+      const docId = documentId ?? (await ensureSaved());
+      if (!docId) return;
+      const plainText = editor.getText({ blockSeparator: ' ' }).trim();
+      if (!plainText) return;
+      const { created } = await documentsApi.aiRedline(docId, plainText);
+      let anchored = 0;
+      for (const item of created) {
+        const range = findTextRange(editor, item.quote);
+        if (range && addCommentAnchor(editor, range, { commentId: item.id, kind: 'suggestion', suggestion: item.new_text })) {
+          anchored++;
+        }
+      }
+      if (anchored) onContentChanged('auto');
+      reload();
+      showAlert(
+        created.length > 0
+          ? { title: t('documents.comments.ai_redline_done', 'AI added {n} suggestion(s).', { n: created.length }), variant: 'success' }
+          : { title: t('documents.comments.ai_redline_none', "AI didn't find any new suggestions."), variant: 'default' },
+      );
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const submitReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyTo || !documentId || !replyTo.body.trim()) return;
@@ -335,8 +366,21 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
           <button type="button" onClick={() => startComposer('suggestion')} className={`${SMALL_BUTTON} justify-center`}>
             <PenLine className="w-3.5 h-3.5" aria-hidden /> {t('documents.comments.add_suggestion', 'Usulkan Perubahan')}
           </button>
+          <button
+            type="button"
+            disabled={busy === 'ai-redline'}
+            aria-busy={busy === 'ai-redline'}
+            onClick={runAiRedlining}
+            className={`${SMALL_BUTTON} col-span-2 justify-center border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40`}
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${busy === 'ai-redline' ? 'animate-pulse' : ''}`} aria-hidden />
+            {busy === 'ai-redline' ? t('documents.comments.ai_redline_running', 'Meninjau dokumen…') : t('documents.comments.ai_redline', 'AI Redlining')}
+          </button>
           <p className="col-span-2 text-[10px] text-slate-500 dark:text-slate-400">
             {t('documents.comments.hint', 'Blok teks di dokumen, lalu pilih Komentar atau Usulkan Perubahan. Dokumen asli tidak berubah sampai usulan diterima.')}
+          </p>
+          <p className="col-span-2 text-[10px] text-slate-500 dark:text-slate-400">
+            {t('documents.comments.ai_redline_hint', 'AI meninjau seluruh dokumen berdasarkan aturan negara dan industri organisasi Anda.')}
           </p>
         </div>
       )}
