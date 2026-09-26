@@ -113,10 +113,15 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
 
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  // Key order is both the Toggle Kolom menu order and the table's column order.
   const DEFAULT_PARTNER_COLUMNS = {
     nama_partner: true,
+    channel: false,
     badan_hukum: true,
+    kategori: false,
     pic: true,
+    email: false,
+    telepon: false,
     status: true,
     due_diligence: true,
   };
@@ -513,8 +518,12 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                     {Object.keys(visibleColumns).map((col) => {
                       let label = col;
                       if (col === 'nama_partner') label = t('partners.col_name', 'Nama Partner');
+                      else if (col === 'channel') label = t('partners.col_channel', 'Nama Channel');
                       else if (col === 'badan_hukum') label = t('partners.col_entity', 'Badan Hukum');
+                      else if (col === 'kategori') label = t('partners.col_category', 'Kategori Kerjasama');
                       else if (col === 'pic') label = t('partners.col_pic', 'PIC Partner');
+                      else if (col === 'email') label = t('partners.col_email', 'Email');
+                      else if (col === 'telepon') label = t('partners.col_phone', 'Telepon');
                       else if (col === 'status') label = t('partners.col_status', 'Status Partner');
                       else if (col === 'due_diligence') label = t('partners.col_dd_status', 'Status Due Diligence');
 
@@ -555,8 +564,12 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                         </div>
                       </th>
                       {visibleColumns.nama_partner && renderSortHeader(t('partners.col_name', 'Nama Partner'), 'name')}
+                      {visibleColumns.channel && renderSortHeader(t('partners.col_channel', 'Nama Channel'), 'channel')}
                       {visibleColumns.badan_hukum && <th scope="col" className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">{t('partners.col_entity', 'Badan Hukum')}</th>}
+                      {visibleColumns.kategori && renderSortHeader(t('partners.col_category', 'Kategori Kerjasama'), 'tags')}
                       {visibleColumns.pic && renderSortHeader(t('partners.col_pic', 'PIC Partner'), 'pic')}
+                      {visibleColumns.email && <th scope="col" className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">{t('partners.col_email', 'Email')}</th>}
+                      {visibleColumns.telepon && <th scope="col" className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">{t('partners.col_phone', 'Telepon')}</th>}
                       {visibleColumns.status && renderSortHeader(t('partners.col_status', 'Status Partner'), 'status')}
                       {visibleColumns.due_diligence && renderSortHeader(t('partners.col_dd_status', 'Status DD'), 'status_dd')}
                       <th scope="col" className="pl-2 pr-6 py-4 text-right w-20 text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">
@@ -598,6 +611,12 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                               </td>
                             )}
 
+                            {visibleColumns.channel && (
+                              <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left">
+                                {partner.codename || '—'}
+                              </td>
+                            )}
+
                             {/* 2. Country */}
                             {visibleColumns.badan_hukum && (
                               <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left">
@@ -607,10 +626,50 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                               </td>
                             )}
 
+                            {visibleColumns.kategori && (
+                              <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left">
+                                {getValidPartnerTags(partner.tags).length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {getValidPartnerTags(partner.tags).map((tag) => (
+                                      <span key={tag} className="px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 whitespace-nowrap">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  '—'
+                                )}
+                              </td>
+                            )}
+
                             {/* 3. PIC Partner */}
                             {visibleColumns.pic && (
                               <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left">
                                 {partner.nama_pic || partner.pic_partner || '-'}
+                              </td>
+                            )}
+
+                            {visibleColumns.email && (
+                              <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left whitespace-nowrap">
+                                {partner.email_pic ? (
+                                  <a href={`mailto:${partner.email_pic}`} className="hover:underline hover:text-[#06C755]">
+                                    {partner.email_pic}
+                                  </a>
+                                ) : (
+                                  '—'
+                                )}
+                              </td>
+                            )}
+
+                            {visibleColumns.telepon && (
+                              <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left whitespace-nowrap">
+                                {partner.telepon_pic ? (
+                                  <a href={`tel:${partner.telepon_pic.replace(/[^\d+]/g, '')}`} className="hover:underline hover:text-[#06C755]">
+                                    {partner.telepon_pic}
+                                  </a>
+                                ) : (
+                                  '—'
+                                )}
                               </td>
                             )}
 
