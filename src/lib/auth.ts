@@ -39,23 +39,23 @@ const extraOrigins = (process.env.TRUSTED_ORIGINS || "")
  * cross-site request still carries the attacker's own Origin, whose host
  * never matches, so this stays exactly as safe as a fixed allowlist.
  *
- * `X-Forwarded-Host` is checked first: Cloud Run (and similar managed
- * reverse proxies) can present the container with an internal `Host` that
- * differs from the public URL the browser actually used, while forwarding
- * the real public host via `X-Forwarded-Host` — the plain `Host` header
- * alone rejected every login there with "Invalid origin". Trusting it is
- * safe under the same assumption the rest of this app already documents for
- * production (README: "keep port 3000 closed to the internet; only
- * nginx/the platform proxy should reach it") — a request that bypassed the
- * proxy could otherwise forge this header, so it must never be reachable
- * directly.
+ * A request can arrive under two names, and either may be the one the
+ * browser used: `Host`, and `X-Forwarded-Host` set by a proxy in front.
+ * Cloud Run hands the container an internal `Host` and the public URL in
+ * `X-Forwarded-Host`; VS Code's port forwarding for a Codespace is the
+ * reverse — the page is `http://localhost:3000` (matches `Host`) while the
+ * tunnel sets `X-Forwarded-Host` to the `*.app.github.dev` name. Checking
+ * only one of them rejected every login in the other setup. A cross-site
+ * page's Origin matches neither, and a browser can't add
+ * `X-Forwarded-Host` to a cross-origin request without a CORS preflight
+ * this server never grants.
  */
 function selfOrigin(request?: Request): string[] {
-  const host = request?.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || request?.headers.get("host");
   const origin = request?.headers.get("origin");
-  if (!host || !origin) return [];
+  if (!request || !origin) return [];
+  const hosts = [request.headers.get("x-forwarded-host")?.split(",")[0]?.trim(), request.headers.get("host")];
   try {
-    return new URL(origin).host === host ? [origin] : [];
+    return hosts.includes(new URL(origin).host) ? [origin] : [];
   } catch {
     return [];
   }
