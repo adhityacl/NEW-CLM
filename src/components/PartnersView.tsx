@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CONTRACT_STATUS_LABEL_KEY, DD_STATUS_LABEL_KEY, DOC_STATUS_LABEL_KEY } from '../lib/domainStatus';
 import { useTenantSettings } from '../context/TenantSettingsContext';
-import { getCountryPack } from '../lib/policy';
+import { getCountryPack, localizeName } from '../lib/policy';
 
 /** Country of incorporation, falling back to the legacy BHI flag (BHI = Indonesia). */
 const partnerCountry = (p: Partner): string => p.country ?? (p.badan_hukum === 'BHI' ? 'ID' : '');
@@ -83,7 +83,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
 }) => {
   const { hasPermission } = usePermissions();
   const { isLegal, user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const confirmDialog = useConfirm();
   const { departments: ENTERPRISE_DEPARTMENTS } = useDepartments();
   const [subTab, setSubTab] = useState<'list' | 'evaluation'>(initialSubTab);
@@ -99,7 +99,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
   const [selectedBadanHukum, setSelectedBadanHukum] = useState<string>('ALL');
   const { policy } = useTenantSettings();
   const homeCountry = policy.settings.countryCode;
-  const countryLabel = (code: string) => (code ? `${code} · ${getCountryPack(code).code === code ? getCountryPack(code).name : code}` : t('common.unknown', 'Unknown'));
+  const countryLabel = (code: string) => (code ? `${code} · ${getCountryPack(code).code === code ? localizeName(getCountryPack(code).name, language) : code}` : t('common.unknown', 'Unknown'));
   const [selectedPartnerStatus, setSelectedPartnerStatus] = useState<string>('ALL');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('ALL');
   const [selectedPartnerDetail, setSelectedPartnerDetail] = useState<Partner | null>(null);
@@ -272,7 +272,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
           type="button"
           onClick={() => handleSort(field)}
           className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
-          title={`Urutkan berdasarkan ${label}`}
+          title={t('partners.urutkan_berdasarkan', 'Urutkan berdasarkan {label}', { label })}
         >
           <span>{label}</span>
           {isSorted ? (
@@ -357,7 +357,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
   };
 
   const handleDeleteDDFile = async (partnerId: string, docName: string, fileId: string) => {
-    const ok = await confirmDialog({ description: `Hapus file ini dari dokumen ${docName}?`, tone: 'danger', confirmLabel: 'Hapus' });
+    const ok = await confirmDialog({ description: t('partners.hapus_file_ini_dari_dokumen', 'Hapus file ini dari dokumen {docName}?', { docName }), tone: 'danger', confirmLabel: t('io.action_delete', 'Hapus') });
     if (!ok) return;
     try {
       const res = await fetch(`/api/partners/${partnerId}/dd-file`, {
@@ -409,10 +409,10 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                   onClick={handleExportCSV}
                   disabled={filteredPartners.length === 0}
                   className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Ekspor CSV"
+                  title={t('contracts.export_csv', 'Ekspor CSV')}
                 >
                   <Download className="w-4 h-4" />
-                  <span>Ekspor CSV</span>
+                  <span>{t('contracts.export_csv', 'Ekspor CSV')}</span>
                 </button>
               )}
 
@@ -422,7 +422,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                   className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
                 >
                   <Plus className="w-4 h-4 text-white" />
-                  <span>Tambah</span>
+                  <span>{t('io.add_btn', 'Tambah')}</span>
                 </button>
               )}
             </div>
@@ -498,17 +498,17 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                 <button
                   onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
                   className="h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
-                  title="Pengaturan Tampilan Kolom"
+                  title={t('io.view_settings', 'Pengaturan Tampilan Kolom')}
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                  <span>View</span>
+                  <span>{t('io.view', 'View')}</span>
                 </button>
                 {isViewMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)}></div>
                     <div className="absolute right-0 top-11 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 py-2 animate-in fade-in zoom-in-95">
                     <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
-                      Toggle Kolom
+                      {t('io.toggle_columns', 'Toggle Kolom')}
                     </div>
                     {Object.keys(visibleColumns).map((col) => {
                       let label = col;
@@ -549,7 +549,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                             type="checkbox"
                             onChange={handleSelectAll}
                             checked={selectedRows.length > 0 && selectedRows.length === currentPartners.length}
-                            aria-label={t('table.select_all', 'Pilih semua partner')}
+                            aria-label={t('partners.select_all', 'Pilih semua partner')}
                             className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
                           />
                         </div>
@@ -585,7 +585,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                                   type="checkbox"
                                   checked={selectedRows.includes(partner.partner_id)}
                                   onChange={() => handleSelectRow(partner.partner_id)}
-                                  aria-label={`Pilih ${partner.nama_partner}`}
+                                  aria-label={t('partners.pilih', 'Pilih {nama_partner}', { nama_partner: partner.nama_partner })}
                                   className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
                                 />
                               </div>
@@ -637,7 +637,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                                   className={`text-xs font-normal px-3 py-0.5 rounded-full border inline-flex items-center gap-1.5 transition-all hover:scale-105 hover:shadow-xs cursor-pointer ${getDDStatusBadge(
                                     partner.status_dd
                                   )}`}
-                                  title="Klik untuk Audit Checklist Due Diligence"
+                                  title={t('partners.klik_untuk_audit_checklist_due_diligence', 'Klik untuk Audit Checklist Due Diligence')}
                                 >
                                   {partner.status_dd === 'Complete' && <CheckCircle2 className="w-3.5 h-3.5 text-[#06C755]" />}
                                   {partner.status_dd === 'Incomplete' && <Clock className="w-3.5 h-3.5 text-amber-500" />}
@@ -653,14 +653,14 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                                 <ActionMenu
                                   items={[
                                     {
-                                      label: 'Audit DD',
+                                      label: t('partners.audit_dd', 'Audit DD'),
                                       icon: <FileCheck2 className="w-3.5 h-3.5" />,
                                       onClick: () => setSelectedPartnerDetail(partner),
                                     },
                                     ...(canEditPartner(partner, user)
                                       ? [
                                           {
-                                            label: 'Edit',
+                                            label: t('hierarchy.edit_btn', 'Edit'),
                                             icon: <Edit2 className="w-3.5 h-3.5" />,
                                             onClick: () => onEditPartner(partner),
                                           },
@@ -669,7 +669,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                                     ...(canDeletePartner(user)
                                       ? [
                                           {
-                                            label: 'Hapus',
+                                            label: t('io.action_delete', 'Hapus'),
                                             icon: <Trash2 className="w-3.5 h-3.5" />,
                                             onClick: () => onDeletePartner(partner.partner_id, partner.nama_partner),
                                             variant: 'danger' as const,
@@ -713,7 +713,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                   <span>{selectedPartnerDetail.nama_partner}</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Status DD: <strong className="text-slate-800">{selectedPartnerDetail.status_dd}</strong> • PIC: {selectedPartnerDetail.pic_partner}
+                  {t('partners.status_dd', 'Status DD:')} <strong className="text-slate-800">{selectedPartnerDetail.status_dd}</strong> {t('partners.pic', '• PIC: {pic_partner}', { pic_partner: selectedPartnerDetail.pic_partner })}
                 </p>
               </div>
 
@@ -732,7 +732,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-1.5 shadow-2xs">
                   <h4 className="text-xs font-bold text-[#048C3B] dark:text-emerald-400 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-[#06C755]" />
-                    <span>Profil Due Diligence & Operasional Vendor (Senior Risk Analyst)</span>
+                    <span>{t('partners.profil_due_diligence_operasional_vendor_senior', 'Profil Due Diligence & Operasional Vendor (Senior Risk Analyst)')}</span>
                   </h4>
                   <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed font-medium">
                     {selectedPartnerDetail.catatan}
@@ -747,7 +747,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                     {t('partners.req_docs_title', 'Dokumen Due Diligence')}
                   </h4>
                   <span className="text-[11px] text-slate-500 font-medium">
-                    * NDA bersifat Wajib, dokumen lain Opsional
+                    {t('partners.nda_bersifat_wajib_dokumen_lain_opsional', '* NDA bersifat Wajib, dokumen lain Opsional')}
                   </span>
                 </div>
 
@@ -779,11 +779,11 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                           {/* Wajib / Opsional Pill Badge (Refined) */}
                           {doc.wajib ? (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border border-rose-500/40 bg-rose-500/10 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 uppercase tracking-wide">
-                              Wajib
+                              {t('settings.region.dd_required', 'Wajib')}
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 uppercase tracking-wide">
-                              Opsional
+                              {t('contract_creator.optional_badge', 'Opsional')}
                             </span>
                           )}
 
@@ -842,7 +842,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                                     className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-[#048C3B] dark:text-emerald-300 rounded text-[11px] font-medium transition-colors flex items-center gap-1 border border-emerald-500/30"
                                   >
                                     <ExternalLink className="w-3 h-3" />
-                                    <span>Lihat File</span>
+                                    <span>{t('partners.view_file', 'Lihat File')}</span>
                                   </a>
                                 )}
                                 {isLegal && (
@@ -850,7 +850,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                                     type="button"
                                     onClick={() => handleDeleteDDFile(selectedPartnerDetail.partner_id, doc.nama, f.id)}
                                     className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
-                                    title="Hapus file ini"
+                                    title={t('partners.hapus_file_ini', 'Hapus file ini')}
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>

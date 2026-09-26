@@ -57,7 +57,7 @@ import {
   canDeletePartner,
 } from '../lib/rbacScoping';
 import { getCachedAccessToken } from '../lib/googleAuthService';
-import { SUPPORTED_CURRENCIES, formatMoney, getDefaultUsdRate, getHistoricalUsdRate, fetchHistoricalRate } from '../lib/currencyUtils';
+import { SUPPORTED_CURRENCIES, currencyLabel, formatMoney, getDefaultUsdRate, getHistoricalUsdRate, fetchHistoricalRate } from '../lib/currencyUtils';
 import { formatInvoiceFileName, formatBillingFileName } from '../lib/fileNaming';
 import { DateInput } from './DateInput';
 import { usePermissions } from '../lib/permissions';
@@ -231,10 +231,10 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
         result = await response.json();
       } else {
         const text = await response.text();
-        throw new Error(text && text.trim().startsWith('<') ? 'Koneksi AI Server timeout atau sibuk. Silakan coba kembali beberapa saat lagi.' : (text || 'Gagal mengekstrak dokumen invoice.'));
+        throw new Error(text && text.trim().startsWith('<') ? t('spending.koneksi_ai_server_timeout_atau_sibuk', 'Koneksi AI Server timeout atau sibuk. Silakan coba kembali beberapa saat lagi.') : (text || t('spending.gagal_mengekstrak_dokumen_invoice', 'Gagal mengekstrak dokumen invoice.')));
       }
       if (!response.ok) {
-        throw new Error(result.error || 'Gagal mengekstrak dokumen invoice.');
+        throw new Error(result.error || t('spending.gagal_mengekstrak_dokumen_invoice', 'Gagal mengekstrak dokumen invoice.'));
       }
       if (result.success && result.data) {
         const p = result.data;
@@ -345,7 +345,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Terjadi kesalahan saat menyimpan data spending.');
+        throw new Error(data.error || t('spending.terjadi_kesalahan_saat_menyimpan_data_spending', 'Terjadi kesalahan saat menyimpan data spending.'));
       }
 
       onRefreshData();
@@ -532,14 +532,14 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
   }, [filteredSpendings, sortField, sortOrder]);
 
   const handleDeleteClick = async (id: string) => {
-    const ok = await confirmDialog({ description: 'Hapus data spending ini?', tone: 'danger', confirmLabel: 'Hapus' });
+    const ok = await confirmDialog({ description: t('spending.hapus_data_spending_ini', 'Hapus data spending ini?'), tone: 'danger', confirmLabel: t('io.action_delete', 'Hapus') });
     if (!ok) return;
     try {
       const res = await fetch(`/api/partner-spendings/${id}?userEmail=${encodeURIComponent(userEmail || '')}&userName=${encodeURIComponent(userName || '')}&userRole=${encodeURIComponent(userRole || '')}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Gagal menghapus');
+      if (!res.ok) throw new Error(t('spending.gagal_menghapus', 'Gagal menghapus'));
       onRefreshData();
     } catch (e) {
-      showAlert({ title: 'Gagal menghapus data spending', description: (e as Error).message, variant: 'destructive' });
+      showAlert({ title: t('spending.gagal_menghapus_data_spending', 'Gagal menghapus data spending'), description: (e as Error).message, variant: 'destructive' });
     }
   };
 
@@ -599,7 +599,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
         type="button"
         onClick={() => handleSort(field)}
         className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
-        title={`Urutkan berdasarkan ${label}`}
+        title={t('spending.urutkan_berdasarkan', 'Urutkan berdasarkan {label}', { label })}
       >
         <span>{label}</span>
         {sortField === field ? (
@@ -656,7 +656,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
       <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <span>Partner Spending / Invoicing</span>
+            <span>{t('spending.partner_spending_invoicing', 'Partner Spending / Invoicing')}</span>
           </h2>
         </div>
         
@@ -666,10 +666,10 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
               onClick={handleExportCSV}
               disabled={sortedSpendings.length === 0}
               className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Ekspor CSV"
+              title={t('contracts.export_csv', 'Ekspor CSV')}
             >
               <Download className="w-4 h-4" />
-              <span>Ekspor CSV</span>
+              <span>{t('contracts.export_csv', 'Ekspor CSV')}</span>
             </button>
           )}
 
@@ -679,7 +679,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
               className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
             >
               <Plus className="w-4 h-4 text-white" />
-              <span>Tambah</span>
+              <span>{t('io.add_btn', 'Tambah')}</span>
             </button>
           )}
         </div>
@@ -713,7 +713,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
             }}
             className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
-            <option value="ALL">Semua Tahun</option>
+            <option value="ALL">{t('dashboard.all_years', 'Semua Tahun')}</option>
             {availableYears.map(year => (
               <option key={year} value={year}>{year}</option>
             ))}
@@ -743,19 +743,19 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
             }}
             className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
-            <option value="ALL">Semua Bulan</option>
-            <option value="01">Januari (01)</option>
-            <option value="02">Februari (02)</option>
-            <option value="03">Maret (03)</option>
-            <option value="04">April (04)</option>
-            <option value="05">Mei (05)</option>
-            <option value="06">Juni (06)</option>
-            <option value="07">Juli (07)</option>
-            <option value="08">Agustus (08)</option>
-            <option value="09">September (09)</option>
-            <option value="10">Oktober (10)</option>
-            <option value="11">November (11)</option>
-            <option value="12">Desember (12)</option>
+            <option value="ALL">{t('spending.semua_bulan', 'Semua Bulan')}</option>
+            <option value="01">{t('spending.januari_01', 'Januari (01)')}</option>
+            <option value="02">{t('spending.februari_02', 'Februari (02)')}</option>
+            <option value="03">{t('spending.maret_03', 'Maret (03)')}</option>
+            <option value="04">{t('spending.april_04', 'April (04)')}</option>
+            <option value="05">{t('spending.mei_05', 'Mei (05)')}</option>
+            <option value="06">{t('spending.juni_06', 'Juni (06)')}</option>
+            <option value="07">{t('spending.juli_07', 'Juli (07)')}</option>
+            <option value="08">{t('spending.agustus_08', 'Agustus (08)')}</option>
+            <option value="09">{t('spending.september_09', 'September (09)')}</option>
+            <option value="10">{t('spending.oktober_10', 'Oktober (10)')}</option>
+            <option value="11">{t('spending.november_11', 'November (11)')}</option>
+            <option value="12">{t('spending.desember_12', 'Desember (12)')}</option>
           </select>
         
           {/* Column Toggle */}
@@ -763,17 +763,17 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
             <button
               onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
               className="h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
-              title="Pengaturan Tampilan Kolom"
+              title={t('io.view_settings', 'Pengaturan Tampilan Kolom')}
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span>View</span>
+              <span>{t('io.view', 'View')}</span>
             </button>
             {isViewMenuOpen && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)}></div>
                 <div className="absolute right-0 top-11 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 py-2 animate-in fade-in zoom-in-95">
                   <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
-                    Toggle Kolom
+                    {t('io.toggle_columns', 'Toggle Kolom')}
                   </div>
                   {Object.keys(visibleColumns).map((col) => {
                     let label = col;
@@ -814,7 +814,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                   <div className="flex items-center justify-start">
                     <input
                       type="checkbox"
-                      aria-label="Pilih semua spending"
+                      aria-label={t('spending.pilih_semua_spending', 'Pilih semua spending')}
                       onChange={handleSelectAll}
                       checked={selectedRows.length > 0 && selectedRows.length === currentSpendings.length}
                       className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
@@ -855,7 +855,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                       <div className="flex items-center justify-start">
                         <input
                           type="checkbox"
-                          aria-label={`Pilih spending ${s.invoice_number || s.vendor_name || ''}`}
+                          aria-label={t('spending.pilih_spending', 'Pilih spending {value}', { value: s.invoice_number || s.vendor_name || '' })}
                           checked={selectedRows.includes(s.id || '')}
                           onChange={() => handleSelectRow(s.id || '')}
                           className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
@@ -910,7 +910,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-xs text-[#06C755] hover:text-[#048C3B] font-normal hover:underline"
                           >
-                            <FileDown className="w-3.5 h-3.5" /> PDF
+                            <FileDown className="w-3.5 h-3.5" /> {t('spending.pdf', 'PDF')}
                           </a>
                         ) : (
                           <span className="text-slate-300 dark:text-slate-600">-</span>
@@ -928,7 +928,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-xs text-[#06C755] hover:text-[#048C3B] font-normal hover:underline"
                           >
-                            <FileSpreadsheet className="w-3.5 h-3.5" /> Sheet
+                            <FileSpreadsheet className="w-3.5 h-3.5" /> {t('spending.sheet', 'Sheet')}
                           </a>
                         ) : (
                           <span className="text-slate-300 dark:text-slate-600">-</span>
@@ -944,7 +944,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                             ...(canEditSpending(s, partners, user)
                               ? [
                                   {
-                                    label: 'Edit',
+                                    label: t('hierarchy.edit_btn', 'Edit'),
                                     icon: <Edit className="w-3.5 h-3.5" />,
                                     onClick: () => handleOpenEditModal(s),
                                   },
@@ -953,7 +953,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                             ...(canDeletePartner(user)
                               ? [
                                   {
-                                    label: 'Hapus',
+                                    label: t('io.action_delete', 'Hapus'),
                                     icon: <Trash2 className="w-3.5 h-3.5" />,
                                     onClick: () => handleDelete(s.id || ''),
                                     variant: 'danger' as const,
@@ -1058,7 +1058,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                   />
                   {formInvoiceNumber.trim() && spendings.some(s => s.invoice_number.toLowerCase() === formInvoiceNumber.trim().toLowerCase() && (!editingSpending || s.id !== editingSpending.id)) && (
                     <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-1 flex items-center gap-1">
-                      <span>💡 Nomor invoice ini sudah dicatat sebelumnya. Diizinkan menginput nomor invoice sama untuk bulan/amount berbeda.</span>
+                      <span>{t('spending.nomor_invoice_ini_sudah_dicatat_sebelumnya', '💡 Nomor invoice ini sudah dicatat sebelumnya. Diizinkan menginput nomor invoice sama untuk bulan/amount berbeda.')}</span>
                     </p>
                   )}
                 </div>
@@ -1147,7 +1147,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                   >
                     {SUPPORTED_CURRENCIES.map((c) => (
                       <option key={c.code} value={c.code}>
-                        {c.code} — {c.label}
+                        {c.code} — {currencyLabel(c.code, language)}
                       </option>
                     ))}
                   </select>
@@ -1177,13 +1177,13 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
               {/* USD Conversion Info Banner */}
               <div className="bg-[#06C755]/5 dark:bg-emerald-950/20 border border-[#06C755]/20 dark:border-emerald-500/20 rounded-xl p-3 text-xs flex flex-wrap items-center justify-between gap-2 mt-4">
                 <div>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">Estimasi Konversi USD (Kurs {formInvoiceDate || 'Hari Ini'}):</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">{t('spending.estimasi_konversi_usd_kurs', 'Estimasi Konversi USD (Kurs')} {formInvoiceDate || t('spending.hari_ini', 'Hari Ini')}):</span>
                   <span className="ml-2 font-bold text-[#06C755] dark:text-emerald-400">
                     {formatMoney(estimatedUsd, 'USD')}
                   </span>
                 </div>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 italic">
-                  {formCurrency === 'USD' ? 'Sama (Mata uang USD)' : `1 ${formCurrency} ≈ ${historicalRate.toFixed(8)} USD`}
+                  {formCurrency === 'USD' ? t('spending.sama_mata_uang_usd', 'Sama (Mata uang USD)') : t('spending.1_usd', '1 {formCurrency} ≈ {value} USD', { formCurrency, value: historicalRate.toFixed(8) })}
                 </span>
               </div>
 
@@ -1199,7 +1199,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('spending.bank_name_label', 'Bank Name')}</label>
                     <input
                       type="text"
-                      placeholder="BCA / Mandiri / BNI"
+                      placeholder={t('spending.bca_mandiri_bni', 'BCA / Mandiri / BNI')}
                       value={formBankName}
                       onChange={(e) => setFormBankName(e.target.value)}
                       className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#06C755]"
@@ -1225,7 +1225,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                     </label>
                     <input
                       type="text"
-                      placeholder="PT Vendor Indonesia"
+                      placeholder={t('spending.pt_vendor_indonesia', 'PT Vendor Indonesia')}
                       value={formBankAccountHolder}
                       onChange={(e) => setFormBankAccountHolder(e.target.value)}
                       className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#06C755]"
@@ -1252,12 +1252,12 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                           {isParsing ? (
                             <>
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              <span>Mengekstrak...</span>
+                              <span>{t('spending.mengekstrak', 'Mengekstrak...')}</span>
                             </>
                           ) : (
                             <>
                               <Sparkles className="w-3.5 h-3.5" />
-                              <span>Parse Invoice AI</span>
+                              <span>{t('spending.parse_invoice_ai', 'Parse Invoice AI')}</span>
                             </>
                           )}
                         </button>
@@ -1272,7 +1272,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                     {invoiceFileObj && (
                       <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs space-y-1 mt-1">
                         <p className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                          <span>📄 File terpilih:</span>
+                          <span>{t('spending.file_terpilih', '📄 File terpilih:')}</span>
                           <span className="font-bold text-slate-900 dark:text-white">{invoiceFileObj.fileName}</span>
                         </p>
                       </div>
@@ -1294,7 +1294,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                   {billingFileObj && (
                     <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs space-y-1 mt-2">
                       <p className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>📄 File terpilih:</span>
+                        <span>{t('spending.file_terpilih', '📄 File terpilih:')}</span>
                         <span className="font-bold text-slate-900 dark:text-white">{billingFileObj.fileName}</span>
                       </p>
                     </div>

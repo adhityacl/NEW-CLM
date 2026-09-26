@@ -158,7 +158,7 @@ export const ResetWorkspaceDialog: React.FC<ResetWorkspaceDialogProps> = ({ open
                 className={`${fieldClass} font-mono`}
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
-                placeholder="RESET NOW"
+                placeholder={t('settings.reset_modal_input_placeholder', 'RESET NOW')}
                 autoComplete="off"
               />
             </div>

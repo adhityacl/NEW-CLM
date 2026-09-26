@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Bot, User, Loader2, RotateCcw, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Message {
   id: string;
@@ -14,16 +15,18 @@ const INITIAL_MESSAGE: Message = {
   text: 'Halo! Saya Asisten AI SiLegal dengan **Session Context**. Anda bisa bertanya seputar partner, kontrak, atau IO, lalu melanjutkan dengan pertanyaan bertahap (follow-up) terkait topik sebelumnya.'
 };
 
-const SUGGESTED_PROMPTS = [
-  'Berapa jumlah kontrak yang akan segera berakhir?',
-  'Siapa saja partner Tier 1 yang aktif?',
-  'Ringkas total pengeluaran per mata uang.',
-  'Apakah ada kontrak yang perlu perpanjangan/terminasi?'
+// [catalog key, default text]
+const SUGGESTED_PROMPTS: Array<[string, string]> = [
+  ['ai_chat.prompt_expiring', 'Berapa jumlah kontrak yang akan segera berakhir?'],
+  ['ai_chat.prompt_tier1', 'Siapa saja partner Tier 1 yang aktif?'],
+  ['ai_chat.prompt_spend', 'Ringkas total pengeluaran per mata uang.'],
+  ['ai_chat.prompt_renewal', 'Apakah ada kontrak yang perlu perpanjangan/terminasi?'],
 ];
 
 const STORAGE_KEY = 'silegal_ai_chat_session_v1';
 
 export const AIChatWidget: React.FC = () => {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
@@ -67,7 +70,7 @@ export const AIChatWidget: React.FC = () => {
       {
         id: `welcome-${Date.now()}`,
         role: 'ai',
-        text: 'Sesi percakapan telah direset. Silakan tanyakan hal baru seputar partner, kontrak, atau IO!'
+        text: t('ai_chat.sesi_percakapan_telah_direset_silakan_tanyakan', 'Sesi percakapan telah direset. Silakan tanyakan hal baru seputar partner, kontrak, atau IO!')
       }
     ]);
   };
@@ -118,7 +121,7 @@ export const AIChatWidget: React.FC = () => {
       try {
         data = JSON.parse(rawText);
       } catch {
-        data = { error: res.ok ? rawText : `Server error (${res.status}): Silakan periksa koneksi atau kuota API Key.` };
+        data = { error: res.ok ? rawText : t('ai_chat.server_error_silakan_periksa_koneksi_atau', 'Server error ({status}): Silakan periksa koneksi atau kuota API Key.', { status: res.status }) };
       }
 
       if (res.ok && data.reply) {
@@ -136,7 +139,7 @@ export const AIChatWidget: React.FC = () => {
           {
             id: (Date.now() + 1).toString(),
             role: 'ai',
-            text: `Maaf, terjadi kendala: ${data.error || 'Server AI tidak dapat memproses permintaan saat ini.'}`
+            text: t('ai_chat.maaf_terjadi_kendala', 'Maaf, terjadi kendala: {value}', { value: data.error || 'Server AI tidak dapat memproses permintaan saat ini.' })
           }
         ]);
       }
@@ -147,7 +150,7 @@ export const AIChatWidget: React.FC = () => {
         {
           id: (Date.now() + 1).toString(),
           role: 'ai',
-          text: 'Maaf, gagal terhubung ke server AI. Pastikan koneksi internet stabil dan Gemini API Key telah terkonfigurasi.'
+          text: t('ai_chat.maaf_gagal_terhubung_ke_server_ai', 'Maaf, gagal terhubung ke server AI. Pastikan koneksi internet stabil dan Gemini API Key telah terkonfigurasi.')
         }
       ]);
     } finally {
@@ -173,7 +176,7 @@ export const AIChatWidget: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-sm leading-tight text-white">
-                  SiLegal AI
+                  {t('ai_chat.silegal_ai', 'SiLegal AI')}
                 </h3>
               </div>
             </div>
@@ -182,7 +185,7 @@ export const AIChatWidget: React.FC = () => {
                 type="button"
                 onClick={handleResetSession}
                 className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white"
-                title="Reset Sesi Percakapan (Hapus Konteks)"
+                title={t('ai_chat.reset_sesi_percakapan_hapus_konteks', 'Reset Sesi Percakapan (Hapus Konteks)')}
               >
                 <RotateCcw size={15} />
               </button>
@@ -190,7 +193,7 @@ export const AIChatWidget: React.FC = () => {
                 type="button"
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white"
-                title="Tutup Chat"
+                title={t('ai_chat.tutup_chat', 'Tutup Chat')}
               >
                 <X size={17} />
               </button>
@@ -253,7 +256,11 @@ export const AIChatWidget: React.FC = () => {
                           td: ({ node, ...props }) => <td className="px-2 py-1 border-t border-slate-200 dark:border-slate-700" {...props} />
                         }}
                       >
-                        {msg.text}
+                        {msg.id === 'welcome'
+                          ? t('ai_chat.welcome', INITIAL_MESSAGE.text)
+                          : msg.id.startsWith('welcome-')
+                            ? t('ai_chat.sesi_percakapan_telah_direset_silakan_tanyakan', 'Sesi percakapan telah direset. Silakan tanyakan hal baru seputar partner, kontrak, atau IO!')
+                            : msg.text}
                       </ReactMarkdown>
                     </div>
                   )}
@@ -269,12 +276,12 @@ export const AIChatWidget: React.FC = () => {
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col gap-2">
                   <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center h-7">
-                    Saran Pertanyaan:
+                    {t('ai_chat.saran_pertanyaan', 'Saran Pertanyaan:')}
                   </p>
                   <div className="flex flex-col gap-1.5">
-                    {SUGGESTED_PROMPTS.map((prompt, idx) => (
+                    {SUGGESTED_PROMPTS.map(([key, fallback]) => t(key, fallback)).map((prompt) => (
                       <button
-                        key={idx}
+                        key={prompt}
                         type="button"
                         onClick={() => handleSend(prompt)}
                         className="text-left text-[11px] text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200 dark:border-slate-700 hover:border-emerald-400 p-2.5 rounded-xl transition-all cursor-pointer shadow-2xs"
@@ -293,7 +300,7 @@ export const AIChatWidget: React.FC = () => {
                   <Loader2 size={14} className="animate-spin" />
                 </div>
                 <div className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-xs shadow-xs text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  <span>Menganalisis data & konteks sesi...</span>
+                  <span>{t('ai_chat.menganalisis_data_konteks_sesi', 'Menganalisis data & konteks sesi...')}</span>
                 </div>
               </div>
             )}
@@ -307,7 +314,7 @@ export const AIChatWidget: React.FC = () => {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Tanya seputar data atau lanjutkan konteks..."
+                placeholder={t('ai_chat.tanya_seputar_data_atau_lanjutkan_konteks', 'Tanya seputar data atau lanjutkan konteks...')}
                 className="flex-1 px-3.5 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#06C755] focus:border-[#06C755] placeholder-slate-400 dark:placeholder-slate-500"
                 disabled={isLoading}
               />
@@ -315,7 +322,7 @@ export const AIChatWidget: React.FC = () => {
                 type="submit"
                 disabled={!input.trim() || isLoading}
                 className="p-2.5 bg-[#06C755] text-white rounded-xl hover:bg-[#05b34c] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
-                title="Kirim Pesan"
+                title={t('ai_chat.kirim_pesan', 'Kirim Pesan')}
               >
                 <Send size={15} />
               </button>
@@ -330,7 +337,7 @@ export const AIChatWidget: React.FC = () => {
         className={`w-13 h-13 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 transform hover:scale-105 cursor-pointer ${
           isOpen ? 'bg-[#05b34c] rotate-12' : 'bg-[#06C755] hover:bg-[#05b34c]'
         }`}
-        title={isOpen ? 'Tutup AI Assistant' : 'Buka Asisten AI SiLegal'}
+        title={isOpen ? t('ai_chat.tutup_ai_assistant', 'Tutup AI Assistant') : t('ai_chat.buka_asisten_ai_silegal', 'Buka Asisten AI SiLegal')}
       >
         <MessageSquare size={22} className="text-white" />
       </button>

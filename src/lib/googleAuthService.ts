@@ -8,6 +8,7 @@ import {
   User,
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
+import { translateStatic as t } from '../context/LanguageContext';
 
 // Reuse or initialize Firebase app
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -107,7 +108,7 @@ export const signInWithGoogleCodeFlow = async (): Promise<{ user: User; accessTo
   await loadGoogleIdentityScript();
   const clientId = await getGoogleClientId();
   if (!clientId || !window.google?.accounts?.oauth2?.initCodeClient) {
-    throw new Error('Google Identity Services client is not available');
+    throw new Error(t('google_auth.gis_unavailable', 'Google Identity Services client is not available'));
   }
 
   return new Promise((resolve, reject) => {
@@ -124,7 +125,7 @@ export const signInWithGoogleCodeFlow = async (): Promise<{ user: User; accessTo
             return;
           }
           if (!response.code) {
-            reject(new Error('Tidak ada Authorization Code yang diterima dari Google.'));
+            reject(new Error(t('google_auth.no_auth_code', 'Tidak ada Authorization Code yang diterima dari Google.')));
             return;
           }
 
@@ -136,7 +137,7 @@ export const signInWithGoogleCodeFlow = async (): Promise<{ user: User; accessTo
             });
             const data = await exchangeRes.json();
             if (!exchangeRes.ok) {
-              throw new Error(data.error || 'Gagal menukarkan Authorization Code.');
+              throw new Error(data.error || t('google_auth.exchange_failed', 'Gagal menukarkan Authorization Code.'));
             }
 
             cachedAccessToken = data.accessToken;
@@ -168,7 +169,7 @@ export const signInWithGoogleCodeFlow = async (): Promise<{ user: User; accessTo
           }
         },
         error_callback: (err) => {
-          reject(new Error(err?.message || 'Gagal melakukan otorisasi Google OAuth'));
+          reject(new Error(err?.message || t('google_auth.oauth_failed', 'Gagal melakukan otorisasi Google OAuth')));
         },
       });
 
@@ -369,7 +370,7 @@ export const silentRefreshGoogleToken = async (): Promise<{ user: User; accessTo
     const result = await signInWithPopup(auth, silentProvider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential?.accessToken) {
-      throw new Error('Gagal memperbarui Access Token Google.');
+      throw new Error(t('google_auth.refresh_failed', 'Gagal memperbarui Access Token Google.'));
     }
     cachedAccessToken = credential.accessToken;
     const profile: GoogleUserProfile = {
@@ -475,7 +476,7 @@ export interface DriveFileItem {
 
 export const fetchUserSpreadsheets = async (token: string): Promise<DriveFileItem[]> => {
   if (!token) {
-    throw new Error('Sesi Google belum terhubung. Silakan klik "Hubungkan Akun Google" terlebih dahulu.');
+    throw new Error(t('google_auth.not_connected', 'Sesi Google belum terhubung. Silakan klik "Hubungkan Akun Google" terlebih dahulu.'));
   }
   const query = encodeURIComponent("mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false");
   const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,mimeType,modifiedTime)&pageSize=30&orderBy=modifiedTime desc`, {
@@ -486,9 +487,9 @@ export const fetchUserSpreadsheets = async (token: string): Promise<DriveFileIte
     console.error('Google Drive API Error (Spreadsheets):', res.status, errorJson);
     if (res.status === 401 || res.status === 403) {
       invalidateGoogleToken();
-      throw new Error('Sesi otorisasi Google telah berakhir atau izin Google Drive belum diaktifkan. Silakan hubungkan ulang akun Google Anda.');
+      throw Object.assign(new Error(t('google_auth.session_expired', 'Sesi otorisasi Google telah berakhir atau izin Google Drive belum diaktifkan. Silakan hubungkan ulang akun Google Anda.')), { status: res.status });
     }
-    throw new Error(errorJson?.error?.message || 'Gagal mengambil daftar Google Spreadsheet dari Google Drive. Pastikan akun Google Anda terhubung dan memiliki izin Google Drive.');
+    throw new Error(errorJson?.error?.message || t('google_auth.list_sheets_failed', 'Gagal mengambil daftar Google Spreadsheet dari Google Drive. Pastikan akun Google Anda terhubung dan memiliki izin Google Drive.'));
   }
   const data = await res.json();
   return data.files || [];
@@ -496,7 +497,7 @@ export const fetchUserSpreadsheets = async (token: string): Promise<DriveFileIte
 
 export const fetchUserFolders = async (token: string): Promise<DriveFileItem[]> => {
   if (!token) {
-    throw new Error('Sesi Google belum terhubung. Silakan klik "Hubungkan Akun Google" terlebih dahulu.');
+    throw new Error(t('google_auth.not_connected', 'Sesi Google belum terhubung. Silakan klik "Hubungkan Akun Google" terlebih dahulu.'));
   }
   const query = encodeURIComponent("mimeType = 'application/vnd.google-apps.folder' and trashed = false");
   const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,mimeType,modifiedTime)&pageSize=30&orderBy=modifiedTime desc`, {
@@ -507,9 +508,9 @@ export const fetchUserFolders = async (token: string): Promise<DriveFileItem[]> 
     console.error('Google Drive API Error (Folders):', res.status, errorJson);
     if (res.status === 401 || res.status === 403) {
       invalidateGoogleToken();
-      throw new Error('Sesi otorisasi Google telah berakhir atau izin Google Drive belum diaktifkan. Silakan hubungkan ulang akun Google Anda.');
+      throw Object.assign(new Error(t('google_auth.session_expired', 'Sesi otorisasi Google telah berakhir atau izin Google Drive belum diaktifkan. Silakan hubungkan ulang akun Google Anda.')), { status: res.status });
     }
-    throw new Error(errorJson?.error?.message || 'Gagal mengambil daftar folder dari Google Drive. Pastikan akun Google Anda terhubung dan memiliki izin Google Drive.');
+    throw new Error(errorJson?.error?.message || t('google_auth.list_folders_failed', 'Gagal mengambil daftar folder dari Google Drive. Pastikan akun Google Anda terhubung dan memiliki izin Google Drive.'));
   }
   const data = await res.json();
   return data.files || [];
@@ -536,7 +537,7 @@ export const createNewSpreadsheet = async (token: string, title: string = 'Datab
 
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
-    throw new Error(errData?.error?.message || 'Gagal membuat Google Spreadsheet baru.');
+    throw new Error(errData?.error?.message || t('google_auth.create_sheet_failed', 'Gagal membuat Google Spreadsheet baru.'));
   }
 
   const data = await res.json();
@@ -558,7 +559,7 @@ export const createNewDriveFolder = async (token: string, folderName: string = '
 
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
-    throw new Error(errData?.error?.message || 'Gagal membuat Folder Google Drive baru.');
+    throw new Error(errData?.error?.message || t('google_auth.create_folder_failed', 'Gagal membuat Folder Google Drive baru.'));
   }
 
   const data = await res.json();

@@ -16,6 +16,7 @@ import {
 } from '../obsidian/table';
 import { Separator } from '../obsidian/separator';
 import { Can, usePermissions } from '../../lib/permissions';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface RoleDef { code: string; name: string; level: number; scope: string; description: string }
 interface PermDef { code: string; resource: string; action: string }
@@ -40,6 +41,7 @@ function roleBadgeClass(role: string): string {
 }
 
 export default function RbacMatrixView() {
+  const { t } = useLanguage();
   const [state, setState] = useState<{ status: 'loading' | 'ok' | 'error'; data?: MatrixPayload; message?: string }>({ status: 'loading' });
   const { role } = usePermissions();
 
@@ -57,7 +59,7 @@ export default function RbacMatrixView() {
       const json = (await res.json()) as MatrixPayload;
       setState({ status: 'ok', data: json });
     } catch (e) {
-      setState({ status: 'error', message: e instanceof Error ? e.message : 'Gagal memuat matriks.' });
+      setState({ status: 'error', message: e instanceof Error ? e.message : t('rbac.gagal_memuat_matriks', 'Gagal memuat matriks.') });
     }
   }, []);
 
@@ -83,14 +85,14 @@ export default function RbacMatrixView() {
     return (
       <div className="mx-auto w-full max-w-6xl p-4 sm:p-6">
         <div role="alert" className="rounded-[var(--radius-lg)] border border-red-300 bg-red-50 p-4 text-ink">
-          <p className="font-semibold">Gagal memuat matriks peran</p>
+          <p className="font-semibold">{t('rbac.gagal_memuat_matriks_peran', 'Gagal memuat matriks peran')}</p>
           <p className="mt-1 text-sm text-ink-soft">{state.message}</p>
           <button
             type="button"
             onClick={() => void load()}
             className="mt-3 rounded-[var(--radius-md)] bg-accent px-3 py-2 text-sm font-semibold text-[var(--color-on-accent)] shadow-sm transition hover:bg-accent-hover focus-visible:shadow-[var(--shadow-focus)]"
           >
-            Coba lagi
+            {t('common.retry', 'Coba lagi')}
           </button>
         </div>
       </div>
@@ -106,8 +108,8 @@ export default function RbacMatrixView() {
     return (
       <div className="mx-auto w-full max-w-6xl p-4 sm:p-6">
         <div className="rounded-[var(--radius-xl)] border border-dashed border-hairline bg-surface p-8 text-center">
-          <p className="font-semibold text-ink">Belum ada data matriks</p>
-          <p className="mt-1 text-sm text-ink-soft">Pastikan endpoint <code className="font-mono text-xs">GET /api/rbac/matrix</code> aktif.</p>
+          <p className="font-semibold text-ink">{t('rbac.belum_ada_data_matriks', 'Belum ada data matriks')}</p>
+          <p className="mt-1 text-sm text-ink-soft">{t('rbac.pastikan_endpoint', 'Pastikan endpoint')} <code className="font-mono text-xs">{t('rbac.get_api_rbac_matrix', 'GET /api/rbac/matrix')}</code> {t('rbac.aktif', 'aktif.')}</p>
         </div>
       </div>
     );
@@ -119,42 +121,42 @@ export default function RbacMatrixView() {
     <div className="mx-auto w-full max-w-6xl p-4 sm:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-ink sm:text-xl">Matriks Peran × Permission</h1>
+          <h1 className="text-lg font-semibold tracking-tight text-ink sm:text-xl">{t('rbac.matriks_peran_permission', 'Matriks Peran × Permission')}</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            {permissions.length} permission · {roleCols.length} peran · dihasilkan dari <code className="font-mono text-xs">server/rbac.ts</code>
+            {t('rbac.permission_peran_dihasilkan_dari', '{permissions} permission · {roleCols} peran · dihasilkan dari', { permissions: permissions.length, roleCols: roleCols.length })} <code className="font-mono text-xs">{t('rbac.server_rbac_ts', 'server/rbac.ts')}</code>
           </p>
         </div>
-        <Can permission="admin.access" fallback={<span className="rounded-full border border-hairline bg-surface-2 px-3 py-1 text-xs text-ink-soft">Hanya baca</span>}>
+        <Can permission="admin.access" fallback={<span className="rounded-full border border-hairline bg-surface-2 px-3 py-1 text-xs text-ink-soft">{t('rbac.hanya_baca', 'Hanya baca')}</span>}>
           <span className="rounded-full border border-[color-mix(in_srgb,var(--color-accent)_35%,transparent)] bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-text">
-            Akses admin
+            {t('rbac.akses_admin', 'Akses admin')}
           </span>
         </Can>
       </header>
 
       <Separator className="my-4" />
 
-      <section aria-label="Ringkasan peran" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <section aria-label={t('rbac.ringkasan_peran', 'Ringkasan peran')} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {roles.map((r) => (
           <div key={r.code} className="rounded-[var(--radius-lg)] border border-hairline bg-surface p-3 shadow-sm transition-shadow hover:shadow-[var(--shadow-md)]">
             <div className="flex items-center justify-between gap-2">
               <strong className="text-sm text-ink">{r.name}</strong>
-              <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${roleBadgeClass(r.code)}`}>level {r.level}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${roleBadgeClass(r.code)}`}>{t('rbac.level', 'level {level}', { level: r.level })}</span>
             </div>
             <p className="mt-1 text-xs text-ink-soft">{r.scope}</p>
             <p className="mt-2 text-xs text-ink-soft">
-              <span className="font-mono">{matrix[r.code]?.length ?? 0}</span> permission
+              <span className="font-mono">{matrix[r.code]?.length ?? 0}</span> {t('rbac.permission', 'permission')}
             </p>
           </div>
         ))}
       </section>
 
-      <section aria-label="Tabel matriks" className="mt-6">
+      <section aria-label={t('rbac.tabel_matriks', 'Tabel matriks')} className="mt-6">
         <div className="rounded-[var(--radius-xl)] border border-hairline bg-surface shadow-elevated">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead scope="col">Permission</TableHead>
-                <TableHead scope="col">Resource</TableHead>
+                <TableHead scope="col">{t('rbac.permission_2', 'Permission')}</TableHead>
+                <TableHead scope="col">{t('rbac.resource', 'Resource')}</TableHead>
                 {roleCols.map((r) => (
                   <TableHead key={r} scope="col" className="text-center">{r.toUpperCase()}</TableHead>
                 ))}
@@ -171,7 +173,7 @@ export default function RbacMatrixView() {
                       <TableCell key={r} className="text-center">
                         <span
                           className={allowed ? 'font-semibold text-accent-text' : 'text-ink-faint'}
-                          aria-label={allowed ? `${r} diizinkan untuk ${p.code}` : `${r} tidak diizinkan untuk ${p.code}`}
+                          aria-label={allowed ? t('rbac.diizinkan_untuk', '{r} diizinkan untuk {code}', { r, code: p.code }) : t('rbac.tidak_diizinkan_untuk', '{r} tidak diizinkan untuk {code}', { r, code: p.code })}
                         >
                           {allowed ? '✔' : '—'}
                         </span>
@@ -184,8 +186,7 @@ export default function RbacMatrixView() {
           </Table>
         </div>
         <p className="mt-3 text-xs text-ink-soft">
-          ✔ = diizinkan · — = ditolak. Matriks ini dibaca dari endpoint server, bukan hardcode di frontend
-          (peran Anda saat ini: <span className="font-mono">{role}</span>).
+          {t('rbac.diizinkan_ditolak_matriks_ini_dibaca_dari', '✔ = diizinkan · — = ditolak. Matriks ini dibaca dari endpoint server, bukan hardcode di frontend (peran Anda saat ini:')} <span className="font-mono">{role}</span>).
         </p>
       </section>
     </div>

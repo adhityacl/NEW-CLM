@@ -339,7 +339,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
   // Handler: Delete User
   const handleDeleteUser = async (user: ConsoleUser) => {
     const ok = await confirmDialog({
-      description: `Hapus pengguna "${user.name}"? Akun ini akan dihapus permanen.`,
+      description: t('admin.hapus_pengguna_akun_ini_akan_dihapus', 'Hapus pengguna "{name}"? Akun ini akan dihapus permanen.', { name: user.name }),
       tone: 'danger',
       confirmLabel: t('admin.action_delete', 'Hapus'),
     });
@@ -371,7 +371,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
     // Confirmation for bulk action
     if (action === 'delete') {
       const ok = await confirmDialog({
-        description: `Hapus ${userIds.length} pengguna terpilih secara permanen?`,
+        description: t('admin.hapus_pengguna_terpilih_secara_permanen', 'Hapus {userIds} pengguna terpilih secara permanen?', { userIds: userIds.length }),
         tone: 'danger',
         confirmLabel: t('admin.action_delete', 'Hapus'),
       });

@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTenantSettings } from '../../context/TenantSettingsContext';
 import type { PartyIdentifier } from '../../types';
+import { localizeName } from '../../lib/policy';
 
 export interface PartnerJurisdictionFieldsProps {
   country: string;
@@ -30,13 +31,15 @@ export const PartnerJurisdictionFields: React.FC<PartnerJurisdictionFieldsProps>
   onEntityTypeChange,
   onIdentifiersChange,
 }) => {
-  const { t } = useLanguage();
-  const { countries } = useTenantSettings();
+  const { t, language } = useLanguage();
+  const { countries, policy } = useTenantSettings();
   const countryId = useId();
   const entityId = useId();
   const formsListId = useId();
   const pack = countries.find((c) => c.code === country);
-  const schemes = (pack?.identifierSchemes || []).filter((s) => s.appliesTo.includes('organization'));
+  // Industries that contract with individuals (KOL, freelancers) also get personal tax IDs.
+  const counterpartyTypes = policy.industry.counterpartyTypes?.length ? policy.industry.counterpartyTypes : ['organization'];
+  const schemes = (pack?.identifierSchemes || []).filter((s) => s.appliesTo.some((type) => counterpartyTypes.includes(type)));
 
   const updateIdentifier = (index: number, patch: Partial<PartyIdentifier>) => {
     onIdentifiersChange(identifiers.map((item, i) => (i === index ? { ...item, ...patch } : item)));
@@ -56,7 +59,7 @@ export const PartnerJurisdictionFields: React.FC<PartnerJurisdictionFieldsProps>
           <select id={countryId} className={`${fieldClass} cursor-pointer`} value={country} onChange={(e) => onCountryChange(e.target.value)}>
             <option value="">{t('form.partner.country_unknown', 'Unknown / not stated')}</option>
             {countries.filter((c) => c.code !== 'INTL').map((c) => (
-              <option key={c.code} value={c.code}>{c.name}</option>
+              <option key={c.code} value={c.code}>{localizeName(c.name, language)}</option>
             ))}
           </select>
         </div>
@@ -84,7 +87,7 @@ export const PartnerJurisdictionFields: React.FC<PartnerJurisdictionFieldsProps>
         <ul className="space-y-2">
           {identifiers.map((item, index) => {
             const scheme = schemes.find((s) => s.key === item.scheme);
-            const schemeLabel = scheme?.label || t('form.partner.identifier_other', 'Other identifier');
+            const schemeLabel = (scheme && localizeName(scheme.label, language)) || t('form.partner.identifier_other', 'Other identifier');
             return (
               <li key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
                 <select
@@ -93,7 +96,7 @@ export const PartnerJurisdictionFields: React.FC<PartnerJurisdictionFieldsProps>
                   value={item.scheme}
                   onChange={(e) => updateIdentifier(index, { scheme: e.target.value })}
                 >
-                  {schemes.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                  {schemes.map((s) => <option key={s.key} value={s.key}>{localizeName(s.label, language)}</option>)}
                   <option value="other">{t('form.partner.identifier_other', 'Other identifier')}</option>
                 </select>
                 <input

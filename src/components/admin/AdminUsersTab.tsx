@@ -110,11 +110,11 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
               className="h-8 w-auto text-xs"
             >
               <option value="all">{t('admin.filter_role_all', 'Semua Role')}</option>
-              <option value="superuser">Superuser (System)</option>
-              <option value="admin">Admin (Global)</option>
-              <option value="manager">Manager (Group)</option>
-              <option value="editor">Editor (Group)</option>
-              <option value="viewer">Viewer (Read-Only)</option>
+              <option value="superuser">{t('admin.superuser_system', 'Superuser (System)')}</option>
+              <option value="admin">{t('admin.admin_global', 'Admin (Global)')}</option>
+              <option value="manager">{t('admin.manager_group', 'Manager (Group)')}</option>
+              <option value="editor">{t('admin.editor_group', 'Editor (Group)')}</option>
+              <option value="viewer">{t('admin.viewer_read_only', 'Viewer (Read-Only)')}</option>
             </Select>
 
             {/* Tenant / Organization Filter */}
@@ -160,13 +160,13 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
       {selectedUserIds.length > 0 && (
         <div
           role="toolbar"
-          aria-label={language === 'ID' ? 'Aksi massal pengguna terpilih' : 'Bulk actions for selected users'}
+          aria-label={t('admin.bulk_actions_for_selected_users', 'Bulk actions for selected users')}
           className="flex items-center justify-between gap-3 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/60 p-3 rounded-xl shadow-xs"
         >
           <div className="flex items-center gap-2 text-xs font-semibold text-purple-900 dark:text-purple-300">
             <Users className="w-4 h-4 text-purple-600" />
             <span>
-              {selectedUserIds.length} {language === 'ID' ? 'pengguna terpilih' : 'users selected'}
+              {selectedUserIds.length} {t('admin.users_selected', 'users selected')}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -225,7 +225,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                   <div className="flex items-center justify-start">
                     <input
                       type="checkbox"
-                      aria-label={language === 'ID' ? 'Pilih semua pengguna' : 'Select all users'}
+                      aria-label={t('admin.select_all_users', 'Select all users')}
                       checked={filteredUsers.length > 0 && selectedUserIds.length === filteredUsers.length}
                       onChange={(e) => {
                         if (e.target.checked) {
@@ -278,7 +278,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                     <td className="pl-6 pr-2 py-4 text-left align-middle">
                       <input
                         type="checkbox"
-                        aria-label={`${language === 'ID' ? 'Pilih' : 'Select'} ${user.name}`}
+                        aria-label={`${t('admin.select', 'Select')} ${user.name}`}
                         checked={selectedUserIds.includes(user.id)}
                         onChange={(e) => {
                           if (e.target.checked) {
@@ -310,7 +310,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                         <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                           <span className="truncate">{user.name}</span>
                           {user.emailVerified && (
-                            <span title={language === 'ID' ? 'Email Terverifikasi' : 'Verified Email'}>
+                            <span title={t('admin.verified_email', 'Verified Email')}>
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                             </span>
                           )}
@@ -377,7 +377,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
 
                   {/* Active Sessions */}
                   <td className="py-4 px-4 text-left align-middle font-mono text-slate-600 dark:text-slate-400">
-                    {user.sessionCount ?? 0} {language === 'ID' ? 'sesi' : 'sessions'}
+                    {user.sessionCount ?? 0} {t('admin.sessions_2', 'sessions')}
                   </td>
 
                   {/* Joined Date */}

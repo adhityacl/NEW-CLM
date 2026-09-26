@@ -216,7 +216,7 @@ export const IOView: React.FC<IOViewProps> = ({
           type="button"
           onClick={() => handleSort(field)}
           className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
-          title={`Urutkan berdasarkan ${label}`}
+          title={t('io.urutkan_berdasarkan', 'Urutkan berdasarkan {label}', { label })}
         >
           <span>{label}</span>
           {isSorted ? (
@@ -402,11 +402,11 @@ export const IOView: React.FC<IOViewProps> = ({
             className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('io.all_pricing_models', 'Semua Model Pricing')}</option>
-            <option value="CPM">CPM</option>
-            <option value="CPC">CPC</option>
-            <option value="Flat Fee">Flat Fee</option>
-            <option value="Revenue Share">Revenue Share</option>
-            <option value="Fixed Package">Fixed Package</option>
+            <option value="CPM">{t('io.cpm', 'CPM')}</option>
+            <option value="CPC">{t('io.cpc', 'CPC')}</option>
+            <option value="Flat Fee">{t('io.flat_fee', 'Flat Fee')}</option>
+            <option value="Revenue Share">{t('io.revenue_share', 'Revenue Share')}</option>
+            <option value="Fixed Package">{t('io.fixed_package', 'Fixed Package')}</option>
           </select>
 
           {/* Simple Select Filter: Charging Scheme */}
@@ -416,9 +416,9 @@ export const IOView: React.FC<IOViewProps> = ({
             className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('io.all_charging_types', 'Semua Skema Pembayaran')}</option>
-            <option value="Prepaid">Prepaid</option>
-            <option value="Postpaid">Postpaid</option>
-            <option value="Milestone">Milestone</option>
+            <option value="Prepaid">{t('io.prepaid', 'Prepaid')}</option>
+            <option value="Postpaid">{t('io.postpaid', 'Postpaid')}</option>
+            <option value="Milestone">{t('io.milestone', 'Milestone')}</option>
           </select>
 
           {/* Reset Filters */}
@@ -497,7 +497,7 @@ export const IOView: React.FC<IOViewProps> = ({
                       type="checkbox"
                       onChange={handleSelectAll}
                       checked={isAllSelected}
-                      aria-label={t('table.select_all', 'Pilih semua IO')}
+                      aria-label={t('io.select_all', 'Pilih semua IO')}
                       className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
                     />
                   </div>
@@ -567,7 +567,7 @@ export const IOView: React.FC<IOViewProps> = ({
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleSelectRow(io.io_id)}
-                            aria-label={`Pilih IO ${io.nomor_io}`}
+                            aria-label={t('io.pilih_io', 'Pilih IO {nomor_io}', { nomor_io: io.nomor_io })}
                             className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
                           />
                         </div>
@@ -655,7 +655,7 @@ export const IOView: React.FC<IOViewProps> = ({
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-xs text-[#06C755] hover:text-[#048C3B] font-normal hover:underline"
                             >
-                              <FileDown className="w-3.5 h-3.5" /> PDF
+                              <FileDown className="w-3.5 h-3.5" /> {t('io.pdf', 'PDF')}
                             </a>
                           ) : (
                             <span className="text-slate-300">-</span>

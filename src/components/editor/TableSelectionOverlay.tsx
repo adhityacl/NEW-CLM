@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 import type { Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { CellSelection, TableMap } from '@tiptap/pm/tables';
@@ -31,6 +32,7 @@ export const TableSelectionOverlay: React.FC<{
   editor: Editor | null;
   containerRef: React.RefObject<HTMLElement | null>;
 }> = ({ editor, containerRef }) => {
+  const { t } = useLanguage();
   const [rowHandle, setRowHandle] = useState<HandleRect | null>(null);
   const [colHandle, setColHandle] = useState<HandleRect | null>(null);
   const [selectionInfo, setSelectionInfo] = useState<SelectionInfo | null>(null);
@@ -134,7 +136,7 @@ export const TableSelectionOverlay: React.FC<{
             selectionInfo &&
             editor.chain().focus().setCellSelection({ anchorCell: selectionInfo.rowFrom, headCell: selectionInfo.rowTo }).run()
           }
-          title="Pilih seluruh baris"
+          title={t('editor.pilih_seluruh_baris', 'Pilih seluruh baris')}
           style={{ top: rowHandle.top, left: rowHandle.left - 18, height: Math.max(rowHandle.height, 16) }}
           className="absolute w-4 flex items-center justify-center rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 hover:text-emerald-600 dark:hover:text-emerald-400 z-20 cursor-pointer transition-colors"
         >
@@ -150,7 +152,7 @@ export const TableSelectionOverlay: React.FC<{
             selectionInfo &&
             editor.chain().focus().setCellSelection({ anchorCell: selectionInfo.colFrom, headCell: selectionInfo.colTo }).run()
           }
-          title="Pilih seluruh kolom"
+          title={t('editor.pilih_seluruh_kolom', 'Pilih seluruh kolom')}
           style={{ top: colHandle.top - 16, left: colHandle.left, width: Math.max(colHandle.width, 16) }}
           className="absolute h-4 flex items-center justify-center rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 hover:text-emerald-600 dark:hover:text-emerald-400 z-20 cursor-pointer transition-colors"
         >
@@ -169,7 +171,7 @@ export const TableSelectionOverlay: React.FC<{
             type="button"
             disabled={!editor.can().mergeCells()}
             onClick={() => editor.chain().focus().mergeCells().run()}
-            title="Gabung Sel"
+            title={t('editor.gabung_sel', 'Gabung Sel')}
             className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Combine className="w-3.5 h-3.5" />
@@ -178,7 +180,7 @@ export const TableSelectionOverlay: React.FC<{
             type="button"
             disabled={!editor.can().splitCell()}
             onClick={() => editor.chain().focus().splitCell().run()}
-            title="Pisah Sel"
+            title={t('editor.pisah_sel', 'Pisah Sel')}
             className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <SplitSquareHorizontal className="w-3.5 h-3.5" />
@@ -189,7 +191,7 @@ export const TableSelectionOverlay: React.FC<{
           <button
             type="button"
             onClick={() => editor.chain().focus().setCellAttribute('align', 'left').run()}
-            title="Rata Kiri"
+            title={t('editor.rata_kiri', 'Rata Kiri')}
             className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <AlignLeft className="w-3.5 h-3.5" />
@@ -197,7 +199,7 @@ export const TableSelectionOverlay: React.FC<{
           <button
             type="button"
             onClick={() => editor.chain().focus().setCellAttribute('align', 'center').run()}
-            title="Rata Tengah"
+            title={t('editor.rata_tengah', 'Rata Tengah')}
             className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <AlignCenter className="w-3.5 h-3.5" />
@@ -205,7 +207,7 @@ export const TableSelectionOverlay: React.FC<{
           <button
             type="button"
             onClick={() => editor.chain().focus().setCellAttribute('align', 'right').run()}
-            title="Rata Kanan"
+            title={t('editor.rata_kanan', 'Rata Kanan')}
             className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <AlignRight className="w-3.5 h-3.5" />
@@ -218,7 +220,7 @@ export const TableSelectionOverlay: React.FC<{
               <button
                 key={color}
                 type="button"
-                title={color === 'transparent' ? 'Tanpa warna' : color}
+                title={color === 'transparent' ? t('editor.tanpa_warna', 'Tanpa warna') : color}
                 onClick={() =>
                   editor
                     .chain()
@@ -237,7 +239,7 @@ export const TableSelectionOverlay: React.FC<{
           <button
             type="button"
             onClick={() => editor.chain().focus().deleteRow().run()}
-            title="Hapus Baris"
+            title={t('editor.hapus_baris', 'Hapus Baris')}
             className="p-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
           >
             <Trash2 className="w-3.5 h-3.5" />

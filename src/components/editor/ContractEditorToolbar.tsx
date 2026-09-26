@@ -35,6 +35,7 @@ import {
   SplitSquareHorizontal,
   PaintBucket,
 } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ContractEditorToolbarProps {
   editor: Editor | null;
@@ -68,14 +69,14 @@ const Divider = () => (
 
 const GRID_MAX = 8;
 
-const CELL_COLORS: { label: string; value: string | null }[] = [
-  { label: 'Tanpa warna', value: null },
-  { label: 'Abu-abu', value: '#f1f5f9' },
-  { label: 'Merah', value: '#fee2e2' },
-  { label: 'Kuning', value: '#fef9c3' },
-  { label: 'Hijau', value: '#dcfce7' },
-  { label: 'Biru', value: '#dbeafe' },
-  { label: 'Ungu', value: '#ede9fe' },
+const CELL_COLORS: { key: string; label: string; value: string | null }[] = [
+  { key: 'editor.color_none', label: 'Tanpa warna', value: null },
+  { key: 'editor.color_gray', label: 'Abu-abu', value: '#f1f5f9' },
+  { key: 'editor.color_red', label: 'Merah', value: '#fee2e2' },
+  { key: 'editor.color_yellow', label: 'Kuning', value: '#fef9c3' },
+  { key: 'editor.color_green', label: 'Hijau', value: '#dcfce7' },
+  { key: 'editor.color_blue', label: 'Biru', value: '#dbeafe' },
+  { key: 'editor.color_purple', label: 'Ungu', value: '#ede9fe' },
 ];
 
 /** Hover-to-size table grid picker, matching the modern "Word/Notion-style" insert UX. */
@@ -123,6 +124,7 @@ const TableGridPicker: React.FC<{
 export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
   editor,
 }) => {
+  const { t } = useLanguage();
   const [showTableMenu, setShowTableMenu] = useState(false);
 
   if (!editor) return null;
@@ -131,7 +133,7 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
 
   const setLink = () => {
     const previousUrl = editor.getAttributes('link').href as string | undefined;
-    const url = window.prompt('Masukkan URL tautan:', previousUrl || 'https://');
+    const url = window.prompt(t('editor.masukkan_url_tautan', 'Masukkan URL tautan:'), previousUrl || 'https://');
     if (url === null) return;
     if (url === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
@@ -143,10 +145,10 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
   return (
     <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 py-1.5 flex flex-wrap items-center gap-0.5 shrink-0 z-10 shadow-xs">
       {/* History */}
-      <ToolbarButton title="Undo (Ctrl+Z)" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
+      <ToolbarButton title={t('editor.undo_ctrl_z', 'Undo (Ctrl+Z)')} onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
         <Undo2 className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Redo (Ctrl+Y)" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
+      <ToolbarButton title={t('editor.redo_ctrl_y', 'Redo (Ctrl+Y)')} onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
         <Redo2 className="w-3.5 h-3.5" />
       </ToolbarButton>
 
@@ -154,37 +156,37 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
 
       {/* Block type */}
       <ToolbarButton
-        title="Heading 1 (Judul Utama)"
+        title={t('editor.heading_1_judul_utama', 'Heading 1 (Judul Utama)')}
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
       >
         <Heading1 className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        title="Heading 2 (Judul Pasal)"
+        title={t('editor.heading_2_judul_pasal', 'Heading 2 (Judul Pasal)')}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
       >
         <Heading2 className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        title="Heading 3"
+        title={t('editor.heading_3', 'Heading 3')}
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
       >
         <Heading3 className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        title="Teks Normal Paragraf"
+        title={t('editor.teks_normal_paragraf', 'Teks Normal Paragraf')}
         onClick={() => editor.chain().focus().setParagraph().run()}
       >
         <span className="text-xs font-bold px-0.5">P</span>
       </ToolbarButton>
       <ToolbarButton
-        title="Kutipan (Blockquote)"
+        title={t('editor.kutipan_blockquote', 'Kutipan (Blockquote)')}
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
       >
         <Quote className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        title="Blok Kode"
+        title={t('editor.blok_kode', 'Blok Kode')}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
       >
         <Code2 className="w-3.5 h-3.5" />
@@ -193,26 +195,26 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
       <Divider />
 
       {/* Text styling */}
-      <ToolbarButton title="Tebal (Ctrl+B)" onClick={() => editor.chain().focus().toggleBold().run()}>
+      <ToolbarButton title={t('editor.tebal_ctrl_b', 'Tebal (Ctrl+B)')} onClick={() => editor.chain().focus().toggleBold().run()}>
         <Bold className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Miring (Ctrl+I)" onClick={() => editor.chain().focus().toggleItalic().run()}>
+      <ToolbarButton title={t('editor.miring_ctrl_i', 'Miring (Ctrl+I)')} onClick={() => editor.chain().focus().toggleItalic().run()}>
         <Italic className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Garis Bawah (Ctrl+U)" onClick={() => editor.chain().focus().toggleUnderline().run()}>
+      <ToolbarButton title={t('editor.garis_bawah_ctrl_u', 'Garis Bawah (Ctrl+U)')} onClick={() => editor.chain().focus().toggleUnderline().run()}>
         <Underline className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Coret (Strikethrough)" onClick={() => editor.chain().focus().toggleStrike().run()}>
+      <ToolbarButton title={t('editor.coret_strikethrough', 'Coret (Strikethrough)')} onClick={() => editor.chain().focus().toggleStrike().run()}>
         <Strikethrough className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Sorot Teks (Highlight)" onClick={() => editor.chain().focus().toggleHighlight().run()}>
+      <ToolbarButton title={t('editor.sorot_teks_highlight', 'Sorot Teks (Highlight)')} onClick={() => editor.chain().focus().toggleHighlight().run()}>
         <Highlighter className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Tautan (Link)" onClick={setLink}>
+      <ToolbarButton title={t('editor.tautan_link', 'Tautan (Link)')} onClick={setLink}>
         <Link2 className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        title="Hapus Tautan"
+        title={t('editor.hapus_tautan', 'Hapus Tautan')}
         disabled={!editor.isActive('link')}
         onClick={() => editor.chain().focus().unsetLink().run()}
       >
@@ -222,37 +224,37 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
       <Divider />
 
       {/* Alignment */}
-      <ToolbarButton title="Rata Kiri" onClick={() => editor.chain().focus().setTextAlign('left').run()}>
+      <ToolbarButton title={t('editor.rata_kiri', 'Rata Kiri')} onClick={() => editor.chain().focus().setTextAlign('left').run()}>
         <AlignLeft className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Rata Tengah" onClick={() => editor.chain().focus().setTextAlign('center').run()}>
+      <ToolbarButton title={t('editor.rata_tengah', 'Rata Tengah')} onClick={() => editor.chain().focus().setTextAlign('center').run()}>
         <AlignCenter className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Rata Kanan" onClick={() => editor.chain().focus().setTextAlign('right').run()}>
+      <ToolbarButton title={t('editor.rata_kanan', 'Rata Kanan')} onClick={() => editor.chain().focus().setTextAlign('right').run()}>
         <AlignRight className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Rata Kanan-Kiri (Justify)" onClick={() => editor.chain().focus().setTextAlign('justify').run()}>
+      <ToolbarButton title={t('editor.rata_kanan_kiri_justify', 'Rata Kanan-Kiri (Justify)')} onClick={() => editor.chain().focus().setTextAlign('justify').run()}>
         <AlignJustify className="w-3.5 h-3.5" />
       </ToolbarButton>
 
       <Divider />
 
       {/* Lists */}
-      <ToolbarButton title="Bullet List" onClick={() => editor.chain().focus().toggleBulletList().run()}>
+      <ToolbarButton title={t('editor.bullet_list', 'Bullet List')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
         <List className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Numbered List" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+      <ToolbarButton title={t('editor.numbered_list', 'Numbered List')} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
         <ListOrdered className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        title="Kurangi Indentasi"
+        title={t('editor.kurangi_indentasi', 'Kurangi Indentasi')}
         disabled={!editor.can().liftListItem('listItem')}
         onClick={() => editor.chain().focus().liftListItem('listItem').run()}
       >
         <IndentDecrease className="w-3.5 h-3.5" />
       </ToolbarButton>
       <ToolbarButton
-        title="Tambah Indentasi"
+        title={t('editor.tambah_indentasi', 'Tambah Indentasi')}
         disabled={!editor.can().sinkListItem('listItem')}
         onClick={() => editor.chain().focus().sinkListItem('listItem').run()}
       >
@@ -264,7 +266,7 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
       {/* Table */}
       <div className="relative">
         <ToolbarButton
-          title="Tabel"
+          title={t('partners.table_view', 'Tabel')}
           active={showTableMenu}
           onClick={() => setShowTableMenu((v) => !v)}
         >
@@ -289,21 +291,21 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
                   onClick={() => editor.chain().focus().addRowAfter().run()}
                   className="w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center gap-2 whitespace-nowrap"
                 >
-                  <Rows3 className="w-3.5 h-3.5" /> Tambah Baris
+                  <Rows3 className="w-3.5 h-3.5" /> {t('editor.tambah_baris', 'Tambah Baris')}
                 </button>
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().addColumnAfter().run()}
                   className="w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center gap-2 whitespace-nowrap"
                 >
-                  <Columns3 className="w-3.5 h-3.5" /> Tambah Kolom
+                  <Columns3 className="w-3.5 h-3.5" /> {t('editor.tambah_kolom', 'Tambah Kolom')}
                 </button>
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().toggleHeaderRow().run()}
                   className="w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center gap-2 whitespace-nowrap"
                 >
-                  <Rows3 className="w-3.5 h-3.5" /> Toggle Baris Header
+                  <Rows3 className="w-3.5 h-3.5" /> {t('editor.toggle_baris_header', 'Toggle Baris Header')}
                 </button>
                 <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
                 <button
@@ -312,7 +314,7 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
                   onClick={() => editor.chain().focus().mergeCells().run()}
                   className="w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center gap-2 whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <Combine className="w-3.5 h-3.5" /> Gabung Sel (Merge)
+                  <Combine className="w-3.5 h-3.5" /> {t('editor.gabung_sel_merge', 'Gabung Sel (Merge)')}
                 </button>
                 <button
                   type="button"
@@ -320,18 +322,19 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
                   onClick={() => editor.chain().focus().splitCell().run()}
                   className="w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center gap-2 whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <SplitSquareHorizontal className="w-3.5 h-3.5" /> Pisah Sel (Split)
+                  <SplitSquareHorizontal className="w-3.5 h-3.5" /> {t('editor.pisah_sel_split', 'Pisah Sel (Split)')}
                 </button>
                 <div className="px-2.5 py-1.5">
                   <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 mb-1.5">
-                    <PaintBucket className="w-3 h-3" /> Warna Sel
+                    <PaintBucket className="w-3 h-3" /> {t('editor.warna_sel', 'Warna Sel')}
                   </div>
                   <div className="flex items-center gap-1.5">
                     {CELL_COLORS.map((c) => (
                       <button
-                        key={c.label}
+                        key={c.key}
                         type="button"
-                        title={c.label}
+                        title={t(c.key, c.label)}
+                        aria-label={t(c.key, c.label)}
                         onClick={() => editor.chain().focus().setCellAttribute('backgroundColor', c.value).run()}
                         className="w-5 h-5 rounded-full border border-slate-300 dark:border-slate-600 shrink-0"
                         style={{ backgroundColor: c.value || 'transparent' }}
@@ -345,21 +348,21 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
                   onClick={() => editor.chain().focus().deleteRow().run()}
                   className="w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400 flex items-center gap-2 whitespace-nowrap"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Hapus Baris
+                  <Trash2 className="w-3.5 h-3.5" /> {t('editor.hapus_baris', 'Hapus Baris')}
                 </button>
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().deleteColumn().run()}
                   className="w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400 flex items-center gap-2 whitespace-nowrap"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Hapus Kolom
+                  <Trash2 className="w-3.5 h-3.5" /> {t('editor.hapus_kolom', 'Hapus Kolom')}
                 </button>
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().deleteTable().run()}
                   className="w-full text-left px-2.5 py-1.5 text-xs font-bold rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-700 dark:text-rose-400 flex items-center gap-2 whitespace-nowrap"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Hapus Seluruh Tabel
+                  <Trash2 className="w-3.5 h-3.5" /> {t('editor.hapus_seluruh_tabel', 'Hapus Seluruh Tabel')}
                 </button>
               </div>
             )}
@@ -370,16 +373,16 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
       <Divider />
 
       {/* Misc */}
-      <ToolbarButton title="Superscript (Pangkat Atas)" onClick={() => editor.chain().focus().toggleSuperscript().run()}>
+      <ToolbarButton title={t('editor.superscript_pangkat_atas', 'Superscript (Pangkat Atas)')} onClick={() => editor.chain().focus().toggleSuperscript().run()}>
         <Superscript className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Subscript (Pangkat Bawah)" onClick={() => editor.chain().focus().toggleSubscript().run()}>
+      <ToolbarButton title={t('editor.subscript_pangkat_bawah', 'Subscript (Pangkat Bawah)')} onClick={() => editor.chain().focus().toggleSubscript().run()}>
         <Subscript className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Garis Horizontal" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+      <ToolbarButton title={t('editor.garis_horizontal', 'Garis Horizontal')} onClick={() => editor.chain().focus().setHorizontalRule().run()}>
         <Minus className="w-3.5 h-3.5" />
       </ToolbarButton>
-      <ToolbarButton title="Hapus Format Teks" onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}>
+      <ToolbarButton title={t('editor.hapus_format_teks', 'Hapus Format Teks')} onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}>
         <Eraser className="w-3.5 h-3.5" />
       </ToolbarButton>
     </div>

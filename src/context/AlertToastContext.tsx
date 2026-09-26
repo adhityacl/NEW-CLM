@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useState } from 'react';
+import { useLanguage } from './LanguageContext';
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '../components/ui/alert';
 
@@ -31,6 +32,7 @@ const VARIANT_ICON: Record<AlertToastVariant, React.ComponentType<{ className?: 
 };
 
 export const AlertToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { t } = useLanguage();
   const [items, setItems] = useState<AlertToastItem[]>([]);
 
   const dismiss = useCallback((id: string) => {
@@ -63,7 +65,7 @@ export const AlertToastProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 <button
                   type="button"
                   onClick={() => dismiss(item.id)}
-                  aria-label="Tutup notifikasi"
+                  aria-label={t('common.tutup_notifikasi', 'Tutup notifikasi')}
                   className="absolute right-2 top-2.5 text-current opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
                 >
                   <X className="h-3.5 w-3.5" />

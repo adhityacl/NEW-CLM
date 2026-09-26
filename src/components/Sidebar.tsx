@@ -178,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const adminNavItems: SidebarNavItem[] = [
     {
       id: 'admin-system',
-      label: 'System Admin',
+      label: t('nav.system_admin', 'System Admin'),
       icon: Users,
       permission: 'admin.system.access',
       adminOnly: true,
@@ -186,7 +186,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'admin-organization',
-      label: 'Organization Admin',
+      label: t('nav.organization_admin', 'Organization Admin'),
       icon: Building2,
       permission: 'admin.access',
       tenantOnly: true,
@@ -388,13 +388,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             setIsPartnerExpanded((prev) => !prev);
                           }}
                           className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none"
-                          aria-label={isPartnerExpanded ? 'Tutup Submenu' : 'Buka Submenu'}
+                          aria-label={isPartnerExpanded ? t('nav.tutup_submenu', 'Tutup Submenu') : t('nav.buka_submenu', 'Buka Submenu')}
                           aria-expanded={isPartnerExpanded}
                         >
                           <ChevronRight
-                            className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                              isPartnerExpanded ? 'rotate-90' : ''
-                            }`}
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${isPartnerExpanded ? 'rotate-90' : ''}`}
                           />
                         </button>
                       </div>
@@ -460,13 +458,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             setIsAdminExpanded((prev) => !prev);
                           }}
                           className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none"
-                          aria-label={isAdminExpanded ? 'Tutup Submenu' : 'Buka Submenu'}
+                          aria-label={isAdminExpanded ? t('nav.tutup_submenu', 'Tutup Submenu') : t('nav.buka_submenu', 'Buka Submenu')}
                           aria-expanded={isAdminExpanded}
                         >
                           <ChevronRight
-                            className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                              isAdminExpanded ? 'rotate-90' : ''
-                            }`}
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${isAdminExpanded ? 'rotate-90' : ''}`}
                           />
                         </button>
                       </div>
@@ -530,13 +526,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             setIsSettingsExpanded((prev) => !prev);
                           }}
                           className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none"
-                          aria-label={isSettingsExpanded ? 'Tutup Submenu' : 'Buka Submenu'}
+                          aria-label={isSettingsExpanded ? t('nav.tutup_submenu', 'Tutup Submenu') : t('nav.buka_submenu', 'Buka Submenu')}
                           aria-expanded={isSettingsExpanded}
                         >
                           <ChevronRight
-                            className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                              isSettingsExpanded ? 'rotate-90' : ''
-                            }`}
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${isSettingsExpanded ? 'rotate-90' : ''}`}
                           />
                         </button>
                       </div>
@@ -706,7 +700,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }`}
         aria-hidden={!isMobileOpen}
         role="dialog"
-        aria-label="Menu Navigasi Mobile"
+        aria-label={t('nav.menu_navigasi_mobile', 'Menu Navigasi Mobile')}
       >
         {/* Mobile Header: Workspace Switcher + Close Button */}
         <div className="h-16 px-3 flex items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 shrink-0">
@@ -724,7 +718,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             type="button"
             onClick={onCloseMobile}
             className="min-w-11 min-h-11 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
-            aria-label="Tutup Menu"
+            aria-label={t('nav.tutup_menu', 'Tutup Menu')}
           >
             <X className="w-5 h-5" />
           </button>

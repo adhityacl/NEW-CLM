@@ -105,17 +105,20 @@ const RELATIVE_UNITS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
   ['minute', 60],
 ];
 
-export function formatRelativeTime(iso: string, language: 'ID' | 'EN', now = Date.now()): string {
+type UiLanguage = 'ID' | 'EN' | 'ZH';
+const LOCALE: Record<UiLanguage, string> = { ID: 'id-ID', EN: 'en-US', ZH: 'zh-CN' };
+
+export function formatRelativeTime(iso: string, language: UiLanguage, now = Date.now()): string {
   const seconds = Math.round((Date.parse(iso) - now) / 1000);
-  const rtf = new Intl.RelativeTimeFormat(language === 'ID' ? 'id-ID' : 'en-US', { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat(LOCALE[language], { numeric: 'auto' });
   for (const [unit, size] of RELATIVE_UNITS) {
     if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit);
   }
   return rtf.format(0, 'second');
 }
 
-export function formatDateTime(iso: string, language: 'ID' | 'EN'): string {
-  return new Date(iso).toLocaleString(language === 'ID' ? 'id-ID' : 'en-US', {
+export function formatDateTime(iso: string, language: UiLanguage): string {
+  return new Date(iso).toLocaleString(LOCALE[language], {
     dateStyle: 'medium',
     timeStyle: 'short',
   });

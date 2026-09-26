@@ -16,8 +16,10 @@ import {
   KeyRound,
   ShieldCheck,
 } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
 
 export function TenantDashboard() {
+  const { t } = useLanguage();
   const { data: session, isPending } = useSession();
   const { user: authUser } = useAuth();
   const activeUser = (session as any)?.user || authUser;
@@ -52,7 +54,7 @@ export function TenantDashboard() {
         slug: slugVal,
       });
       if ((res as any)?.error) {
-        throw new Error((res as any).error.message || "Gagal membuat tenant");
+        throw new Error((res as any).error.message || t('tenant_dashboard.gagal_membuat_tenant', 'Gagal membuat tenant'));
       }
       setOrgName("");
       setOrgSlug("");
@@ -102,7 +104,7 @@ export function TenantDashboard() {
         organizationId: activeOrg.id,
       });
       if ((res as any)?.error) {
-        throw new Error((res as any).error.message || "Gagal mengirim undangan");
+        throw new Error((res as any).error.message || t('tenant_dashboard.gagal_mengirim_undangan', 'Gagal mengirim undangan'));
       }
       const sentEmail = inviteEmail;
       setInviteEmail("");
@@ -119,7 +121,7 @@ export function TenantDashboard() {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-slate-500 dark:text-slate-400">
         <Loader2 className="w-8 h-8 animate-spin mb-3 text-emerald-600" />
-        <p className="text-sm font-medium">Memuat sesi pengguna...</p>
+        <p className="text-sm font-medium">{t('tenant_dashboard.memuat_sesi_pengguna', 'Memuat sesi pengguna...')}</p>
       </div>
     );
   }
@@ -128,9 +130,9 @@ export function TenantDashboard() {
     return (
       <div className="p-8 max-w-xl mx-auto my-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm text-center">
         <Shield className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Autentikasi Diperlukan</h2>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t('tenant_dashboard.autentikasi_diperlukan', 'Autentikasi Diperlukan')}</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Silakan login terlebih dahulu untuk mengelola tenant dan organisasi Anda.
+          {t('tenant_dashboard.silakan_login_terlebih_dahulu_untuk_mengelola', 'Silakan login terlebih dahulu untuk mengelola tenant dan organisasi Anda.')}
         </p>
       </div>
     );
@@ -147,10 +149,10 @@ export function TenantDashboard() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-                Silegal Tenant Portal
+                {t('tenant_dashboard.silegal_tenant_portal', 'Silegal Tenant Portal')}
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Better Auth Multi-Tenant & RBAC Organization Management
+                {t('tenant_dashboard.better_auth_multi_tenant_rbac_organization', 'Better Auth Multi-Tenant & RBAC Organization Management')}
               </p>
             </div>
           </div>
@@ -159,9 +161,9 @@ export function TenantDashboard() {
         <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-2 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <div className="text-xs">
-            <span className="text-slate-500 dark:text-slate-400 block">Sesi Terverifikasi:</span>
+            <span className="text-slate-500 dark:text-slate-400 block">{t('tenant_dashboard.sesi_terverifikasi', 'Sesi Terverifikasi:')}</span>
             <span className="font-semibold text-slate-800 dark:text-slate-200">
-              {activeUser?.email || "Pengguna"}
+              {activeUser?.email || t('admin.generic_user', 'Pengguna')}
             </span>
           </div>
         </div>
@@ -171,25 +173,25 @@ export function TenantDashboard() {
       <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 text-blue-900 dark:text-blue-200 space-y-2">
         <div className="flex items-center gap-2 font-semibold text-sm text-blue-800 dark:text-blue-300">
           <Info className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
-          <span>Panduan Fitur: Perbedaan "Tenant Portal" vs "Manage Admin Access"</span>
+          <span>{t('tenant_dashboard.panduan_fitur_perbedaan_tenant_portal_vs', 'Panduan Fitur: Perbedaan "Tenant Portal" vs "Manage Admin Access"')}</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-1">
           <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-blue-100 dark:border-blue-900/40">
             <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 mb-1">
               <KeyRound className="w-3.5 h-3.5 text-indigo-500" />
-              Manage Admin Access
+              {t('nav.admin_users', 'Manage Admin Access')}
             </div>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Mengelola <strong>Daftar Pengguna Global Platform SI LEGAL</strong> (Allowlist email, Role Global: Admin/Editor/Viewer, dan Departemen internal).
+              {t('tenant_dashboard.mengelola', 'Mengelola')} <strong>{t('tenant_dashboard.daftar_pengguna_global_platform_si_legal', 'Daftar Pengguna Global Platform SI LEGAL')}</strong> {t('tenant_dashboard.allowlist_email_role_global_admin_editor', '(Allowlist email, Role Global: Admin/Editor/Viewer, dan Departemen internal).')}
             </p>
           </div>
           <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-blue-100 dark:border-blue-900/40">
             <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 mb-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-              Tenant Portal (RBAC)
+              {t('tenant_dashboard.tenant_portal_rbac', 'Tenant Portal (RBAC)')}
             </div>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Mengelola <strong>Multi-Tenancy & Entitas Perusahaan</strong> (Membuat Tenant/Organisasi, mengundang tim, dan isolasi data per perusahaan).
+              {t('tenant_dashboard.mengelola', 'Mengelola')} <strong>{t('tenant_dashboard.multi_tenancy_entitas_perusahaan', 'Multi-Tenancy & Entitas Perusahaan')}</strong> {t('tenant_dashboard.membuat_tenant_organisasi_mengundang_tim_dan', '(Membuat Tenant/Organisasi, mengundang tim, dan isolasi data per perusahaan).')}
             </p>
           </div>
         </div>
@@ -209,7 +211,7 @@ export function TenantDashboard() {
             onClick={() => setStatusMessage(null)}
             className="text-xs underline hover:opacity-75 ml-2 cursor-pointer"
           >
-            Tutup
+            {t('redline.close', 'Tutup')}
           </button>
         </div>
       )}
@@ -219,7 +221,7 @@ export function TenantDashboard() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            Pilih Tenant / Organisasi
+            {t('tenant_dashboard.pilih_tenant_organisasi', 'Pilih Tenant / Organisasi')}
           </h2>
           <button
             onClick={() => {
@@ -227,10 +229,10 @@ export function TenantDashboard() {
               if (refetchActiveOrg) refetchActiveOrg();
             }}
             className="text-xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1 transition-colors"
-            title="Refresh list"
+            title={t('tenant_dashboard.refresh_list', 'Refresh list')}
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Refresh
+            {t('tenant_dashboard.refresh', 'Refresh')}
           </button>
         </div>
 
@@ -256,7 +258,7 @@ export function TenantDashboard() {
             })
           ) : (
             <p className="text-sm text-slate-400 italic py-2">
-              Belum ada organisasi terdaftar. Silakan buat tenant pertama Anda di bawah.
+              {t('tenant_dashboard.belum_ada_organisasi_terdaftar_silakan_buat', 'Belum ada organisasi terdaftar. Silakan buat tenant pertama Anda di bawah.')}
             </p>
           )}
         </div>
@@ -268,17 +270,17 @@ export function TenantDashboard() {
         <section className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
             <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            Buat Tenant Baru
+            {t('tenant_dashboard.buat_tenant_baru', 'Buat Tenant Baru')}
           </h2>
 
           <form onSubmit={handleCreateOrg} className="space-y-3">
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                Nama Perusahaan / Tenant
+                {t('tenant_dashboard.nama_perusahaan_tenant', 'Nama Perusahaan / Tenant')}
               </label>
               <input
                 type="text"
-                placeholder="Contoh: PT Media Nusantara Digital"
+                placeholder={t('tenant_dashboard.contoh_pt_media_nusantara_digital', 'Contoh: PT Media Nusantara Digital')}
                 value={orgName}
                 onChange={(e) => {
                   setOrgName(e.target.value);
@@ -293,11 +295,11 @@ export function TenantDashboard() {
 
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                Domain Slug (URL identifier)
+                {t('tenant_dashboard.domain_slug_url_identifier', 'Domain Slug (URL identifier)')}
               </label>
               <input
                 type="text"
-                placeholder="contoh: pt-media-nusantara"
+                placeholder={t('tenant_dashboard.contoh_pt_media_nusantara', 'contoh: pt-media-nusantara')}
                 value={orgSlug}
                 onChange={(e) => setOrgSlug(e.target.value)}
                 className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono text-xs"
@@ -313,12 +315,12 @@ export function TenantDashboard() {
               {isCreating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Membuat Organisasi...</span>
+                  <span>{t('tenant_dashboard.membuat_organisasi', 'Membuat Organisasi...')}</span>
                 </>
               ) : (
                 <>
                   <Plus className="w-4 h-4" />
-                  <span>Buat Tenant</span>
+                  <span>{t('tenant_dashboard.buat_tenant', 'Buat Tenant')}</span>
                 </>
               )}
             </button>
@@ -329,25 +331,25 @@ export function TenantDashboard() {
         <section className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-2">
             <UserPlus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            Undang Anggota ke Tenant
+            {t('tenant_dashboard.undang_anggota_ke_tenant', 'Undang Anggota ke Tenant')}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-            Undang kolaborator ke tenant aktif:{" "}
+            {t('tenant_dashboard.undang_kolaborator_ke_tenant_aktif', 'Undang kolaborator ke tenant aktif:')}{" "}
             <span className="font-semibold text-slate-700 dark:text-slate-200">
-              {activeOrg ? activeOrg.name : "(Belum ada tenant aktif)"}
+              {activeOrg ? activeOrg.name : t('tenant_dashboard.belum_ada_tenant_aktif', '(Belum ada tenant aktif)')}
             </span>
           </p>
 
           <form onSubmit={handleInviteMember} className="space-y-3">
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                Email Anggota Baru
+                {t('tenant_dashboard.email_anggota_baru', 'Email Anggota Baru')}
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="email"
-                  placeholder="colleague@example.com"
+                  placeholder={t('tenant_dashboard.colleague_example_com', 'colleague@example.com')}
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   className="w-full text-sm pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
@@ -359,7 +361,7 @@ export function TenantDashboard() {
 
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                Role / Peran di Tenant
+                {t('tenant_dashboard.role_peran_di_tenant', 'Role / Peran di Tenant')}
               </label>
               <select
                 value={inviteRole}
@@ -367,8 +369,8 @@ export function TenantDashboard() {
                 disabled={!activeOrg}
                 className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 capitalize"
               >
-                <option value="member">Member (Staf / Operator)</option>
-                <option value="admin">Admin (Pengelola Tenant)</option>
+                <option value="member">{t('tenant_dashboard.member_staf_operator', 'Member (Staf / Operator)')}</option>
+                <option value="admin">{t('tenant_dashboard.admin_pengelola_tenant', 'Admin (Pengelola Tenant)')}</option>
               </select>
             </div>
 
@@ -380,12 +382,12 @@ export function TenantDashboard() {
               {isInviting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Mengirim Undangan...</span>
+                  <span>{t('tenant_dashboard.mengirim_undangan', 'Mengirim Undangan...')}</span>
                 </>
               ) : (
                 <>
                   <UserPlus className="w-4 h-4" />
-                  <span>Kirim Undangan</span>
+                  <span>{t('tenant_dashboard.kirim_undangan', 'Kirim Undangan')}</span>
                 </>
               )}
             </button>
@@ -399,18 +401,18 @@ export function TenantDashboard() {
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
               <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                Tenant Aktif
+                {t('tenant_dashboard.tenant_aktif', 'Tenant Aktif')}
               </span>
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                 {activeOrg.name}
               </h2>
               <p className="text-xs text-slate-500 font-mono">
-                Slug: {activeOrg.slug || activeOrg.id}
+                {t('tenant_dashboard.slug', 'Slug:')} {activeOrg.slug || activeOrg.id}
               </p>
             </div>
             <span className="text-xs bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-full font-medium border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" />
-              Aktif
+              {t('status.aktif', 'Aktif')}
             </span>
           </div>
 
@@ -419,7 +421,7 @@ export function TenantDashboard() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <Users className="w-4 h-4 text-slate-500" />
-                Daftar Anggota ({activeOrg.members?.length || 0})
+                {t('tenant_dashboard.daftar_anggota', 'Daftar Anggota (')}{activeOrg.members?.length || 0})
               </h3>
             </div>
 
@@ -461,7 +463,7 @@ export function TenantDashboard() {
               </ul>
             ) : (
               <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
-                Belum ada anggota terdaftar di tenant ini. Gunakan formulir di atas untuk mengundang anggota tim.
+                {t('tenant_dashboard.belum_ada_anggota_terdaftar_di_tenant', 'Belum ada anggota terdaftar di tenant ini. Gunakan formulir di atas untuk mengundang anggota tim.')}
               </div>
             )}
           </div>

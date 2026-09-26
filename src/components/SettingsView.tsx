@@ -198,7 +198,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleSyncTenantGoogle = async (tenant: Tenant) => {
     if (!isAdmin) {
-      setErrorMsg('Hanya Admin yang berhak memicu sinkronisasi Google Sheet.');
+      setErrorMsg(t('settings.hanya_admin_yang_berhak_memicu_sinkronisasi', 'Hanya Admin yang berhak memicu sinkronisasi Google Sheet.'));
       return;
     }
     setSyncingTenantId(tenant.id);
@@ -220,12 +220,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         data = await res.json();
       }
       if (!res.ok || !data.success) {
-        throw new Error(data.error || `Gagal menyinkronkan data untuk ${tenant.name}`);
+        throw new Error(data.error || t('settings.gagal_menyinkronkan_data_untuk', 'Gagal menyinkronkan data untuk {name}', { name: tenant.name }));
       }
-      setSuccessMsg(`Sinkronisasi Google Sheet untuk ${tenant.name} berhasil diproses!`);
+      setSuccessMsg(t('settings.sinkronisasi_google_sheet_untuk_berhasil_diprose', 'Sinkronisasi Google Sheet untuk {name} berhasil diproses!', { name: tenant.name }));
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || `Gagal menyinkronkan ${tenant.name}`);
+      setErrorMsg(err.message || t('settings.gagal_menyinkronkan', 'Gagal menyinkronkan {name}', { name: tenant.name }));
     } finally {
       setSyncingTenantId(null);
     }
@@ -233,11 +233,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleAutoProvisionTenantGoogle = async (tenant: Tenant) => {
     if (!isAdmin) {
-      setErrorMsg('Hanya Admin yang berhak membuat penyimpanan Google.');
+      setErrorMsg(t('settings.hanya_admin_yang_berhak_membuat_penyimpanan', 'Hanya Admin yang berhak membuat penyimpanan Google.'));
       return;
     }
     if (!accessToken && !isGoogleTokenValid()) {
-      setErrorMsg('Sesi Google belum aktif. Hubungkan akun Google terlebih dahulu.');
+      setErrorMsg(t('settings.sesi_google_belum_aktif_hubungkan_akun', 'Sesi Google belum aktif. Hubungkan akun Google terlebih dahulu.'));
       return;
     }
     setProvisioningTenantId(tenant.id);
@@ -266,13 +266,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         data = await res.json();
       }
       if (!res.ok || !data.success) {
-        throw new Error(data.error || `Gagal membuat resource Google untuk ${tenant.name}`);
+        throw new Error(data.error || t('settings.gagal_membuat_resource_google_untuk', 'Gagal membuat resource Google untuk {name}', { name: tenant.name }));
       }
       await refreshTenants();
-      setSuccessMsg(`Folder Google Drive & Google Sheet untuk ${tenant.name} berhasil dibuat!`);
+      setSuccessMsg(t('settings.folder_google_drive_google_sheet_untuk', 'Folder Google Drive & Google Sheet untuk {name} berhasil dibuat!', { name: tenant.name }));
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || `Gagal membuat resource Google untuk ${tenant.name}`);
+      setErrorMsg(err.message || t('settings.gagal_membuat_resource_google_untuk', 'Gagal membuat resource Google untuk {name}', { name: tenant.name }));
     } finally {
       setProvisioningTenantId(null);
     }
@@ -314,14 +314,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         data = await res.json();
       }
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Gagal menyimpan konfigurasi Google organisasi.');
+        throw new Error(data.error || t('settings.gagal_menyimpan_konfigurasi_google_organisasi', 'Gagal menyimpan konfigurasi Google organisasi.'));
       }
       await refreshTenants();
-      setSuccessMsg(`Konfigurasi Google untuk ${editingTenant.name} berhasil diperbarui!`);
+      setSuccessMsg(t('settings.konfigurasi_google_untuk_berhasil_diperbarui', 'Konfigurasi Google untuk {name} berhasil diperbarui!', { name: editingTenant.name }));
       setEditingTenant(null);
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal menyimpan konfigurasi organisasi.');
+      setErrorMsg(err.message || t('settings.gagal_menyimpan_konfigurasi_organisasi', 'Gagal menyimpan konfigurasi organisasi.'));
     } finally {
       setSavingTenantGoogle(false);
     }
@@ -360,10 +360,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       }).catch((e) => console.warn('Category provision warning:', e));
 
       await refreshTenants();
-      setSuccessMsg('Berhasil menyinkronkan seluruh data sheet, folder organisasi, dan file ke Master Root!');
+      setSuccessMsg(t('settings.berhasil_menyinkronkan_seluruh_data_sheet_folder', 'Berhasil menyinkronkan seluruh data sheet, folder organisasi, dan file ke Master Root!'));
       setTimeout(() => setSuccessMsg(null), 6000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal menyinkronkan data dan folder.');
+      setErrorMsg(err.message || t('settings.gagal_menyinkronkan_data_dan_folder', 'Gagal menyinkronkan data dan folder.'));
     } finally {
       setSyncing(false);
       setIsSyncingAllOrgs(false);
@@ -463,10 +463,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         console.warn('[Google Connect] Gagal menyinkronkan token ke server:', syncErr);
       }
 
-      setSuccessMsg(`Berhasil terhubung secara otomatis dengan akun Google: ${profile.email}`);
+      setSuccessMsg(t('settings.berhasil_terhubung_secara_otomatis_dengan_akun', 'Berhasil terhubung secara otomatis dengan akun Google: {email}', { email: profile.email }));
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal menghubungkan akun Google.');
+      setErrorMsg(err.message || t('settings.gagal_menghubungkan_akun_google', 'Gagal menghubungkan akun Google.'));
     } finally {
       setConnectingAuth(false);
     }
@@ -490,10 +490,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       invalidateGoogleToken();
       setGoogleUser(null);
       setAccessToken(null);
-      setSuccessMsg('Akun Google berhasil diputuskan.');
+      setSuccessMsg(t('settings.akun_google_berhasil_diputuskan', 'Akun Google berhasil diputuskan.'));
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal memutuskan akun Google.');
+      setErrorMsg(err.message || t('settings.gagal_memutuskan_akun_google', 'Gagal memutuskan akun Google.'));
     }
   };
 
@@ -524,10 +524,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         console.warn('[Google Refresh] Gagal menyinkronkan token ke server:', syncErr);
       }
 
-      setSuccessMsg(`Sesi Google berhasil diperbarui untuk ${profile.email}`);
+      setSuccessMsg(t('settings.sesi_google_berhasil_diperbarui_untuk', 'Sesi Google berhasil diperbarui untuk {email}', { email: profile.email }));
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal memperbarui sesi Google.');
+      setErrorMsg(err.message || t('settings.gagal_memperbarui_sesi_google', 'Gagal memperbarui sesi Google.'));
     } finally {
       setConnectingAuth(false);
     }
@@ -537,7 +537,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     if (!isAdmin) return;
     const token = getCachedAccessToken();
     if (!token && !isGoogleTokenValid()) {
-      setErrorMsg('Sesi Google belum aktif. Hubungkan akun Google terlebih dahulu.');
+      setErrorMsg(t('settings.sesi_google_belum_aktif_hubungkan_akun', 'Sesi Google belum aktif. Hubungkan akun Google terlebih dahulu.'));
       return;
     }
     setSaving(true);
@@ -562,27 +562,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         if (!res.ok) {
           throw new Error(
             res.status === 403
-              ? 'Akses ditolak: Hanya Admin/Superuser yang berhak membuat Master Root.'
-              : `Gagal memproses permintaan (HTTP ${res.status}): ${text.slice(0, 150) || 'Server error'}`
+              ? t('settings.akses_ditolak_hanya_admin_superuser_yang', 'Akses ditolak: Hanya Admin/Superuser yang berhak membuat Master Root.')
+              : t('settings.gagal_memproses_permintaan_http', 'Gagal memproses permintaan (HTTP {status}): {value}', { status: res.status, value: text.slice(0, 150) || 'Server error' })
           );
         }
       }
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Gagal membuat Master Root secara otomatis.');
+        throw new Error(data.error || t('settings.gagal_membuat_master_root_secara_otomatis', 'Gagal membuat Master Root secara otomatis.'));
       }
       
       setDriveFolderId(data.driveFolderId);
       setSpreadsheetId(data.spreadsheetId);
       if (data.masterSpreadsheetId) setMasterSpreadsheetId(data.masterSpreadsheetId);
       setIsEditUnlocked(false);
-      setSuccessMsg(data.message || 'Master Root berhasil dibuat!');
+      setSuccessMsg(data.message || t('settings.master_root_berhasil_dibuat', 'Master Root berhasil dibuat!'));
       
       // Trigger parent update
       await onSaveConfig(data.spreadsheetId, data.driveFolderId, autoSync, isLocked, {});
       
     } catch (err: any) {
-      setErrorMsg(err.message || 'Terjadi kesalahan saat memproses pembuatan Master Root.');
+      setErrorMsg(err.message || t('settings.terjadi_kesalahan_saat_memproses_pembuatan_maste', 'Terjadi kesalahan saat memproses pembuatan Master Root.'));
     } finally {
       setSaving(false);
     }
@@ -591,14 +591,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleSaveOption2Picker = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      setErrorMsg('Hanya pengguna dengan role Admin yang berhak menyimpan konfigurasi.');
+      setErrorMsg(t('settings.hanya_pengguna_dengan_role_admin_yang', 'Hanya pengguna dengan role Admin yang berhak menyimpan konfigurasi.'));
       return;
     }
     const targetFolderId = driveFolderId || config.driveFolderId || '';
     const targetMasterSheetId = masterSpreadsheetId || config.masterSpreadsheetId || '';
     const targetSheetId = spreadsheetId || config.spreadsheetId || '';
     if (!targetFolderId) {
-      setErrorMsg('Silakan pilih Folder Storage dari Google Drive terlebih dahulu.');
+      setErrorMsg(t('settings.silakan_pilih_folder_storage_dari_google', 'Silakan pilih Folder Storage dari Google Drive terlebih dahulu.'));
       return;
     }
     setSaving(true);
@@ -622,7 +622,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setSuccessMsg(t('settings.save_config_success_provisioned', 'Konfigurasi Master Root tersimpan, Folder Organisasi & Spreadsheet Database berhasil dibuat di Google Drive!'));
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal menyimpan konfigurasi.');
+      setErrorMsg(err.message || t('settings.gagal_menyimpan_konfigurasi', 'Gagal menyimpan konfigurasi.'));
     } finally {
       setSaving(false);
     }
@@ -631,13 +631,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleSaveOption3Manual = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      setErrorMsg('Hanya pengguna dengan role Admin yang berhak menyimpan konfigurasi.');
+      setErrorMsg(t('settings.hanya_pengguna_dengan_role_admin_yang', 'Hanya pengguna dengan role Admin yang berhak menyimpan konfigurasi.'));
       return;
     }
     const targetFolderId = driveFolderId || config.driveFolderId || '';
     const targetSheetId = spreadsheetId || config.spreadsheetId || '';
     if (!targetFolderId) {
-      setErrorMsg('Silakan isi ID Folder Storage Google Drive.');
+      setErrorMsg(t('settings.silakan_isi_id_folder_storage_google', 'Silakan isi ID Folder Storage Google Drive.'));
       return;
     }
     setSaving(true);
@@ -660,7 +660,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setSuccessMsg(t('settings.save_config_success_provisioned', 'Konfigurasi Master Root tersimpan, Folder Organisasi & Spreadsheet Database berhasil dibuat di Google Drive!'));
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal menyimpan konfigurasi.');
+      setErrorMsg(err.message || t('settings.gagal_menyimpan_konfigurasi', 'Gagal menyimpan konfigurasi.'));
     } finally {
       setSaving(false);
     }
@@ -668,12 +668,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleOpenDrivePicker = async (type: 'spreadsheet' | 'folder') => {
     if (!isAdmin) {
-      setErrorMsg('Hanya Admin yang berhak memilih file/folder dari Google Drive.');
+      setErrorMsg(t('settings.hanya_admin_yang_berhak_memilih_file', 'Hanya Admin yang berhak memilih file/folder dari Google Drive.'));
       return;
     }
     if (!accessToken || !isGoogleTokenValid()) {
       setErrorMsg(
-        'Sesi akun Google belum terhubung atau telah kadaluarsa. Silakan hubungkan akun Google terlebih dahulu.'
+        t('settings.sesi_akun_google_belum_terhubung_atau', 'Sesi akun Google belum terhubung atau telah kadaluarsa. Silakan hubungkan akun Google terlebih dahulu.')
       );
       return;
     }
@@ -695,7 +695,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       const msg = err.message || 'Gagal memuat item dari Google Drive.';
       setErrorMsg(msg);
       setShowPickerModal(false);
-      if (msg.includes('kadaluarsa') || msg.includes('berakhir') || msg.includes('401')) {
+      if (err.status === 401 || err.status === 403 || msg.includes('401')) {
         setAccessToken(null);
       }
     } finally {
@@ -706,10 +706,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleSelectItem = (item: DriveFileItem) => {
     if (pickerType === 'spreadsheet') {
       setMasterSpreadsheetId(item.id);
-      setSuccessMsg(`Spreadsheet '${item.name}' dipilih.`);
+      setSuccessMsg(t('settings.spreadsheet_dipilih', 'Spreadsheet \'{name}\' dipilih.', { name: item.name }));
     } else {
       setDriveFolderId(item.id);
-      setSuccessMsg(`Folder '${item.name}' dipilih.`);
+      setSuccessMsg(t('settings.folder_dipilih', 'Folder \'{name}\' dipilih.', { name: item.name }));
     }
     setShowPickerModal(false);
     setTimeout(() => setSuccessMsg(null), 3000);
@@ -718,7 +718,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleSaveNotificationEmails = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      setErrorMsg('Hanya pengguna dengan role Admin yang berhak mengubah email penerima notifikasi.');
+      setErrorMsg(t('settings.hanya_pengguna_dengan_role_admin_yang_2', 'Hanya pengguna dengan role Admin yang berhak mengubah email penerima notifikasi.'));
       return;
     }
     setSavingNotifEmails(true);
@@ -731,10 +731,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         financeNotificationEmail,
         aiModel,
       });
-      setSuccessMsg('Email penerima alert notice period berhasil disimpan!');
+      setSuccessMsg(t('settings.email_penerima_alert_notice_period_berhasil', 'Email penerima alert notice period berhasil disimpan!'));
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal menyimpan email notifikasi.');
+      setErrorMsg(err.message || t('settings.gagal_menyimpan_email_notifikasi', 'Gagal menyimpan email notifikasi.'));
     } finally {
       setSavingNotifEmails(false);
     }
@@ -743,7 +743,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleSaveSmtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!isAdmin) {
-      setErrorMsg('Hanya Admin yang berhak mengubah konfigurasi SMTP Relay.');
+      setErrorMsg(t('settings.hanya_admin_yang_berhak_mengubah_konfigurasi', 'Hanya Admin yang berhak mengubah konfigurasi SMTP Relay.'));
       return;
     }
     setSavingSmtp(true);
@@ -765,10 +765,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         smtpFromEmail: smtpFromEmail.trim(),
         smtpFromName: smtpFromName.trim(),
       });
-      setSuccessMsg('Konfigurasi SMTP Relay berhasil disimpan!');
+      setSuccessMsg(t('settings.konfigurasi_smtp_relay_berhasil_disimpan', 'Konfigurasi SMTP Relay berhasil disimpan!'));
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal menyimpan konfigurasi SMTP Relay.');
+      setErrorMsg(err.message || t('settings.gagal_menyimpan_konfigurasi_smtp_relay', 'Gagal menyimpan konfigurasi SMTP Relay.'));
     } finally {
       setSavingSmtp(false);
     }
@@ -777,11 +777,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleTestSmtp = async () => {
     const recipient = testSmtpRecipient.trim() || user?.email || '';
     if (!recipient) {
-      setErrorMsg('Masukkan email penerima uji coba terlebih dahulu.');
+      setErrorMsg(t('settings.masukkan_email_penerima_uji_coba_terlebih', 'Masukkan email penerima uji coba terlebih dahulu.'));
       return;
     }
     if (!smtpHost.trim() || !smtpUser.trim()) {
-      setErrorMsg('Harap isi SMTP Host dan Username sebelum melakukan pengujian.');
+      setErrorMsg(t('settings.harap_isi_smtp_host_dan_username', 'Harap isi SMTP Host dan Username sebelum melakukan pengujian.'));
       return;
     }
     setTestingSmtp(true);
@@ -809,11 +809,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         data = await res.json();
       }
       if (!res.ok) {
-        throw new Error(data.error || 'Gagal terhubung ke SMTP Relay.');
+        throw new Error(data.error || t('settings.gagal_terhubung_ke_smtp_relay', 'Gagal terhubung ke SMTP Relay.'));
       }
-      setSmtpTestResult({ success: true, message: data.message || 'Email uji coba berhasil dikirim!' });
+      setSmtpTestResult({ success: true, message: data.message || t('settings.email_uji_coba_berhasil_dikirim', 'Email uji coba berhasil dikirim!') });
     } catch (err: any) {
-      setSmtpTestResult({ success: false, message: err.message || 'Gagal menguji koneksi SMTP Relay.' });
+      setSmtpTestResult({ success: false, message: err.message || t('settings.gagal_menguji_koneksi_smtp_relay', 'Gagal menguji koneksi SMTP Relay.') });
     } finally {
       setTestingSmtp(false);
     }
@@ -821,7 +821,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleSaveAiModel = async (newModel: string) => {
     if (!isAdmin) {
-      setErrorMsg('Hanya Admin yang berhak mengubah model AI default.');
+      setErrorMsg(t('settings.hanya_admin_yang_berhak_mengubah_model', 'Hanya Admin yang berhak mengubah model AI default.'));
       return;
     }
     setSavingAiModel(true);
@@ -835,10 +835,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         financeNotificationEmail,
         aiModel: newModel,
       });
-      setSuccessMsg(`Model AI sistem berhasil diperbarui ke '${newModel}'!`);
+      setSuccessMsg(t('settings.model_ai_sistem_berhasil_diperbarui_ke', 'Model AI sistem berhasil diperbarui ke \'{newModel}\'!', { newModel }));
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal menyimpan model AI.');
+      setErrorMsg(err.message || t('settings.gagal_menyimpan_model_ai', 'Gagal menyimpan model AI.'));
     } finally {
       setSavingAiModel(false);
     }
@@ -847,7 +847,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleSaveApiKey = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!isAdmin) {
-      setErrorMsg('Hanya Admin yang berhak mengubah Gemini API Key.');
+      setErrorMsg(t('settings.hanya_admin_yang_berhak_mengubah_gemini', 'Hanya Admin yang berhak mengubah Gemini API Key.'));
       return;
     }
     const cleanKey = geminiApiKey.trim();
@@ -863,10 +863,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         aiModel,
         geminiApiKey: cleanKey,
       });
-      setSuccessMsg('Google Gemini API Key berhasil disimpan dan diaktifkan!');
+      setSuccessMsg(t('settings.google_gemini_api_key_berhasil_disimpan', 'Google Gemini API Key berhasil disimpan dan diaktifkan!'));
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal menyimpan Gemini API Key.');
+      setErrorMsg(err.message || t('settings.gagal_menyimpan_gemini_api_key', 'Gagal menyimpan Gemini API Key.'));
     } finally {
       setSavingApiKey(false);
     }
@@ -875,7 +875,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleTestApiKey = async () => {
     const keyToTest = geminiApiKey.trim();
     if (!keyToTest) {
-      setErrorMsg('Masukkan Google Gemini API Key terlebih dahulu untuk melakukan pengujian koneksi.');
+      setErrorMsg(t('settings.masukkan_google_gemini_api_key_terlebih', 'Masukkan Google Gemini API Key terlebih dahulu untuk melakukan pengujian koneksi.'));
       return;
     }
     setTestingApiKey(true);
@@ -894,11 +894,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         data = await res.json();
       }
       if (!res.ok) {
-        throw new Error(data.error || 'Gagal terhubung ke Google Gemini API.');
+        throw new Error(data.error || t('settings.gagal_terhubung_ke_google_gemini_api', 'Gagal terhubung ke Google Gemini API.'));
       }
-      setApiTestResult({ success: true, message: data.message || 'Koneksi ke Google Gemini API berhasil!' });
+      setApiTestResult({ success: true, message: data.message || t('settings.koneksi_ke_google_gemini_api_berhasil', 'Koneksi ke Google Gemini API berhasil!') });
     } catch (err: any) {
-      setApiTestResult({ success: false, message: err.message || 'Gagal terhubung ke Google Gemini API.' });
+      setApiTestResult({ success: false, message: err.message || t('settings.gagal_terhubung_ke_google_gemini_api', 'Gagal terhubung ke Google Gemini API.') });
     } finally {
       setTestingApiKey(false);
     }
@@ -906,7 +906,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleProvisionFolders = async () => {
     if (!isAdmin) {
-      setErrorMsg('Hanya Admin yang berhak menjalankan sinkronisasi folder kategori.');
+      setErrorMsg(t('settings.hanya_admin_yang_berhak_menjalankan_sinkronisasi', 'Hanya Admin yang berhak menjalankan sinkronisasi folder kategori.'));
       return;
     }
     setProvisioning(true);
@@ -933,14 +933,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       } catch {
         data = {};
       }
-      if (!res.ok) throw new Error(data.error || `Gagal sinkronisasi folder (Status ${res.status})`);
+      if (!res.ok) throw new Error(data.error || t('settings.gagal_sinkronisasi_folder_status', 'Gagal sinkronisasi folder (Status {status})', { status: res.status }));
 
       setSuccessMsg(
-        `4 Subfolder Kategori (Contract, Invoice/Billing, IO, DD) berhasil dibuat/diperbarui untuk seluruh Partner!`
+        t('settings.4_subfolder_kategori_contract_invoice_billing', '4 Subfolder Kategori (Contract, Invoice/Billing, IO, DD) berhasil dibuat/diperbarui untuk seluruh Partner!')
       );
       setTimeout(() => setSuccessMsg(null), 6000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal membuat folder kategori.');
+      setErrorMsg(err.message || t('settings.gagal_membuat_folder_kategori', 'Gagal membuat folder kategori.'));
     } finally {
       setProvisioning(false);
     }
@@ -959,7 +959,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       );
       setTimeout(() => setSuccessMsg(null), 6000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal sinkronisasi dengan Google Sheet.');
+      setErrorMsg(err.message || t('settings.gagal_sinkronisasi_dengan_google_sheet', 'Gagal sinkronisasi dengan Google Sheet.'));
     } finally {
       setSyncing(false);
     }
@@ -984,10 +984,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if (content) {
         const result = importFromCSV(content);
         if (result.success) {
-          setSuccessMsg(`Berhasil mengimpor & memperbarui ${result.updatedCount} teks UI dari file CSV!`);
+          setSuccessMsg(t('settings.berhasil_mengimpor_memperbarui_teks_ui_dari', 'Berhasil mengimpor & memperbarui {updatedCount} teks UI dari file CSV!', { updatedCount: result.updatedCount }));
           setTimeout(() => setSuccessMsg(null), 5000);
         } else {
-          setErrorMsg(result.error || 'Gagal mengimpor file CSV.');
+          setErrorMsg(result.error || t('settings.gagal_mengimpor_file_csv', 'Gagal mengimpor file CSV.'));
         }
       }
     };
@@ -1067,7 +1067,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold py-1.5 px-3 flex items-center gap-2 shadow-2xs">
             <span className="size-2 rounded-full bg-[#06C755] animate-pulse" />
-            <span>SQLite Engine Active</span>
+            <span>{t('settings.sqlite_engine_active', 'SQLite Engine Active')}</span>
           </Badge>
         </div>
       </div>
@@ -1208,14 +1208,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <div className="space-y-1">
                       <CardTitle className="text-lg font-bold flex items-center gap-2">
                         <Folder className="w-5 h-5 text-[#06C755]" />
-                        <span>Penyimpanan File Dokumen (Google Drive)</span>
+                        <span>{t('settings.penyimpanan_file_dokumen_google_drive', 'Penyimpanan File Dokumen (Google Drive)')}</span>
                       </CardTitle>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
                       {driveFolderId ? (
                         <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-semibold py-1 px-2.5 flex items-center gap-1.5 shadow-2xs">
                           <span className="size-2 rounded-full bg-[#06C755] animate-pulse" />
-                          <span>Folder Drive Terhubung</span>
+                          <span>{t('settings.folder_drive_terhubung', 'Folder Drive Terhubung')}</span>
                         </Badge>
                       ) : (
                         <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[11px] font-semibold py-1 px-2.5 flex items-center gap-1.5 shadow-2xs">
@@ -1256,11 +1256,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                   {t('settings.root_folder_title', 'Root Folder')}
                                 </h4>
                                 <Badge className="text-[10px] font-semibold py-0.5 px-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                                  Root Drive
+                                  {t('settings.root_drive', 'Root Drive')}
                                 </Badge>
                               </div>
                               <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                ID: <code className="font-mono text-[10px] text-slate-600 dark:text-slate-300">{driveFolderId || '-'}</code>
+                                {t('settings.id', 'ID:')} <code className="font-mono text-[10px] text-slate-600 dark:text-slate-300">{driveFolderId || '-'}</code>
                               </p>
                             </div>
                           </div>
@@ -1330,14 +1330,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                               <form onSubmit={handleSaveOption2Picker} className="space-y-4">
                                 <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
                                   <label className="block font-semibold text-slate-800 dark:text-slate-100">
-                                    Folder Google Drive ID
+                                    {t('settings.folder_google_drive_id', 'Folder Google Drive ID')}
                                   </label>
                                   <div className="flex items-center gap-2">
                                     <input
                                       type="text"
                                       readOnly
                                       value={driveFolderId || t('settings.no_folder_selected', 'Belum dipilih')}
-                                      placeholder="ID Folder Drive..."
+                                      placeholder={t('settings.id_folder_drive', 'ID Folder Drive...')}
                                       className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none font-mono"
                                     />
                                     <Button
@@ -1389,7 +1389,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     type="text"
                                     value={driveFolderId}
                                     onChange={(e) => setDriveFolderId(e.target.value)}
-                                    placeholder="Contoh: 1xiFIvgWdDtYEzL7IoqVD9d-NaS7XcfYp"
+                                    placeholder={t('settings.contoh_1xifivgwddtyezl7ioqvd9d_nas7xcfyp', 'Contoh: 1xiFIvgWdDtYEzL7IoqVD9d-NaS7XcfYp')}
                                     className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#06C755]/20 transition-all font-mono"
                                     required
                                   />
@@ -1429,7 +1429,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <div className="space-y-3 pt-2">
                       <div className="flex items-center justify-between px-1">
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                          Folder Storage Google Drive Per Organisasi ({(tenants || []).length})
+                          {t('settings.folder_storage_google_drive_per_organisasi', 'Folder Storage Google Drive Per Organisasi ({count_count})', { count_count: (tenants || []).length })}
                         </span>
                       </div>
 
@@ -1468,7 +1468,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     )}
                                   </div>
                                   <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                    ID: <code className="font-mono text-[10px] text-slate-600 dark:text-slate-300">{tenant.id}</code>
+                                    {t('settings.id', 'ID:')} <code className="font-mono text-[10px] text-slate-600 dark:text-slate-300">{tenant.id}</code>
                                   </p>
                                 </div>
                               </div>
@@ -1600,7 +1600,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           type="button"
                           onClick={() => setShowApiKey(!showApiKey)}
                           className="absolute right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                          title={showApiKey ? 'Sembunyikan' : 'Tampilkan'}
+                          title={showApiKey ? t('settings.sembunyikan', 'Sembunyikan') : t('settings.tampilkan', 'Tampilkan')}
                         >
                           {showApiKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                         </button>
@@ -1633,7 +1633,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         className="h-9 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
-                        <span>{savingApiKey ? 'Menyimpan...' : t('settings.save_api_key_btn', 'Simpan API Key')}</span>
+                        <span>{savingApiKey ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_api_key_btn', 'Simpan API Key')}</span>
                       </Button>
 
                       <Button
@@ -1644,7 +1644,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         className="h-9 px-4 rounded-full text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer gap-1.5"
                       >
                         <Sparkles className={cn('w-3.5 h-3.5 text-amber-500', testingApiKey && 'animate-spin')} />
-                        <span>{testingApiKey ? 'Menguji Koneksi...' : t('settings.test_api_key_btn', 'Uji Koneksi API')}</span>
+                        <span>{testingApiKey ? t('admin.test_connection_testing', 'Menguji Koneksi...') : t('settings.test_api_key_btn', 'Uji Koneksi API')}</span>
                       </Button>
                     </div>
                   </form>
@@ -1664,33 +1664,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     {[
                       {
                         id: 'gemini-3.8-flash',
-                        title: 'Gemini 3.8 Flash (Default Rekomendasi)',
-                        desc: 'Ekstraksi dokumen berkecepatan tinggi, akurasi tinggi untuk tabel dan klausul legal.',
-                        badge: 'Tercepat & Paling Akurat',
+                        title: t('settings.gemini_3_8_flash_default_rekomendasi', 'Gemini 3.8 Flash (Default Rekomendasi)'),
+                        desc: t('settings.ekstraksi_dokumen_berkecepatan_tinggi_akurasi_ti', 'Ekstraksi dokumen berkecepatan tinggi, akurasi tinggi untuk tabel dan klausul legal.'),
+                        badge: t('settings.tercepat_paling_akurat', 'Tercepat & Paling Akurat'),
                       },
                       {
                         id: 'gemini-3.7-flash',
-                        title: 'Gemini 3.7 Flash',
-                        desc: 'Generasi terbaru multimodal untuk analisis klausul legal berlembar-lembar.',
-                        badge: 'Generasi Terbaru',
+                        title: t('settings.gemini_3_7_flash', 'Gemini 3.7 Flash'),
+                        desc: t('settings.generasi_terbaru_multimodal_untuk_analisis_klaus', 'Generasi terbaru multimodal untuk analisis klausul legal berlembar-lembar.'),
+                        badge: t('settings.generasi_terbaru', 'Generasi Terbaru'),
                       },
                       {
                         id: 'gemini-3.6-flash',
-                        title: 'Gemini 3.6 Flash',
-                        desc: 'Performa ekstraksi stabil dan seimbang untuk parsing kontrak standar.',
-                        badge: 'Stabil & Efisien',
+                        title: t('settings.gemini_3_6_flash', 'Gemini 3.6 Flash'),
+                        desc: t('settings.performa_ekstraksi_stabil_dan_seimbang_untuk', 'Performa ekstraksi stabil dan seimbang untuk parsing kontrak standar.'),
+                        badge: t('settings.stabil_efisien', 'Stabil & Efisien'),
                       },
                       {
                         id: 'gemini-3.5-flash',
-                        title: 'Gemini 3.5 Flash',
-                        desc: 'Model cepat dan hemat token untuk pemrosesan volume dokumen tinggi.',
-                        badge: 'Cepat & Hemat Kuota',
+                        title: t('settings.gemini_3_5_flash', 'Gemini 3.5 Flash'),
+                        desc: t('settings.model_cepat_dan_hemat_token_untuk', 'Model cepat dan hemat token untuk pemrosesan volume dokumen tinggi.'),
+                        badge: t('settings.cepat_hemat_kuota', 'Cepat & Hemat Kuota'),
                       },
                       {
                         id: 'gemini-3.1-flash-lite',
-                        title: 'Gemini 3.1 Flash Lite',
-                        desc: 'Model ultra-ringan dengan latensi pemrosesan instan dan hemat kuota.',
-                        badge: 'Ringan & Instan',
+                        title: t('settings.gemini_3_1_flash_lite', 'Gemini 3.1 Flash Lite'),
+                        desc: t('settings.model_ultra_ringan_dengan_latensi_pemrosesan', 'Model ultra-ringan dengan latensi pemrosesan instan dan hemat kuota.'),
+                        badge: t('settings.ringan_instan', 'Ringan & Instan'),
                       },
                     ].map((model) => (
                       <div
@@ -1751,11 +1751,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     {smtpEnabled ? (
                       <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-semibold py-1 px-2.5 flex items-center gap-1.5">
                         <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span>SMTP Aktif</span>
+                        <span>{t('settings.smtp_aktif', 'SMTP Aktif')}</span>
                       </Badge>
                     ) : (
                       <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold py-1 px-2.5">
-                        <span>Nonaktif</span>
+                        <span>{t('status.nonaktif', 'Nonaktif')}</span>
                       </Badge>
                     )}
                   </div>
@@ -1769,7 +1769,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           {t('settings.smtp_enable_label', 'Aktifkan Pengiriman Email via SMTP Relay')}
                         </p>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                          Jika aktif, reminder H-90, H-60, H-30, dan H-14 akan dikirimkan otomatis ke email nyata.
+                          {t('settings.jika_aktif_reminder_h_90_h', 'Jika aktif, reminder H-90, H-60, H-30, dan H-14 akan dikirimkan otomatis ke email nyata.')}
                         </p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -1793,7 +1793,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           type="text"
                           value={smtpHost}
                           onChange={(e) => setSmtpHost(e.target.value)}
-                          placeholder="misal: smtp.gmail.com / smtp.office365.com"
+                          placeholder={t('settings.misal_smtp_gmail_com_smtp_office365', 'misal: smtp.gmail.com / smtp.office365.com')}
                           className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
                         />
                       </div>
@@ -1819,7 +1819,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                               onChange={(e) => setSmtpSecure(e.target.checked)}
                               className="rounded text-[#06C755] focus:ring-[#06C755]"
                             />
-                            <span className="text-[11px] truncate">SSL/TLS</span>
+                            <span className="text-[11px] truncate">{t('settings.ssl_tls', 'SSL/TLS')}</span>
                           </label>
                         </div>
                       </div>
@@ -1832,7 +1832,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           type="text"
                           value={smtpUser}
                           onChange={(e) => setSmtpUser(e.target.value)}
-                          placeholder="misal: notif@perusahaan.com"
+                          placeholder={t('settings.misal_notif_perusahaan_com', 'misal: notif@perusahaan.com')}
                           className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
                         />
                       </div>
@@ -1846,7 +1846,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             type={showSmtpPassword ? 'text' : 'password'}
                             value={smtpPassword}
                             onChange={(e) => setSmtpPassword(e.target.value)}
-                            placeholder="Password atau 16-digit App Password"
+                            placeholder={t('settings.password_atau_16_digit_app_password', 'Password atau 16-digit App Password')}
                             className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
                           />
                           <button
@@ -1867,7 +1867,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           type="email"
                           value={smtpFromEmail}
                           onChange={(e) => setSmtpFromEmail(e.target.value)}
-                          placeholder="misal: noreply@perusahaan.com (opsional)"
+                          placeholder={t('settings.misal_noreply_perusahaan_com_opsional', 'misal: noreply@perusahaan.com (opsional)')}
                           className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
                         />
                       </div>
@@ -1880,7 +1880,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           type="text"
                           value={smtpFromName}
                           onChange={(e) => setSmtpFromName(e.target.value)}
-                          placeholder="misal: Sistem Notifikasi Kontrak & IO"
+                          placeholder={t('settings.misal_sistem_notifikasi_kontrak_io', 'misal: Sistem Notifikasi Kontrak & IO')}
                           className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
                         />
                       </div>
@@ -1963,7 +1963,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         type="text"
                         value={legalNotificationEmail}
                         onChange={(e) => setLegalNotificationEmail(e.target.value)}
-                        placeholder="legal.lead@company.com, legal.officer@company.com"
+                        placeholder={t('settings.legal_lead_company_com_legal_officer', 'legal.lead@company.com, legal.officer@company.com')}
                         className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
                         required
                       />
@@ -1980,7 +1980,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         type="text"
                         value={financeNotificationEmail}
                         onChange={(e) => setFinanceNotificationEmail(e.target.value)}
-                        placeholder="finance.lead@company.com"
+                        placeholder={t('settings.finance_lead_company_com', 'finance.lead@company.com')}
                         className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
                         required
                       />
@@ -1994,7 +1994,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         className="h-9 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
-                        <span>{savingNotifEmails ? 'Menyimpan...' : t('settings.save_notif_emails_btn', 'Simpan Email Notifikasi')}</span>
+                        <span>{savingNotifEmails ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_notif_emails_btn', 'Simpan Email Notifikasi')}</span>
                       </Button>
                     </div>
                   </form>
@@ -2062,13 +2062,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     size="sm"
                     onClick={async () => {
                       const ok = await confirmDialog({
-                        description: 'Reset seluruh kamus teks ke bahasa bawaan sistem?',
+                        description: t('settings.reset_seluruh_kamus_teks_ke_bahasa', 'Reset seluruh kamus teks ke bahasa bawaan sistem?'),
                         tone: 'danger',
-                        confirmLabel: 'Reset',
+                        confirmLabel: t('hierarchy.reset', 'Reset'),
                       });
                       if (ok) {
                         resetCustomTranslations();
-                        setSuccessMsg('Kamus teks UI dikembalikan ke pengaturan awal.');
+                        setSuccessMsg(t('settings.kamus_teks_ui_dikembalikan_ke_pengaturan', 'Kamus teks UI dikembalikan ke pengaturan awal.'));
                       }
                     }}
                     className="h-8 text-xs text-destructive hover:bg-destructive/10 cursor-pointer gap-1.5 ml-auto"
@@ -2197,10 +2197,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div>
                   <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
                     {pickerType === 'spreadsheet'
-                      ? 'Pilih Spreadsheet dari Google Drive'
-                      : 'Pilih Folder Storage dari Google Drive'}
+                      ? t('settings.pilih_spreadsheet_dari_google_drive', 'Pilih Spreadsheet dari Google Drive')
+                      : t('settings.pilih_folder_storage_dari_google_drive', 'Pilih Folder Storage dari Google Drive')}
                   </h3>
-                  <p className="text-[11px] text-slate-500">Akun: {googleUser?.email}</p>
+                  <p className="text-[11px] text-slate-500">{t('settings.akun', 'Akun: {email}', { email: googleUser?.email })}</p>
                 </div>
               </div>
               <button
@@ -2217,7 +2217,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="text"
-                  placeholder={`Cari nama ${pickerType}...`}
+                  placeholder={t('settings.cari_nama', 'Cari nama {pickerType}...', { pickerType: pickerType === 'spreadsheet' ? t('settings.picker_spreadsheet', 'spreadsheet') : t('settings.picker_folder', 'folder') })}
                   value={pickerSearch}
                   onChange={(e) => setPickerSearch(e.target.value)}
                   className="w-full pl-9 pr-3.5 py-2.5 bg-[#F7F8FA] border border-[#E5E8EB] rounded-xl text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
@@ -2227,11 +2227,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl bg-white">
                 {loadingPickerItems ? (
                   <div className="p-6 text-center text-xs text-slate-400">
-                    Memuat item dari Google Drive...
+                    {t('settings.memuat_item_dari_google_drive', 'Memuat item dari Google Drive...')}
                   </div>
                 ) : filteredDriveItems.length === 0 ? (
                   <div className="p-6 text-center text-xs text-slate-400">
-                    Tidak ada {pickerType} yang ditemukan.
+                    {t('settings.tidak_ada_yang_ditemukan', 'Tidak ada {pickerType} yang ditemukan.', { pickerType: pickerType === 'spreadsheet' ? t('settings.picker_spreadsheet', 'spreadsheet') : t('settings.picker_folder', 'folder') })}
                   </div>
                 ) : (
                   filteredDriveItems.map((item) => (
@@ -2263,7 +2263,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={() => setShowPickerModal(false)}
                 className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
               >
-                Batal
+                {t('eval.btn_cancel', 'Batal')}
               </button>
             </div>
           </div>
@@ -2316,7 +2316,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     type="text"
                     value={tenantFolderInput}
                     onChange={(e) => setTenantFolderInput(e.target.value)}
-                    placeholder="Contoh: 1vX8Z..."
+                    placeholder={t('settings.contoh_1vx8z', 'Contoh: 1vX8Z...')}
                     className="w-full bg-[#F5F6F6] dark:bg-slate-800/60 border border-[#EBEBEB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-[#06C755]/20"
                   />
                 </div>
@@ -2339,7 +2339,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   className="h-8 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5 shadow-2xs"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>{savingTenantGoogle ? 'Menyimpan...' : t('settings.save_tenant_google_btn', 'Simpan Konfigurasi Organisasi')}</span>
+                  <span>{savingTenantGoogle ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_tenant_google_btn', 'Simpan Konfigurasi Organisasi')}</span>
                 </Button>
               </div>
             </form>

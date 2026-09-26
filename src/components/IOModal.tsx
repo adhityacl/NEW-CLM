@@ -4,7 +4,7 @@ import { InsertionOrder, Contract, Partner, PricingModel, ChargingType } from '.
 import { FileSpreadsheet, Upload, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { DateInput } from './DateInput';
-import { SUPPORTED_CURRENCIES, formatMoney, fetchHistoricalRate, getDefaultUsdRate } from '../lib/currencyUtils';
+import { SUPPORTED_CURRENCIES, currencyLabel, formatMoney, fetchHistoricalRate, getDefaultUsdRate } from '../lib/currencyUtils';
 import { formatIOFileName } from '../lib/fileNaming';
 
 interface IOModalProps {
@@ -22,7 +22,7 @@ export const IOModal: React.FC<IOModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [contractId, setContractId] = useState(ioToEdit?.contract_id || '');
   const [nomorIO, setNomorIO] = useState(ioToEdit?.nomor_io || '');
@@ -158,7 +158,7 @@ export const IOModal: React.FC<IOModalProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 20 * 1024 * 1024) {
-        setError('Ukuran file maksimal 20MB.');
+        setError(t('io.ukuran_file_maksimal_20mb', 'Ukuran file maksimal 20MB.'));
         return;
       }
       setRawFileObj(file);
@@ -182,7 +182,7 @@ export const IOModal: React.FC<IOModalProps> = ({
 
   const handleParseIO = async () => {
     if (!fileData && !rawFileObj) {
-      setError('Please upload a PDF file first.');
+      setError(t('io.please_upload_a_pdf_file_first', 'Please upload a PDF file first.'));
       return;
     }
     setIsParsing(true);
@@ -210,10 +210,10 @@ export const IOModal: React.FC<IOModalProps> = ({
         result = await response.json();
       } else {
         const text = await response.text();
-        throw new Error(text && text.trim().startsWith('<') ? 'Koneksi AI Server timeout atau sibuk. Silakan coba kembali beberapa saat lagi.' : (text || 'Gagal memproses IO'));
+        throw new Error(text && text.trim().startsWith('<') ? t('io.koneksi_ai_server_timeout_atau_sibuk', 'Koneksi AI Server timeout atau sibuk. Silakan coba kembali beberapa saat lagi.') : (text || t('io.gagal_memproses_io', 'Gagal memproses IO')));
       }
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to parse IO');
+        throw new Error(result.error || t('io.failed_to_parse_io', 'Failed to parse IO'));
       }
       if (result.success && result.data) {
         const parsed = result.data;
@@ -275,7 +275,7 @@ export const IOModal: React.FC<IOModalProps> = ({
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Error parsing document');
+      setError(err.message || t('io.error_parsing_document', 'Error parsing document'));
     } finally {
       setIsParsing(false);
     }
@@ -302,11 +302,11 @@ export const IOModal: React.FC<IOModalProps> = ({
       return;
     }
     if (!tanggalMulai || !tanggalBerakhir) {
-      setError('Tanggal Mulai dan Tanggal Selesai wajib diisi.');
+      setError(t('io.tanggal_mulai_dan_tanggal_selesai_wajib', 'Tanggal Mulai dan Tanggal Selesai wajib diisi.'));
       return;
     }
     if (new Date(tanggalBerakhir) <= new Date(tanggalMulai)) {
-      setError('Tanggal Berakhir harus setelah Tanggal Mulai.');
+      setError(t('io.tanggal_berakhir_harus_setelah_tanggal_mulai', 'Tanggal Berakhir harus setelah Tanggal Mulai.'));
       return;
     }
     if (nilaiIO === undefined || nilaiIO === null || isNaN(Number(nilaiIO))) {
@@ -360,7 +360,7 @@ export const IOModal: React.FC<IOModalProps> = ({
 
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Gagal menyimpan Insertion Order. Coba lagi.');
+      setError(err.message || t('io.gagal_menyimpan_insertion_order_coba_lagi', 'Gagal menyimpan Insertion Order. Coba lagi.'));
     } finally {
       setSubmitting(false);
     }
@@ -407,7 +407,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                   onChange={(e) => handlePartnerChange(e.target.value)}
                   className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
                 >
-                  <option value="">-- Pilih Partner / Vendor --</option>
+                  <option value="">{t('io.pilih_partner_vendor', '-- Pilih Partner / Vendor --')}</option>
                   {partners.map((p) => (
                     <option key={p.partner_id} value={p.partner_id}>
                       {p.nama_partner}
@@ -495,15 +495,15 @@ export const IOModal: React.FC<IOModalProps> = ({
                   onChange={(e) => setPricingModelSelect(e.target.value)}
                   className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
                 >
-                  <option value="CPM">CPM (Cost Per Mille / 1.000 Impresi)</option>
-                  <option value="CPC">CPC (Cost Per Click)</option>
-                  <option value="Flat Fee">Flat Fee (Harga Tetap Paket)</option>
-                  <option value="Revenue Share">Revenue Share (Bagi Hasil)</option>
-                  <option value="Fixed Package">Fixed Package</option>
+                  <option value="CPM">{t('io.cpm_cost_per_mille_1_000', 'CPM (Cost Per Mille / 1.000 Impresi)')}</option>
+                  <option value="CPC">{t('io.cpc_cost_per_click', 'CPC (Cost Per Click)')}</option>
+                  <option value="Flat Fee">{t('io.flat_fee_harga_tetap_paket', 'Flat Fee (Harga Tetap Paket)')}</option>
+                  <option value="Revenue Share">{t('io.revenue_share_bagi_hasil', 'Revenue Share (Bagi Hasil)')}</option>
+                  <option value="Fixed Package">{t('io.fixed_package', 'Fixed Package')}</option>
                   {isInitialCustom && !STANDARD_PRICING_MODELS.includes(initialPricingModel) && (
                     <option value={initialPricingModel}>{initialPricingModel}</option>
                   )}
-                  <option value="__CUSTOM__">➕ Input Pricing Model Baru / Custom...</option>
+                  <option value="__CUSTOM__">{t('io.input_pricing_model_baru_custom', '➕ Input Pricing Model Baru / Custom...')}</option>
                 </select>
 
                 {pricingModelSelect === '__CUSTOM__' && (
@@ -529,9 +529,9 @@ export const IOModal: React.FC<IOModalProps> = ({
                   onChange={(e) => setChargingType(e.target.value as ChargingType)}
                   className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
                 >
-                  <option value="Prepaid">Prepaid (Bayar di Awal)</option>
-                  <option value="Postpaid">Postpaid (Bayar di Akhir Periode)</option>
-                  <option value="Milestone-based">Milestone-based (Sesuai Tahapan Target)</option>
+                  <option value="Prepaid">{t('io.prepaid_bayar_di_awal', 'Prepaid (Bayar di Awal)')}</option>
+                  <option value="Postpaid">{t('io.postpaid_bayar_di_akhir_periode', 'Postpaid (Bayar di Akhir Periode)')}</option>
+                  <option value="Milestone-based">{t('io.milestone_based_sesuai_tahapan_target', 'Milestone-based (Sesuai Tahapan Target)')}</option>
                 </select>
               </div>
             </div>
@@ -572,7 +572,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                 >
                   {SUPPORTED_CURRENCIES.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.code} — {c.label}
+                      {c.code} — {currencyLabel(c.code, language)}
                     </option>
                   ))}
                 </select>
@@ -595,13 +595,13 @@ export const IOModal: React.FC<IOModalProps> = ({
             {/* USD Conversion Info Banner */}
             <div className="bg-[#06C755]/5 dark:bg-emerald-950/20 border border-[#06C755]/20 dark:border-emerald-500/20 rounded-xl p-3 text-xs flex flex-wrap items-center justify-between gap-2">
               <div>
-                <span className="font-semibold text-slate-700 dark:text-slate-300">Estimasi Konversi USD (Kurs {tanggalMulai}):</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">{t('io.estimasi_konversi_usd_kurs', 'Estimasi Konversi USD (Kurs {tanggalMulai}):', { tanggalMulai })}</span>
                 <span className="ml-2 font-bold text-[#06C755] dark:text-emerald-400">
                   {formatMoney(estimatedUsd, 'USD')}
                 </span>
               </div>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 italic">
-                {currency === 'USD' ? 'Sama (Mata uang USD)' : `1 ${currency} ≈ ${historicalRate.toFixed(8)} USD`}
+                {currency === 'USD' ? t('io.sama_mata_uang_usd', 'Sama (Mata uang USD)') : t('io.1_usd', '1 {currency} ≈ {value} USD', { currency, value: historicalRate.toFixed(8) })}
               </span>
             </div>
 
@@ -629,7 +629,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                 {fileData || fileName ? (
                   <div className="space-y-1">
                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      📄 File terpilih: <span className="font-normal font-mono text-slate-900 dark:text-white">{rawFileName || fileName}</span>
+                      {t('io.file_terpilih', '📄 File terpilih:')} <span className="font-normal font-mono text-slate-900 dark:text-white">{rawFileName || fileName}</span>
                     </p>
                   </div>
                 ) : (
@@ -645,7 +645,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                       disabled={isParsing}
                       className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 hover:bg-[#06C755]/20 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
-                      {isParsing ? 'Parsing...' : 'Parse File'}
+                      {isParsing ? t('io.parsing', 'Parsing...') : t('io.parse_file', 'Parse File')}
                     </button>
                   )}
                   <input

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
@@ -87,6 +88,7 @@ export const DateInput: React.FC<DateInputProps> = ({
   id,
   name,
 }) => {
+  const { t } = useLanguage();
   const [displayValue, setDisplayValue] = useState<string>(() => formatIsoToDdMmYyyy(value));
   const [popoverOpen, setPopoverOpen] = useState(false);
 
@@ -182,8 +184,8 @@ export const DateInput: React.FC<DateInputProps> = ({
             type="button"
             tabIndex={-1}
             disabled={disabled}
-            title="Buka Kalender"
-            aria-label="Buka Kalender"
+            title={t('common.buka_kalender', 'Buka Kalender')}
+            aria-label={t('common.buka_kalender', 'Buka Kalender')}
             className="absolute right-2.5 text-slate-400 hover:text-[#06C755] dark:hover:text-emerald-400 transition-colors cursor-pointer disabled:cursor-not-allowed p-0.5"
           >
             <CalendarIcon className="w-4 h-4" />

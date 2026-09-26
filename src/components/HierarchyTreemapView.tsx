@@ -655,7 +655,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                               <span className="text-[10px] text-slate-500 block">{t('hierarchy.pricing_model', 'Model Biaya (Pricing Model):')}</span>
                                               <div className="mt-0.5">
                                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/20">
-                                                  {io.pricing_model || 'Flat Fee'}
+                                                  {io.pricing_model || t('hierarchy.flat_fee', 'Flat Fee')}
                                                 </span>
                                               </div>
                                             </div>
@@ -767,17 +767,17 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
               if (colId === 'vendorBadanHukum') return <td key={colId} rowSpan={rowSpan} className={`${className} text-slate-600`}>{row.vendorBadanHukum || '-'}</td>;
               if (colId === 'vendorStatusDD') return <td key={colId} rowSpan={rowSpan} className={`${className} text-slate-600`}>{row.vendorStatusDD || '-'}</td>;
               
-              if (colId === 'vendorLinkNDA') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkNDA ? <a href={row.vendorLinkNDA} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
-              if (colId === 'vendorLinkCOR') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkCOR ? <a href={row.vendorLinkCOR} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
-              if (colId === 'vendorLinkDGT') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkDGT ? <a href={row.vendorLinkDGT} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
-              if (colId === 'vendorLinkTermination') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkTermination ? <a href={row.vendorLinkTermination} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
-              if (colId === 'vendorLinkAssessment') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkAssessment ? <a href={row.vendorLinkAssessment} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
-              if (colId === 'vendorLinkPlacement') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkPlacement ? <a href={row.vendorLinkPlacement} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
-              if (colId === 'vendorLinkInvoice') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkInvoice ? <a href={row.vendorLinkInvoice} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
-              if (colId === 'vendorLinkNIB') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkNIB ? <a href={row.vendorLinkNIB} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
-              if (colId === 'vendorLinkLicense') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkLicense ? <a href={row.vendorLinkLicense} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
-              if (colId === 'vendorLinkNPWP') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkNPWP ? <a href={row.vendorLinkNPWP} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
-              if (colId === 'vendorLinkAkta') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkAkta ? <a href={row.vendorLinkAkta} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
+              if (colId === 'vendorLinkNDA') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkNDA ? <a href={row.vendorLinkNDA} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
+              if (colId === 'vendorLinkCOR') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkCOR ? <a href={row.vendorLinkCOR} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
+              if (colId === 'vendorLinkDGT') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkDGT ? <a href={row.vendorLinkDGT} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
+              if (colId === 'vendorLinkTermination') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkTermination ? <a href={row.vendorLinkTermination} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
+              if (colId === 'vendorLinkAssessment') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkAssessment ? <a href={row.vendorLinkAssessment} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
+              if (colId === 'vendorLinkPlacement') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkPlacement ? <a href={row.vendorLinkPlacement} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
+              if (colId === 'vendorLinkInvoice') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkInvoice ? <a href={row.vendorLinkInvoice} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
+              if (colId === 'vendorLinkNIB') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkNIB ? <a href={row.vendorLinkNIB} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
+              if (colId === 'vendorLinkLicense') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkLicense ? <a href={row.vendorLinkLicense} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
+              if (colId === 'vendorLinkNPWP') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkNPWP ? <a href={row.vendorLinkNPWP} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
+              if (colId === 'vendorLinkAkta') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.vendorLinkAkta ? <a href={row.vendorLinkAkta} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
            }
 
            const className = "border border-slate-200 dark:border-slate-800 p-2 align-top";
@@ -806,10 +806,10 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                   const amtUsd = row.spending.total_amount_usd !== undefined && row.spending.total_amount_usd !== null && !isNaN(Number(row.spending.total_amount_usd))
                      ? Number(row.spending.total_amount_usd)
                      : convertToUsdWithFallback(Number(row.spending.total_amount) || 0, row.spending.currency || 'USD');
-                  return <td key={colId} className={`${className} font-bold text-slate-900 whitespace-nowrap text-right`}>{amtUsd ? `US$ ${amtUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '-'}</td>;
+                  return <td key={colId} className={`${className} font-bold text-slate-900 whitespace-nowrap text-right`}>{amtUsd ? t('hierarchy.us', 'US$ {value}', { value: amtUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }) : '-'}</td>;
                }
-              if (colId === 'spendInvoiceLink') return <td key={colId} className={`${className} text-center`}>{row.spending.invoice_file_url ? <a href={row.spending.invoice_file_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
-              if (colId === 'spendBillingLink') return <td key={colId} className={`${className} text-center`}>{row.spending.billing_file_url ? <a href={row.spending.billing_file_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
+              if (colId === 'spendInvoiceLink') return <td key={colId} className={`${className} text-center`}>{row.spending.invoice_file_url ? <a href={row.spending.invoice_file_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
+              if (colId === 'spendBillingLink') return <td key={colId} className={`${className} text-center`}>{row.spending.billing_file_url ? <a href={row.spending.billing_file_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
            }
 
            // Contract Group (Grouped)
@@ -828,14 +828,14 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                   const cUsd = row.contract.nilai_kontrak_usd !== undefined && row.contract.nilai_kontrak_usd !== null && !isNaN(Number(row.contract.nilai_kontrak_usd))
                      ? Number(row.contract.nilai_kontrak_usd)
                      : convertToUsdWithFallback(Number(row.contract.nilai_kontrak) || 0, row.contract.currency || 'USD');
-                  return <td key={colId} rowSpan={rowSpan} className={`${className} font-bold text-slate-900 whitespace-nowrap text-right`}>{cUsd ? `US$ ${cUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '-'}</td>;
+                  return <td key={colId} rowSpan={rowSpan} className={`${className} font-bold text-slate-900 whitespace-nowrap text-right`}>{cUsd ? t('hierarchy.us', 'US$ {value}', { value: cUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }) : '-'}</td>;
                }
               if (colId === 'contractKategori') return <td key={colId} rowSpan={rowSpan} className={`${className} text-slate-600`}>{row.contract.kategori_kerjasama?.join(', ') || '-'}</td>;
               if (colId === 'contractAutoRenewal') return <td key={colId} rowSpan={rowSpan} className={`${className} text-slate-600`}>{row.contract.auto_renewal ? t('common.yes', 'Ya') : t('common.no', 'Tidak')}</td>;
               if (colId === 'contractNoticePeriod') return <td key={colId} rowSpan={rowSpan} className={`${className} text-slate-600`}>{row.contract.notice_period_hari || '-'}</td>;
               if (colId === 'contractStatusApproval') return <td key={colId} rowSpan={rowSpan} className={`${className} text-slate-600`}>{row.contract.status_approval || '-'}</td>;
               if (colId === 'contractInternalNotes') return <td key={colId} rowSpan={rowSpan} className={`${className} text-slate-600 whitespace-pre-line text-[10px]`}>{row.contract.internal_notes || '-'}</td>;
-              if (colId === 'contractLink') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.contract.link_file_kontrak ? <a href={row.contract.link_file_kontrak} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
+              if (colId === 'contractLink') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.contract.link_file_kontrak ? <a href={row.contract.link_file_kontrak} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
            }
 
            // IO Group (Grouped)
@@ -858,9 +858,9 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                   const ioUsd = row.io.nilai_io_usd !== undefined && row.io.nilai_io_usd !== null && !isNaN(Number(row.io.nilai_io_usd))
                      ? Number(row.io.nilai_io_usd)
                      : convertToUsdWithFallback(Number(row.io.nilai_io) || 0, row.io.currency || 'USD');
-                  return <td key={colId} rowSpan={rowSpan} className={`${className} font-bold text-slate-900 whitespace-nowrap text-right`}>{ioUsd ? `US$ ${ioUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '-'}</td>;
+                  return <td key={colId} rowSpan={rowSpan} className={`${className} font-bold text-slate-900 whitespace-nowrap text-right`}>{ioUsd ? t('hierarchy.us', 'US$ {value}', { value: ioUsd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }) : '-'}</td>;
                }
-              if (colId === 'ioLink') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.io.link_file_io ? <a href={row.io.link_file_io} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a> : '-'}</td>;
+              if (colId === 'ioLink') return <td key={colId} rowSpan={rowSpan} className={`${className} text-center`}>{row.io.link_file_io ? <a href={row.io.link_file_io} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{t('hierarchy.link', 'Link')}</a> : '-'}</td>;
            }
 
            return <td key={colId} className={className}>-</td>;
@@ -1203,7 +1203,7 @@ const exportToCSV = () => {
                             onClick={() => setAuditVisibleCols(INITIAL_AUDIT_COLS)}
                             className="text-[10px] font-bold text-[#06C755] hover:text-[#048C3B]"
                           >
-                            Reset
+                            {t('hierarchy.reset', 'Reset')}
                           </button>
                         </div>
                         <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-200/50 p-1.5 -mx-1.5 rounded transition-colors">
@@ -1223,7 +1223,7 @@ const exportToCSV = () => {
                       </div>
                       <div className="p-3 bg-white max-h-[300px] overflow-y-auto">
                         {['Vendor', 'Evaluation', 'Spending', 'Contract', 'IO'].map(groupName => (
-                          <div key={t(`audit_group_${groupName.toLowerCase()}`, groupName)} className="mb-3 last:mb-0">
+                          <div key={groupName} className="mb-3 last:mb-0">
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 px-1 border-b border-slate-100 dark:border-slate-800 pb-1">{t(`audit_group_${groupName.toLowerCase()}`, groupName)}</div>
                             {columns.filter(c => c.group === groupName).map(col => (
                               <label key={col.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:bg-slate-50 p-1.5 rounded">
@@ -1302,7 +1302,7 @@ const exportToCSV = () => {
                             type="button"
                             onClick={() => handleSort(col.id)}
                             className="w-full flex items-center justify-between gap-2 text-left hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
-                            title={`Urutkan berdasarkan ${col.label}`}
+                            title={t('hierarchy.urutkan_berdasarkan', 'Urutkan berdasarkan {label}', { label: t(`audit_col_${col.id}`, col.label) })}
                           >
                             <span>{t(`audit_col_${col.id}`, col.label)}</span>
                             {auditSortConfig?.key === col.id ? (

@@ -1,4 +1,5 @@
 import type { DocumentStatus, DocumentType } from '../../lib/documentModel';
+import { getStatusBadgeClass } from '../ui/badge';
 
 type Translate = (key: string, fallback?: string, vars?: Record<string, string | number>) => string;
 
@@ -21,12 +22,17 @@ const TYPE_FALLBACK: Record<DocumentType, string> = {
 export const statusLabel = (t: Translate, status: DocumentStatus) => t(`documents.status.${status}`, STATUS_FALLBACK[status]);
 export const typeLabel = (t: Translate, type: DocumentType) => t(`documents.type.${type}`, TYPE_FALLBACK[type]);
 
-export const STATUS_BADGE_CLASS: Record<DocumentStatus, string> = {
-  draft: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600',
-  pending_review: 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-700',
-  approved: 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-200 dark:border-emerald-700',
-  archived: 'bg-zinc-100 text-zinc-600 border-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-600',
+const STATUS_BADGE_KEY: Record<DocumentStatus, string> = {
+  draft: 'draft',
+  pending_review: 'pending',
+  approved: 'success',
+  archived: 'inactive',
 };
+
+/** Same pill styling as the Partners / Contracts / Service Orders tables. */
+export const BADGE_CLASS = 'text-xs font-normal px-3 py-0.5 rounded-full border inline-flex items-center justify-center whitespace-nowrap shadow-2xs';
+export const statusBadgeClass = (status: DocumentStatus) => `${BADGE_CLASS} ${getStatusBadgeClass(STATUS_BADGE_KEY[status])}`;
+export const typeBadgeClass = (type: DocumentType) => `${BADGE_CLASS} ${getStatusBadgeClass(type)}`;
 
 /** Field styling without width, for inline controls; INPUT_CLASS is the full-width default. */
 export const FIELD_CLASS =

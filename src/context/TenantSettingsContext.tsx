@@ -8,6 +8,7 @@ import {
   getCountryPack,
   getIndustryPack,
   type CommercialDocumentProfile,
+  type CounterpartyType,
   type DueDiligenceRequirement,
   type IdentifierScheme,
   type LocalizedText,
@@ -30,6 +31,8 @@ export interface IndustryOption {
   name: LocalizedText;
   partnerCategories: string[];
   commercialDocument: CommercialDocumentProfile;
+  counterpartyTypes: CounterpartyType[];
+  contractCurrency: string | null;
 }
 
 export interface TenantPolicyView {
@@ -94,6 +97,8 @@ function localPolicyView(settings: TenantSettings = defaultTenantSettings()): Te
       name: industry.name,
       partnerCategories: industry.partnerCategories,
       commercialDocument: industry.commercialDocument,
+      counterpartyTypes: industry.counterpartyTypes,
+      contractCurrency: industry.contractCurrency || null,
     },
     dueDiligenceChecklist: [],
   };
@@ -119,7 +124,7 @@ export const TenantSettingsProvider: React.FC<{ children: React.ReactNode }> = (
     try {
       const [settingsRes, packsRes] = await Promise.all([
         fetch('/api/tenant-settings', { cache: 'no-store' }),
-        fetch('/api/policy-packs', { cache: 'force-cache' }),
+        fetch('/api/policy-packs', { cache: 'no-cache' }),
       ]);
       if (!settingsRes.ok) throw new Error(`HTTP ${settingsRes.status}`);
       setPolicy((await settingsRes.json()) as TenantPolicyView);

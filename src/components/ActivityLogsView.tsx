@@ -174,16 +174,16 @@ export const ActivityLogsView: React.FC = () => {
             }}
             className="h-9 px-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[140px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2313192B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
-            <option value="ALL">Semua Jenis Aksi</option>
-            <option value="LOGIN">LOGIN</option>
-            <option value="LOGOUT">LOGOUT</option>
-            <option value="CREATE">CREATE</option>
-            <option value="UPDATE">UPDATE</option>
-            <option value="DELETE">DELETE</option>
-            <option value="UPLOAD_SUCCESS">UPLOAD_SUCCESS</option>
-            <option value="UPLOAD_FAILED">UPLOAD_FAILED</option>
-            <option value="SYSTEM_ERROR">SYSTEM_ERROR</option>
-            <option value="ADD_USER">ADD_USER</option>
+            <option value="ALL">{t('logs.all_actions', 'Semua Jenis Aksi')}</option>
+            <option value="LOGIN">{t('logs.login', 'LOGIN')}</option>
+            <option value="LOGOUT">{t('logs.logout', 'LOGOUT')}</option>
+            <option value="CREATE">{t('logs.create', 'CREATE')}</option>
+            <option value="UPDATE">{t('logs.update', 'UPDATE')}</option>
+            <option value="DELETE">{t('logs.delete', 'DELETE')}</option>
+            <option value="UPLOAD_SUCCESS">{t('logs.upload_success', 'UPLOAD_SUCCESS')}</option>
+            <option value="UPLOAD_FAILED">{t('logs.upload_failed', 'UPLOAD_FAILED')}</option>
+            <option value="SYSTEM_ERROR">{t('logs.system_error', 'SYSTEM_ERROR')}</option>
+            <option value="ADD_USER">{t('logs.add_user', 'ADD_USER')}</option>
           </select>
 
           {/* Filter 3: Periode Waktu */}
@@ -195,10 +195,10 @@ export const ActivityLogsView: React.FC = () => {
             }}
             className="h-9 px-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[140px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2313192B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
-            <option value="ALL">Semua Periode Waktu</option>
-            <option value="TODAY">Hari Ini (24 Jam Terakhir)</option>
-            <option value="7_DAYS">7 Hari Terakhir</option>
-            <option value="30_DAYS">30 Hari Terakhir</option>
+            <option value="ALL">{t('notifications.all_time_periods', 'Semua Periode Waktu')}</option>
+            <option value="TODAY">{t('notifications.time_today', 'Hari Ini (24 Jam Terakhir)')}</option>
+            <option value="7_DAYS">{t('notifications.time_7_days', '7 Hari Terakhir')}</option>
+            <option value="30_DAYS">{t('notifications.time_30_days', '30 Hari Terakhir')}</option>
           </select>
         </div>
 
@@ -207,17 +207,17 @@ export const ActivityLogsView: React.FC = () => {
           <button
             onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
             className="h-9 px-3.5 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 font-bold hover:bg-slate-50 hover:text-slate-900 transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-[0.98]"
-            title="Pengaturan Tampilan Kolom"
+            title={t('io.view_settings', 'Pengaturan Tampilan Kolom')}
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
-            <span>View</span>
+            <span>{t('io.view', 'View')}</span>
           </button>
           {isViewMenuOpen && (
             <>
               <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)}></div>
               <div className="absolute right-0 top-11 w-52 bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 py-2 animate-in fade-in zoom-in-95">
                 <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
-                  Toggle Kolom
+                  {t('io.toggle_columns', 'Toggle Kolom')}
                 </div>
                 {Object.keys(visibleColumns).map((col) => {
                   let label = col;
@@ -255,7 +255,7 @@ export const ActivityLogsView: React.FC = () => {
                   <div className="flex items-center justify-start">
                     <input
                       type="checkbox"
-                      aria-label="Pilih semua log aktivitas"
+                      aria-label={t('logs.pilih_semua_log_aktivitas', 'Pilih semua log aktivitas')}
                       onChange={handleSelectAll}
                       checked={selectedRows.length > 0 && selectedRows.length === currentLogs.length}
                       className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
@@ -268,7 +268,7 @@ export const ActivityLogsView: React.FC = () => {
                 {visibleColumns.module && <th scope="col" className="p-4 text-xs font-bold text-slate-700 text-left align-middle">{t('logs.col_module', 'Modul')}</th>}
                 {visibleColumns.detail && <th scope="col" className="p-4 text-xs font-bold text-slate-700 text-left align-middle">{t('logs.col_detail', 'Rincian Deskripsi')}</th>}
                 <th scope="col" className="pl-2 pr-6 py-4 text-right w-20 text-xs font-bold text-slate-700 align-middle">
-                  <div className="flex items-center justify-end">Aksi</div>
+                  <div className="flex items-center justify-end">{t('dashboard.action', 'Aksi')}</div>
                 </th>
               </tr>
             </thead>
@@ -292,7 +292,7 @@ export const ActivityLogsView: React.FC = () => {
                       <div className="flex items-center justify-start">
                         <input
                           type="checkbox"
-                          aria-label={`Pilih log ${log.actionType} oleh ${log.userName || log.userEmail}`}
+                          aria-label={t('logs.pilih_log_oleh', 'Pilih log {actionType} oleh {userEmail}', { actionType: log.actionType, userEmail: log.userName || log.userEmail })}
                           checked={selectedRows.includes(log.id || '')}
                           onChange={() => handleSelectRow(log.id || '')}
                           className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
@@ -352,7 +352,7 @@ export const ActivityLogsView: React.FC = () => {
                         <ActionMenu
                           items={[
                             {
-                              label: 'Detail',
+                              label: t('io.action_detail', 'Detail'),
                               icon: <Eye className="w-3.5 h-3.5" />,
                               onClick: () => setSelectedLogForDetail(log),
                             },
@@ -385,8 +385,8 @@ export const ActivityLogsView: React.FC = () => {
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">Rincian Log Aktivitas</h3>
-                <p className="text-xs text-slate-500 mt-0.5">ID: {selectedLogForDetail.id}</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">{t('logs.rincian_log_aktivitas', 'Rincian Log Aktivitas')}</h3>
+                <p className="text-xs text-slate-500 mt-0.5">{t('logs.id', 'ID: {id}', { id: selectedLogForDetail.id })}</p>
               </div>
               <button
                 onClick={() => setSelectedLogForDetail(null)}
@@ -399,7 +399,7 @@ export const ActivityLogsView: React.FC = () => {
             <div className="p-6 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                 <div>
-                  <span className="text-slate-400 font-medium block mb-1">Waktu</span>
+                  <span className="text-slate-400 font-medium block mb-1">{t('notifications.col_time', 'Waktu')}</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {new Date(selectedLogForDetail.timestamp).toLocaleString(getActiveFormattingLocale(), {
                       dateStyle: 'full',
@@ -408,19 +408,19 @@ export const ActivityLogsView: React.FC = () => {
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block mb-1">Pengguna</span>
+                  <span className="text-slate-400 font-medium block mb-1">{t('admin.generic_user', 'Pengguna')}</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {selectedLogForDetail.userName || selectedLogForDetail.userEmail} ({selectedLogForDetail.role})
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block mb-1">Jenis Aksi</span>
+                  <span className="text-slate-400 font-medium block mb-1">{t('logs.col_action', 'Jenis Aksi')}</span>
                   <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border inline-block ${getActionBadge(selectedLogForDetail.actionType)}`}>
                     {selectedLogForDetail.actionType}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block mb-1">Modul</span>
+                  <span className="text-slate-400 font-medium block mb-1">{t('settings.region.modules', 'Modul')}</span>
                   <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border inline-block ${getStatusBadgeClass(selectedLogForDetail.module)}`}>
                     {selectedLogForDetail.module}
                   </span>
@@ -428,7 +428,7 @@ export const ActivityLogsView: React.FC = () => {
               </div>
 
               <div>
-                <span className="text-slate-500 font-semibold block mb-1.5">Deskripsi / Detail Teknis:</span>
+                <span className="text-slate-500 font-semibold block mb-1.5">{t('logs.deskripsi_detail_teknis', 'Deskripsi / Detail Teknis:')}</span>
                 <div className="p-3.5 bg-slate-900 text-slate-100 rounded-xl font-mono text-[11px] leading-relaxed wrap-break-word whitespace-pre-wrap max-h-48 overflow-y-auto">
                   {selectedLogForDetail.description}
                 </div>
@@ -436,8 +436,8 @@ export const ActivityLogsView: React.FC = () => {
 
               {(selectedLogForDetail.ipAddress || selectedLogForDetail.userAgent) && (
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-[11px] text-slate-500">
-                  {selectedLogForDetail.ipAddress && <div><span className="font-semibold">IP Address:</span> {selectedLogForDetail.ipAddress}</div>}
-                  {selectedLogForDetail.userAgent && <div className="truncate"><span className="font-semibold">User Agent:</span> {selectedLogForDetail.userAgent}</div>}
+                  {selectedLogForDetail.ipAddress && <div><span className="font-semibold">{t('logs.ip_address', 'IP Address:')}</span> {selectedLogForDetail.ipAddress}</div>}
+                  {selectedLogForDetail.userAgent && <div className="truncate"><span className="font-semibold">{t('logs.user_agent', 'User Agent:')}</span> {selectedLogForDetail.userAgent}</div>}
                 </div>
               )}
             </div>
@@ -447,7 +447,7 @@ export const ActivityLogsView: React.FC = () => {
                 onClick={() => setSelectedLogForDetail(null)}
                 className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 rounded-xl font-semibold text-xs transition-all cursor-pointer"
               >
-                Tutup
+                {t('redline.close', 'Tutup')}
               </button>
             </div>
           </div>

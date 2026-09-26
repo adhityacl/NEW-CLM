@@ -66,12 +66,12 @@ export const ContractRedliningModal: React.FC<ContractRedliningModalProps> = ({
           data = await res.json();
         } catch {
           if (!res.ok) {
-            throw new Error(`Server error (${res.status}): Server belum siap atau route tidak ditemukan.`);
+            throw new Error(t('redline.server_error_server_belum_siap_atau', 'Server error ({status}): Server belum siap atau route tidak ditemukan.', { status: res.status }));
           }
         }
 
         if (!res.ok) {
-          throw new Error(data.error || 'Gagal memproses analisis redlining.');
+          throw new Error(data.error || t('redline.gagal_memproses_analisis_redlining', 'Gagal memproses analisis redlining.'));
         }
 
         if (data.analysis) {
@@ -86,7 +86,7 @@ export const ContractRedliningModal: React.FC<ContractRedliningModalProps> = ({
           onUpdateContract?.(updatedContract);
         }
       } catch (err: any) {
-        setError(err.message || 'Terjadi kesalahan saat memproses analisis.');
+        setError(err.message || t('redline.terjadi_kesalahan_saat_memproses_analisis', 'Terjadi kesalahan saat memproses analisis.'));
       } finally {
         setLoading(false);
       }
@@ -131,7 +131,7 @@ export const ContractRedliningModal: React.FC<ContractRedliningModalProps> = ({
       // 3. Jika belum pernah dianalisis sama sekali (pertama kali), jalankan analisis otomatis
       await executeAnalysis(false);
     } catch (err: any) {
-      setError(err.message || 'Gagal memuat analisis.');
+      setError(err.message || t('redline.gagal_memuat_analisis', 'Gagal memuat analisis.'));
       setLoading(false);
     }
   }, [contract, executeAnalysis, onUpdateContract]);
@@ -192,14 +192,14 @@ export const ContractRedliningModal: React.FC<ContractRedliningModalProps> = ({
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
       case 'LOW':
-        return <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 text-[10px]">Low Risk</Badge>;
+        return <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 text-[10px]">{t('redline.low_risk', 'Low Risk')}</Badge>;
       case 'MEDIUM':
-        return <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 text-[10px]">Medium Risk</Badge>;
+        return <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 text-[10px]">{t('redline.medium_risk', 'Medium Risk')}</Badge>;
       case 'HIGH':
-        return <Badge className="bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 border-orange-200 text-[10px]">High Risk</Badge>;
+        return <Badge className="bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 border-orange-200 text-[10px]">{t('redline.high_risk', 'High Risk')}</Badge>;
       case 'CRITICAL':
       default:
-        return <Badge className="bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 text-[10px]">Critical</Badge>;
+        return <Badge className="bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 text-[10px]">{t('redline.filter_critical', 'Critical')}</Badge>;
     }
   };
 
@@ -278,7 +278,7 @@ ${analysis.analyzedClauses
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                <span className="font-semibold text-slate-700 dark:text-slate-300">{contract.nomor_kontrak}</span> • {contract.judul_kontrak} ({contract.partner_nama || 'Vendor'})
+                <span className="font-semibold text-slate-700 dark:text-slate-300">{contract.nomor_kontrak}</span> • {contract.judul_kontrak} ({contract.partner_nama || t('redline.vendor', 'Vendor')})
               </p>
             </div>
           </div>
@@ -311,7 +311,7 @@ ${analysis.analyzedClauses
             <div className="p-6 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-center space-y-3 my-6">
               <AlertCircle className="size-8 text-rose-600 mx-auto" />
               <div>
-                <p className="font-bold text-rose-900 dark:text-rose-200 text-sm">Analisis Gagal</p>
+                <p className="font-bold text-rose-900 dark:text-rose-200 text-sm">{t('redline.analisis_gagal', 'Analisis Gagal')}</p>
                 <p className="text-xs text-rose-700 dark:text-rose-300 mt-1">{error}</p>
               </div>
               <Button
@@ -321,7 +321,7 @@ ${analysis.analyzedClauses
                 className="cursor-pointer border-rose-300 text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900"
               >
                 <RotateCw className="size-3.5 mr-1.5" />
-                Coba Lagi
+                {t('redline.coba_lagi', 'Coba Lagi')}
               </Button>
             </div>
           ) : analysis ? (
@@ -425,7 +425,7 @@ ${analysis.analyzedClauses
                 <div className="space-y-4">
                   {filteredClauses.length === 0 ? (
                     <div className="text-center py-10 text-slate-400 text-xs">
-                      Tidak ada klausul dengan tingkat risiko '{severityFilter}'.
+                      {t('redline.tidak_ada_klausul_dengan_tingkat_risiko', 'Tidak ada klausul dengan tingkat risiko \'{severityFilter}\'.', { severityFilter })}
                     </div>
                   ) : (
                     filteredClauses.map((clause, idx) => (
@@ -457,7 +457,7 @@ ${analysis.analyzedClauses
                               {clause.originalTextOrIssue}
                             </p>
                             <p className="text-rose-800 dark:text-rose-400 text-[11px] mt-2 italic">
-                              <strong>Dampak:</strong> {clause.identifiedRisk}
+                              <strong>{t('redline.dampak', 'Dampak:')}</strong> {clause.identifiedRisk}
                             </p>
                           </div>
 
@@ -491,7 +491,7 @@ ${analysis.analyzedClauses
                               "{clause.recommendedRedline}"
                             </p>
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-                              <strong>Pertimbangan:</strong> {clause.legalRationale}
+                              <strong>{t('redline.pertimbangan', 'Pertimbangan:')}</strong> {clause.legalRationale}
                             </p>
                           </div>
                         </div>
@@ -507,9 +507,9 @@ ${analysis.analyzedClauses
                   <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/60 flex items-start gap-2.5 text-xs text-blue-900 dark:text-blue-200">
                     <Info className="size-4 text-blue-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-bold">Standar Kepatuhan OJK & Regulasi Finansial / Korporasi</p>
+                      <p className="font-bold">{t('redline.standar_kepatuhan_ojk_regulasi_finansial_korpora', 'Standar Kepatuhan OJK & Regulasi Finansial / Korporasi')}</p>
                       <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80 mt-0.5">
-                        Daftar periksa ini mencakup POJK Kerja Sama Pihak Ketiga, POJK Tata Kelola TI, Hak Audit Regulator OJK, serta kepatuhan UU PDP & KUHPerdata.
+                        {t('redline.daftar_periksa_ini_mencakup_pojk_kerja', 'Daftar periksa ini mencakup POJK Kerja Sama Pihak Ketiga, POJK Tata Kelola TI, Hak Audit Regulator OJK, serta kepatuhan UU PDP & KUHPerdata.')}
                       </p>
                     </div>
                   </div>
@@ -540,7 +540,7 @@ ${analysis.analyzedClauses
                               <p className="font-bold text-slate-900 dark:text-white text-xs">{item.item}</p>
                               {isOjkItem && (
                                 <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800 text-[9px] font-bold shrink-0">
-                                  OJK Standard
+                                  {t('redline.ojk_standard', 'OJK Standard')}
                                 </Badge>
                               )}
                             </div>
@@ -548,15 +548,15 @@ ${analysis.analyzedClauses
                             <div>
                               {item.status === 'COMPLIANT' ? (
                                 <span className="inline-flex items-center text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                                  ✓ Memenuhi Standar Kepatuhan
+                                  {t('redline.memenuhi_standar_kepatuhan', '✓ Memenuhi Standar Kepatuhan')}
                                 </span>
                               ) : item.status === 'NEEDS_REVIEW' ? (
                                 <span className="inline-flex items-center text-[10px] font-bold text-amber-700 dark:text-amber-400">
-                                  ⚠️ Perlu Penyesuaian Klausul
+                                  {t('redline.perlu_penyesuaian_klausul', '⚠️ Perlu Penyesuaian Klausul')}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center text-[10px] font-bold text-rose-700 dark:text-rose-400">
-                                  ✗ Tidak Sesuai / Berisiko Regulasi
+                                  {t('redline.tidak_sesuai_berisiko_regulasi', '✗ Tidak Sesuai / Berisiko Regulasi')}
                                 </span>
                               )}
                             </div>

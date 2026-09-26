@@ -385,9 +385,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const formatRupiah = (val: number) => {
     if (val >= 1000000000) {
-      return `Rp ${(val / 1000000000).toFixed(2)} ${language === 'EN' ? 'Billion' : 'Miliar'}`;
+      return `Rp ${(val / 1000000000).toFixed(2)} ${t('dashboard.billion', 'Billion')}`;
     }
-    return `Rp ${(val / 1000000).toFixed(0)} ${language === 'EN' ? 'Million' : 'Juta'}`;
+    return `Rp ${(val / 1000000).toFixed(0)} ${t('dashboard.million', 'Million')}`;
   };
 
   return (
@@ -431,7 +431,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div>
             <div className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               {activePartnersCount}{' '}
-              <span className="text-xs font-semibold text-slate-400">/ {partners.length} Total</span>
+              <span className="text-xs font-semibold text-slate-400">{t('dashboard.total', '/ {partners} Total', { partners: partners.length })}</span>
             </div>
             <p className="text-xs text-[#048C3B] dark:text-emerald-400 font-bold mt-1">
               {t('dashboard.min_one_contract')}
@@ -455,7 +455,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div>
             <div className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               {activeContracts.length}{' '}
-              <span className="text-xs font-semibold text-slate-400">/ {contracts.length} Total</span>
+              <span className="text-xs font-semibold text-slate-400">{t('dashboard.total_2', '/ {contracts} Total', { contracts: contracts.length })}</span>
             </div>
             <p className="text-xs text-[#048C3B] dark:text-emerald-400 font-bold mt-1">
               {t('dashboard.value')}: {formatRupiah(totalNilaiKontrak)}
@@ -479,10 +479,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div>
             <div className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               {activeIOs.length}{' '}
-              <span className="text-xs font-semibold text-slate-400">/ {ios.length} Total</span>
+              <span className="text-xs font-semibold text-slate-400">{t('dashboard.total_3', '/ {ios} Total', { ios: ios.length })}</span>
             </div>
             <p className="text-xs text-[#048C3B] dark:text-emerald-400 font-bold mt-1">
-              {language === 'EN' ? `From ${contracts.length} Contracts` : `Dari ${contracts.length} Kontrak`}
+              {t('dashboard.from_contracts', 'From {contracts} Contracts', { contracts: contracts.length })}
             </p>
           </div>
         </div>
@@ -507,7 +507,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <p className="text-xs text-amber-800 dark:text-amber-400 font-bold mt-1 flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>Extension / Termination</span>
+              <span>{t('dashboard.extension_termination', 'Extension / Termination')}</span>
             </p>
           </div>
         </div>
@@ -544,7 +544,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="flex items-center justify-start">
                     <input
                       type="checkbox"
-                      aria-label="Pilih semua kontrak yang akan berakhir"
+                      aria-label={t('dashboard.pilih_semua_kontrak_yang_akan_berakhir', 'Pilih semua kontrak yang akan berakhir')}
                       className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
                       disabled
                     />
@@ -574,7 +574,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div className="flex items-center justify-start">
                         <input
                           type="checkbox"
-                          aria-label={`Pilih kontrak ${ctr.nomor_kontrak}`}
+                          aria-label={t('dashboard.pilih_kontrak', 'Pilih kontrak {nomor_kontrak}', { nomor_kontrak: ctr.nomor_kontrak })}
                           className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
                           disabled
                         />
@@ -609,7 +609,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left whitespace-nowrap">
                       <span className={`text-xs font-normal px-3 py-0.5 rounded-full border inline-flex items-center gap-1.5 shadow-2xs whitespace-nowrap ${getStatusBadgeClass('Akan Berakhir')}`}>
                         <Clock className="w-3.5 h-3.5" />
-                        <span>{ctr.sisa_hari} {language === 'EN' ? 'Days Left' : 'Hari Lagi'}</span>
+                        <span>{ctr.sisa_hari} {t('dashboard.days_left', 'Days Left')}</span>
                       </span>
                     </td>
 
@@ -619,7 +619,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <ActionMenu
                           items={[
                             {
-                              label: 'Detail',
+                              label: t('io.action_detail', 'Detail'),
                               icon: <ExternalLink className="w-3.5 h-3.5" />,
                               onClick: () => onSelectContract(ctr),
                             },

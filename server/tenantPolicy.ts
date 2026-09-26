@@ -190,10 +190,14 @@ export function aiPolicyContext(tenantId?: string | null) {
     dataProtectionLaw: country.dataProtectionLaw,
     indirectTaxName: country.indirectTaxName,
     industryName: localize(industry.name, 'EN'),
-    reviewFocus: industry.aiReviewFocus,
+    reviewFocus: industry.criticalClauses.map((c) => c.clause.en),
+    clauseRules: industry.criticalClauses.map((c) => `${c.clause.en} — ${c.rule.en}`),
+    complianceStandards: industry.complianceStandards,
+    taxConsiderations: industry.taxConsiderations.map((c) => c.en),
     regulators,
     commercialDocumentLabel: industry.commercialDocument.label,
-    responseLanguage: settings.language === 'ID' ? 'Indonesian (Bahasa Indonesia)' : 'English',
+    responseLanguage:
+      settings.language === 'ID' ? 'Indonesian (Bahasa Indonesia)' : settings.language === 'ZH' ? 'Simplified Chinese (简体中文)' : 'English',
     defaultCurrency: settings.defaultCurrency,
   };
 }

@@ -56,7 +56,7 @@ export interface ContractDraftData {
     bankAddress: string;
     swiftCode: string;
   };
-  /** e.g. "the laws of the Republic of Singapore" (see the country pack's governingLaw). */
+  /** e.g. "Singapore Law" (see the country pack's governingLaw). */
   governingLaw: string;
   disputeForumEn: string;
   disputeForumId: string;

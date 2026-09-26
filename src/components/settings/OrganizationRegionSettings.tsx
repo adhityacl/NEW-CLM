@@ -3,8 +3,9 @@ import { AlertCircle, CheckCircle2, Globe2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTenantSettings } from '../../context/TenantSettingsContext';
 import { usePermissions } from '../../lib/permissions';
-import { SUPPORTED_CURRENCIES } from '../../lib/currencyUtils';
-import { buildDueDiligenceChecklist, localize, type TenantSettings } from '../../lib/policy';
+import { SUPPORTED_CURRENCIES, currencyLabel } from '../../lib/currencyUtils';
+import { buildDueDiligenceChecklist, getCountryPack, getIndustryPack, localize, localizeName, type TenantSettings } from '../../lib/policy';
+import { IndustryPackDetails } from './IndustryPackDetails';
 import { DueDiligenceChecklistEditor } from './DueDiligenceChecklistEditor';
 
 type SaveStatus =
@@ -75,9 +76,10 @@ export const OrganizationRegionSettings: React.FC = () => {
     [draft.countryCode, draft.industry],
   );
   const tzOptions = useMemo(() => timezoneOptions(countries.map((c) => c.timezone)), [countries]);
-  const selectedCountry = countries.find((c) => c.code === draft.countryCode);
-  const packLaw = localize(policy.country.governingLaw, language);
-  const packVenue = localize(policy.country.disputeVenue, language);
+  // Defaults of the country currently selected in the form, so they update before saving.
+  const draftCountry = getCountryPack(draft.countryCode);
+  const packLaw = localize(draftCountry.governingLaw, language);
+  const packVenue = localize(draftCountry.disputeVenue, language);
   const remindersValid = remindersText.split(',').map((v) => v.trim()).filter(Boolean).every((v) => /^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 730);
 
   const update = <K extends keyof TenantSettings>(key: K, value: TenantSettings[K]) => {
@@ -96,6 +98,18 @@ export const OrganizationRegionSettings: React.FC = () => {
       governingLaw: undefined,
       disputeVenue: undefined,
     }));
+    setSave({ kind: 'idle' });
+  };
+
+  const onIndustryChange = (key: string) => {
+    const next = getIndustryPack(key);
+    setDraft((prev) => {
+      const previous = getIndustryPack(prev.industry);
+      // Propose the industry's contract currency; drop it again when leaving such an industry.
+      const revert = previous.contractCurrency && prev.defaultCurrency === previous.contractCurrency;
+      const defaultCurrency = next.contractCurrency || (revert ? getCountryPack(prev.countryCode).defaultCurrency : prev.defaultCurrency);
+      return { ...prev, industry: next.key, defaultCurrency };
+    });
     setSave({ kind: 'idle' });
   };
 
@@ -154,20 +168,21 @@ export const OrganizationRegionSettings: React.FC = () => {
             <div>
               <label htmlFor={ids.country} className={labelClass}>{t('settings.region.country', 'Country / jurisdiction pack')}</label>
               <select id={ids.country} className={fieldClass} value={draft.countryCode} onChange={(e) => onCountryChange(e.target.value)}>
-                {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                {countries.map((c) => <option key={c.code} value={c.code}>{localizeName(c.name, language)}</option>)}
               </select>
             </div>
             <div>
               <label htmlFor={ids.industry} className={labelClass}>{t('settings.region.industry', 'Industry pack')}</label>
-              <select id={ids.industry} className={fieldClass} value={draft.industry} onChange={(e) => update('industry', e.target.value as TenantSettings['industry'])}>
+              <select id={ids.industry} className={fieldClass} value={draft.industry} onChange={(e) => onIndustryChange(e.target.value)}>
                 {industries.map((i) => <option key={i.key} value={i.key}>{localize(i.name, language)}</option>)}
               </select>
             </div>
             <div>
               <label htmlFor={ids.language} className={labelClass}>{t('settings.region.language', 'Default language for e-mails and AI answers')}</label>
-              <select id={ids.language} className={fieldClass} value={draft.language} onChange={(e) => update('language', e.target.value as 'EN' | 'ID')}>
-                <option value="EN">English</option>
-                <option value="ID">Bahasa Indonesia</option>
+              <select id={ids.language} className={fieldClass} value={draft.language} onChange={(e) => update('language', e.target.value as 'EN' | 'ID' | 'ZH')}>
+                <option value="EN">{t('settings.english', 'English')}</option>
+                <option value="ID">{t('settings.bahasa_indonesia', 'Bahasa Indonesia')}</option>
+                <option value="ZH">{t('settings.chinese', '中文')}</option>
               </select>
             </div>
             <div>
@@ -179,23 +194,20 @@ export const OrganizationRegionSettings: React.FC = () => {
             <div>
               <label htmlFor={ids.currency} className={labelClass}>{t('settings.region.default_currency', 'Default currency')}</label>
               <select id={ids.currency} className={fieldClass} value={draft.defaultCurrency} onChange={(e) => update('defaultCurrency', e.target.value)}>
-                {SUPPORTED_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.label}</option>)}
+                {SUPPORTED_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.code} — {currencyLabel(c.code, language)}</option>)}
               </select>
             </div>
             <div>
               <label htmlFor={ids.reporting} className={labelClass}>{t('settings.region.reporting_currency', 'Reporting currency')}</label>
               <select id={ids.reporting} className={fieldClass} value={draft.reportingCurrency} onChange={(e) => update('reportingCurrency', e.target.value)}>
-                {SUPPORTED_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.label}</option>)}
+                {SUPPORTED_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.code} — {currencyLabel(c.code, language)}</option>)}
               </select>
             </div>
           </div>
-          {selectedCountry && (
-            <p className={`${hintClass} mt-3`}>
-              {selectedCountry.identifierSchemes.map((s) => s.label).join(' · ')}
-            </p>
-          )}
         </div>
       </fieldset>
+
+      <IndustryPackDetails industryKey={draft.industry} countryCode={draft.countryCode} defaultCurrency={draft.defaultCurrency} />
 
       <fieldset className={fieldsetResetClass} disabled={!canEdit}>
         <legend className={legendClass}>{t('settings.region.lifecycle', 'Lifecycle & reminders')}</legend>

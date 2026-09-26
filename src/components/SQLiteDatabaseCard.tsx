@@ -20,6 +20,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { cn } from '../lib/utils';
 import { getAuthHeaders } from '../App';
+import { useLanguage } from '../context/LanguageContext';
 
 interface SQLiteStatus {
   status: string;
@@ -59,6 +60,7 @@ interface TableDataResponse {
 }
 
 export const SQLiteDatabaseCard: React.FC = () => {
+  const { t } = useLanguage();
   const [status, setStatus] = useState<SQLiteStatus | null>(null);
   const [tables, setTables] = useState<TableItem[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>('');
@@ -178,14 +180,14 @@ export const SQLiteDatabaseCard: React.FC = () => {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setMessage({ type: 'success', text: 'Database optimized' });
+        setMessage({ type: 'success', text: t('sqlite.database_optimized', 'Database optimized') });
         fetchStatusAndTables();
         if (selectedTable) fetchTableData(selectedTable, offset, search);
       } else {
-        setMessage({ type: 'error', text: data.error || 'Optimization failed' });
+        setMessage({ type: 'error', text: data.error || t('sqlite.optimization_failed', 'Optimization failed') });
       }
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Optimization failed' });
+      setMessage({ type: 'error', text: err.message || t('sqlite.optimization_failed', 'Optimization failed') });
     } finally {
       setOptimizing(false);
       setTimeout(() => setMessage(null), 3000);
@@ -201,7 +203,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
         <div className="space-y-0.5">
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             <Database className="w-5 h-5 text-[#06C755]" />
-            <span>SQLite Database</span>
+            <span>{t('sqlite.sqlite_database', 'SQLite Database')}</span>
           </CardTitle>
         </div>
 
@@ -215,7 +217,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
             className="h-8 px-3 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer gap-1.5 shadow-2xs"
           >
             <RefreshCw className={cn('w-3 h-3', loadingStatus && 'animate-spin')} />
-            <span>Refresh</span>
+            <span>{t('sqlite.refresh', 'Refresh')}</span>
           </Button>
 
           <Button
@@ -226,7 +228,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
             className="h-8 px-3 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5 shadow-2xs"
           >
             <Sparkles className={cn('w-3 h-3', optimizing && 'animate-spin')} />
-            <span>{optimizing ? 'Optimizing...' : 'Optimize'}</span>
+            <span>{optimizing ? t('sqlite.optimizing', 'Optimizing...') : t('sqlite.optimize', 'Optimize')}</span>
           </Button>
         </div>
       </CardHeader>
@@ -257,12 +259,12 @@ export const SQLiteDatabaseCard: React.FC = () => {
           <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700/80 space-y-1">
             <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <Activity className="w-3 h-3 text-[#06C755]" />
-              <span>Status</span>
+              <span>{t('dashboard.status', 'Status')}</span>
             </span>
             <div className="flex items-center gap-2">
               <span className="size-2 rounded-full bg-[#06C755] animate-pulse" />
               <p className="font-bold text-slate-800 dark:text-slate-100 font-mono text-xs uppercase">
-                {status?.status || 'Active'}
+                {status?.status || t('status.aktif', 'Active')}
               </p>
             </div>
           </div>
@@ -270,7 +272,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
           <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700/80 space-y-1">
             <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <HardDrive className="w-3 h-3 text-blue-500" />
-              <span>Size</span>
+              <span>{t('documents.field.size', 'Size')}</span>
             </span>
             <p className="font-bold text-slate-800 dark:text-slate-100 font-mono text-xs">
               {status ? formatBytes(status.fileSizeBytes) : '-'}
@@ -280,7 +282,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
           <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700/80 space-y-1">
             <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <Layers className="w-3 h-3 text-purple-500" />
-              <span>Tables</span>
+              <span>{t('sqlite.tables', 'Tables')}</span>
             </span>
             <p className="font-bold text-slate-800 dark:text-slate-100 font-mono text-xs">
               {status?.tablesCount ?? tables.length}
@@ -290,7 +292,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
           <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700/80 space-y-1">
             <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <TableIcon className="w-3 h-3 text-amber-500" />
-              <span>Total Rows</span>
+              <span>{t('sqlite.total_rows', 'Total Rows')}</span>
             </span>
             <p className="font-bold text-slate-800 dark:text-slate-100 font-mono text-xs">
               {status?.totalRecords?.toLocaleString() ?? '-'}
@@ -338,7 +340,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search table..."
+                  placeholder={t('sqlite.search_table', 'Search table...')}
                   className="h-8 pl-8 pr-3 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#06C755] w-36 sm:w-48 font-mono"
                 />
               </div>
@@ -348,7 +350,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
                 size="sm"
                 className="h-8 px-2.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
               >
-                Go
+                {t('sqlite.go', 'Go')}
               </Button>
             </form>
           </div>
@@ -359,11 +361,11 @@ export const SQLiteDatabaseCard: React.FC = () => {
               {loadingData ? (
                 <div className="p-8 text-center text-slate-400">
                   <RefreshCw className="w-5 h-5 mx-auto animate-spin mb-2 text-[#06C755]" />
-                  <span>Loading...</span>
+                  <span>{t('sqlite.loading', 'Loading...')}</span>
                 </div>
               ) : !tableData || tableData.rows.length === 0 ? (
                 <div className="p-8 text-center text-slate-400">
-                  <span>No records found</span>
+                  <span>{t('sqlite.no_records_found', 'No records found')}</span>
                 </div>
               ) : (
                 <table className="w-full text-left border-collapse text-xs font-mono">
@@ -375,7 +377,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
                             <span>{col.name}</span>
                             {col.pk === 1 && (
                               <span className="text-[9px] px-1 py-0.2 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded">
-                                PK
+                                {t('sqlite.pk', 'PK')}
                               </span>
                             )}
                             <span className="text-[9px] text-slate-400 font-normal">
@@ -410,7 +412,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
                               title={strVal}
                             >
                               {isNull ? (
-                                <span className="text-slate-400 italic text-[11px]">NULL</span>
+                                <span className="text-slate-400 italic text-[11px]">{t('sqlite.null', 'NULL')}</span>
                               ) : strVal.length > 35 ? (
                                 <button
                                   type="button"
@@ -436,7 +438,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
             {tableData && tableData.total > 0 && (
               <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
                 <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                  {offset + 1} - {Math.min(offset + limit, tableData.total)} of {tableData.total}
+                  {offset + 1} {t('sqlite.of', '- {value} of {total}', { value: Math.min(offset + limit, tableData.total), total: tableData.total })}
                 </span>
 
                 <div className="flex items-center gap-1">
@@ -496,7 +498,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
                 onClick={() => setExpandedCell(null)}
                 className="h-8 px-4 rounded-full text-xs font-semibold bg-slate-900 dark:bg-white text-white dark:text-slate-900"
               >
-                Close
+                {t('redline.close', 'Close')}
               </Button>
             </div>
           </div>

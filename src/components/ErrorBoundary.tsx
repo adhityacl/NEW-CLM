@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, RotateCcw } from 'lucide-react';
+import { translateStatic as t } from '../context/LanguageContext';
 
 interface Props {
   children: ReactNode;
@@ -53,17 +54,17 @@ export class ErrorBoundary extends Component<Props, State> {
 
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                Terjadi Kendala Memuat Tampilan
+                {t('error_boundary.title', 'Terjadi Kendala Memuat Tampilan')}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-                Aplikasi mengalami galat saat memuat komponen antarmuka. Anda dapat memuat ulang halaman atau membersihkan cache sesi lokal.
+                {t('error_boundary.description', 'Aplikasi mengalami galat saat memuat komponen antarmuka. Anda dapat memuat ulang halaman atau membersihkan cache sesi lokal.')}
               </p>
             </div>
 
             {this.state.error && (
               <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/60 text-left overflow-hidden">
                 <p className="font-mono text-[11px] text-rose-600 dark:text-rose-400 wrap-break-word font-semibold">
-                  {this.state.error.message || 'Unknown render error'}
+                  {this.state.error.message || t('error_boundary.unknown_error', 'Galat tampilan yang tidak diketahui')}
                 </p>
               </div>
             )}
@@ -75,7 +76,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-[#06C755] hover:bg-[#05b34c] text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Muat Ulang Halaman</span>
+                <span>{t('error_boundary.reload', 'Muat Ulang Halaman')}</span>
               </button>
               <button
                 type="button"
@@ -83,7 +84,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset Sesi & Cache</span>
+                <span>{t('error_boundary.reset', 'Reset Sesi & Cache')}</span>
               </button>
             </div>
           </div>

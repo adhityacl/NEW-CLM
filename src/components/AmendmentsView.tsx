@@ -59,7 +59,7 @@ export const AmendmentsView: React.FC<AmendmentsViewProps> = ({
             className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
           >
             <Plus className="w-4 h-4 text-white" />
-            <span>Tambah</span>
+            <span>{t('io.add_btn', 'Tambah')}</span>
           </button>
         )}
       </div>
@@ -110,7 +110,7 @@ export const AmendmentsView: React.FC<AmendmentsViewProps> = ({
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{add.nomor_kontrak || add.nomor_addendum}</h3>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-                      <span>{t('amendments.parent_doc')} ({add.parent_type || 'Contract'}):</span>
+                      <span>{t('amendments.parent_doc')} ({add.parent_type || t('import.type_contract', 'Contract')}):</span>
                       <strong className="text-slate-800 dark:text-slate-200 font-mono">{add.parent_contract_nomor || add.parent_nomor || add.parent_contract_id || add.parent_id}</strong>
                     </p>
                   </div>

@@ -8,7 +8,7 @@ import { DateInput } from './DateInput';
 import { isGlobalRole } from '../lib/rbacScoping';
 import { useDepartments } from '../hooks/useDepartments';
 import { getSavedCategories, saveCategory, saveMultipleCategories } from '../lib/categoryUtils';
-import { SUPPORTED_CURRENCIES, formatMoney, fetchHistoricalRate, getDefaultUsdRate } from '../lib/currencyUtils';
+import { SUPPORTED_CURRENCIES, currencyLabel, formatMoney, fetchHistoricalRate, getDefaultUsdRate } from '../lib/currencyUtils';
 import { formatContractFileName } from '../lib/fileNaming';
 
 interface ContractModalProps {
@@ -27,7 +27,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
   onSave,
 }) => {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { departments: ENTERPRISE_DEPARTMENTS } = useDepartments();
 
   const [jenisDokumen, setJenisDokumen] = useState<JenisDokumenContract>(
@@ -209,7 +209,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
 
   const handleParseContract = async () => {
     if (!fileData && !rawFileObj) {
-      setError('Please upload a PDF file first.');
+      setError(t('contracts.please_upload_a_pdf_file_first', 'Please upload a PDF file first.'));
       return;
     }
     setIsParsing(true);
@@ -243,10 +243,10 @@ export const ContractModal: React.FC<ContractModalProps> = ({
         result = await response.json();
       } else {
         const text = await response.text();
-        throw new Error(text && text.trim().startsWith('<') ? 'Koneksi AI Server timeout atau sibuk. Silakan coba kembali beberapa saat lagi.' : (text || 'Gagal memproses dokumen'));
+        throw new Error(text && text.trim().startsWith('<') ? t('contracts.koneksi_ai_server_timeout_atau_sibuk', 'Koneksi AI Server timeout atau sibuk. Silakan coba kembali beberapa saat lagi.') : (text || t('contracts.gagal_memproses_dokumen', 'Gagal memproses dokumen')));
       }
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to parse');
+        throw new Error(result.error || t('contracts.failed_to_parse', 'Failed to parse'));
       }
       if (result.success && result.data) {
         const parsed = result.data;
@@ -317,9 +317,9 @@ export const ContractModal: React.FC<ContractModalProps> = ({
       }
     } catch (err: any) {
       if (err?.name === 'AbortError') {
-        setError('Parsing timeout, server terlalu lama merespon. Silakan coba lagi.');
+        setError(t('contracts.parsing_timeout_server_terlalu_lama_merespon', 'Parsing timeout, server terlalu lama merespon. Silakan coba lagi.'));
       } else {
-        setError(err.message || 'Error parsing document');
+        setError(err.message || t('contracts.error_parsing_document', 'Error parsing document'));
       }
     } finally {
       setIsParsing(false);
@@ -334,7 +334,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 20 * 1024 * 1024) {
-        setError('Ukuran file maksimal 20MB.');
+        setError(t('contracts.ukuran_file_maksimal_20mb', 'Ukuran file maksimal 20MB.'));
         return;
       }
       setRawFileObj(file);
@@ -370,11 +370,11 @@ export const ContractModal: React.FC<ContractModalProps> = ({
         return;
       }
       if (fieldYangBerubah.length === 0) {
-        setError('Pilih minimal 1 elemen / field yang berubah untuk Agreement Addendum.');
+        setError(t('contracts.pilih_minimal_1_elemen_field_yang', 'Pilih minimal 1 elemen / field yang berubah untuk Agreement Addendum.'));
         return;
       }
       if (!ringkasanPerubahan.trim()) {
-        setError('Ringkasan detail track-change perubahan wajib diisi untuk Agreement Addendum.');
+        setError(t('contracts.ringkasan_detail_track_change_perubahan_wajib', 'Ringkasan detail track-change perubahan wajib diisi untuk Agreement Addendum.'));
         return;
       }
     }
@@ -387,11 +387,11 @@ export const ContractModal: React.FC<ContractModalProps> = ({
       return;
     }
     if (!tanggalMulai || !tanggalBerakhir) {
-      setError('Tanggal Mulai dan Tanggal Berakhir wajib diisi.');
+      setError(t('contracts.tanggal_mulai_dan_tanggal_berakhir_wajib', 'Tanggal Mulai dan Tanggal Berakhir wajib diisi.'));
       return;
     }
     if (new Date(tanggalBerakhir) <= new Date(tanggalMulai)) {
-      setError('Tanggal Berakhir harus setelah Tanggal Mulai.');
+      setError(t('contracts.tanggal_berakhir_harus_setelah_tanggal_mulai', 'Tanggal Berakhir harus setelah Tanggal Mulai.'));
       return;
     }
 
@@ -444,7 +444,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
 
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Gagal menyimpan data kontrak. Coba lagi.');
+      setError(err.message || t('contracts.gagal_menyimpan_data_kontrak_coba_lagi', 'Gagal menyimpan data kontrak. Coba lagi.'));
     } finally {
       setSubmitting(false);
     }
@@ -618,8 +618,8 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                   required
                   placeholder={
                     jenisDokumen === 'Agreement Addendum'
-                      ? 'contoh: 01/ADD-ITS/XI/2024 atau 01A/ADD-ITS/I/2023'
-                      : 'contoh: 01/PKS-ITS/XI/2024 atau 52/PKS-ITS/VII/2025'
+                      ? t('contracts.contoh_01_add_its_xi_2024', 'contoh: 01/ADD-ITS/XI/2024 atau 01A/ADD-ITS/I/2023')
+                      : t('contracts.contoh_01_pks_its_xi_2024', 'contoh: 01/PKS-ITS/XI/2024 atau 52/PKS-ITS/VII/2025')
                   }
                   value={nomorKontrak}
                   onChange={(e) => setNomorKontrak(e.target.value)}
@@ -720,7 +720,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                   </label>
                   {autoRenewal && (
                     <span className="text-[10px] bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 font-semibold px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
-                      Auto-Renewal
+                      {t('contracts.auto_renewal', 'Auto-Renewal')}
                     </span>
                   )}
                 </div>
@@ -743,7 +743,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                 >
                   {SUPPORTED_CURRENCIES.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.code} — {c.label}
+                      {c.code} — {currencyLabel(c.code, language)}
                     </option>
                   ))}
                 </select>
@@ -766,13 +766,13 @@ export const ContractModal: React.FC<ContractModalProps> = ({
             {/* USD Conversion Info Banner */}
             <div className="bg-[#06C755]/5 dark:bg-emerald-950/20 border border-[#06C755]/20 dark:border-emerald-500/20 rounded-xl p-3 text-xs flex flex-wrap items-center justify-between gap-2">
               <div>
-                <span className="font-semibold text-slate-700 dark:text-slate-300">Estimasi Konversi USD (Kurs {tanggalMulai}):</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">{t('contracts.estimasi_konversi_usd_kurs', 'Estimasi Konversi USD (Kurs {tanggalMulai}):', { tanggalMulai })}</span>
                 <span className="ml-2 font-bold text-[#06C755] dark:text-emerald-400">
                   {formatMoney(estimatedUsd, 'USD')}
                 </span>
               </div>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 italic">
-                {currency === 'USD' ? 'Sama (Mata uang USD)' : `1 ${currency} ≈ ${historicalRate.toFixed(8)} USD`}
+                {currency === 'USD' ? t('contracts.sama_mata_uang_usd', 'Sama (Mata uang USD)') : t('contracts.1_usd', '1 {currency} ≈ {value} USD', { currency, value: historicalRate.toFixed(8) })}
               </span>
             </div>
 
@@ -799,10 +799,10 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                   onChange={(e) => setNoticeTypeRequired(e.target.value as any)}
                   className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
                 >
-                  <option value="Termination">Notice of Termination</option>
-                  <option value="Extension">Notice of Extension</option>
-                  <option value="Both">Keduanya (Termination & Extension)</option>
-                  <option value="None">None</option>
+                  <option value="Termination">{t('contracts.notice_of_termination', 'Notice of Termination')}</option>
+                  <option value="Extension">{t('contracts.notice_of_extension', 'Notice of Extension')}</option>
+                  <option value="Both">{t('contracts.keduanya_termination_extension', 'Keduanya (Termination & Extension)')}</option>
+                  <option value="None">{t('common.none', 'None')}</option>
                 </select>
               </div>
               <div className="flex items-center pt-4 sm:pt-6">
@@ -858,7 +858,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                 {fileData || fileName ? (
                   <div className="space-y-1">
                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      📄 File terpilih: <span className="font-normal font-mono text-slate-900 dark:text-white">{rawFileName || fileName}</span>
+                      {t('contracts.file_terpilih', '📄 File terpilih:')} <span className="font-normal font-mono text-slate-900 dark:text-white">{rawFileName || fileName}</span>
                     </p>
                   </div>
                 ) : (
@@ -874,7 +874,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                       disabled={isParsing}
                       className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 hover:bg-[#06C755]/20 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
-                      {isParsing ? 'Parsing...' : 'Parse File'}
+                      {isParsing ? t('contracts.parsing', 'Parsing...') : t('contracts.parse_file', 'Parse File')}
                     </button>
                   )}
                   <input

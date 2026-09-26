@@ -185,17 +185,19 @@ export const parseAllMonths = (input: string): ParsedMonthInfo[] => {
 /**
  * Formats a month period string for UI display (e.g. "Januari 2026" or "Maret 2026, April 2026")
  */
-export const formatMonthTagDisplay = (mStr: string, lang: 'id' | 'en' | 'ID' | 'EN' = 'id'): string => {
+export const formatMonthTagDisplay = (mStr: string, lang: 'id' | 'en' | 'zh' | 'ID' | 'EN' | 'ZH' = 'id'): string => {
   if (!mStr) return '-';
   const parsedList = parseAllMonths(mStr);
   if (parsedList.length === 0) {
     return mStr;
   }
 
-  const isEn = String(lang).toLowerCase() === 'en';
+  const code = String(lang).toLowerCase();
   return parsedList
-    .map((p) => (isEn ? `${p.monthNameEn} ${p.year}` : `${p.monthNameId} ${p.year}`))
-    .join(', ');
+    .map((p) =>
+      code === 'zh' ? `${p.year}年${p.monthIndex + 1}月` : code === 'en' ? `${p.monthNameEn} ${p.year}` : `${p.monthNameId} ${p.year}`,
+    )
+    .join(code === 'zh' ? '、' : ', ');
 };
 
 /**

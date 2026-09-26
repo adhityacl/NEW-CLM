@@ -194,13 +194,13 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Terjadi kesalahan saat menyimpan evaluasi.');
+        throw new Error(data.error || t('eval.terjadi_kesalahan_saat_menyimpan_evaluasi', 'Terjadi kesalahan saat menyimpan evaluasi.'));
       }
 
       onRefreshData();
       setShowFormModal(false);
     } catch (err: any) {
-      setFormError(err.message || 'Gagal menyimpan data.');
+      setFormError(err.message || t('eval.gagal_menyimpan_data', 'Gagal menyimpan data.'));
       console.warn(err);
     } finally {
       setIsSubmitting(false);
@@ -481,7 +481,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
         if (res.ok) {
           onRefreshData();
         } else {
-          showAlert({ title: 'Gagal menghapus data evaluasi', variant: 'destructive' });
+          showAlert({ title: t('eval.gagal_menghapus_data_evaluasi', 'Gagal menghapus data evaluasi'), variant: 'destructive' });
         }
       } catch (err) {
         console.warn(err);
@@ -545,7 +545,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
           type="button"
           onClick={() => handleSort(field)}
           className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
-          title={`Urutkan berdasarkan ${label}`}
+          title={t('eval.urutkan_berdasarkan', 'Urutkan berdasarkan {label}', { label })}
         >
           <span>{label}</span>
           {isSorted ? (
@@ -712,7 +712,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                   <div className="flex items-center justify-start">
                     <input
                       type="checkbox"
-                      aria-label="Pilih semua evaluasi"
+                      aria-label={t('eval.pilih_semua_evaluasi', 'Pilih semua evaluasi')}
                       onChange={handleSelectAll}
                       checked={selectedRows.length > 0 && selectedRows.length === currentEvaluations.length}
                       className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
@@ -799,7 +799,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         <div className="flex items-center justify-start">
                           <input
                             type="checkbox"
-                            aria-label={`Pilih evaluasi ${item.supplier_name}`}
+                            aria-label={t('eval.pilih_evaluasi', 'Pilih evaluasi {supplier_name}', { supplier_name: item.supplier_name })}
                             checked={selectedRows.includes(item.id)}
                             onChange={() => handleSelectRow(item.id)}
                             className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
@@ -1231,7 +1231,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                       </span>
                     </div>
                     <div className="flex items-center gap-1 bg-[#06C755] text-white px-3 py-1 rounded-xl shadow-2xs">
-                      <span className="text-xs font-semibold">Total:</span>
+                      <span className="text-xs font-semibold">{t('eval.total', 'Total:')}</span>
                       <span className="text-base font-black">{liveBreakdown.total}</span>
                       <span className="text-[10px] opacity-80">/ 100 {t('eval.points')}</span>
                     </div>
@@ -1239,25 +1239,25 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] pt-1 border-t border-[#06C755]/20 dark:border-emerald-500/20">
                     <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-[#06C755]/20 dark:border-emerald-500/20">
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">Obligation / Target</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">{t('eval.obligation_target_2', 'Obligation / Target')}</span>
                       <span className="font-extrabold text-[#048C3B] dark:text-emerald-400">
                         {liveBreakdown.tScore} {t('eval.points')}
                       </span>
                     </div>
                     <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-[#06C755]/20 dark:border-emerald-500/20">
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">Incident Freq</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">{t('eval.incident_freq_2', 'Incident Freq')}</span>
                       <span className="font-extrabold text-[#048C3B] dark:text-emerald-400">
                         {liveBreakdown.fScore} {t('eval.points')}
                       </span>
                     </div>
                     <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-[#06C755]/20 dark:border-emerald-500/20">
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">Communication</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">{t('audit_col_evalCommunication', 'Communication')}</span>
                       <span className="font-extrabold text-[#048C3B] dark:text-emerald-400">
                         {liveBreakdown.cScore} {t('eval.points')}
                       </span>
                     </div>
                     <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-[#06C755]/20 dark:border-emerald-500/20">
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">Pricing</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">{t('eval.pricing_2', 'Pricing')}</span>
                       <span className="font-extrabold text-[#048C3B] dark:text-emerald-400">
                         {liveBreakdown.pScore} {t('eval.points')}
                       </span>
@@ -1395,7 +1395,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
                 <div>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase block">
-                    {t('eval.col_id_date')} ID
+                    {t('eval.col_id_date')} {t('eval.id', 'ID')}
                   </span>
                   <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{viewingDetailItem.id}</span>
                 </div>
@@ -1431,25 +1431,25 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
 
               <div className="space-y-2 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
                 <div className="flex justify-between pb-1.5 border-b border-slate-200 dark:border-slate-700">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Obligation / Target</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">{t('eval.obligation_target_2', 'Obligation / Target')}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">
                     {viewingDetailItem.obligation_target}
                   </span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-200 dark:border-slate-700">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Incident Frequency</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">{t('audit_col_evalIncident', 'Incident Frequency')}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">
                     {viewingDetailItem.incident_frequency}
                   </span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-200 dark:border-slate-700">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Communication</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">{t('audit_col_evalCommunication', 'Communication')}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">
                     {viewingDetailItem.communication}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Pricing</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">{t('eval.pricing_2', 'Pricing')}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">{viewingDetailItem.pricing}</span>
                 </div>
               </div>

@@ -84,8 +84,8 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
           className="px-3 py-1.5 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
         >
           <option value="all">{t('admin.filter_prov_all', 'Semua Provider')}</option>
-          <option value="credential">Credential (Password)</option>
-          <option value="google">Google OAuth</option>
+          <option value="credential">{t('admin.credential_password', 'Credential (Password)')}</option>
+          <option value="google">{t('admin.google_oauth', 'Google OAuth')}</option>
         </select>
       </div>
 
@@ -117,7 +117,7 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
                   >
                     <td className="py-3 px-4">
                       <div className="font-medium text-slate-900 dark:text-slate-100">
-                        {acc.userName || (language === 'ID' ? 'Tanpa Nama' : 'Unnamed')}
+                        {acc.userName || (t('admin.unnamed', 'Unnamed'))}
                       </div>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                         {acc.userEmail}
@@ -146,10 +146,10 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
                       {acc.hasPassword ? (
                         <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Hashed (Scrypt)
+                          {t('admin.hashed_scrypt', 'Hashed (Scrypt)')}
                         </span>
                       ) : (
-                        <span className="text-[11px] text-slate-400">OAuth Delegated</span>
+                        <span className="text-[11px] text-slate-400">{t('admin.oauth_delegated', 'OAuth Delegated')}</span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-slate-500 text-[11px]">

@@ -41,10 +41,8 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
   const roles = matrixData?.roles || {
     superuser: {
       name: 'Superuser',
-      scope: 'System Level',
-      description: isID
-        ? 'Akses tingkat sistem tertinggi: Kelola akun, peran, konfigurasi platform enterprise, serta memiliki seluruh hak akses operasional & persetujuan dokumen (seperti Admin) di semua divisi secara global.'
-        : 'Highest system level: Manage user accounts, roles, audit logs, and possesses all administrative, operational, and approval authorities globally.',
+      scope: t('admin.system_level', 'System Level'),
+      description: t('admin.highest_system_level_manage_user_accounts', 'Highest system level: Manage user accounts, roles, audit logs, and possesses all administrative, operational, and approval authorities globally.'),
       permissions: {
         user: ['create', 'read', 'update', 'delete', 'ban', 'set-role', 'set-password'],
         session: ['list', 'revoke', 'delete'],
@@ -58,10 +56,8 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
     },
     admin: {
       name: 'Admin',
-      scope: 'Global Level',
-      description: isID
-        ? 'Tinjau, edit, dan berikan persetujuan akhir (final approval) semua dokumen.'
-        : 'Review, edit, and provide final approval on all organizational documents.',
+      scope: t('admin.global_level', 'Global Level'),
+      description: t('admin.review_edit_and_provide_final_approval', 'Review, edit, and provide final approval on all organizational documents.'),
       permissions: {
         user: ['read', 'list'],
         session: ['list'],
@@ -75,10 +71,8 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
     },
     manager: {
       name: 'Manager',
-      scope: 'Group / Dept Level',
-      description: isID
-        ? 'Persetujuan internal tingkat grup/departemen sebelum ke Approver final.'
-        : 'Internal department approval before forwarding to the final approver.',
+      scope: t('admin.group_dept_level', 'Group / Dept Level'),
+      description: t('admin.internal_department_approval_before_forwarding_t', 'Internal department approval before forwarding to the final approver.'),
       permissions: {
         user: ['read'],
         session: [],
@@ -92,10 +86,8 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
     },
     editor: {
       name: 'Editor',
-      scope: 'Group / Dept Level',
-      description: isID
-        ? 'Buat, unggah, dan revisi draf dokumen mitra dan kontrak di grupnya.'
-        : 'Create, upload, and revise document drafts in their respective department.',
+      scope: t('admin.group_dept_level', 'Group / Dept Level'),
+      description: t('admin.create_upload_and_revise_document_drafts', 'Create, upload, and revise document drafts in their respective department.'),
       permissions: {
         user: ['read'],
         session: [],
@@ -109,10 +101,8 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
     },
     viewer: {
       name: 'Viewer',
-      scope: 'Restricted / Read-Only',
-      description: isID
-        ? 'Hanya membaca dan melihat dokumen yang sudah berstatus final/aktif.'
-        : 'Read-only access to documents that are in final or active status.',
+      scope: t('admin.restricted_read_only', 'Restricted / Read-Only'),
+      description: t('admin.read_only_access_to_documents_that', 'Read-only access to documents that are in final or active status.'),
       permissions: {
         user: ['read'],
         session: [],
@@ -130,8 +120,8 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
   const rbacTableRows = [
     {
       id: 'system_config',
-      label: isID ? 'User & System Config' : 'User & System Config',
-      desc: isID ? 'Tambah user, ubah role, setting organisasi' : 'Add users, edit roles, system settings',
+      label: t('admin.user_system_config', 'User & System Config'),
+      desc: t('admin.add_users_edit_roles_system_settings', 'Add users, edit roles, system settings'),
       superuser: { type: 'allow', text: '✅' },
       admin: { type: 'deny', text: '❌' },
       manager: { type: 'deny', text: '❌' },
@@ -140,8 +130,8 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
     },
     {
       id: 'audit_log',
-      label: isID ? 'View Audit Log' : 'View Audit Log',
-      desc: isID ? 'Melihat riwayat aktivitas dan log keamanan' : 'Audit logs & security event timeline',
+      label: t('admin.view_audit_log', 'View Audit Log'),
+      desc: t('admin.audit_logs_security_event_timeline', 'Audit logs & security event timeline'),
       superuser: { type: 'allow', text: '✅' },
       admin: { type: 'allow', text: '✅' },
       manager: { type: 'deny', text: '❌' },
@@ -150,60 +140,60 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
     },
     {
       id: 'create_draft',
-      label: isID ? 'Create / Upload Draft' : 'Create / Upload Draft',
-      desc: isID ? 'Buat partner baru, draf kontrak, IO, invoice' : 'Create partner, draft contract, IO, invoice',
-      superuser: { type: 'global', text: '📑 Global' },
-      admin: { type: 'global', text: '📑 Global' },
-      manager: { type: 'group', text: '🏢 Group' },
-      editor: { type: 'group', text: '🏢 Group' },
+      label: t('admin.create_upload_draft', 'Create / Upload Draft'),
+      desc: t('admin.create_partner_draft_contract_io_invoice', 'Create partner, draft contract, IO, invoice'),
+      superuser: { type: 'global', text: t('admin.global', '📑 Global') },
+      admin: { type: 'global', text: t('admin.global', '📑 Global') },
+      manager: { type: 'group', text: t('admin.group', '🏢 Group') },
+      editor: { type: 'group', text: t('admin.group', '🏢 Group') },
       viewer: { type: 'deny', text: '❌' },
     },
     {
       id: 'edit_draft',
-      label: isID ? 'Edit Draft' : 'Edit Draft',
-      desc: isID ? 'Mengubah rincian draf dokumen yang belum final' : 'Edit contract/partner draft before finalization',
-      superuser: { type: 'global', text: '📑 Global' },
-      admin: { type: 'global', text: '📑 Global' },
-      manager: { type: 'group', text: '🏢 Group' },
-      editor: { type: 'own', text: '👤 Own Draft' },
+      label: t('admin.edit_draft', 'Edit Draft'),
+      desc: t('admin.edit_contract_partner_draft_before_finalization', 'Edit contract/partner draft before finalization'),
+      superuser: { type: 'global', text: t('admin.global', '📑 Global') },
+      admin: { type: 'global', text: t('admin.global', '📑 Global') },
+      manager: { type: 'group', text: t('admin.group', '🏢 Group') },
+      editor: { type: 'own', text: t('admin.own_draft', '👤 Own Draft') },
       viewer: { type: 'deny', text: '❌' },
     },
     {
       id: 'internal_approve',
-      label: isID ? 'Internal Approve' : 'Internal Approve',
-      desc: isID ? 'Persetujuan awal di tingkat divisi/departemen' : 'Initial divisional/department sign-off',
-      superuser: { type: 'global', text: '📑 Global' },
-      admin: { type: 'global', text: '📑 Global' },
-      manager: { type: 'group', text: '🏢 Group' },
+      label: t('admin.internal_approve', 'Internal Approve'),
+      desc: t('admin.initial_divisional_department_sign_off', 'Initial divisional/department sign-off'),
+      superuser: { type: 'global', text: t('admin.global', '📑 Global') },
+      admin: { type: 'global', text: t('admin.global', '📑 Global') },
+      manager: { type: 'group', text: t('admin.group', '🏢 Group') },
       editor: { type: 'deny', text: '❌' },
       viewer: { type: 'deny', text: '❌' },
     },
     {
       id: 'final_approve',
-      label: isID ? 'Final Approve' : 'Final Approve',
-      desc: isID ? 'Persetujuan akhir eksekutif / penandatanganan' : 'Executive final approval / signing authority',
-      superuser: { type: 'global', text: '📑 Global' },
-      admin: { type: 'global', text: '📑 Global' },
+      label: t('admin.final_approve', 'Final Approve'),
+      desc: t('admin.executive_final_approval_signing_authority', 'Executive final approval / signing authority'),
+      superuser: { type: 'global', text: t('admin.global', '📑 Global') },
+      admin: { type: 'global', text: t('admin.global', '📑 Global') },
       manager: { type: 'deny', text: '❌' },
       editor: { type: 'deny', text: '❌' },
       viewer: { type: 'deny', text: '❌' },
     },
     {
       id: 'view_final_doc',
-      label: isID ? 'View Final Document' : 'View Final Document',
-      desc: isID ? 'Akses baca dokumen berstatus aktif / signed' : 'View final signed contracts & active partners',
-      superuser: { type: 'global', text: '📑 Global' },
-      admin: { type: 'global', text: '📑 Global' },
-      manager: { type: 'group', text: '🏢 Group' },
-      editor: { type: 'group', text: '🏢 Group' },
-      viewer: { type: 'readonly', text: '👁️ Read-Only' },
+      label: t('admin.view_final_document', 'View Final Document'),
+      desc: t('admin.view_final_signed_contracts_active_partners', 'View final signed contracts & active partners'),
+      superuser: { type: 'global', text: t('admin.global', '📑 Global') },
+      admin: { type: 'global', text: t('admin.global', '📑 Global') },
+      manager: { type: 'group', text: t('admin.group', '🏢 Group') },
+      editor: { type: 'group', text: t('admin.group', '🏢 Group') },
+      viewer: { type: 'readonly', text: t('admin.read_only', '👁️ Read-Only') },
     },
     {
       id: 'archive_delete',
-      label: isID ? 'Archive / Delete' : 'Archive / Delete',
-      desc: isID ? 'Menghapus atau mengarsipkan partner/kontrak' : 'Permanently remove or archive items',
-      superuser: { type: 'global', text: '📑 Global' },
-      admin: { type: 'global', text: '📑 Global' },
+      label: t('admin.archive_delete', 'Archive / Delete'),
+      desc: t('admin.permanently_remove_or_archive_items', 'Permanently remove or archive items'),
+      superuser: { type: 'global', text: t('admin.global', '📑 Global') },
+      admin: { type: 'global', text: t('admin.global', '📑 Global') },
       manager: { type: 'deny', text: '❌' },
       editor: { type: 'deny', text: '❌' },
       viewer: { type: 'deny', text: '❌' },
@@ -270,11 +260,11 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
           <div className="flex items-center gap-2">
             <Award className="w-4 h-4 text-emerald-600" />
             <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
-              {isID ? 'Struktur 5 Peran (Role) Akses Utama' : '5 Standard RBAC Role Architecture'}
+              {t('admin.5_standard_rbac_role_architecture', '5 Standard RBAC Role Architecture')}
             </h3>
           </div>
           <span className="text-xs text-slate-500">
-            {isID ? 'Tingkat Akses & Tanggung Jawab' : 'Access Levels & Responsibilities'}
+            {t('admin.access_levels_responsibilities', 'Access Levels & Responsibilities')}
           </span>
         </div>
 
@@ -318,7 +308,7 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
                   </div>
                   <div className="mb-2">
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-                      {role.scope || 'System'}
+                      {role.scope || t('admin.system', 'System')}
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -337,16 +327,16 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-emerald-600" />
             <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
-              {isID ? 'Matriks Hak Akses (RBAC Matrix) & Pembatasan File Legal' : 'RBAC Access Matrix & File Scoping'}
+              {t('admin.rbac_access_matrix_file_scoping', 'RBAC Access Matrix & File Scoping')}
             </h3>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
             <span className="inline-flex items-center gap-1 font-medium text-purple-700 dark:text-purple-300">
-              📑 Global = Semua Dept
+              {t('admin.global_semua_dept', '📑 Global = Semua Dept')}
             </span>
             <span>•</span>
             <span className="inline-flex items-center gap-1 font-medium text-blue-700 dark:text-blue-300">
-              🏢 Group = Sesuai Internal PIC Dept
+              {t('admin.group_sesuai_internal_pic_dept', '🏢 Group = Sesuai Internal PIC Dept')}
             </span>
           </div>
         </div>
@@ -355,12 +345,12 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4 w-[240px]">{isID ? 'Hak Akses / Aksi' : 'Capability / Action'}</th>
-                <th className="py-3 px-3 text-center">Superuser</th>
-                <th className="py-3 px-3 text-center">Admin</th>
-                <th className="py-3 px-3 text-center">Manager</th>
-                <th className="py-3 px-3 text-center">Editor</th>
-                <th className="py-3 px-3 text-center">Viewer</th>
+                <th className="py-3 px-4 w-[240px]">{t('admin.capability_action', 'Capability / Action')}</th>
+                <th className="py-3 px-3 text-center">{t('admin.superuser', 'Superuser')}</th>
+                <th className="py-3 px-3 text-center">{t('admin.admin', 'Admin')}</th>
+                <th className="py-3 px-3 text-center">{t('admin.manager', 'Manager')}</th>
+                <th className="py-3 px-3 text-center">{t('admin.editor', 'Editor')}</th>
+                <th className="py-3 px-3 text-center">{t('admin.viewer', 'Viewer')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -395,30 +385,28 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
           </div>
           <div className="space-y-1.5">
             <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
-              {isID
-                ? 'Logika Pembatasan Berdasarkan "Internal PIC" & "Departmens"'
-                : 'Scoping Rules Governed by "Internal PIC" & "Departmens"'}
+              {t('admin.scoping_rules_governed_by_internal_pic', 'Scoping Rules Governed by "Internal PIC" & "Departmens"')}
             </h4>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               {isID ? (
                 <>
-                  Pada formulir <strong>&quot;Add New Partner&quot;</strong>, isian <strong>&quot;Internal PIC&quot;</strong> secara default terisi otomatis sesuai dengan <strong>Departmens</strong> di mana user terdaftar (contoh: <em>Commercial &amp; Marketing</em>). Pembatasan akses mitra serta semua dokumen di bawahnya (<strong>Kontrak</strong>, <strong>Insertion Order / IO</strong>, <strong>Invoice</strong>, dll.) otomatis mengacu pada nilai <em>Internal PIC</em> pada Partner tersebut.
+                  {t('admin.pada_formulir', 'Pada formulir')} <strong>{t('admin.add_new_partner', '"Add New Partner"')}</strong>{t('admin.isian', ', isian')} <strong>{t('admin.internal_pic', '"Internal PIC"')}</strong> {t('admin.secara_default_terisi_otomatis_sesuai_dengan', 'secara default terisi otomatis sesuai dengan')} <strong>{t('admin.departmens', 'Departmens')}</strong> {t('admin.di_mana_user_terdaftar_contoh', 'di mana user terdaftar (contoh:')} <em>{t('admin.commercial_marketing', 'Commercial & Marketing')}</em>{t('admin.pembatasan_akses_mitra_serta_semua_dokumen', '). Pembatasan akses mitra serta semua dokumen di bawahnya (')}<strong>{t('nav.contracts', 'Kontrak')}</strong>, <strong>{t('admin.insertion_order_io', 'Insertion Order / IO')}</strong>, <strong>{t('spending.col_invoice_doc', 'Invoice')}</strong>{t('admin.dll_otomatis_mengacu_pada_nilai', ', dll.) otomatis mengacu pada nilai')} <em>{t('form.partner.internal_pic', 'Internal PIC')}</em> {t('admin.pada_partner_tersebut', 'pada Partner tersebut.')}
                 </>
               ) : (
                 <>
-                  On the <strong>&quot;Add New Partner&quot;</strong> form, the <strong>&quot;Internal PIC&quot;</strong> field defaults automatically to the user&apos;s registered <strong>Department</strong>. Access control for the partner and all child documents (<strong>Contracts</strong>, <strong>IOs</strong>, <strong>Invoices</strong>) inherits from the partner&apos;s internal PIC value.
+                  {t('admin.on_the', 'On the')} <strong>{t('admin.add_new_partner', '"Add New Partner"')}</strong> {t('admin.form_the', 'form, the')} <strong>{t('admin.internal_pic', '"Internal PIC"')}</strong> {t('admin.field_defaults_automatically_to_the_user', 'field defaults automatically to the user\'s registered')} <strong>{t('admin.col_dept', 'Department')}</strong>{t('admin.access_control_for_the_partner_and', '. Access control for the partner and all child documents (')}<strong>{t('nav.contracts', 'Contracts')}</strong>, <strong>{t('admin.ios', 'IOs')}</strong>, <strong>{t('spending.invoice_suffix', 'Invoices')}</strong>{t('admin.inherits_from_the_partner_s_internal', ') inherits from the partner\'s internal PIC value.')}
                 </>
               )}
             </p>
             <div className="pt-2 flex flex-wrap gap-2 text-[11px]">
               <span className="px-2.5 py-1 rounded bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 font-medium">
-                Superuser &amp; Admin: Akses Global (Semua Dept)
+                {t('admin.superuser_admin_akses_global_semua_dept', 'Superuser & Admin: Akses Global (Semua Dept)')}
               </span>
               <span className="px-2.5 py-1 rounded bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 font-medium">
-                Manager &amp; Editor: Akses Group (Hanya Dept Terdaftar)
+                {t('admin.manager_editor_akses_group_hanya_dept', 'Manager & Editor: Akses Group (Hanya Dept Terdaftar)')}
               </span>
               <span className="px-2.5 py-1 rounded bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 font-medium">
-                Viewer: Read-Only (Hanya Dokumen Final Dept)
+                {t('admin.viewer_read_only_hanya_dokumen_final', 'Viewer: Read-Only (Hanya Dokumen Final Dept)')}
               </span>
             </div>
           </div>
@@ -444,11 +432,11 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
               onChange={(e) => setTestRole(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
             >
-              <option value="superuser">Superuser (System Level)</option>
-              <option value="admin">Admin (Global Level)</option>
-              <option value="manager">Manager (Group Level)</option>
-              <option value="editor">Editor (Group Level)</option>
-              <option value="viewer">Viewer (Restricted)</option>
+              <option value="superuser">{t('admin.superuser_system_level', 'Superuser (System Level)')}</option>
+              <option value="admin">{t('admin.admin_global_level', 'Admin (Global Level)')}</option>
+              <option value="manager">{t('admin.manager_group_level', 'Manager (Group Level)')}</option>
+              <option value="editor">{t('admin.editor_group_level', 'Editor (Group Level)')}</option>
+              <option value="viewer">{t('admin.viewer_restricted', 'Viewer (Restricted)')}</option>
             </select>
           </div>
 
@@ -461,14 +449,14 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
               onChange={(e) => setTestResource(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
             >
-              <option value="contract">contract ({isID ? 'Kontrak & Perjanjian' : 'Contracts'})</option>
-              <option value="partner">partner ({isID ? 'Mitra / Vendor DD' : 'Partners'})</option>
-              <option value="report">report ({isID ? 'Laporan Finansial' : 'Reports'})</option>
-              <option value="user">user ({isID ? 'Akun Pengguna' : 'Users'})</option>
-              <option value="session">session ({isID ? 'Sesi Login' : 'Sessions'})</option>
-              <option value="organization">organization ({isID ? 'Organisasi' : 'Organizations'})</option>
-              <option value="team">team ({isID ? 'Departmens / Tim' : 'Departments'})</option>
-              <option value="settings">settings ({isID ? 'Konfigurasi Sistem' : 'Settings'})</option>
+              <option value="contract">{t('admin.contract', 'contract (')}{t('admin.contracts', 'Contracts')})</option>
+              <option value="partner">{t('admin.partner', 'partner (')}{t('admin.partners', 'Partners')})</option>
+              <option value="report">{t('admin.report', 'report (')}{t('admin.reports', 'Reports')})</option>
+              <option value="user">{t('admin.user', 'user (')}{t('admin.users', 'Users')})</option>
+              <option value="session">{t('admin.session', 'session (')}{t('admin.sessions', 'Sessions')})</option>
+              <option value="organization">{t('admin.organization', 'organization (')}{t('admin.organizations', 'Organizations')})</option>
+              <option value="team">{t('admin.team', 'team (')}{t('admin.departments', 'Departments')})</option>
+              <option value="settings">{t('admin.settings', 'settings (')}{t('admin.settings_2', 'Settings')})</option>
             </select>
           </div>
 
@@ -481,16 +469,16 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
               onChange={(e) => setTestAction(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
             >
-              <option value="create">create (Buat baru)</option>
-              <option value="read">read (Lihat / Baca)</option>
-              <option value="update">update (Edit / Revisi)</option>
-              <option value="delete">delete (Hapus / Hapus permanen)</option>
-              <option value="approve-internal">approve-internal (Persetujuan Divisi)</option>
-              <option value="approve">approve (Final Approval)</option>
-              <option value="archive">archive (Arsipkan)</option>
-              <option value="export">export (Unduh Laporan)</option>
-              <option value="set-role">set-role (Atur Peran Akun)</option>
-              <option value="ban">ban (Cekal Pengguna)</option>
+              <option value="create">{t('admin.create_buat_baru', 'create (Buat baru)')}</option>
+              <option value="read">{t('admin.read_lihat_baca', 'read (Lihat / Baca)')}</option>
+              <option value="update">{t('admin.update_edit_revisi', 'update (Edit / Revisi)')}</option>
+              <option value="delete">{t('admin.delete_hapus_hapus_permanen', 'delete (Hapus / Hapus permanen)')}</option>
+              <option value="approve-internal">{t('admin.approve_internal_persetujuan_divisi', 'approve-internal (Persetujuan Divisi)')}</option>
+              <option value="approve">{t('admin.approve_final_approval', 'approve (Final Approval)')}</option>
+              <option value="archive">{t('admin.archive_arsipkan', 'archive (Arsipkan)')}</option>
+              <option value="export">{t('admin.export_unduh_laporan', 'export (Unduh Laporan)')}</option>
+              <option value="set-role">{t('admin.set_role_atur_peran_akun', 'set-role (Atur Peran Akun)')}</option>
+              <option value="ban">{t('admin.ban_cekal_pengguna', 'ban (Cekal Pengguna)')}</option>
             </select>
           </div>
 
@@ -510,23 +498,19 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
                 )}
                 <span>
                   {isAllowed
-                    ? isID
-                      ? 'DIIZINKAN (ALLOW)'
-                      : 'ALLOWED'
-                    : isID
-                    ? 'DITOLAK (FORBIDDEN)'
-                    : 'FORBIDDEN (403)'}
+                    ? t('admin.allowed', 'ALLOWED')
+                    : t('admin.forbidden_403', 'FORBIDDEN (403)')}
                 </span>
               </div>
-              <span className="font-mono text-[11px]">{isAllowed ? '200 OK' : '403'}</span>
+              <span className="font-mono text-[11px]">{isAllowed ? t('admin.200_ok', '200 OK') : '403'}</span>
             </div>
           </div>
         </div>
 
         <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 text-xs font-mono text-slate-600 dark:text-slate-300">
-          authClient.hasPermission({'{'} role: &quot;{testRole}&quot;, resource: &quot;{testResource}&quot;, action: &quot;{testAction}&quot; {'}'}) =&gt;{' '}
+          {t('admin.authclient_haspermission', 'authClient.hasPermission(')}{'{'} {t('admin.role_resource_action', 'role: "{testRole}", resource: "{testResource}", action: "{testAction}"', { testRole, testResource, testAction })} {'}'}{t('admin.text', ') =>')}{' '}
           <strong className={isAllowed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
-            {isAllowed ? 'true (Aksi Diizinkan)' : 'false (Aksi Dibatasi)'}
+            {isAllowed ? t('admin.true_aksi_diizinkan', 'true (Aksi Diizinkan)') : t('admin.false_aksi_dibatasi', 'false (Aksi Dibatasi)')}
           </strong>
         </div>
       </div>

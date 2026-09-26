@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
@@ -41,6 +41,7 @@ import {
   FolderOpen,
   ListChecks,
   ArrowLeft,
+  Variable,
   History,
   Info,
   MessageSquare,
@@ -233,8 +234,10 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const { activeTenant } = useTenant();
   const { isEditor: canEdit, isManager: canManageFields } = useAuth();
   const { policy } = useTenantSettings();
-  // Document language and jurisdiction wording follow the organization settings.
+  // Document language and jurisdiction wording follow the organization settings. The 15-article
+  // template only has English and Indonesian text, so a Chinese org setting falls back to English.
   const docLanguage = policy.settings.language;
+  const templateLanguage: 'EN' | 'ID' = docLanguage === 'ID' ? 'ID' : 'EN';
   setAgreementJurisdiction(jurisdictionFromSettings(policy.settings));
   const paperSheetRef = useRef<HTMLDivElement>(null);
 
@@ -267,10 +270,11 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const docTitleRef = useRef(docTitle);
   const inFlightSaveRef = useRef<Promise<string | null> | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const panelIdPrefix = useId();
 
   // UI state
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<'fields' | 'partners' | 'templates' | 'history' | 'info' | 'comments'>('fields');
+  const [sidebarTab, setSidebarTab] = useState<'fields' | 'partners' | 'templates' | 'contents' | 'history' | 'info' | 'comments'>('fields');
   const [highlightFillable, setHighlightFillable] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
@@ -343,8 +347,8 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       label: newFieldLabel.trim(),
       type: newFieldType,
       icon: finalIcon,
-      placeholder: newFieldPlaceholder.trim() || `Masukkan ${newFieldLabel.trim()}...`,
-      description: newFieldDescription.trim() || `Kolom kustom untuk ${newFieldLabel.trim()}`,
+      placeholder: newFieldPlaceholder.trim() || t('contract_creator.masukkan', 'Masukkan {trim}...', { trim: newFieldLabel.trim() }),
+      description: newFieldDescription.trim() || t('contract_creator.kolom_kustom_untuk', 'Kolom kustom untuk {trim}', { trim: newFieldLabel.trim() }),
       isCustom: true
     };
 
@@ -391,7 +395,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
         headers: getAuthHeaders(),
       });
       if (!res.ok) {
-        throw new Error(`HTTP error ${res.status}`);
+        throw new Error(t('contract_creator.http_error', 'HTTP error {status}', { status: res.status }));
       }
       const text = await res.text();
       if (!text || text.trim().startsWith('<')) {
@@ -444,9 +448,9 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       const text = await res.text();
       let data: any = {};
       try {
-        data = text && !text.trim().startsWith('<') ? JSON.parse(text) : { error: `Server error (Status ${res.status})` };
+        data = text && !text.trim().startsWith('<') ? JSON.parse(text) : { error: t('contract_creator.server_error_status', 'Server error (Status {status})', { status: res.status }) };
       } catch {
-        data = { error: 'Gagal memproses respon server.' };
+        data = { error: t('contract_creator.gagal_memproses_respon_server', 'Gagal memproses respon server.') };
       }
 
       if (res.ok && data.success) {
@@ -456,7 +460,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       } else {
         showAlert({
           title: t('contract_creator.msg.template_save_failed', 'Gagal menyimpan template'),
-          description: data.error || data.message || `Status ${res.status}.`,
+          description: data.error || data.message || t('contract_creator.status', 'Status {status}.', { status: res.status }),
           variant: 'destructive',
         });
       }
@@ -485,9 +489,9 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       const text = await res.text();
       let data: any = {};
       try {
-        data = text && !text.trim().startsWith('<') ? JSON.parse(text) : { error: `Server error (Status ${res.status})` };
+        data = text && !text.trim().startsWith('<') ? JSON.parse(text) : { error: t('contract_creator.server_error_status', 'Server error (Status {status})', { status: res.status }) };
       } catch {
-        data = { error: 'Gagal memproses respon server.' };
+        data = { error: t('contract_creator.gagal_memproses_respon_server', 'Gagal memproses respon server.') };
       }
 
       if (res.ok && data.success) {
@@ -496,7 +500,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       } else {
         showAlert({
           title: t('contract_creator.msg.template_delete_failed', 'Gagal menghapus template'),
-          description: data.error || data.message || `Status ${res.status}.`,
+          description: data.error || data.message || t('contract_creator.status', 'Status {status}.', { status: res.status }),
           variant: 'destructive',
         });
       }
@@ -620,7 +624,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       bankAccount: vals.bankAccount,
       bankHolder: vals.bankHolder,
       partnerEmail: vals.partnerEmail,
-    }, docLanguage);
+    }, templateLanguage);
     editor.commands.setContent(initialHtml);
     updateStats();
   };
@@ -1042,7 +1046,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       console.error('Download error:', err);
       setExportMessage({
         type: 'error',
-        text: `${t('contract_creator.msg.docx_download_failed', 'Gagal mengunduh dokumen')}: ${err?.message || 'Kesalahan file'}`,
+        text: `${t('contract_creator.msg.docx_download_failed', 'Gagal mengunduh dokumen')}: ${err?.message || t('contract_creator.kesalahan_file', 'Kesalahan file')}`,
       });
     } finally {
       setIsDownloadingDocx(false);
@@ -1096,13 +1100,13 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
       setExportMessage({
         type: 'success',
-        text: `Kontrak "${docTitle}" berhasil disimpan ke sistem repositori SILEGAL!`,
+        text: t('contract_creator.kontrak_berhasil_disimpan_ke_sistem_repositori', 'Kontrak "{docTitle}" berhasil disimpan ke sistem repositori SILEGAL!', { docTitle }),
       });
     } catch (err: any) {
       console.error('Save to system error:', err);
       setExportMessage({
         type: 'error',
-        text: `Gagal menyimpan kontrak ke sistem: ${err?.message || 'Terjadi kesalahan internal'}`,
+        text: t('contract_creator.gagal_menyimpan_kontrak_ke_sistem', 'Gagal menyimpan kontrak ke sistem: {value}', { value: err?.message || 'Terjadi kesalahan internal' }),
       });
     } finally {
       setIsSaving(false);
@@ -1140,6 +1144,33 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     ) : (
       t('documents.save.never', 'Belum disimpan')
     );
+
+  const sidebarTabs = [
+    { id: 'fields', label: t('contract_creator.tab.fields', 'Kolom Isian'), icon: ListChecks },
+    { id: 'partners', label: t('contract_creator.tab.partners', 'Mitra'), icon: Building2 },
+    { id: 'templates', label: t('contract_creator.tab.templates', 'Template'), icon: FolderOpen },
+    { id: 'contents', label: t('contract_creator.tab.contents', 'Konten'), icon: Variable },
+    { id: 'history', label: t('documents.tab.history', 'Riwayat'), icon: History },
+    { id: 'info', label: t('documents.tab.info', 'Info'), icon: Info },
+    { id: 'comments', label: t('documents.tab.comments', 'Komentar'), icon: MessageSquare },
+  ] as const;
+  const activeSidebarTab = sidebarTabs.find((tab) => tab.id === sidebarTab) ?? sidebarTabs[0];
+
+  // Vertical tabs per the WAI-ARIA tabs pattern: arrows/Home/End move and activate, one tab stop.
+  const handleSidebarTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const last = sidebarTabs.length - 1;
+    const keyTargets: Record<string, number> = {
+      ArrowDown: index === last ? 0 : index + 1,
+      ArrowUp: index === 0 ? last : index - 1,
+      Home: 0,
+      End: last,
+    };
+    const next = keyTargets[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    setSidebarTab(sidebarTabs[next].id);
+    (e.currentTarget.parentElement?.children[next] as HTMLElement | undefined)?.focus();
+  };
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 select-text overflow-hidden font-sans">
@@ -1287,7 +1318,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
             onClick={() => setExportMessage(null)}
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1 cursor-pointer"
           >
-            &times;
+            {t('contract_creator.text', '×')}
           </button>
         </div>
       )}
@@ -1421,52 +1452,55 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
         {/* 4. RIGHT SIDEBAR: QUICK FILL FORM & CLAUSE INSERTER */}
         {sidebarOpen && (
-          <aside className="w-72 sm:w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col shrink-0 z-10 shadow-sm overflow-hidden">
-
-            {/* Sidebar Header & Tabs */}
-            <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80">
-              <div className="px-3 py-2.5">
-                <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                  {t('contract_creator.panel_title', 'Panel Asisten Kontrak')}
-                </h2>
-              </div>
-
-              {/* Sub-tabs */}
-              <div role="tablist" aria-label={t('contract_creator.panel_title', 'Panel Asisten Kontrak')} className="grid grid-cols-3 gap-1 px-2 pb-2">
-                {(
-                  [
-                    { id: 'fields', label: t('contract_creator.tab.fields', 'Kolom Isian'), icon: ListChecks },
-                    { id: 'partners', label: t('contract_creator.tab.partners', 'Mitra'), icon: Building2 },
-                    { id: 'templates', label: t('contract_creator.tab.templates', 'Template'), icon: FolderOpen },
-                    { id: 'history', label: t('documents.tab.history', 'Riwayat'), icon: History },
-                    { id: 'info', label: t('documents.tab.info', 'Info'), icon: Info },
-                    { id: 'comments', label: t('documents.tab.comments', 'Komentar'), icon: MessageSquare },
-                  ] as const
-                ).map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = sidebarTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={isActive}
-                      onClick={() => setSidebarTab(tab.id)}
-                      className={`flex flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-semibold transition-colors cursor-pointer ${
-                        isActive
-                          ? 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs'
-                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+          <aside className="w-80 sm:w-[23rem] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex shrink-0 z-10 shadow-sm overflow-hidden">
+            <div
+              role="tablist"
+              aria-orientation="vertical"
+              aria-label={t('contract_creator.panel_title', 'Panel Asisten Kontrak')}
+              className="w-14 sm:w-12 shrink-0 flex flex-col items-center gap-1.5 py-3 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+            >
+              {sidebarTabs.map((tab, index) => {
+                const Icon = tab.icon;
+                const isActive = sidebarTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    id={`${panelIdPrefix}-tab-${tab.id}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`${panelIdPrefix}-panel`}
+                    aria-label={tab.label}
+                    title={tab.label}
+                    tabIndex={isActive ? 0 : -1}
+                    onClick={() => setSidebarTab(tab.id)}
+                    onKeyDown={(e) => handleSidebarTabKeyDown(e, index)}
+                    className={`inline-flex items-center justify-center h-11 w-11 sm:h-9 sm:w-9 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06C755]/60 ${
+                      isActive
+                        ? 'bg-emerald-50 text-[#06C755] dark:bg-emerald-950/50 dark:text-emerald-400'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Icon className="w-[18px] h-[18px]" aria-hidden />
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <div className="flex-1 min-w-0 flex flex-col">
+            <div className="h-12 shrink-0 px-4 flex items-center border-b border-slate-200 dark:border-slate-800">
+              <h2 id={`${panelIdPrefix}-title`} className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                {activeSidebarTab.label}
+              </h2>
+            </div>
+
+            <div
+              id={`${panelIdPrefix}-panel`}
+              role="tabpanel"
+              aria-labelledby={`${panelIdPrefix}-tab-${activeSidebarTab.id}`}
+              tabIndex={0}
+              className="flex-1 overflow-y-auto p-3 space-y-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#06C755]/40"
+            >
 
               {sidebarTab === 'history' && (
                 <DraftHistoryPanel
@@ -1756,48 +1790,9 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
               )}
 
               {/* TAB 3: CUSTOM TEMPLATE LIBRARY & DRAG-AND-DROP BUILDER */}
-              {sidebarTab === 'templates' && (
+              {sidebarTab === 'contents' && (
                 <div className="space-y-4">
-
-                  {/* 1. SAVE DRAFT AS TEMPLATE */}
-                  <div
-                    className="space-y-2 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20"
-                    title={t('contract_creator.templates.save_section_title_attr', 'Simpan seluruh teks kontrak kustom saat ini sebagai master template yang siap dipakai ulang')}
-                  >
-                    <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <Save className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{t('contract_creator.templates.save_section_title', 'Simpan Draf Sebagai Template')}</span>
-                    </h3>
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={newTemplateName}
-                        onChange={(e) => setNewTemplateName(e.target.value)}
-                        placeholder={t('contract_creator.templates.name_placeholder', 'Nama template (misal: Template Sewa Server)')}
-                        className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSaveTemplate}
-                        disabled={isSavingTemplate}
-                        className="w-full py-2 px-3 text-xs font-bold text-white bg-[#06C755] hover:bg-[#05b54c] rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        {isSavingTemplate ? (
-                          <>
-                            <RefreshCw className="w-3 h-3 animate-spin" />
-                            <span>{t('contract_creator.templates.saving', 'Menyimpan...')}</span>
-                          </>
-                        ) : (
-                          <>
-                            <Save className="w-3.5 h-3.5" />
-                            <span>{t('contract_creator.templates.save_button', 'Simpan Template')}</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 2. OPTION TO ADD CUSTOM DRAG & DROP FIELDS */}
+                  {/* Custom field builder */}
                   <div className="space-y-2 p-3 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/10 dark:bg-emerald-950/5">
                     <button
                       type="button"
@@ -1874,7 +1869,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                     )}
                   </div>
 
-                  {/* 3. DRAG AND DROP FIELDS SYSTEM */}
+                  {/* Drag & drop field palette */}
                   <div className="space-y-2.5">
                     <h3
                       className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"
@@ -1908,7 +1903,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                       ))}
                     </div>
 
-                    <div className="grid grid-cols-1 gap-2 max-h-[350px] overflow-y-auto pr-1">
+                    <div className="grid grid-cols-1 gap-2">
                       {(() => {
                         const filteredDragFields = [
                           ...COOPERATION_AGREEMENT_FIELDS.map(f => ({ ...f, isCustom: false })),
@@ -1964,7 +1959,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                               )}
                             </span>
                             <span className="text-[9px] text-slate-400 bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-700 font-mono group-hover:text-emerald-600 group-hover:border-emerald-200 dark:group-hover:text-emerald-400">
-                              DRAG
+                              {t('contract_creator.drag', 'DRAG')}
                             </span>
                           </div>
                           );
@@ -1972,8 +1967,51 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                       })()}
                     </div>
                   </div>
+                </div>
+              )}
 
-                  {/* 3. SAVED TEMPLATES LIBRARY */}
+              {sidebarTab === 'templates' && (
+                <div className="space-y-4">
+
+                  {/* 1. SAVE DRAFT AS TEMPLATE */}
+                  <div
+                    className="space-y-2 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20"
+                    title={t('contract_creator.templates.save_section_title_attr', 'Simpan seluruh teks kontrak kustom saat ini sebagai master template yang siap dipakai ulang')}
+                  >
+                    <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Save className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{t('contract_creator.templates.save_section_title', 'Simpan Draf Sebagai Template')}</span>
+                    </h3>
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={newTemplateName}
+                        onChange={(e) => setNewTemplateName(e.target.value)}
+                        placeholder={t('contract_creator.templates.name_placeholder', 'Nama template (misal: Template Sewa Server)')}
+                        className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveTemplate}
+                        disabled={isSavingTemplate}
+                        className="w-full py-2 px-3 text-xs font-bold text-white bg-[#06C755] hover:bg-[#05b54c] rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        {isSavingTemplate ? (
+                          <>
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            <span>{t('contract_creator.templates.saving', 'Menyimpan...')}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-3.5 h-3.5" />
+                            <span>{t('contract_creator.templates.save_button', 'Simpan Template')}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Saved templates library */}
                   <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
                     <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                       <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
@@ -2001,7 +2039,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                                 {tpl.name}
                               </div>
                               <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                                ID: {tpl.id.substring(0, 8)}
+                                {t('contract_creator.id', 'ID: {value}', { value: tpl.id.substring(0, 8) })}
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5">
@@ -2030,6 +2068,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                 </div>
               )}
             </div>
+            </div>
           </aside>
         )}
       </div>
@@ -2038,11 +2077,11 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 py-2 flex items-center justify-between text-xs text-slate-500 shrink-0 z-20">
         <div className="flex items-center gap-4">
           <span>{wordCount} {t('contract_creator.footer.words', 'kata')}</span>
-          <span className="hidden sm:inline">&bull;</span>
+          <span className="hidden sm:inline">{t('contract_creator.text_2', '•')}</span>
           <span className="hidden sm:inline">{charCount} {t('contract_creator.footer.chars', 'karakter')}</span>
-          <span className="hidden md:inline">&bull;</span>
+          <span className="hidden md:inline">{t('contract_creator.text_2', '•')}</span>
           <span className="hidden md:inline">{t('contract_creator.footer.read_estimate', 'Estimasi baca')} ~{Math.max(1, Math.round(wordCount / 200))} {t('contract_creator.footer.minutes', 'menit')}</span>
-          <span className="hidden lg:inline">&bull;</span>
+          <span className="hidden lg:inline">{t('contract_creator.text_2', '•')}</span>
           <span className="hidden lg:inline text-emerald-600 dark:text-emerald-400 font-medium">
             {isCustomTemplateActive ? t('contract_creator.footer.custom_template_active', 'Template Kerjasama Kustom Aktif') : t('contract_creator.footer.default_template_active', '15 Pasal Perjanjian Kerjasama')}
           </span>

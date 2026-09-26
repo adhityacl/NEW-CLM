@@ -46,7 +46,7 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
   const orgIndex = new Map<string, number>();
   for (const team of filteredTeams) {
     const orgKey = team.organizationId || 'unknown';
-    const orgName = team.organizationName || (language === 'ID' ? 'Organisasi Aktif' : 'Active Organization');
+    const orgName = team.organizationName || (t('admin.active_organization', 'Active Organization'));
     let idx = orgIndex.get(orgKey);
     if (idx === undefined) {
       idx = teamsByOrg.length;
@@ -117,7 +117,7 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
                       </h4>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
                         <Building2 className="w-3 h-3" />
-                        <span>{team.organizationName || (language === 'ID' ? 'Organisasi Aktif' : 'Active Organization')}</span>
+                        <span>{team.organizationName || (t('admin.active_organization', 'Active Organization'))}</span>
                       </div>
                     </div>
                   </div>
@@ -165,7 +165,7 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
                             className="text-slate-400 hover:text-red-600 text-[11px] p-1 shrink-0 cursor-pointer"
                             title={t('admin.remove_member_title', 'Keluarkan dari tim')}
                           >
-                            &times;
+                            {t('admin.text_2', '×')}
                           </button>
                         </div>
                       ))}

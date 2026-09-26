@@ -123,7 +123,7 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
                         {new Date(inv.expiresAt).toLocaleDateString(getActiveFormattingLocale())}
                       </td>
                       <td className="py-3 px-4 text-slate-500 text-[11px]">
-                        {inv.inviterName || 'Admin'}
+                        {inv.inviterName || t('admin.admin', 'Admin')}
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
@@ -131,17 +131,17 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
                             type="button"
                             onClick={() => handleCopyInviteLink(inv)}
                             className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
-                            title="Salin Tautan Undangan Langsung"
+                            title={t('admin.salin_tautan_undangan_langsung', 'Salin Tautan Undangan Langsung')}
                           >
                             {copiedId === inv.id ? (
                               <>
                                 <Check className="w-3 h-3 text-emerald-600" />
-                                <span className="text-emerald-600">Tersalin!</span>
+                                <span className="text-emerald-600">{t('redline.copied', 'Tersalin!')}</span>
                               </>
                             ) : (
                               <>
                                 <Copy className="w-3 h-3 text-slate-500" />
-                                <span>Salin Link</span>
+                                <span>{t('admin.salin_link', 'Salin Link')}</span>
                               </>
                             )}
                           </button>

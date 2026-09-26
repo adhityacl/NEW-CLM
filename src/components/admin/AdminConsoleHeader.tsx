@@ -91,10 +91,10 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
           </div>
           <div className="min-w-0">
             <h1 className="truncate text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-              {isSystemArea ? 'System Admin' : 'Organization Admin'}
+              {isSystemArea ? t('admin.system_admin', 'System Admin') : t('admin.organization_admin', 'Organization Admin')}
             </h1>
             <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-              {isSystemArea ? 'Global platform controls' : 'Active organization controls'}
+              {isSystemArea ? t('admin.global_platform_controls', 'Global platform controls') : t('admin.active_organization_controls', 'Active organization controls')}
             </p>
           </div>
         </div>
@@ -125,7 +125,7 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
 
       <div
         role="tablist"
-        aria-label={isSystemArea ? 'System Admin' : 'Organization Admin'}
+        aria-label={isSystemArea ? t('admin.system_admin', 'System Admin') : t('admin.organization_admin', 'Organization Admin')}
         className="flex items-center gap-1 overflow-x-auto bg-slate-50/70 px-3 py-2 dark:bg-slate-950/30 sm:px-4"
       >
         {visibleNavItems.map((item) => {

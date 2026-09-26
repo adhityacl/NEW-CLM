@@ -66,7 +66,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
   const handleFile = (file: File) => {
     // 25MB limit
     if (file.size > 25 * 1024 * 1024) {
-      setError('Ukuran file melebihi batas maksimal 25MB.');
+      setError(t('dd_upload.ukuran_file_melebihi_batas_maksimal_25mb', 'Ukuran file melebihi batas maksimal 25MB.'));
       return;
     }
     setError(null);
@@ -105,7 +105,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
   };
 
   const handleDeleteExistingFile = async (fileId: string) => {
-    const ok = await confirmDialog({ description: 'Hapus file dokumen ini?', tone: 'danger', confirmLabel: 'Hapus' });
+    const ok = await confirmDialog({ description: t('dd_upload.hapus_file_dokumen_ini', 'Hapus file dokumen ini?'), tone: 'danger', confirmLabel: t('io.action_delete', 'Hapus') });
     if (!ok) return;
     setIsDeletingFileId(fileId);
     setError(null);
@@ -123,13 +123,13 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Gagal menghapus file.');
+        throw new Error(data.error || t('dd_upload.gagal_menghapus_file', 'Gagal menghapus file.'));
       }
       if (data.partner) {
         onSuccess(data.partner);
       }
     } catch (err: any) {
-      setError(err?.message || 'Terjadi kesalahan saat menghapus file.');
+      setError(err?.message || t('dd_upload.terjadi_kesalahan_saat_menghapus_file', 'Terjadi kesalahan saat menghapus file.'));
     } finally {
       setIsDeletingFileId(null);
     }
@@ -138,7 +138,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile || !fileBase64) {
-      setError('Silakan pilih file dokumen terlebih dahulu.');
+      setError(t('dd_upload.silakan_pilih_file_dokumen_terlebih_dahulu', 'Silakan pilih file dokumen terlebih dahulu.'));
       return;
     }
 
@@ -174,7 +174,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Gagal mengunggah dokumen ke Google Drive.');
+        throw new Error(data.error || t('dd_upload.gagal_mengunggah_dokumen_ke_google_drive', 'Gagal mengunggah dokumen ke Google Drive.'));
       }
 
       if (data.partner) {
@@ -182,7 +182,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
       }
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Terjadi kesalahan saat mengunggah.');
+      setError(err?.message || t('dd_upload.terjadi_kesalahan_saat_mengunggah', 'Terjadi kesalahan saat mengunggah.'));
     } finally {
       setIsUploading(false);
     }
@@ -233,9 +233,9 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  File Dokumen Terunggah ({existingFiles.length})
+                  {t('dd_upload.file_dokumen_terunggah', 'File Dokumen Terunggah ({existingFiles})', { existingFiles: existingFiles.length })}
                 </span>
-                <span className="text-[11px] text-slate-500">Mendukung multi-file tahunan</span>
+                <span className="text-[11px] text-slate-500">{t('dd_upload.mendukung_multi_file_tahunan', 'Mendukung multi-file tahunan')}</span>
               </div>
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {existingFiles.map((f, idx) => (
@@ -250,9 +250,9 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                           {f.fileName || `${docName}.pdf`}
                         </p>
                         <p className="text-[10px] text-slate-500">
-                          {f.year ? `Tahun ${f.year} • ` : ''}
-                          Diunggah: {f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString(getActiveFormattingLocale()) : '-'}
-                          {f.tanggalKadaluarsa ? ` • Exp: ${f.tanggalKadaluarsa}` : ''}
+                          {f.year ? t('dd_upload.tahun', 'Tahun {year} • ', { year: f.year }) : ''}
+                          {t('dd_upload.diunggah', 'Diunggah:')} {f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString(getActiveFormattingLocale()) : '-'}
+                          {f.tanggalKadaluarsa ? t('dd_upload.exp', ' • Exp: {tanggalKadaluarsa}', { tanggalKadaluarsa: f.tanggalKadaluarsa }) : ''}
                         </p>
                       </div>
                     </div>
@@ -265,7 +265,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                           className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-[#048C3B] dark:text-emerald-300 rounded-lg text-[11px] font-medium flex items-center gap-1 border border-emerald-500/30 transition-colors"
                         >
                           <ExternalLink className="w-3 h-3" />
-                          <span>Buka</span>
+                          <span>{t('settings.org_open_folder', 'Buka')}</span>
                         </a>
                       )}
                       <button
@@ -273,7 +273,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                         onClick={() => handleDeleteExistingFile(f.id)}
                         disabled={isDeletingFileId === f.id}
                         className="p-1 text-slate-400 hover:text-rose-600 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                        title="Hapus File"
+                        title={t('dd_upload.hapus_file', 'Hapus File')}
                       >
                         {isDeletingFileId === f.id ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-500" />
@@ -291,7 +291,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
           {/* File Picker / Dropzone */}
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Pilih File Dokumen DD *
+              {t('dd_upload.pilih_file_dokumen_dd', 'Pilih File Dokumen DD *')}
             </label>
             <div
               onDrop={handleDrop}
@@ -325,7 +325,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                         {selectedFile.name}
                       </p>
                       <p className="text-[10px] text-slate-500">
-                        {(selectedFile.size / 1024).toFixed(1)} KB
+                        {t('dd_upload.kb', '{value} KB', { value: (selectedFile.size / 1024).toFixed(1) })}
                       </p>
                     </div>
                   </div>
@@ -359,14 +359,14 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-slate-400" />
-                  Tahun / Periode
+                  {t('dd_upload.tahun_periode', 'Tahun / Periode')}
                 </span>
               </label>
               <input
                 type="text"
                 value={tahunDokumen}
                 onChange={(e) => setTahunDokumen(e.target.value)}
-                placeholder="contoh: 2026"
+                placeholder={t('dd_upload.contoh_2026', 'contoh: 2026')}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06C755]/30 focus:border-[#06C755]"
               />
             </div>
@@ -401,7 +401,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
               disabled={isUploading}
               className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50"
             >
-              Batal
+              {t('eval.btn_cancel', 'Batal')}
             </button>
             <button
               type="submit"

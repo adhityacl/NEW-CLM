@@ -38,6 +38,19 @@ export const SUPPORTED_CURRENCIES: CurrencyInfo[] = [
   { code: 'LKR', label: 'Sri Lankan Rupee', fallbackRateToUsd: 0.0033 },
 ];
 
+const DISPLAY_LOCALE: Record<string, string> = { ID: 'id', EN: 'en', ZH: 'zh-CN' };
+
+/** Currency name in the UI language via the platform's CLDR data (e.g. "美元", "Dolar AS"). */
+export function currencyLabel(code: string, language: 'ID' | 'EN' | 'ZH' = 'EN'): string {
+  try {
+    const name = new Intl.DisplayNames([DISPLAY_LOCALE[language] || 'en'], { type: 'currency' }).of(code);
+    if (name && name !== code) return name;
+  } catch {
+    /* Intl.DisplayNames unavailable — use the English label */
+  }
+  return SUPPORTED_CURRENCIES.find((c) => c.code === code)?.label || code;
+}
+
 const FALLBACK_BY_CODE = new Map(SUPPORTED_CURRENCIES.map((c) => [c.code, c.fallbackRateToUsd]));
 
 export function normalizeCurrencyCode(value: unknown, fallback = 'USD'): string {

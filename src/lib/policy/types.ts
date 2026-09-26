@@ -7,25 +7,49 @@
  */
 
 export type IndustryKey =
-  | 'general'
-  | 'financial_services'
-  | 'technology'
-  | 'healthcare'
-  | 'manufacturing'
-  | 'retail'
-  | 'media_advertising'
-  | 'professional_services'
-  | 'logistics'
-  | 'energy'
-  | 'education'
-  | 'nonprofit';
+  | 'p2p_lending'
+  | 'payment_gateway'
+  | 'banking_investment'
+  | 'b2b_saas'
+  | 'it_development'
+  | 'influencer_kol'
+  | 'media_creative'
+  | 'hospitals_medical'
+  | 'healthtech_telemedicine'
+  | 'marketplace'
+  | 'retail_franchise'
+  | 'consumer_omnichannel'
+  | 'legal_consulting'
+  | 'digital_agency'
+  | 'headhunting_recruitment'
+  | 'freight_logistics'
+  | 'cold_chain_storage'
+  | 'delivery_fleet'
+  | 'public_transportation'
+  | 'renewable_energy'
+  | 'oil_gas'
+  | 'water_sanitation'
+  | 'education_research'
+  | 'philanthropy_donations'
+  | 'ngo_humanitarian'
+  | 'office_procurement'
+  | 'property_rental'
+  | 'freelance_workforce'
+  | 'general';
+
+export type CounterpartyType = 'organization' | 'individual';
 
 export type SensitivityLevel = 'internal' | 'confidential' | 'restricted';
 
 export interface LocalizedText {
   en: string;
   id?: string;
+  /** Simplified Chinese. */
+  zh?: string;
 }
+
+/** UI languages (ZH = Simplified Chinese). */
+export type UiLanguage = 'EN' | 'ID' | 'ZH';
 
 /** A tax, registration, or personal identifier scheme issued in a country. */
 export interface IdentifierScheme {
@@ -96,14 +120,32 @@ export interface CommercialDocumentProfile {
   channelPlaceholder: string;
 }
 
+/** A clause the contract reviewer must check, and the rule that flags it. */
+export interface CriticalClause {
+  clause: LocalizedText;
+  /** Rule-engine condition, phrased as "Flag if …". */
+  rule: LocalizedText;
+}
+
 export interface IndustryPack {
   key: IndustryKey;
   name: LocalizedText;
+  /** Core agreements this industry signs with its counterparties. */
+  coreDocuments: LocalizedText[];
+  /** Partner / third-party entity types. */
   partnerCategories: string[];
+  /** Due-diligence and onboarding evidence. */
   dueDiligence: DueDiligenceRequirement[];
+  /** Jurisdiction-neutral regulatory frameworks and standards; country packs add the regulators. */
+  complianceStandards: string[];
+  /** Clauses and flagging rules used by the AI contract reviewer. */
+  criticalClauses: CriticalClause[];
+  /** Who counterparties usually are; selects which identifier schemes partners are asked for. */
+  counterpartyTypes: CounterpartyType[];
+  /** Contract currency convention (ISO 4217) when it differs from the country default. */
+  contractCurrency?: string;
+  taxConsiderations: LocalizedText[];
   commercialDocument: CommercialDocumentProfile;
-  /** Topics an AI contract reviewer must cover for this industry. */
-  aiReviewFocus: string[];
   /** Topic used by the optional dashboard news ticker. */
   newsTopic: string;
 }
@@ -125,8 +167,8 @@ export interface DueDiligenceOverride {
 export interface TenantSettings {
   countryCode: string;
   industry: IndustryKey;
-  /** UI language: `EN` or `ID` (PRD §5.8 initial locales). */
-  language: 'EN' | 'ID';
+  /** Language for generated e-mails, AI answers and document titles. */
+  language: 'EN' | 'ID' | 'ZH';
   timezone: string;
   defaultCurrency: string;
   reportingCurrency: string;

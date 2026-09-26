@@ -4,9 +4,11 @@ import {
   ArchiveRestore,
   ArrowDown,
   ArrowUp,
+  ArrowUpDown,
   FilePlus2,
   FileText,
   FolderOpen,
+  FolderInput,
   Pencil,
   RefreshCw,
   Search,
@@ -28,7 +30,9 @@ import {
   type MetadataField,
 } from '../../lib/documentModel';
 import { RelativeTime } from './RelativeTime';
-import { FIELD_CLASS, INPUT_CLASS, STATUS_BADGE_CLASS, statusLabel, typeLabel } from './documentLabels';
+import { ActionMenu, type ActionMenuItem } from '../ui/action-menu';
+import { TablePagination } from '../ui/TablePagination';
+import { FIELD_CLASS, INPUT_CLASS, statusBadgeClass, statusLabel, typeBadgeClass, typeLabel } from './documentLabels';
 
 interface DocumentExplorerProps {
   canEdit: boolean;
@@ -54,8 +58,6 @@ interface Filters {
 
 const EMPTY_FILTERS: Filters = { status: '', type: '', created_by: '', from: '', to: '', meta_field: '', meta_value: '' };
 const ASCENDING_FIRST: DocumentSortKey[] = ['name', 'type', 'status', 'created_by'];
-const ICON_BUTTON =
-  'inline-flex items-center justify-center h-11 w-11 sm:h-8 sm:w-8 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors cursor-pointer';
 
 export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, canDelete, onOpen, onCreate }) => {
   const { t } = useLanguage();
@@ -165,26 +167,66 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
     if (ok) runAction(() => documentsApi.remove(doc.id), t('documents.msg.deleted', 'Dokumen dihapus'));
   };
 
+  const rowActions = (doc: DocumentSummary): ActionMenuItem[] => {
+    const archived = doc.status === 'archived';
+    return [
+      { label: t('documents.action.open', 'Buka'), icon: <FolderInput className="w-3.5 h-3.5" />, onClick: () => onOpen(doc.id) },
+      ...(canEdit
+        ? [
+            {
+              label: t('documents.action.rename', 'Ganti nama'),
+              icon: <Pencil className="w-3.5 h-3.5" />,
+              onClick: () => setRenaming({ id: doc.id, value: doc.name }),
+            },
+            {
+              label: archived ? t('documents.action.unarchive', 'Keluarkan dari arsip') : t('documents.action.archive', 'Arsipkan'),
+              icon: archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />,
+              onClick: () => toggleArchive(doc),
+            },
+          ]
+        : []),
+      ...(canDelete
+        ? [
+            {
+              label: t('documents.action.delete', 'Hapus'),
+              icon: <Trash2 className="w-3.5 h-3.5" />,
+              onClick: () => deleteDocument(doc),
+              variant: 'danger' as const,
+              dividerBefore: true,
+            },
+          ]
+        : []),
+    ];
+  };
+
   const isFiltered = Boolean(search) || Object.values(filters).some(Boolean);
   const data = state.status === 'ready' ? state.data : null;
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
 
-  const sortHeader = (sortKey: DocumentSortKey, label: string, className = '') => {
+  const sortHeader = (sortKey: DocumentSortKey, label: string, className = 'p-4') => {
     const active = sort.key === sortKey;
     return (
       <th
         key={sortKey}
         scope="col"
         aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
-        className={`px-3 py-2 text-left font-semibold ${className}`}
+        className={`${className} text-xs font-bold text-slate-700 dark:text-slate-300 text-left select-none align-middle`}
       >
         <button
           type="button"
           onClick={() => toggleSort(sortKey)}
-          className="inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+          className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
         >
-          {label}
-          {active && (sort.dir === 'asc' ? <ArrowUp className="w-3 h-3" aria-hidden /> : <ArrowDown className="w-3 h-3" aria-hidden />)}
+          <span>{label}</span>
+          {active ? (
+            sort.dir === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-[#06C755] shrink-0" aria-hidden />
+            ) : (
+              <ArrowDown className="w-3.5 h-3.5 text-[#06C755] shrink-0" aria-hidden />
+            )
+          ) : (
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden />
+          )}
         </button>
       </th>
     );
@@ -331,7 +373,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
         </div>
 
         <section
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden"
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden"
           aria-busy={isFetching}
           aria-live="polite"
         >
@@ -389,27 +431,27 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
 
           {data && data.total > 0 && (
             <>
-              <div className="relative overflow-x-auto">
-                <table className="w-full text-xs">
+              <div className="relative overflow-x-auto bg-white dark:bg-slate-900">
+                <table className="w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
                   <caption className="sr-only">{t('documents.explorer.title', 'Dokumen Saya')}</caption>
-                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300">
-                    <tr>
-                      {sortHeader('name', t('documents.field.name', 'Nama'))}
-                      {sortHeader('type', t('documents.field.type', 'Jenis'), 'hidden md:table-cell')}
+                  <thead className="bg-slate-50 dark:bg-slate-800/50">
+                    <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
+                      {sortHeader('name', t('documents.field.name', 'Nama'), 'pl-6 pr-4 py-4')}
+                      {sortHeader('type', t('documents.field.type', 'Jenis'), 'p-4 hidden md:table-cell')}
                       {sortHeader('status', t('documents.field.status', 'Status'))}
-                      {sortHeader('created_at', t('documents.field.created', 'Dibuat'), 'hidden lg:table-cell')}
+                      {sortHeader('created_at', t('documents.field.created', 'Dibuat'), 'p-4 hidden lg:table-cell')}
                       {sortHeader('modified_at', t('documents.field.modified', 'Diubah'))}
-                      {sortHeader('created_by', t('documents.field.created_by', 'Dibuat oleh'), 'hidden md:table-cell')}
-                      {sortHeader('file_size', t('documents.field.size', 'Ukuran'), 'hidden lg:table-cell')}
-                      <th scope="col" className="px-3 py-2 text-right font-semibold">
-                        <span className="sr-only">{t('documents.field.actions', 'Aksi')}</span>
+                      {sortHeader('created_by', t('documents.field.created_by', 'Dibuat oleh'), 'p-4 hidden md:table-cell')}
+                      {sortHeader('file_size', t('documents.field.size', 'Ukuran'), 'p-4 hidden lg:table-cell')}
+                      <th scope="col" className="pl-2 pr-6 py-4 text-right w-20 text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">
+                        <div className="flex items-center justify-end">{t('documents.field.actions', 'Aksi')}</div>
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200">
+                  <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
                     {data.documents.map((doc) => (
-                      <tr key={doc.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                        <td className="px-3 py-2 max-w-[280px]">
+                      <tr key={doc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="pl-6 pr-4 py-4 text-xs text-left align-middle max-w-[320px]">
                           {renaming?.id === doc.id ? (
                             <input
                               autoFocus
@@ -427,70 +469,35 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                             <button
                               type="button"
                               onClick={() => onOpen(doc.id)}
-                              className="font-semibold text-left text-slate-900 dark:text-white hover:underline truncate block max-w-full cursor-pointer"
+                              className="font-semibold text-left text-slate-900 dark:text-slate-100 hover:text-[#06C755] truncate block max-w-full cursor-pointer transition-colors"
                               title={doc.name}
                             >
                               {doc.name}
                             </button>
                           )}
-                          <span className="text-[10px] text-slate-400">v{doc.current_version}</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">v{doc.current_version}</span>
                         </td>
-                        <td className="px-3 py-2 hidden md:table-cell">{typeLabel(t, doc.type)}</td>
-                        <td className="px-3 py-2">
-                          <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-bold ${STATUS_BADGE_CLASS[doc.status]}`}>
-                            {statusLabel(t, doc.status)}
-                          </span>
+                        <td className="py-4 px-4 text-xs text-left align-middle hidden md:table-cell">
+                          <span className={typeBadgeClass(doc.type)}>{typeLabel(t, doc.type)}</span>
                         </td>
-                        <td className="px-3 py-2 hidden lg:table-cell whitespace-nowrap">
+                        <td className="py-4 px-4 text-xs text-left align-middle">
+                          <span className={statusBadgeClass(doc.status)}>{statusLabel(t, doc.status)}</span>
+                        </td>
+                        <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle whitespace-nowrap hidden lg:table-cell">
                           <RelativeTime iso={doc.created_at} />
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
+                        <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle whitespace-nowrap">
                           <RelativeTime iso={doc.modified_at} />
                         </td>
-                        <td className="px-3 py-2 hidden md:table-cell">{doc.created_by_name || '—'}</td>
-                        <td className="px-3 py-2 hidden lg:table-cell whitespace-nowrap">{formatBytes(doc.file_size)}</td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center justify-end gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => onOpen(doc.id)}
-                              className="px-3 min-h-11 sm:min-h-8 rounded-lg text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 cursor-pointer"
-                            >
-                              {t('documents.action.open', 'Buka')}
-                            </button>
-                            {canEdit && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => setRenaming({ id: doc.id, value: doc.name })}
-                                  className={ICON_BUTTON}
-                                  aria-label={`${t('documents.action.rename', 'Ganti nama')}: ${doc.name}`}
-                                  title={t('documents.action.rename', 'Ganti nama')}
-                                >
-                                  <Pencil className="w-3.5 h-3.5" aria-hidden />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleArchive(doc)}
-                                  className={ICON_BUTTON}
-                                  aria-label={`${doc.status === 'archived' ? t('documents.action.unarchive', 'Keluarkan dari arsip') : t('documents.action.archive', 'Arsipkan')}: ${doc.name}`}
-                                  title={doc.status === 'archived' ? t('documents.action.unarchive', 'Keluarkan dari arsip') : t('documents.action.archive', 'Arsipkan')}
-                                >
-                                  {doc.status === 'archived' ? <ArchiveRestore className="w-3.5 h-3.5" aria-hidden /> : <Archive className="w-3.5 h-3.5" aria-hidden />}
-                                </button>
-                              </>
-                            )}
-                            {canDelete && (
-                              <button
-                                type="button"
-                                onClick={() => deleteDocument(doc)}
-                                className={`${ICON_BUTTON} hover:!text-rose-600`}
-                                aria-label={`${t('documents.action.delete', 'Hapus')}: ${doc.name}`}
-                                title={t('documents.action.delete', 'Hapus')}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" aria-hidden />
-                              </button>
-                            )}
+                        <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle hidden md:table-cell">
+                          {doc.created_by_name || '—'}
+                        </td>
+                        <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle whitespace-nowrap hidden lg:table-cell">
+                          {formatBytes(doc.file_size)}
+                        </td>
+                        <td className="pl-2 pr-6 py-4 text-right align-middle w-20">
+                          <div className="flex items-center justify-end">
+                            <ActionMenu items={rowActions(doc)} title={`${t('documents.field.actions', 'Aksi')}: ${doc.name}`} />
                           </div>
                         </td>
                       </tr>
@@ -499,47 +506,17 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                 </table>
               </div>
 
-              <nav
-                aria-label={t('documents.pagination.label', 'Navigasi halaman')}
-                className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300"
-              >
-                <label className="flex items-center gap-1.5">
-                  <span>{t('documents.pagination.per_page', 'Per halaman')}</span>
-                  <select
-                    value={limit}
-                    onChange={(e) => {
-                      setLimit(Number(e.target.value));
-                      setPage(1);
-                    }}
-                    className={`${FIELD_CLASS} py-1`}
-                  >
-                    {PAGE_SIZES.map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <span>{t('documents.pagination.summary', 'Halaman {page} dari {pages} · {total} dokumen', { page: data.page, pages: totalPages, total: data.total })}</span>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
-                    className="px-3 min-h-11 sm:min-h-8 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    {t('documents.pagination.previous', 'Sebelumnya')}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                    className="px-3 min-h-11 sm:min-h-8 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    {t('documents.pagination.next', 'Berikutnya')}
-                  </button>
-                </div>
-              </nav>
+              <TablePagination
+                currentPage={data.page}
+                totalPages={totalPages}
+                rowsPerPage={limit}
+                rowsPerPageOptions={[...PAGE_SIZES]}
+                onPageChange={setPage}
+                onRowsPerPageChange={(size) => {
+                  setLimit(size);
+                  setPage(1);
+                }}
+              />
             </>
           )}
         </section>

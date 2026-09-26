@@ -67,7 +67,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
             try { await (authClient.signOut as any)(); } catch (_) {}
             setRegistrationSuccess(true);
           } else if (code === 'USER_ALREADY_EXISTS' || msg.includes('already exists') || msg.includes('already in use')) {
-            setError('Email sudah terdaftar. Silakan login atau gunakan email lain.');
+            setError(t('login.email_sudah_terdaftar_silakan_login_atau', 'Email sudah terdaftar. Silakan login atau gunakan email lain.'));
           } else {
             setError(error.message || t('login.err_register_failed'));
           }
@@ -84,7 +84,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
       if (code === 'BANNED_USER' || msg.includes('banned') || msg.includes('pending')) {
         setError(t('login.err_pending'));
       } else if (code === 'INVALID_EMAIL_OR_PASSWORD' || msg.includes('invalid') || msg.includes('credential')) {
-        setError('Email atau kata sandi salah. Silakan coba lagi.');
+        setError(t('login.email_atau_kata_sandi_salah_silakan', 'Email atau kata sandi salah. Silakan coba lagi.'));
       } else {
         setError(err.message || (isRegister ? t('login.err_register_failed') : t('login.err_failed')));
       }
@@ -104,7 +104,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
       }
     } catch (err: any) {
       console.error('Google sign in error:', err);
-      setError(err?.message || 'Gagal masuk dengan Google.');
+      setError(err?.message || t('login.gagal_masuk_dengan_google', 'Gagal masuk dengan Google.'));
     } finally {
       setLoading(false);
     }
@@ -250,6 +250,6 @@ const LegalFooter: React.FC<{ onOpenPrivacy: (e: React.MouseEvent) => void; onOp
         {t('footer.terms_of_service', 'Terms of Service')}
       </button>
     </div>
-    <p className="text-[11px] text-[var(--muted-foreground)]">2026 ACL. All rights reserved.</p>
+    <p className="text-[11px] text-[var(--muted-foreground)]">{t('login.copyright', '© 2026 ACL. All rights reserved.')}</p>
   </div>
 );

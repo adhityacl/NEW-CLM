@@ -97,6 +97,7 @@ import {
   normalizeCurrencyCode,
 } from "./src/lib/currencyUtils";
 import { buildDemoDataset, DEMO_TENANTS } from "./src/data/demoDataset";
+import { localizeApiMessages } from "./src/server/serverMessages";
 import {
   buildCheapOcrContents,
   globalOcrCache,
@@ -114,6 +115,8 @@ const upload = multer({
 });
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+// Error/status messages follow the UI language (x-app-language header).
+app.use("/api", localizeApiMessages);
 
 app.all(["/api/auth", "/api/auth/*"], (req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (req.path.startsWith("/api/auth/google")) {
@@ -1910,9 +1913,15 @@ function escapeHtml(value: unknown): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+/** Formatting locale for a tenant's e-mail/document language. */
+function localeForTenantLanguage(settings: ReturnType<typeof getTenantSettings>): string {
+  if (settings.language === "ID") return "id-ID";
+  if (settings.language === "ZH") return "zh-CN";
+  return getCountryPack(settings.countryCode).formattingLocale;
+}
 function formatAmountForTenant(amount: unknown, currency: string, tenantId?: string | null): string {
   const settings = getTenantSettings(tenantId);
-  const locale = settings.language === "ID" ? "id-ID" : getCountryPack(settings.countryCode).formattingLocale;
+  const locale = localeForTenantLanguage(settings);
   try {
     return new Intl.NumberFormat(locale, { style: "currency", currency: normalizeCurrencyCode(currency, settings.defaultCurrency) }).format(Number(amount) || 0);
   } catch {
@@ -1933,28 +1942,35 @@ function buildReminderEmail(params: {
   const tenant = findTenant(params.tenantId);
   const brandColor = /^#[0-9a-f]{6}$/i.test(tenant?.primaryColor || "") ? tenant.primaryColor : DEFAULT_BRANDING.primaryColor;
   const orgName = tenantDisplayName(params.tenantId);
+  // en/id/zh in that order, matching settings.language.
+  const pick = <T,>(en: T, id: T, zh: T): T => (settings.language === "ID" ? id : settings.language === "ZH" ? zh : en);
   const docLabel = params.kind === "contract"
-    ? (settings.language === "ID" ? "Kontrak" : "Contract")
+    ? pick("Contract", "Kontrak", "合同")
     : getIndustryPack(settings.industry).commercialDocument.label;
-  const ID = settings.language === "ID";
-  const subject = ID
-    ? `[Pengingat ${params.daysRemaining} hari] ${docLabel} ${params.reference} — ${params.title}`
-    : `[${params.daysRemaining}-day reminder] ${docLabel} ${params.reference} — ${params.title}`;
-  const heading = ID ? `${docLabel} akan berakhir` : `${docLabel} approaching expiry`;
-  const intro = ID
-    ? `${docLabel} berikut akan berakhir dalam ${params.daysRemaining} hari. Mohon tinjau kebutuhan pemberitahuan, perpanjangan, atau pengakhiran.`
-    : `The following ${docLabel.toLowerCase()} expires in ${params.daysRemaining} days. Please review any notice, renewal or termination action required.`;
+  const subject = pick(
+    `[${params.daysRemaining}-day reminder] ${docLabel} ${params.reference} — ${params.title}`,
+    `[Pengingat ${params.daysRemaining} hari] ${docLabel} ${params.reference} — ${params.title}`,
+    `【提醒：还剩 ${params.daysRemaining} 天】${docLabel} ${params.reference} — ${params.title}`,
+  );
+  const heading = pick(`${docLabel} approaching expiry`, `${docLabel} akan berakhir`, `${docLabel}即将到期`);
+  const intro = pick(
+    `The following ${docLabel.toLowerCase()} expires in ${params.daysRemaining} days. Please review any notice, renewal or termination action required.`,
+    `${docLabel} berikut akan berakhir dalam ${params.daysRemaining} hari. Mohon tinjau kebutuhan pemberitahuan, perpanjangan, atau pengakhiran.`,
+    `以下${docLabel}将在 ${params.daysRemaining} 天后到期，请审阅所需的通知、续约或终止事项。`,
+  );
   const tableRows = [
-    [ID ? "Nomor" : "Reference", params.reference],
-    [ID ? "Judul" : "Title", params.title],
-    [ID ? "Tanggal berakhir" : "End date", params.endDate],
+    [pick("Reference", "Nomor", "编号"), params.reference],
+    [pick("Title", "Judul", "名称"), params.title],
+    [pick("End date", "Tanggal berakhir", "结束日期"), params.endDate],
     ...params.rows,
   ]
     .map(([k, v]) => `<tr><td style="padding:6px 8px;border-bottom:1px solid #F1F5F9;color:#475569;width:35%;">${escapeHtml(k)}</td><td style="padding:6px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;">${escapeHtml(v)}</td></tr>`)
     .join("");
-  const footer = ID
-    ? `E-mail otomatis dari Silegal untuk ${orgName}.`
-    : `Automated e-mail from Silegal for ${orgName}.`;
+  const footer = pick(
+    `Automated e-mail from Silegal for ${orgName}.`,
+    `E-mail otomatis dari Silegal untuk ${orgName}.`,
+    `此邮件由 Silegal 为 ${orgName} 自动发送。`,
+  );
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
       <div style="background-color:${brandColor};color:#FFFFFF;padding:20px;text-align:center;">
@@ -2014,7 +2030,10 @@ function recalculateStatuses() {
     const title = kind === "contract" ? record.judul_kontrak : record.judul_io;
     const amount = kind === "contract" ? record.nilai_kontrak : record.nilai_io;
     const recipients = reminderRecipients(tenantId, kind, record.pic_internal && String(record.pic_internal).includes("@") ? record.pic_internal : "");
-    const ID = settings.language === "ID";
+    // en/id/zh in that order, matching settings.language.
+    const pick = <T,>(en: T, id: T, zh: T): T => (settings.language === "ID" ? id : settings.language === "ZH" ? zh : en);
+    const noticeType = record.notice_type_required || "Termination";
+    const noticeDays = record.notice_period_hari || 30;
     const notif = {
       notif_id: `notif-${kind === "contract" ? "ctr" : "doc"}-${Date.now()}-${Math.floor(Math.random() * 1e3)}`,
       organizationId: tenantId,
@@ -2026,22 +2045,24 @@ function recalculateStatuses() {
       tanggal_terkirim: new Date().toISOString(),
       status_terkirim: true,
       penerima: recipients,
-      pesan: ID
-        ? `${reference} (${title}) berakhir dalam ${daysRemaining} hari.${kind === "contract" ? ` Pemberitahuan ${record.notice_type_required || "Termination"} diperlukan ${record.notice_period_hari || 30} hari sebelumnya.` : ""}`
-        : `${reference} (${title}) expires in ${daysRemaining} days.${kind === "contract" ? ` ${record.notice_type_required || "Termination"} notice is due ${record.notice_period_hari || 30} days before expiry.` : ""}`,
+      pesan: pick(
+        `${reference} (${title}) expires in ${daysRemaining} days.${kind === "contract" ? ` ${noticeType} notice is due ${noticeDays} days before expiry.` : ""}`,
+        `${reference} (${title}) berakhir dalam ${daysRemaining} hari.${kind === "contract" ? ` Pemberitahuan ${noticeType} diperlukan ${noticeDays} hari sebelumnya.` : ""}`,
+        `${reference}（${title}）将在 ${daysRemaining} 天后到期。${kind === "contract" ? `需在到期前 ${noticeDays} 天发出${noticeType}通知。` : ""}`,
+      ),
       is_read: false,
     };
     db.notifications.unshift(notif);
     newNotifsCount++;
     if (db.googleConfig?.smtpEnabled) {
       const rows: Array<[string, string]> = [
-        [ID ? "Nilai" : "Value", formatAmountForTenant(amount, record.currency, tenantId)],
+        [pick("Value", "Nilai", "金额"), formatAmountForTenant(amount, record.currency, tenantId)],
       ];
       if (kind === "contract") {
-        rows.push([ID ? "Periode pemberitahuan" : "Notice period", `${record.notice_period_hari || 30} ${ID ? "hari" : "days"} (${record.notice_type_required || "Termination"})`]);
-        rows.push([ID ? "Perpanjangan otomatis" : "Auto-renewal", record.auto_renewal ? (ID ? "Ya" : "Yes") : (ID ? "Tidak" : "No")]);
+        rows.push([pick("Notice period", "Periode pemberitahuan", "通知期"), `${noticeDays} ${pick("days", "hari", "天")} (${noticeType})`]);
+        rows.push([pick("Auto-renewal", "Perpanjangan otomatis", "自动续约"), record.auto_renewal ? pick("Yes", "Ya", "是") : pick("No", "Tidak", "否")]);
       } else {
-        rows.push([ID ? "Model harga" : "Pricing model", record.pricing_model || "-"]);
+        rows.push([pick("Pricing model", "Model harga", "定价模式"), record.pricing_model || "-"]);
       }
       const { subject, html } = buildReminderEmail({
         tenantId, kind, reference, title, endDate: record.tanggal_berakhir, daysRemaining, rows,
@@ -2289,8 +2310,10 @@ app.get("/api/user/my-role", async (req: express.Request, res: express.Response)
   });
 });
 // Dashboard news ticker (optional module, off by default): 5 short
-// regulatory headlines for the tenant's industry and country, refreshed via
-// the AI provider at most once every 7 days and cached per tenant.
+// regulatory headlines for the tenant's industry and country, written in the
+// tenant's configured language (Settings > Organization & region). Refreshed
+// via the AI provider at most once every 7 days, cached per tenant, and
+// regenerated immediately if the tenant's language or industry pack changes.
 const NEWS_TICKER_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 function newsTickerPrompt(tenantId: string, grounded: boolean): string {
   const settings = getTenantSettings(tenantId);
@@ -2336,10 +2359,15 @@ app.get("/api/dashboard/news-ticker", async (req: express.Request, res: express.
     db.newsTicker = { byTenant: {} };
   }
   const ticker = db.newsTicker.byTenant[tenantId] || { items: [], lastGeneratedAt: null };
+  // Regenerate right away if the org's language or industry pack changed since the cached
+  // headlines were written — otherwise a settings change would keep showing old-language or
+  // wrong-industry news for up to 7 days.
+  const settingsChanged = ticker.language !== settings.language || ticker.industry !== settings.industry;
   const isStale =
     !ticker.lastGeneratedAt ||
     !Array.isArray(ticker.items) ||
     ticker.items.length === 0 ||
+    settingsChanged ||
     Date.now() - new Date(ticker.lastGeneratedAt).getTime() > NEWS_TICKER_REFRESH_MS;
 
   if (!isStale) {
@@ -2360,13 +2388,15 @@ app.get("/api/dashboard/news-ticker", async (req: express.Request, res: express.
       throw new Error("The AI provider returned no headlines.");
     }
 
-    const entry = { items, lastGeneratedAt: new Date().toISOString() };
+    const entry = { items, lastGeneratedAt: new Date().toISOString(), language: settings.language, industry: settings.industry };
     db.newsTicker.byTenant[tenantId] = entry;
     saveDb();
-    res.json({ ...entry, cached: false });
+    res.json({ items: entry.items, lastGeneratedAt: entry.lastGeneratedAt, cached: false });
   } catch (err: any) {
     console.error("Error generating news ticker:", err);
-    if (Array.isArray(ticker.items) && ticker.items.length > 0) {
+    // A stale cache in the previous language/industry beats nothing, unless the
+    // settings just changed and no fresh headlines exist yet for the new choice.
+    if (Array.isArray(ticker.items) && ticker.items.length > 0 && !settingsChanged) {
       return res.json({ items: ticker.items, lastGeneratedAt: ticker.lastGeneratedAt, cached: true, stale: true });
     }
     res.status(500).json({ error: err?.message || "Failed to load the news ticker." });
@@ -4585,6 +4615,10 @@ ${String(req.body.customClauseText).slice(0, 20000)}` : ""}
 === REVIEW INSTRUCTIONS ===
 Assess liability, termination, indemnities, confidentiality and data protection (reference ${ctx.dataProtectionLaw} where our own processing is concerned), governing law and dispute resolution (our default position: ${ctx.governingLaw}), and these industry focus areas: ${ctx.reviewFocus.join("; ")}.
 ${regulatorLine}
+Industry standards and regulatory frameworks to check against: ${ctx.complianceStandards.join("; ")}.
+Industry rule checks — apply every rule below; each rule that is triggered must appear in keyFindings and in analyzedClauses:
+${ctx.clauseRules.map((rule) => `- ${rule}`).join("\n")}
+Tax points to consider (${ctx.indirectTaxName} and withholding): ${ctx.taxConsiderations.join(" ")}
 Do not invent statute or regulation numbers — cite them only when you are certain; otherwise describe the requirement in general terms.
 
 Return JSON with exactly:
@@ -7892,6 +7926,8 @@ app.get("/api/policy-packs", (_req: express.Request, res: express.Response) => {
       name: i.name,
       partnerCategories: i.partnerCategories,
       commercialDocument: i.commercialDocument,
+      counterpartyTypes: i.counterpartyTypes,
+      contractCurrency: i.contractCurrency || null,
     })),
   });
 });
@@ -7924,6 +7960,8 @@ function tenantSettingsPayload(tenantId: string) {
       name: industry.name,
       partnerCategories: industry.partnerCategories,
       commercialDocument: industry.commercialDocument,
+      counterpartyTypes: industry.counterpartyTypes,
+      contractCurrency: industry.contractCurrency || null,
     },
     dueDiligenceChecklist: buildDueDiligenceChecklist(settings, { includeDisabled: true }),
   };

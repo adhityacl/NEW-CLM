@@ -92,9 +92,10 @@ Requirements: **Node.js 20.19 or newer** (22 LTS recommended; see `.nvmrc`) and 
 git clone <repository-url>
 cd NEW-CLM
 npm install
-cp .env.example .env
 npm run dev
 ```
+
+`npm install` creates `.env` from `.env.example` and generates a random `BETTER_AUTH_SECRET` automatically (via its `postinstall` script), so there's no `.env` to hand-edit for local development. Re-run it any time with `npm run setup` — it never touches `.env` once `BETTER_AUTH_SECRET` has a real value, so it's safe on an `.env` carried over from another server (see [Moving an existing installation to a new server](#moving-an-existing-installation-to-a-new-server)).
 
 Open **http://localhost:3000** and sign in with `admin@silegal.com` / `123456789`.
 
@@ -110,7 +111,7 @@ All variables are read from `.env` in the working directory (see `.env.example`)
 | --- | --- | --- |
 | `NODE_ENV` | — | Set to `production` on servers. In production the app serves the built `dist/`, uses secure cookies, requires `BETTER_AUTH_SECRET`, and stops trusting `localhost` origins. |
 | `PORT` | `3000` | HTTP port. |
-| `BETTER_AUTH_SECRET` | dev fallback | **Required in production.** Must be long and random (`openssl rand -base64 32`). Changing it signs everyone out. |
+| `BETTER_AUTH_SECRET` | auto-generated | **Required in production.** `npm install`/`npm run setup` fills in a random value if it's still unset or the `.env.example` placeholder. Changing it signs everyone out. |
 | `BETTER_AUTH_URL` | — | Public base URL, e.g. `https://clm.example.com`. It is also added as a trusted origin. |
 | `TRUSTED_ORIGINS` | — | Additional allowed origins, comma separated. |
 | `SEED_DEMO_ADMIN` | `true` | Creates the bootstrap Superuser (and, on a fresh database, the demo workspace) on start. **This is not switched off automatically in production.** Set it to `false` once your own admin exists. |
@@ -173,17 +174,18 @@ sudo -u silegal npm run build   # dist/ (frontend) + dist/server.cjs
 
 ### 3. Create `.env`
 
+`npm ci` already ran `.env`'s setup for you (its `postinstall` script creates `.env` from `.env.example` and fills in a random `BETTER_AUTH_SECRET`); re-run it explicitly if needed:
+
 ```bash
-sudo -u silegal cp .env.example .env
+sudo -u silegal npm run setup   # creates .env from .env.example, generates BETTER_AUTH_SECRET if unset
 sudo -u silegal chmod 600 .env
 ```
 
-Set at least:
+Then set at least:
 
 ```env
 NODE_ENV=production
 PORT=3000
-BETTER_AUTH_SECRET=<output of: openssl rand -base64 32>
 BETTER_AUTH_URL=https://clm.example.com
 
 # First start only: your real admin with a strong password

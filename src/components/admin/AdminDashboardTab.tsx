@@ -203,19 +203,19 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-xs font-mono font-bold text-xs flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4" />
-              <span>INFRA</span>
+              <span>{t('admin.infra', 'INFRA')}</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                  Better Auth Infrastructure (@better-auth/infra)
+                  {t('admin.better_auth_infrastructure_better_auth_infra', 'Better Auth Infrastructure (@better-auth/infra)')}
                 </h4>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/80 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-800">
-                  v1.7.1 Connected
+                  {t('admin.v1_7_1_connected', 'v1.7.1 Connected')}
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                Pengamanan tingkat lanjut, audit log real-time, dan manajemen hak akses terintegrasi.
+                {t('admin.pengamanan_tingkat_lanjut_audit_log_real', 'Pengamanan tingkat lanjut, audit log real-time, dan manajemen hak akses terintegrasi.')}
               </p>
             </div>
           </div>
@@ -223,7 +223,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
           <div className="flex items-center gap-2 text-xs font-mono">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-medium border border-emerald-200 dark:border-emerald-800">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Sentinel Security: Active
+              {t('admin.sentinel_security_active', 'Sentinel Security: Active')}
             </span>
           </div>
         </div>
@@ -234,12 +234,12 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
             <div className="flex items-center justify-between text-xs font-semibold text-slate-900 dark:text-slate-100">
               <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
                 <ShieldCheck className="w-4 h-4" />
-                Dash Engine (`dash()`)
+                {t('admin.dash_engine_dash', 'Dash Engine (`dash()`)')}
               </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">ONLINE</span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">{t('admin.online', 'ONLINE')}</span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              Audit logging terenkripsi, pelacakan histori sesi, serta agregasi metrik pengguna secara otomatis.
+              {t('admin.audit_logging_terenkripsi_pelacakan_histori_sesi', 'Audit logging terenkripsi, pelacakan histori sesi, serta agregasi metrik pengguna secara otomatis.')}
             </p>
           </div>
 
@@ -248,12 +248,12 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
             <div className="flex items-center justify-between text-xs font-semibold text-slate-900 dark:text-slate-100">
               <span className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
                 <ShieldAlert className="w-4 h-4" />
-                Sentinel (`sentinel()`)
+                {t('admin.sentinel_sentinel', 'Sentinel (`sentinel()`)')}
               </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">PROTECTED</span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">{t('admin.protected', 'PROTECTED')}</span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              Perlindungan credential stuffing, deteksi bot/spam otomatis, dan rate-limiting IP berbasis Proof-of-Work.
+              {t('admin.perlindungan_credential_stuffing_deteksi_bot_spa', 'Perlindungan credential stuffing, deteksi bot/spam otomatis, dan rate-limiting IP berbasis Proof-of-Work.')}
             </p>
           </div>
 
@@ -262,12 +262,12 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
             <div className="flex items-center justify-between text-xs font-semibold text-slate-900 dark:text-slate-100">
               <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                 <KeyRound className="w-4 h-4" />
-                RBAC & Whitelist Gate
+                {t('admin.rbac_whitelist_gate', 'RBAC & Whitelist Gate')}
               </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">ENFORCED</span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">{t('admin.enforced', 'ENFORCED')}</span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              Matriks hak akses 8 role (Superuser, Admin, Manager, Legal, dll) terintegrasi dengan persetujuan pendaftaran.
+              {t('admin.matriks_hak_akses_8_role_superuser', 'Matriks hak akses 8 role (Superuser, Admin, Manager, Legal, dll) terintegrasi dengan persetujuan pendaftaran.')}
             </p>
           </div>
         </div>
@@ -437,7 +437,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-400 truncate mt-0.5 font-mono">
-                      Token: {session.token ? `${session.token.slice(0, 10)}...` : (session.id || '').slice(0, 10)}
+                      {t('admin.token', 'Token:')} {session.token ? `${session.token.slice(0, 10)}...` : (session.id || '').slice(0, 10)}
                     </div>
                   </div>
 

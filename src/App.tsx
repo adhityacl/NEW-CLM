@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tan
 import { SignInForm } from './components/SignInForm';
 import InteractiveGridBackground from './components/lightswind/interactive-grid-background';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { LanguageProvider } from './context/LanguageContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { ConfirmDialogProvider, useConfirm } from './context/ConfirmDialogContext';
 import { AlertToastProvider, useAlertToast } from './context/AlertToastContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -105,6 +105,7 @@ export const getAuthHeaders = () => {
 
 const MainApp: React.FC = () => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
 
   if (!user) {
     return null;
@@ -213,7 +214,7 @@ const MainApp: React.FC = () => {
     queryFn: async () => {
       const headers = getAuthHeaders();
       const res = await fetch('/api/init-data', { headers, cache: 'no-store' });
-      if (!res.ok) throw new Error('Failed to fetch initial data');
+      if (!res.ok) throw new Error(t('app.failed_to_fetch_initial_data', 'Failed to fetch initial data'));
       return await res.json();
     },
     enabled: Boolean(user?.email),
@@ -281,16 +282,16 @@ const MainApp: React.FC = () => {
         const errData = await res.json().catch(() => ({}));
         showToast({
           type: 'error',
-          title: 'Gagal Menyimpan Kontrak',
-          message: errData.error || 'Terjadi kesalahan saat menyimpan ke backend.',
+          title: t('app.gagal_menyimpan_kontrak', 'Gagal Menyimpan Kontrak'),
+          message: errData.error || t('app.terjadi_kesalahan_saat_menyimpan_ke_backend', 'Terjadi kesalahan saat menyimpan ke backend.'),
         });
       }
       loadAllData();
     } catch (err: any) {
       showToast({
         type: 'error',
-        title: 'Error Koneksi',
-        message: err?.message || 'Gagal terhubung ke server.',
+        title: t('app.error_koneksi', 'Error Koneksi'),
+        message: err?.message || t('app.gagal_terhubung_ke_server', 'Gagal terhubung ke server.'),
       });
       loadAllData();
     }
@@ -299,9 +300,9 @@ const MainApp: React.FC = () => {
   const handleDeleteContract = async (id: string) => {
     if (
       await confirmDialog({
-        description: 'Hapus data kontrak ini?',
+        description: t('app.hapus_data_kontrak_ini', 'Hapus data kontrak ini?'),
         tone: 'danger',
-        confirmLabel: 'Hapus',
+        confirmLabel: t('io.action_delete', 'Hapus'),
       })
     ) {
       // 1. Optimistic UI update
@@ -318,16 +319,16 @@ const MainApp: React.FC = () => {
         if (!res.ok) {
           showToast({
             type: 'error',
-            title: 'Gagal Menghapus Kontrak',
-            message: (await res.json()).error || 'Gagal menghapus',
+            title: t('app.gagal_menghapus_kontrak', 'Gagal Menghapus Kontrak'),
+            message: (await res.json()).error || t('app.gagal_menghapus', 'Gagal menghapus'),
           });
         }
         loadAllData();
       } catch (err: any) {
         showToast({
           type: 'error',
-          title: 'Error',
-          message: err?.message || 'Gagal menghapus kontrak.',
+          title: t('app.error', 'Error'),
+          message: err?.message || t('app.gagal_menghapus_kontrak_2', 'Gagal menghapus kontrak.'),
         });
         loadAllData();
       }
@@ -376,16 +377,16 @@ const MainApp: React.FC = () => {
         const errData = await res.json().catch(() => ({}));
         showToast({
           type: 'error',
-          title: 'Gagal Menyimpan IO',
-          message: errData.error || 'Gagal menyimpan Insertion Order.',
+          title: t('app.gagal_menyimpan_io', 'Gagal Menyimpan IO'),
+          message: errData.error || t('app.gagal_menyimpan_insertion_order', 'Gagal menyimpan Insertion Order.'),
         });
       }
       loadAllData();
     } catch (err: any) {
       showToast({
         type: 'error',
-        title: 'Error Koneksi',
-        message: err?.message || 'Gagal menghubungi server.',
+        title: t('app.error_koneksi', 'Error Koneksi'),
+        message: err?.message || t('app.gagal_menghubungi_server', 'Gagal menghubungi server.'),
       });
       loadAllData();
     }
@@ -394,9 +395,9 @@ const MainApp: React.FC = () => {
   const handleDeleteIO = async (id: string) => {
     if (
       await confirmDialog({
-        description: 'Hapus data Insertion Order (IO) ini?',
+        description: t('app.hapus_data_insertion_order_io_ini', 'Hapus data Insertion Order (IO) ini?'),
         tone: 'danger',
-        confirmLabel: 'Hapus',
+        confirmLabel: t('io.action_delete', 'Hapus'),
       })
     ) {
       setIos((prev) => prev.filter((i) => i.io_id !== id));
@@ -412,15 +413,15 @@ const MainApp: React.FC = () => {
         if (!res.ok) {
           showToast({
             type: 'error',
-            title: 'Gagal Menghapus IO',
-            message: (await res.json()).error || 'Gagal menghapus',
+            title: t('app.gagal_menghapus_io', 'Gagal Menghapus IO'),
+            message: (await res.json()).error || t('app.gagal_menghapus', 'Gagal menghapus'),
           });
         }
         loadAllData();
       } catch (e: any) {
         showToast({
           type: 'error',
-          title: 'Error',
+          title: t('app.error', 'Error'),
           message: e.message,
         });
         loadAllData();
@@ -469,8 +470,8 @@ const MainApp: React.FC = () => {
     } catch (err: any) {
       showToast({
         type: 'error',
-        title: 'Error',
-        message: err?.message || 'Gagal menyimpan partner.',
+        title: t('app.error', 'Error'),
+        message: err?.message || t('app.gagal_menyimpan_partner', 'Gagal menyimpan partner.'),
       });
       loadAllData();
     }
@@ -479,9 +480,9 @@ const MainApp: React.FC = () => {
   const handleDeletePartner = async (id: string, name: string) => {
     if (
       await confirmDialog({
-        description: `Hapus partner "${name}"? Kontrak, IO, Adendum & Notifikasi terkait ikut terhapus.`,
+        description: t('app.hapus_partner_kontrak_io_adendum_notifikasi', 'Hapus partner "{name}"? Kontrak, IO, Adendum & Notifikasi terkait ikut terhapus.', { name }),
         tone: 'danger',
-        confirmLabel: 'Hapus Permanen',
+        confirmLabel: t('admin.btn_confirm_delete', 'Hapus Permanen'),
       })
     ) {
       // Optimistic delete
@@ -500,15 +501,15 @@ const MainApp: React.FC = () => {
         if (!res.ok) {
           showToast({
             type: 'error',
-            title: 'Gagal Menghapus Partner',
-            message: (await res.json()).error || 'Gagal menghapus',
+            title: t('app.gagal_menghapus_partner', 'Gagal Menghapus Partner'),
+            message: (await res.json()).error || t('app.gagal_menghapus', 'Gagal menghapus'),
           });
         }
         loadAllData();
       } catch (e: any) {
         showToast({
           type: 'error',
-          title: 'Error',
+          title: t('app.error', 'Error'),
           message: e.message,
         });
         loadAllData();
@@ -546,8 +547,8 @@ const MainApp: React.FC = () => {
     } catch (err: any) {
       showToast({
         type: 'error',
-        title: 'Error',
-        message: err?.message || 'Gagal menyimpan adendum.',
+        title: t('app.error', 'Error'),
+        message: err?.message || t('app.gagal_menyimpan_adendum', 'Gagal menyimpan adendum.'),
       });
       loadAllData();
     }
@@ -594,7 +595,7 @@ const MainApp: React.FC = () => {
       data = await res.json();
     } catch {
       if (!res.ok) {
-        throw new Error(`Server error (${res.status}): Gagal memproses data.`);
+        throw new Error(t('app.server_error_gagal_memproses_data', 'Server error ({status}): Gagal memproses data.', { status: res.status }));
       }
     }
 
@@ -602,7 +603,7 @@ const MainApp: React.FC = () => {
       if (res.status === 401) {
         invalidateGoogleToken();
       }
-      throw new Error(data.error || 'Gagal menyimpan konfigurasi.');
+      throw new Error(data.error || t('app.gagal_menyimpan_konfigurasi', 'Gagal menyimpan konfigurasi.'));
     }
 
     setGoogleConfig(data.config || { spreadsheetId, driveFolderId, autoSync, isLocked, ...extraConfig, isConnected: true });
@@ -638,7 +639,7 @@ const MainApp: React.FC = () => {
       if (res.status === 401) {
         invalidateGoogleToken();
       }
-      throw new Error(data.error || `Gagal sinkronisasi dengan Google Sheet (Status ${res.status}).`);
+      throw new Error(data.error || t('app.gagal_sinkronisasi_dengan_google_sheet_status', 'Gagal sinkronisasi dengan Google Sheet (Status {status}).', { status: res.status }));
     }
 
     await fetch('/api/cron/trigger-check', { method: 'POST' });
@@ -676,16 +677,16 @@ const MainApp: React.FC = () => {
     return (
       <div className="flex h-screen items-center justify-center bg-[#F3F4F0] p-6 text-slate-900 dark:bg-[#0B0F19] dark:text-slate-100">
         <div className="max-w-md space-y-4 text-center">
-          <h1 className="text-xl font-semibold">Pilih organisasi aktif</h1>
+          <h1 className="text-xl font-semibold">{t('app.pilih_organisasi_aktif', 'Pilih organisasi aktif')}</h1>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Sesi Better Auth Anda belum memiliki active organization yang tervalidasi.
+            {t('app.sesi_better_auth_anda_belum_memiliki', 'Sesi Better Auth Anda belum memiliki active organization yang tervalidasi.')}
           </p>
           <button
             type="button"
             onClick={() => void logout()}
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900"
           >
-            Kembali ke login
+            {t('app.kembali_ke_login', 'Kembali ke login')}
           </button>
         </div>
       </div>
@@ -716,7 +717,7 @@ const MainApp: React.FC = () => {
 
         <main className="flex-1 min-h-0 p-3.5 sm:p-5 md:p-7 overflow-y-auto overflow-x-hidden bg-[#F3F4F0] dark:bg-[#0B0F19] overscroll-contain">
           <DefaultPasswordBanner onOpenSecurity={() => setActiveTab('admin-organization-users')} />
-          <Suspense fallback={<div className="flex h-full min-h-70 items-center justify-center text-sm text-slate-500">Memuat halaman...</div>}>
+          <Suspense fallback={<div className="flex h-full min-h-70 items-center justify-center text-sm text-slate-500">{t('app.memuat_halaman', 'Memuat halaman...')}</div>}>
             <section className="w-full space-y-6">
               {activeTab === 'dashboard' && (
                 <LazyDashboardView
@@ -998,7 +999,7 @@ const MainApp: React.FC = () => {
               type="button"
               onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
               className="min-w-11 min-h-11 -mr-2 -mt-2 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 shrink-0 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
-              aria-label="Tutup notifikasi"
+              aria-label={t('app.tutup_notifikasi', 'Tutup notifikasi')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -1042,6 +1043,7 @@ const isTermsRoute = (): boolean => {
 
 const AppContent = () => {
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState<boolean>(isPrivacyRoute);
   const [showTermsOfService, setShowTermsOfService] = useState<boolean>(isTermsRoute);
 
@@ -1096,14 +1098,14 @@ const AppContent = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F3F4F0] dark:bg-slate-950 text-slate-900 dark:text-white">
-        <p className="text-lg">Memuat...</p>
+        <p className="text-lg">{t('app.memuat', 'Memuat...')}</p>
       </div>
     );
   }
 
   if (showPrivacyPolicy) {
     return (
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Memuat kebijakan...</div>}>
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">{t('app.memuat_kebijakan', 'Memuat kebijakan...')}</div>}>
         <LazyPrivacyPolicyView onBack={handleBackToMain} />
       </Suspense>
     );
@@ -1111,7 +1113,7 @@ const AppContent = () => {
 
   if (showTermsOfService) {
     return (
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Memuat syarat & ketentuan...</div>}>
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">{t('app.memuat_syarat_ketentuan', 'Memuat syarat & ketentuan...')}</div>}>
         <LazyTermsOfServiceView onBack={handleBackToMain} />
       </Suspense>
     );

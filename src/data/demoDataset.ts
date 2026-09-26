@@ -52,9 +52,9 @@ function tenant(id: string, name: string, legalEntity: string, countryCode: stri
 }
 
 export const DEMO_TENANTS: Row[] = [
-  tenant(SG, 'Demo Asia Tech Pte. Ltd.', 'Private Limited (Pte. Ltd.)', 'SG', 'technology', true),
-  tenant(ID, 'PT Demo Nusantara Finansial', 'PT (Perseroan Terbatas)', 'ID', 'financial_services'),
-  tenant(JP, 'Demo Precision Manufacturing K.K.', 'Kabushiki Kaisha (KK)', 'JP', 'manufacturing'),
+  tenant(SG, 'Demo Asia Tech Pte. Ltd.', 'Private Limited (Pte. Ltd.)', 'SG', 'b2b_saas', true),
+  tenant(ID, 'PT Demo Nusantara Finansial', 'PT (Perseroan Terbatas)', 'ID', 'p2p_lending'),
+  tenant(JP, 'Demo Precision Manufacturing K.K.', 'Kabushiki Kaisha (KK)', 'JP', 'general'),
 ];
 
 export function buildDemoDataset(now: Date = new Date()): DemoDataset {

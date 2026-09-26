@@ -1,5 +1,6 @@
 import { CORE_DUE_DILIGENCE, COUNTRY_PACKS } from './countryPacks';
-import { INDUSTRY_PACKS } from './industryPacks';
+import { INDUSTRY_PACKS, LEGACY_INDUSTRY_KEYS } from './industryPacks';
+import { PACK_NAMES, PACK_ZH } from './zh';
 import type {
   CountryPack,
   DueDiligenceRequirement,
@@ -8,10 +9,12 @@ import type {
   LocalizedText,
   TenantModules,
   TenantSettings,
+  UiLanguage,
 } from './types';
 
 export * from './types';
 export { CORE_DUE_DILIGENCE } from './countryPacks';
+export { LEGACY_INDUSTRY_KEYS } from './industryPacks';
 
 /* ------------------------------------------------------------------ */
 /* Registry — packs are data, and plugins may register more at boot.   */
@@ -45,14 +48,25 @@ export function getCountryPack(code?: string | null): CountryPack {
   return countryRegistry.get(key) || countryRegistry.get(NEUTRAL_COUNTRY_CODE)!;
 }
 
+/** Unknown keys fall back to General; keys from the earlier, broader pack list map to their successor. */
 export function getIndustryPack(key?: string | null): IndustryPack {
-  return industryRegistry.get(String(key || '')) || industryRegistry.get(NEUTRAL_INDUSTRY)!;
+  const raw = String(key || '');
+  return industryRegistry.get(raw) || industryRegistry.get(LEGACY_INDUSTRY_KEYS[raw]) || industryRegistry.get(NEUTRAL_INDUSTRY)!;
 }
 
-export function localize(text: LocalizedText | string | undefined, language: 'EN' | 'ID' = 'EN'): string {
+export function localize(text: LocalizedText | string | undefined, language: UiLanguage = 'EN'): string {
   if (!text) return '';
   if (typeof text === 'string') return text;
-  return (language === 'ID' && text.id) || text.en;
+  if (language === 'ID') return text.id || text.en;
+  if (language === 'ZH') return text.zh || PACK_ZH[text.en] || text.en;
+  return text.en;
+}
+
+/** Display text for a plain-string pack field (country name, identifier label, partner type, standard). */
+export function localizeName(text: string, language: UiLanguage = 'EN'): string {
+  if (language === 'EN') return text;
+  const entry = PACK_NAMES[text];
+  return (entry && (language === 'ID' ? entry.id : entry.zh)) || text;
 }
 
 /* ------------------------------------------------------------------ */
@@ -79,7 +93,7 @@ export function defaultTenantSettings(countryCode?: string, industry?: string): 
     industry: ind.key,
     language: country.code === 'ID' ? 'ID' : 'EN',
     timezone: country.timezone,
-    defaultCurrency: country.defaultCurrency,
+    defaultCurrency: ind.contractCurrency || country.defaultCurrency,
     reportingCurrency: 'USD',
     expiryWarningDays: DEFAULT_EXPIRY_WARNING_DAYS,
     reminderOffsetsDays: [...DEFAULT_REMINDER_OFFSETS],
@@ -153,7 +167,7 @@ export function resolveTenantSettings(tenant?: {
   return {
     countryCode,
     industry,
-    language: stored.language === 'ID' || stored.language === 'EN' ? stored.language : base.language,
+    language: stored.language === 'ID' || stored.language === 'EN' || stored.language === 'ZH' ? stored.language : base.language,
     timezone: stored.timezone && isValidTimezone(stored.timezone) ? stored.timezone : base.timezone,
     defaultCurrency: CURRENCY_CODE.test(defaultCurrency) ? defaultCurrency : base.defaultCurrency,
     reportingCurrency: CURRENCY_CODE.test(reportingCurrency) ? reportingCurrency : base.reportingCurrency,
@@ -264,8 +278,9 @@ export function daysUntil(endDate: string | undefined | null, timezone: string, 
 }
 
 /** Formatting locale for a UI language + tenant country, e.g. `en-SG`, `id-ID`. */
-export function formattingLocaleFor(language: 'EN' | 'ID', countryCode?: string): string {
+export function formattingLocaleFor(language: UiLanguage, countryCode?: string): string {
   if (language === 'ID') return 'id-ID';
+  if (language === 'ZH') return 'zh-CN';
   const pack = getCountryPack(countryCode);
   return pack.formattingLocale.startsWith('en') ? pack.formattingLocale : 'en-US';
 }

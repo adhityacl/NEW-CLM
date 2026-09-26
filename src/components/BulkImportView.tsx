@@ -351,7 +351,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700/50">
-              <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-2">Kolom Template:</p>
+              <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-2">{t('bulk_import.kolom_template', 'Kolom Template:')}</p>
               <div className="flex flex-wrap gap-1.5">
                 {TEMPLATES[activeType].headers.map((h) => (
                   <span
@@ -373,9 +373,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
             >
               <Download className="w-4 h-4" />
               <span>
-                {language === 'ID'
-                  ? `Unduh Template ${activeTypeInfo.label}`
-                  : `Download ${activeTypeInfo.label} Template`}
+                {t('bulk_import.download_template', 'Download {label} Template', { label: activeTypeInfo.label })}
               </span>
             </button>
           </div>
@@ -400,7 +398,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
               <FileSpreadsheet className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto mb-2 group-hover:text-[#06C755]/60 transition-colors" />
               {fileName
                 ? <p className="text-xs font-bold text-[#048C3B] dark:text-emerald-400 truncate px-2">{fileName}</p>
-                : <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{t('import.choose_file', 'Pilih File CSV')} (.csv)</p>
+                : <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{t('import.choose_file', 'Pilih File CSV')} {t('bulk_import.csv', '(.csv)')}</p>
               }
             </label>
 
@@ -487,7 +485,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
                 {parsedRows.length > 20 && (
                   <tr>
                     <td colSpan={parsedHeaders.length + 1} className="px-4 py-3 text-center text-xs text-slate-500 dark:text-slate-400 italic">
-                      ... dan {parsedRows.length - 20} baris lainnya tidak ditampilkan di pratinjau
+                      {t('bulk_import.dan', '... dan')} {parsedRows.length - 20} {t('bulk_import.baris_lainnya_tidak_ditampilkan_di_pratinjau', 'baris lainnya tidak ditampilkan di pratinjau')}
                     </td>
                   </tr>
                 )}

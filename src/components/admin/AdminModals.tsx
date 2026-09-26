@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTenantSettings } from '../../context/TenantSettingsContext';
-import { SUPPORTED_CURRENCIES } from '../../lib/currencyUtils';
+import { SUPPORTED_CURRENCIES, currencyLabel } from '../../lib/currencyUtils';
 import {
   X,
   UserPlus,
@@ -164,7 +164,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               {t('admin.modal_add_user', 'Tambah Pengguna Sistem Baru')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -185,7 +185,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Contoh: Rina Melati"
+              placeholder={t('admin.contoh_rina_melati', 'Contoh: Rina Melati')}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -199,7 +199,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@example.com"
+              placeholder={t('admin.name_example_com', 'name@example.com')}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -213,11 +213,11 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               onChange={(e) => handleRoleChange(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-medium"
             >
-              {allowedRoles.includes('superuser') && <option value="superuser">Superuser</option>}
-              {allowedRoles.includes('admin') && <option value="admin">Admin</option>}
-              {allowedRoles.includes('manager') && <option value="manager">Manager</option>}
-              {allowedRoles.includes('editor') && <option value="editor">Editor</option>}
-              {allowedRoles.includes('viewer') && <option value="viewer">Viewer</option>}
+              {allowedRoles.includes('superuser') && <option value="superuser">{t('admin.superuser', 'Superuser')}</option>}
+              {allowedRoles.includes('admin') && <option value="admin">{t('admin.admin', 'Admin')}</option>}
+              {allowedRoles.includes('manager') && <option value="manager">{t('admin.manager', 'Manager')}</option>}
+              {allowedRoles.includes('editor') && <option value="editor">{t('admin.editor', 'Editor')}</option>}
+              {allowedRoles.includes('viewer') && <option value="viewer">{t('admin.viewer', 'Viewer')}</option>}
             </select>
           </div>
 
@@ -293,7 +293,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Kosongkan jika menggunakan Google Login SSO"
+              placeholder={t('admin.kosongkan_jika_menggunakan_google_login_sso', 'Kosongkan jika menggunakan Google Login SSO')}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -388,7 +388,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       );
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Gagal mengubah user');
+      setError(err.message || t('admin.gagal_mengubah_user', 'Gagal mengubah user'));
     } finally {
       setIsSubmitting(false);
     }
@@ -404,7 +404,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               {t('admin.modal_edit_user', 'Ubah Informasi & Hak Akses Pengguna')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -452,11 +452,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               onChange={(e) => setRole(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium"
             >
-              <option value="superuser">Superuser</option>
-              <option value="admin">Admin</option>
-              <option value="manager">Manager</option>
-              <option value="editor">Editor</option>
-              <option value="viewer">Viewer</option>
+              <option value="superuser">{t('admin.superuser', 'Superuser')}</option>
+              <option value="admin">{t('admin.admin', 'Admin')}</option>
+              <option value="manager">{t('admin.manager', 'Manager')}</option>
+              <option value="editor">{t('admin.editor', 'Editor')}</option>
+              <option value="viewer">{t('admin.viewer', 'Viewer')}</option>
             </select>
           </div>
 
@@ -595,7 +595,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
               {t('admin.modal_reset_pwd', 'Reset Kata Sandi Pengguna')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -623,7 +623,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimal 6 karakter"
+              placeholder={t('admin.minimal_6_karakter', 'Minimal 6 karakter')}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
             />
           </div>
@@ -747,7 +747,7 @@ export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
             {logo ? (
               <img
                 src={logo}
-                alt={name || 'Logo'}
+                alt={name || t('admin.logo', 'Logo')}
                 className="w-full h-full object-contain p-1"
                 onError={(e) => {
                   (e.currentTarget as HTMLElement).style.display = 'none';
@@ -835,7 +835,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
   onClose,
   onSubmit,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [logo, setLogo] = useState('');
@@ -894,7 +894,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
               {t('admin.modal_create_org', 'Buat Organisasi Enterprise Baru')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -915,7 +915,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
               required
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
-              placeholder="Contoh: PT Fintek Digital Mandiri"
+              placeholder={t('admin.contoh_pt_fintek_digital_mandiri', 'Contoh: PT Fintek Digital Mandiri')}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -945,7 +945,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
               />
             </div>
             <p className="text-[10px] text-slate-400 mt-1">
-              {t('admin.org_slug_hint', 'Digunakan untuk pemetaan folder root dan tenant routing')}: <code className="font-mono text-emerald-600">/{slug}/[vendors]</code>
+              {t('admin.org_slug_hint', 'Digunakan untuk pemetaan folder root dan tenant routing')}: <code className="font-mono text-emerald-600">{t('admin.vendors', '/{slug}/[vendors]', { slug })}</code>
             </p>
           </div>
 
@@ -960,7 +960,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
               >
                 {SUPPORTED_CURRENCIES.map((c) => (
-                  <option key={c.code} value={c.code}>{c.code} — {c.label}</option>
+                  <option key={c.code} value={c.code}>{c.code} — {currencyLabel(c.code, language)}</option>
                 ))}
               </select>
             </div>
@@ -1002,7 +1002,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
                 type="text"
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
-                placeholder="Fintech & P2P Lending"
+                placeholder={t('admin.fintech_p2p_lending', 'Fintech & P2P Lending')}
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
               />
             </div>
@@ -1046,7 +1046,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
   onSubmit,
   onDelete,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [logo, setLogo] = useState('');
@@ -1115,7 +1115,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
               </h3>
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+          <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1136,7 +1136,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Acme Holdings Pte. Ltd."
+              placeholder={t('admin.e_g_acme_holdings_pte_ltd', 'e.g. Acme Holdings Pte. Ltd.')}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-emerald-500 outline-none"
             />
           </div>
@@ -1166,7 +1166,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
               />
             </div>
             <p className="text-[10px] text-slate-400 mt-1">
-              {t('admin.org_slug_hint', 'Pemetaan tenant routing')}: <code className="font-mono text-emerald-600 dark:text-emerald-400">/{slug || 'tenant'}/[vendors]</code>
+              {t('admin.org_slug_hint', 'Pemetaan tenant routing')}: <code className="font-mono text-emerald-600 dark:text-emerald-400">/{slug || 'tenant'}{t('admin.vendors_2', '/[vendors]')}</code>
             </p>
           </div>
 
@@ -1181,7 +1181,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 outline-none"
               >
                 {SUPPORTED_CURRENCIES.map((c) => (
-                  <option key={c.code} value={c.code}>{c.code} — {c.label}</option>
+                  <option key={c.code} value={c.code}>{c.code} — {currencyLabel(c.code, language)}</option>
                 ))}
               </select>
             </div>
@@ -1193,7 +1193,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
                 type="text"
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
-                placeholder="Legal & Commercial Contract Management"
+                placeholder={t('admin.legal_commercial_contract_management', 'Legal & Commercial Contract Management')}
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 outline-none"
               />
             </div>
@@ -1201,12 +1201,12 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
 
           <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs space-y-1.5">
             <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
-              <span>ID Organisasi:</span>
+              <span>{t('admin.id_organisasi', 'ID Organisasi:')}</span>
               <code className="font-mono text-slate-700 dark:text-slate-300">{org.id}</code>
             </div>
             <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
-              <span>Folder Isolasi:</span>
-              <span className="font-mono text-emerald-600 dark:text-emerald-400">/{name || org.name}/[Vendors]</span>
+              <span>{t('admin.folder_isolasi', 'Folder Isolasi:')}</span>
+              <span className="font-mono text-emerald-600 dark:text-emerald-400">/{name || org.name}{t('admin.vendors_3', '/[Vendors]')}</span>
             </div>
           </div>
 
@@ -1303,7 +1303,7 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
               </p>
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+          <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1321,7 +1321,7 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
               <div>
                 <strong>{t('admin.cant_delete_default_org', 'Organisasi default sistem tidak dapat dihapus.')}</strong>
                 <p className="mt-1 text-[11px] opacity-90">
-                  Organisasi utama ini bertindak sebagai anchor default untuk sistem dan tenant fallback.
+                  {t('admin.organisasi_utama_ini_bertindak_sebagai_anchor', 'Organisasi utama ini bertindak sebagai anchor default untuk sistem dan tenant fallback.')}
                 </p>
               </div>
             </div>
@@ -1331,7 +1331,7 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
               <div>
                 <strong>{t('admin.cant_delete_active_org', 'Beralih ke organisasi lain terlebih dahulu sebelum menghapus.')}</strong>
                 <p className="mt-1 text-[11px] opacity-90">
-                  Organisasi ini sedang digunakan pada sesi aktif saat ini. Beralihlah ke organisasi lain untuk dapat menghapusnya.
+                  {t('admin.organisasi_ini_sedang_digunakan_pada_sesi', 'Organisasi ini sedang digunakan pada sesi aktif saat ini. Beralihlah ke organisasi lain untuk dapat menghapusnya.')}
                 </p>
               </div>
             </div>
@@ -1349,15 +1349,15 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
 
               <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs space-y-1.5">
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
-                  <span>Nama Organisasi:</span>
+                  <span>{t('admin.nama_organisasi', 'Nama Organisasi:')}</span>
                   <span className="font-semibold text-slate-900 dark:text-slate-100">{org.name}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
-                  <span>Slug Tenant:</span>
+                  <span>{t('admin.slug_tenant', 'Slug Tenant:')}</span>
                   <code className="font-mono text-emerald-600 dark:text-emerald-400">@{org.slug}</code>
                 </div>
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
-                  <span>ID:</span>
+                  <span>{t('admin.id', 'ID:')}</span>
                   <code className="font-mono text-slate-600 dark:text-slate-400">{org.id}</code>
                 </div>
               </div>
@@ -1421,7 +1421,7 @@ export const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
       setName('');
       onClose();
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Gagal menyimpan tim / departemen');
+      setErrorMsg(err?.message || t('admin.gagal_menyimpan_tim_departemen', 'Gagal menyimpan tim / departemen'));
     } finally {
       setIsSubmitting(false);
     }
@@ -1465,7 +1465,7 @@ export const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
               required
               value={name}
               onChange={(e) => { setName(e.target.value); setErrorMsg(null); }}
-              placeholder="Contoh: Procurement & Vendor Sourcing"
+              placeholder={t('admin.contoh_procurement_vendor_sourcing', 'Contoh: Procurement & Vendor Sourcing')}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-amber-500"
             />
           </div>
@@ -1531,7 +1531,7 @@ export const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
       await onSubmit(team.id, name.trim());
       onClose();
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Gagal menyimpan perubahan departemen');
+      setErrorMsg(err?.message || t('admin.gagal_menyimpan_perubahan_departemen', 'Gagal menyimpan perubahan departemen'));
     } finally {
       setIsSubmitting(false);
     }
@@ -1589,7 +1589,7 @@ export const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
               <span className="font-semibold text-slate-700 dark:text-slate-300">{team.members.length}</span>
             </div>
             <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
-              <span>ID Tim:</span>
+              <span>{t('admin.id_tim', 'ID Tim:')}</span>
               <code className="font-mono text-slate-600 dark:text-slate-400">{team.id}</code>
             </div>
           </div>
@@ -1726,7 +1726,7 @@ export const DeleteDepartmentModal: React.FC<DeleteDepartmentModalProps> = ({
               </div>
             )}
             <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
-              <span>ID:</span>
+              <span>{t('admin.id', 'ID:')}</span>
               <code className="font-mono text-slate-600 dark:text-slate-400">{team.id}</code>
             </div>
           </div>
@@ -1804,7 +1804,7 @@ export const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
               {t('admin.modal_add_team_member', 'Tambah Anggota ke Tim')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1909,7 +1909,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               {t('admin.modal_create_inv', 'Undang Anggota Organisasi')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1918,10 +1918,10 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
           <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
             <p className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
               <Mail className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Pengiriman via Email (SMTP Relay)</span>
+              <span>{t('admin.pengiriman_via_email_smtp_relay', 'Pengiriman via Email (SMTP Relay)')}</span>
             </p>
             <p className="text-[10.5px] leading-relaxed text-slate-500 dark:text-slate-400">
-              Undangan akan dikirimkan langsung ke inbox email calon anggota menggunakan server SMTP yang terkonfigurasi.
+              {t('admin.undangan_akan_dikirimkan_langsung_ke_inbox', 'Undangan akan dikirimkan langsung ke inbox email calon anggota menggunakan server SMTP yang terkonfigurasi.')}
             </p>
           </div>
 
@@ -1934,7 +1934,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="colleague@example.com"
+              placeholder={t('admin.colleague_example_com', 'colleague@example.com')}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
             />
           </div>
@@ -1948,11 +1948,11 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               onChange={(e) => setRole(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium"
             >
-              <option value="superuser">Superuser (System Level)</option>
-              <option value="admin">Admin (Global Level)</option>
-              <option value="manager">Manager (Group Approval)</option>
-              <option value="editor">Editor (Group Draft & Upload)</option>
-              <option value="viewer">Viewer (Read-Only Final)</option>
+              <option value="superuser">{t('admin.superuser_system_level', 'Superuser (System Level)')}</option>
+              <option value="admin">{t('admin.admin_global_level', 'Admin (Global Level)')}</option>
+              <option value="manager">{t('admin.manager_group_approval', 'Manager (Group Approval)')}</option>
+              <option value="editor">{t('admin.editor_group_draft_upload', 'Editor (Group Draft & Upload)')}</option>
+              <option value="viewer">{t('admin.viewer_read_only_final', 'Viewer (Read-Only Final)')}</option>
             </select>
           </div>
 
@@ -2072,7 +2072,7 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
                 : t('admin.modal_gen_key', 'Generate API Key Baru')}
             </h3>
           </div>
-          <button type="button" onClick={handleFinish} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={handleFinish} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -2129,7 +2129,7 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Contoh: ERP SAP Integration / Bot Webhook"
+                placeholder={t('admin.contoh_erp_sap_integration_bot_webhook', 'Contoh: ERP SAP Integration / Bot Webhook')}
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -2235,7 +2235,7 @@ export default [
               {t('admin.instances_config_title', 'Better Auth Console Instances Configuration')}
             </h3>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1 text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>

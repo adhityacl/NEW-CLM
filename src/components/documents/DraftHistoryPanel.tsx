@@ -167,7 +167,7 @@ export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
                       <input
                         value={editing.labels}
                         onChange={(e) => setEditing({ ...editing, labels: e.target.value })}
-                        placeholder="Legal Review, CFO Approved"
+                        placeholder={t('documents.legal_review_cfo_approved', 'Legal Review, CFO Approved')}
                         className={INPUT_CLASS}
                       />
                     </label>

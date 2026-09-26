@@ -89,7 +89,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                       {org.logo && org.logo !== '/favicon.png' ? (
                         <img
                           src={org.logo}
-                          alt={org.name || 'Organization'}
+                          alt={org.name || t('documents.info.organization', 'Organization')}
                           className="w-full h-full object-contain p-1 bg-white dark:bg-slate-900"
                           onError={(e) => {
                             (e.currentTarget as HTMLElement).style.display = 'none';
@@ -101,7 +101,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                     </div>
                     <div className="min-w-0 flex-1">
                       <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate" title={org.name || ''}>
-                        {org.name || 'Organisasi'}
+                        {org.name || t('documents.info.organization', 'Organisasi')}
                       </h4>
                       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-mono text-slate-500 dark:text-slate-400 mt-1">
                         <span className="truncate max-w-[120px]" title={`@${org.slug}`}>@{org.slug}</span>
@@ -110,7 +110,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                           className="text-[10px] bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-200/80 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 font-mono inline-block max-w-full truncate"
                           title={org.id}
                         >
-                          ID: {org.id}
+                          {t('admin.id_2', 'ID: {id}', { id: org.id })}
                         </span>
                       </div>
                     </div>
@@ -126,7 +126,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
 
                 {/* Tagline / metadata */}
                 <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 min-h-[32px] mb-4">
-                  {org.metadata?.tagline || (language === 'ID' ? 'Organisasi terdaftar di ekosistem enterprise Better Auth.' : 'Registered enterprise organization in Better Auth ecosystem.')}
+                  {org.metadata?.tagline || (t('admin.registered_enterprise_organization_in_better_aut', 'Registered enterprise organization in Better Auth ecosystem.'))}
                 </p>
 
                 {/* Metrics pill */}
@@ -136,7 +136,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                     <div>
                       <div className="text-[10px] text-slate-400 uppercase">{t('admin.org_departments', 'Departemen')}</div>
                       <div className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
-                        {org.teamCount ?? 0} {language === 'ID' ? 'Tim' : 'Teams'}
+                        {org.teamCount ?? 0} {t('admin.teams', 'Teams')}
                       </div>
                     </div>
                   </div>
@@ -154,7 +154,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                 {/* Storage structure info */}
                 <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-4">
                   <FolderTree className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{t('admin.org_folder_iso', 'Isolasi Folder')}: <strong>/{org.name}/[Vendors]</strong></span>
+                  <span>{t('admin.org_folder_iso', 'Isolasi Folder')}: <strong>{t('admin.vendors_4', '/{name}/[Vendors]', { name: org.name })}</strong></span>
                 </div>
               </div>
 

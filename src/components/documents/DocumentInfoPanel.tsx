@@ -358,7 +358,7 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
                   required
                   value={newField.options}
                   onChange={(e) => setNewField({ ...newField, options: e.target.value })}
-                  placeholder="IP, Employment, Real Estate, Corporate"
+                  placeholder={t('documents.ip_employment_real_estate_corporate', 'IP, Employment, Real Estate, Corporate')}
                   className={INPUT_CLASS}
                 />
               </label>

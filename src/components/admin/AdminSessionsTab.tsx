@@ -65,7 +65,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <Radio className="w-4 h-4 text-emerald-500 animate-pulse" />
           <span>
-            <strong className="text-slate-900 dark:text-slate-100">{sessions.length}</strong> {language === 'ID' ? 'Sesi Aktif di Database' : 'Active Sessions in Database'}
+            <strong className="text-slate-900 dark:text-slate-100">{sessions.length}</strong> {t('admin.active_sessions_in_database', 'Active Sessions in Database')}
           </span>
         </div>
       </div>
@@ -104,7 +104,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
                       {/* User */}
                       <td className="py-3 px-4">
                         <div className="font-semibold text-slate-900 dark:text-slate-100">
-                          {s.userName || (language === 'ID' ? 'Tanpa Nama' : 'Unnamed')}
+                          {s.userName || (t('admin.unnamed', 'Unnamed'))}
                         </div>
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                           {s.userEmail}
@@ -121,7 +121,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
                             type="button"
                             onClick={() => handleCopy(s.token || s.id, s.id)}
                             className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                            title={language === 'ID' ? 'Salin Token' : 'Copy Token'}
+                            title={t('admin.copy_token', 'Copy Token')}
                           >
                             {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                           </button>
@@ -134,7 +134,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
                           {s.ipAddress || '127.0.0.1'}
                         </div>
                         <div className="text-[10px] text-slate-400 truncate max-w-[200px]" title={s.userAgent}>
-                          {s.userAgent || 'Standard Browser'}
+                          {s.userAgent || t('admin.standard_browser', 'Standard Browser')}
                         </div>
                       </td>
 
@@ -152,7 +152,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
                       <td className="py-3 px-4">
                         {isExpired ? (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 font-medium">
-                            Expired
+                            {t('status.expired', 'Expired')}
                           </span>
                         ) : (
                           <span className="text-slate-600 dark:text-slate-400 text-[11px]">
@@ -176,7 +176,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
                               title={t('admin.revoke_all_user_sessions', 'Cabut Semua Sesi User')}
                             >
                               <RotateCcw className="w-3 h-3 inline mr-1" />
-                              {language === 'ID' ? 'Semua Sesi User' : 'All User Sessions'}
+                              {t('admin.all_user_sessions', 'All User Sessions')}
                             </button>
                           )}
                           <button

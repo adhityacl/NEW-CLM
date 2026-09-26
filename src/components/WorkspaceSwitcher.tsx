@@ -137,7 +137,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
         title={
           canSwitch
             ? currentWorkspace.name
-            : `${currentWorkspace.name} (Akses Switch Workspace Terkunci)`
+            : t('workspace.akses_switch_workspace_terkunci', '{name} (Akses Switch Workspace Terkunci)', { name: currentWorkspace.name })
         }
       >
         <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
@@ -169,7 +169,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
                 {currentWorkspace.name}
               </span>
               <span className="block text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                Workspace
+                {t('workspace.workspace', 'Workspace')}
               </span>
             </div>
           )}
@@ -188,7 +188,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
       {isOpen && canSwitch && (
         <div
           role="listbox"
-          aria-label="Pilih Ruang Kerja"
+          aria-label={t('workspace.pilih_ruang_kerja', 'Pilih Ruang Kerja')}
           className={`absolute z-50 mt-1.5 ${
             isCollapsed ? 'left-14 top-0' : 'left-0 right-0'
           } min-w-[240px] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 animate-in fade-in zoom-in-95 duration-150`}

@@ -240,7 +240,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
           type="button"
           onClick={() => handleSort(field)}
           className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
-          title={`Urutkan berdasarkan ${label}`}
+          title={t('contracts.urutkan_berdasarkan', 'Urutkan berdasarkan {label}', { label })}
         >
           <span>{label}</span>
           {isSorted ? (
@@ -340,10 +340,10 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
               onClick={handleExportCSV}
               disabled={filteredContracts.length === 0}
               className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
-              title="Ekspor CSV"
+              title={t('contracts.export_csv', 'Ekspor CSV')}
             >
               <Download className="w-4 h-4" />
-              <span>Ekspor CSV</span>
+              <span>{t('contracts.export_csv', 'Ekspor CSV')}</span>
             </button>
           )}
 
@@ -353,7 +353,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
               className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
             >
               <Plus className="w-4 h-4 text-white" />
-              <span>Tambah</span>
+              <span>{t('io.add_btn', 'Tambah')}</span>
             </button>
           )}
         </div>
@@ -384,8 +384,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
             className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('contracts.all_types')}</option>
-            <option value="Master Agreement">Master Agreement</option>
-            <option value="Agreement Addendum">Agreement Addendum</option>
+            <option value="Master Agreement">{t('contracts.master_agreement', 'Master Agreement')}</option>
+            <option value="Agreement Addendum">{t('contracts.agreement_addendum', 'Agreement Addendum')}</option>
           </select>
           {/* Category Filter */}
           <select
@@ -418,17 +418,17 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
             <button
               onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
               className="h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
-              title="Pengaturan Tampilan Kolom"
+              title={t('io.view_settings', 'Pengaturan Tampilan Kolom')}
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span>View</span>
+              <span>{t('io.view', 'View')}</span>
             </button>
             {isViewMenuOpen && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)}></div>
                 <div className="absolute right-0 top-11 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 py-2 animate-in fade-in zoom-in-95">
                 <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
-                  Toggle Kolom
+                  {t('io.toggle_columns', 'Toggle Kolom')}
                 </div>
                 {Object.keys(visibleColumns).map((col) => {
                   let label = col;
@@ -474,7 +474,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                       type="checkbox"
                       onChange={handleSelectAll}
                       checked={selectedRows.length > 0 && selectedRows.length === currentContracts.length}
-                      aria-label={t('table.select_all', 'Pilih semua kontrak')}
+                      aria-label={t('contracts.select_all', 'Pilih semua kontrak')}
                       className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
                     />
                   </div>
@@ -527,7 +527,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                             type="checkbox"
                             checked={selectedRows.includes(ctr.contract_id)}
                             onChange={() => handleSelectRow(ctr.contract_id)}
-                            aria-label={`Pilih kontrak ${ctr.nomor_kontrak}`}
+                            aria-label={t('contracts.pilih_kontrak', 'Pilih kontrak {nomor_kontrak}', { nomor_kontrak: ctr.nomor_kontrak })}
                             className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
                           />
                         </div>
@@ -538,11 +538,11 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                         <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left">
                           {isAddendum ? (
                             <span className={`text-xs font-normal px-3 py-0.5 rounded-full border shadow-2xs whitespace-nowrap ${getStatusBadgeClass('Addendum')}`}>
-                              Agreement Addendum
+                              {t('contracts.agreement_addendum', 'Agreement Addendum')}
                             </span>
                           ) : (
                             <span className={`text-xs font-normal px-3 py-0.5 rounded-full border shadow-2xs whitespace-nowrap ${getStatusBadgeClass('Active')}`}>
-                              Master Agreement
+                              {t('contracts.master_agreement', 'Master Agreement')}
                             </span>
                           )}
                         </td>
@@ -626,7 +626,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-xs text-[#06C755] hover:text-[#048C3B] font-normal hover:underline"
                             >
-                              <FileDown className="w-3.5 h-3.5" /> PDF
+                              <FileDown className="w-3.5 h-3.5" /> {t('contracts.pdf', 'PDF')}
                             </a>
                           ) : (
                             <span className="text-slate-300">-</span>
@@ -640,7 +640,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                           <ActionMenu
                             items={[
                               {
-                                label: 'Detail',
+                                label: t('io.action_detail', 'Detail'),
                                 icon: <ExternalLink className="w-3.5 h-3.5" />,
                                 onClick: () => setDetailContract(ctr),
                               },
@@ -652,7 +652,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                               ...(canEditContract(ctr, partners, user)
                                 ? [
                                     {
-                                      label: 'Edit',
+                                      label: t('hierarchy.edit_btn', 'Edit'),
                                       icon: <Edit2 className="w-3.5 h-3.5" />,
                                       onClick: () => onEditContract(ctr),
                                     },
@@ -661,7 +661,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                               ...(canDeletePartner(user)
                                 ? [
                                     {
-                                      label: 'Hapus',
+                                      label: t('io.action_delete', 'Hapus'),
                                       icon: <Trash2 className="w-3.5 h-3.5" />,
                                       onClick: () => onDeleteContract(ctr.contract_id),
                                       variant: 'danger' as const,
@@ -719,19 +719,19 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
             <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs flex-1">
               <div className="grid grid-cols-2 gap-3 p-3.5 bg-[#F7F8FA] dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Jenis Dokumen:</span>
+                  <span className="text-slate-500 dark:text-slate-400 block">{t('contracts.jenis_dokumen', 'Jenis Dokumen:')}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">
-                    {detailContract.jenis_dokumen || 'Master Agreement'}
+                    {detailContract.jenis_dokumen || t('contracts.master_agreement', 'Master Agreement')}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Partner:</span>
+                  <span className="text-slate-500 dark:text-slate-400 block">{t('contracts.partner', 'Partner:')}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">
                     {detailContract.partner_nama || partners.find((p) => p.partner_id === detailContract.partner_id)?.nama_partner || '-'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Nilai Komersial:</span>
+                  <span className="text-slate-500 dark:text-slate-400 block">{t('hierarchy.commercial_value', 'Nilai Komersial:')}</span>
                   <span className="font-bold text-[#048C3B] dark:text-emerald-400">
                     {formatMoney(detailContract.nilai_kontrak, detailContract.currency)}
                     {(detailContract.currency || 'USD') !== 'USD' && (
@@ -742,20 +742,20 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Kewajiban Notice Period:</span>
+                  <span className="text-slate-500 dark:text-slate-400 block">{t('contracts.kewajiban_notice_period', 'Kewajiban Notice Period:')}</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {detailContract.notice_period_hari || 0} Hari ({detailContract.notice_type_required || '-'})
+                    {detailContract.notice_period_hari || 0} {t('contracts.hari', 'Hari (')}{detailContract.notice_type_required || '-'})
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Status Perpanjangan Auto:</span>
+                  <span className="text-slate-500 dark:text-slate-400 block">{t('contracts.status_perpanjangan_auto', 'Status Perpanjangan Auto:')}</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {detailContract.auto_renewal ? 'Ya (Auto Renewal)' : 'Tidak (Manual Notice)'}
+                    {detailContract.auto_renewal ? t('contracts.ya_auto_renewal', 'Ya (Auto Renewal)') : t('contracts.tidak_manual_notice', 'Tidak (Manual Notice)')}
                   </span>
                 </div>
                 {detailContract.jenis_dokumen === 'Agreement Addendum' && detailContract.parent_contract_nomor && (
                   <div>
-                    <span className="text-slate-500 dark:text-slate-400 block">Master Agreement Induk:</span>
+                    <span className="text-slate-500 dark:text-slate-400 block">{t('contracts.master_agreement_induk', 'Master Agreement Induk:')}</span>
                     <span className="font-bold text-indigo-700 dark:text-indigo-400 font-mono">
                       {detailContract.parent_contract_nomor}
                     </span>
@@ -765,7 +765,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                   <div className="col-span-1 md:col-span-2 bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
                     <span className="text-slate-600 dark:text-slate-300 font-bold text-xs block mb-1.5 flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5 text-[#06C755]" />
-                      Rangkuman / Internal Notes Kontrak:
+                      {t('contracts.rangkuman_internal_notes_kontrak', 'Rangkuman / Internal Notes Kontrak:')}
                     </span>
                     <p className="text-slate-800 dark:text-slate-200 text-xs leading-relaxed whitespace-pre-line font-normal">
                       {detailContract.internal_notes}
@@ -785,7 +785,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                     (c) => c.jenis_dokumen === 'Agreement Addendum' && c.parent_contract_id === detailContract.contract_id
                   ).length === 0 ? (
                     <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 text-center text-xs">
-                      Belum ada Agreement Addendum turunan untuk kontrak induk ini.
+                      {t('contracts.belum_ada_agreement_addendum_turunan_untuk', 'Belum ada Agreement Addendum turunan untuk kontrak induk ini.')}
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -809,7 +809,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                               </div>
                               <span className="text-slate-700 dark:text-slate-300 text-[11px] block mt-0.5 truncate">{add.judul_kontrak}</span>
                               <span className="text-slate-500 dark:text-slate-400 text-[10px] block mt-0.5">
-                                {language === 'EN' ? 'Validity:' : 'Berlaku:'}{' '}
+                                {t('contracts.validity', 'Validity:')}{' '}
                                 {add.tanggal_mulai ? new Date(add.tanggal_mulai).toLocaleDateString(getActiveFormattingLocale()) : '-'}{' '}
                                 -{' '}
                                 {add.tanggal_berakhir ? new Date(add.tanggal_berakhir).toLocaleDateString(getActiveFormattingLocale()) : '-'}
@@ -823,7 +823,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700/60 hover:bg-purple-100 dark:hover:bg-purple-800/60 font-semibold text-xs transition-colors shrink-0 shadow-2xs"
                               >
                                 <FileDown className="w-3.5 h-3.5" />
-                                <span>PDF</span>
+                                <span>{t('contracts.pdf', 'PDF')}</span>
                               </a>
                             )}
                           </div>
@@ -837,14 +837,14 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
               <div>
                 <h4 className="font-bold text-indigo-700 dark:text-indigo-400 mb-2.5 text-xs uppercase tracking-wider flex items-center gap-1.5">
                   <GitCommit className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>Histori Perubahan (Amendment Track-Change)</span>
+                  <span>{t('contracts.histori_perubahan_amendment_track_change', 'Histori Perubahan (Amendment Track-Change)')}</span>
                 </h4>
 
                 {contracts.filter(
                   (a) => a.jenis_dokumen === 'Agreement Addendum' && a.parent_contract_id === detailContract.contract_id
                 ).length === 0 ? (
                   <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 text-center">
-                    Belum ada addendum/amendment tercatat untuk kontrak ini.
+                    {t('contracts.belum_ada_addendum_amendment_tercatat_untuk', 'Belum ada addendum/amendment tercatat untuk kontrak ini.')}
                   </div>
                 ) : (
                   <div className="space-y-3 relative border-l-2 border-indigo-200 dark:border-indigo-800/60 ml-3 pl-4 pt-1">
@@ -891,12 +891,12 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
               <div>
                 <h4 className="font-bold text-emerald-700 dark:text-emerald-400 mb-2.5 text-xs uppercase tracking-wider flex items-center gap-1.5">
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>Insertion Orders (IO) Turunan</span>
+                  <span>{t('contracts.insertion_orders_io_turunan', 'Insertion Orders (IO) Turunan')}</span>
                 </h4>
 
                 {ios.filter((i) => i.contract_id === detailContract.contract_id).length === 0 ? (
                   <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 text-center text-xs">
-                    Tidak ada IO turunan di bawah kontrak ini.
+                    {t('contracts.tidak_ada_io_turunan_di_bawah', 'Tidak ada IO turunan di bawah kontrak ini.')}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -910,7 +910,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                           </div>
                           <div className="text-right shrink-0">
                             <div className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">{formatMoney(Number(io.nilai_io) || 0, io.currency || io.mata_uang)}</div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{io.pricing_model || 'Flat Fee'} • {io.charging_type || '-'}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{io.pricing_model || t('contracts.flat_fee', 'Flat Fee')} • {io.charging_type || '-'}</div>
                           </div>
                         </div>
                       ))}
@@ -924,7 +924,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                 onClick={() => setDetailContract(null)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-medium text-xs rounded-xl cursor-pointer transition-colors"
               >
-                Tutup Detail
+                {t('io.detail_close', 'Tutup Detail')}
               </button>
             </div>
           </div>

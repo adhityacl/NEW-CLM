@@ -74,9 +74,7 @@ export const ConfirmDialogProvider: React.FC<{ children: React.ReactNode }> = ({
                 }`}
               />
               <Icon
-                className={`relative h-6 w-6 ${
-                  isDanger ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'
-                }`}
+                className={`relative h-6 w-6 ${isDanger ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}
               />
             </div>
             <AlertDialogTitle className="text-center">

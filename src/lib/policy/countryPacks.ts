@@ -1,4 +1,12 @@
-import type { CountryPack, DueDiligenceRequirement } from './types';
+import type { CountryPack, DueDiligenceRequirement, IndustryKey } from './types';
+
+const FINANCE: IndustryKey[] = ['p2p_lending', 'payment_gateway', 'banking_investment'];
+const HEALTH: IndustryKey[] = ['hospitals_medical', 'healthtech_telemedicine'];
+const TECH: IndustryKey[] = ['b2b_saas', 'it_development'];
+
+/** The same regulator list for every industry in a sector group. */
+const bySector = (groups: Array<[IndustryKey[], string[]]>): Partial<Record<IndustryKey, string[]>> =>
+  Object.fromEntries(groups.flatMap(([keys, regulators]) => keys.map((key) => [key, regulators])));
 
 /**
  * Country policy packs. These are reference defaults to get a tenant started,
@@ -98,8 +106,8 @@ export const COUNTRY_PACKS: CountryPack[] = [
       doc('certificate_of_incorporation', 'Certificate of incorporation / registration', 'Sertifikat pendirian / registrasi'),
       doc('tax_registration', 'Tax registration certificate', 'Sertifikat registrasi pajak'),
     ],
-    governingLaw: { en: 'the laws agreed by the Parties', id: 'hukum yang disepakati Para Pihak' },
-    disputeVenue: { en: 'the courts agreed by the Parties', id: 'pengadilan yang disepakati Para Pihak' },
+    governingLaw: { en: 'Singapore Law', id: 'Hukum Singapura' },
+    disputeVenue: { en: 'SIAC Arbitration, Singapore', id: 'Arbitrase SIAC, Singapura' },
     dataProtectionLaw: 'applicable data protection laws',
     indirectTaxName: 'VAT',
   },
@@ -142,8 +150,8 @@ export const COUNTRY_PACKS: CountryPack[] = [
         expires: true,
       }),
     ],
-    governingLaw: { en: 'the laws of the Republic of Indonesia', id: 'hukum Negara Republik Indonesia' },
-    disputeVenue: { en: 'the District Court of South Jakarta', id: 'Pengadilan Negeri Jakarta Selatan' },
+    governingLaw: { en: 'Indonesian Law', id: 'Hukum Indonesia' },
+    disputeVenue: { en: 'BANI Arbitration, Jakarta', id: 'Arbitrase BANI, Jakarta' },
     dataProtectionLaw: 'Law No. 27 of 2022 on Personal Data Protection (UU PDP)',
     indirectTaxName: 'VAT (PPN)',
     stampDutyConvention: {
@@ -151,9 +159,29 @@ export const COUNTRY_PACKS: CountryPack[] = [
       id: 'dibuat dalam 2 (dua) rangkap asli bermeterai cukup',
     },
     regulators: {
-      financial_services: ['Otoritas Jasa Keuangan (OJK)', 'Bank Indonesia'],
-      healthcare: ['Kementerian Kesehatan', 'BPOM'],
-      technology: ['Kementerian Komunikasi dan Digital (Komdigi)'],
+      p2p_lending: ['Otoritas Jasa Keuangan (OJK)'],
+      payment_gateway: ['Bank Indonesia'],
+      banking_investment: ['Otoritas Jasa Keuangan (OJK)', 'Bank Indonesia', 'Lembaga Penjamin Simpanan (LPS)'],
+      hospitals_medical: ['Kementerian Kesehatan', 'BPOM'],
+      healthtech_telemedicine: ['Kementerian Kesehatan', 'Kementerian Komunikasi dan Digital (Komdigi)'],
+      b2b_saas: ['Kementerian Komunikasi dan Digital (Komdigi)'],
+      it_development: ['Kementerian Komunikasi dan Digital (Komdigi)'],
+      influencer_kol: ['Kementerian Komunikasi dan Digital (Komdigi)'],
+      digital_agency: ['Kementerian Komunikasi dan Digital (Komdigi)'],
+      media_creative: ['Kementerian Komunikasi dan Digital (Komdigi)', 'Komisi Penyiaran Indonesia (KPI)'],
+      marketplace: ['Kementerian Perdagangan'],
+      retail_franchise: ['Kementerian Perdagangan'],
+      consumer_omnichannel: ['Kementerian Perdagangan', 'BPOM'],
+      cold_chain_storage: ['BPOM'],
+      freight_logistics: ['Kementerian Perhubungan', 'Direktorat Jenderal Bea dan Cukai'],
+      delivery_fleet: ['Kementerian Perhubungan', 'Kementerian Komunikasi dan Digital (Komdigi)'],
+      public_transportation: ['Kementerian Perhubungan'],
+      renewable_energy: ['Kementerian Energi dan Sumber Daya Mineral (ESDM)'],
+      oil_gas: ['Kementerian Energi dan Sumber Daya Mineral (ESDM)', 'SKK Migas'],
+      headhunting_recruitment: ['Kementerian Ketenagakerjaan'],
+      freelance_workforce: ['Kementerian Ketenagakerjaan'],
+      philanthropy_donations: ['Kementerian Sosial', 'BAZNAS'],
+      ngo_humanitarian: ['Kementerian Sosial'],
     },
   },
   {
@@ -175,15 +203,15 @@ export const COUNTRY_PACKS: CountryPack[] = [
       doc('sg_bizfile', 'ACRA BizFile business profile', 'Profil bisnis ACRA BizFile', { expires: true }),
       doc('sg_gst_certificate', 'GST registration certificate', 'Sertifikat registrasi GST'),
     ],
-    governingLaw: { en: 'the laws of the Republic of Singapore', id: 'hukum Republik Singapura' },
-    disputeVenue: { en: 'the Singapore International Arbitration Centre (SIAC)', id: 'Singapore International Arbitration Centre (SIAC)' },
+    governingLaw: { en: 'Singapore Law', id: 'Hukum Singapura' },
+    disputeVenue: { en: 'SIAC Arbitration, Singapore', id: 'Arbitrase SIAC, Singapura' },
     dataProtectionLaw: 'Personal Data Protection Act 2012 (PDPA)',
     indirectTaxName: 'GST',
-    regulators: {
-      financial_services: ['Monetary Authority of Singapore (MAS)'],
-      healthcare: ['Ministry of Health (MOH)', 'Health Sciences Authority (HSA)'],
-      technology: ['Infocomm Media Development Authority (IMDA)', 'Personal Data Protection Commission (PDPC)'],
-    },
+    regulators: bySector([
+      [FINANCE, ['Monetary Authority of Singapore (MAS)']],
+      [HEALTH, ['Ministry of Health (MOH)', 'Health Sciences Authority (HSA)']],
+      [TECH, ['Infocomm Media Development Authority (IMDA)', 'Personal Data Protection Commission (PDPC)']],
+    ]),
   },
   {
     code: 'MY',
@@ -205,14 +233,14 @@ export const COUNTRY_PACKS: CountryPack[] = [
       doc('my_ssm_profile', 'SSM company profile / certificate of incorporation', 'Profil perusahaan SSM', { expires: true }),
       doc('my_sst_certificate', 'SST registration certificate', 'Sertifikat registrasi SST'),
     ],
-    governingLaw: { en: 'the laws of Malaysia', id: 'hukum Malaysia' },
-    disputeVenue: { en: 'the Asian International Arbitration Centre (AIAC), Kuala Lumpur', id: 'Asian International Arbitration Centre (AIAC), Kuala Lumpur' },
+    governingLaw: { en: 'Malaysian Law', id: 'Hukum Malaysia' },
+    disputeVenue: { en: 'AIAC Arbitration, Kuala Lumpur', id: 'Arbitrase AIAC, Kuala Lumpur' },
     dataProtectionLaw: 'Personal Data Protection Act 2010 (PDPA)',
     indirectTaxName: 'SST',
-    regulators: {
-      financial_services: ['Bank Negara Malaysia (BNM)', 'Securities Commission Malaysia'],
-      healthcare: ['Ministry of Health Malaysia'],
-    },
+    regulators: bySector([
+      [FINANCE, ['Bank Negara Malaysia (BNM)', 'Securities Commission Malaysia']],
+      [HEALTH, ['Ministry of Health Malaysia']],
+    ]),
   },
   {
     code: 'TH',
@@ -232,13 +260,11 @@ export const COUNTRY_PACKS: CountryPack[] = [
       doc('th_dbd_affidavit', 'DBD company affidavit (certificate of registration)', 'Affidavit perusahaan DBD', { expires: true }),
       doc('th_vat_certificate', 'VAT registration certificate (Por Por 20)', 'Sertifikat registrasi VAT (Por Por 20)'),
     ],
-    governingLaw: { en: 'the laws of the Kingdom of Thailand', id: 'hukum Kerajaan Thailand' },
-    disputeVenue: { en: 'the Thai Arbitration Institute (TAI), Bangkok', id: 'Thai Arbitration Institute (TAI), Bangkok' },
+    governingLaw: { en: 'Thai Law', id: 'Hukum Thailand' },
+    disputeVenue: { en: 'THAC Arbitration, Bangkok', id: 'Arbitrase THAC, Bangkok' },
     dataProtectionLaw: 'Personal Data Protection Act B.E. 2562 (2019)',
     indirectTaxName: 'VAT',
-    regulators: {
-      financial_services: ['Bank of Thailand', 'Securities and Exchange Commission Thailand'],
-    },
+    regulators: bySector([[FINANCE, ['Bank of Thailand', 'Securities and Exchange Commission Thailand']]]),
   },
   {
     code: 'VN',
@@ -260,13 +286,11 @@ export const COUNTRY_PACKS: CountryPack[] = [
         foreignCounterpartyOnly: true,
       }),
     ],
-    governingLaw: { en: 'the laws of the Socialist Republic of Vietnam', id: 'hukum Republik Sosialis Vietnam' },
-    disputeVenue: { en: 'the Vietnam International Arbitration Centre (VIAC)', id: 'Vietnam International Arbitration Centre (VIAC)' },
+    governingLaw: { en: 'Vietnamese Law', id: 'Hukum Vietnam' },
+    disputeVenue: { en: 'VIAC Arbitration, Vietnam', id: 'Arbitrase VIAC, Vietnam' },
     dataProtectionLaw: 'Vietnamese personal data protection law and its implementing decrees',
     indirectTaxName: 'VAT',
-    regulators: {
-      financial_services: ['State Bank of Vietnam'],
-    },
+    regulators: bySector([[FINANCE, ['State Bank of Vietnam']]]),
   },
   {
     code: 'PH',
@@ -288,13 +312,11 @@ export const COUNTRY_PACKS: CountryPack[] = [
       doc('ph_bir_2303', 'BIR Certificate of Registration (Form 2303)', 'BIR Certificate of Registration (Form 2303)'),
       doc('ph_business_permit', "Mayor's / business permit", 'Izin usaha daerah', { expires: true }),
     ],
-    governingLaw: { en: 'the laws of the Republic of the Philippines', id: 'hukum Republik Filipina' },
-    disputeVenue: { en: 'the Philippine Dispute Resolution Center (PDRCI)', id: 'Philippine Dispute Resolution Center (PDRCI)' },
+    governingLaw: { en: 'Philippine Law', id: 'Hukum Filipina' },
+    disputeVenue: { en: 'PDRCI Arbitration, Manila', id: 'Arbitrase PDRCI, Manila' },
     dataProtectionLaw: 'Data Privacy Act of 2012 (Republic Act No. 10173)',
     indirectTaxName: 'VAT',
-    regulators: {
-      financial_services: ['Bangko Sentral ng Pilipinas (BSP)', 'Securities and Exchange Commission'],
-    },
+    regulators: bySector([[FINANCE, ['Bangko Sentral ng Pilipinas (BSP)', 'Securities and Exchange Commission']]]),
   },
   {
     code: 'IN',
@@ -318,14 +340,14 @@ export const COUNTRY_PACKS: CountryPack[] = [
       doc('in_gst_certificate', 'GST registration certificate', 'Sertifikat registrasi GST'),
       doc('in_msme', 'Udyam (MSME) registration, if applicable', 'Registrasi Udyam (MSME), bila ada'),
     ],
-    governingLaw: { en: 'the laws of India', id: 'hukum India' },
-    disputeVenue: { en: 'arbitration seated in Mumbai under the Arbitration and Conciliation Act, 1996', id: 'arbitrase berkedudukan di Mumbai berdasarkan Arbitration and Conciliation Act 1996' },
+    governingLaw: { en: 'Indian Law', id: 'Hukum India' },
+    disputeVenue: { en: 'MCIA Arbitration, Mumbai', id: 'Arbitrase MCIA, Mumbai' },
     dataProtectionLaw: 'Digital Personal Data Protection Act, 2023 (DPDP Act)',
     indirectTaxName: 'GST',
-    regulators: {
-      financial_services: ['Reserve Bank of India (RBI)', 'Securities and Exchange Board of India (SEBI)'],
-      healthcare: ['Central Drugs Standard Control Organisation (CDSCO)'],
-    },
+    regulators: bySector([
+      [FINANCE, ['Reserve Bank of India (RBI)', 'Securities and Exchange Board of India (SEBI)']],
+      [HEALTH, ['Central Drugs Standard Control Organisation (CDSCO)']],
+    ]),
   },
   {
     code: 'JP',
@@ -346,14 +368,14 @@ export const COUNTRY_PACKS: CountryPack[] = [
       doc('jp_registry_certificate', 'Certificate of registered matters (Tokibo Tohon)', 'Sertifikat registrasi perusahaan (Tokibo Tohon)', { expires: true }),
       doc('jp_invoice_registration', 'Qualified invoice issuer registration notice', 'Pemberitahuan registrasi penerbit faktur'),
     ],
-    governingLaw: { en: 'the laws of Japan', id: 'hukum Jepang' },
-    disputeVenue: { en: 'the Tokyo District Court', id: 'Pengadilan Distrik Tokyo' },
+    governingLaw: { en: 'Japanese Law', id: 'Hukum Jepang' },
+    disputeVenue: { en: 'JCAA Arbitration, Tokyo', id: 'Arbitrase JCAA, Tokyo' },
     dataProtectionLaw: 'Act on the Protection of Personal Information (APPI)',
     indirectTaxName: 'consumption tax',
-    regulators: {
-      financial_services: ['Financial Services Agency (FSA)'],
-      healthcare: ['Ministry of Health, Labour and Welfare (MHLW)', 'PMDA'],
-    },
+    regulators: bySector([
+      [FINANCE, ['Financial Services Agency (FSA)']],
+      [HEALTH, ['Ministry of Health, Labour and Welfare (MHLW)', 'PMDA']],
+    ]),
   },
   {
     code: 'KR',
@@ -374,13 +396,11 @@ export const COUNTRY_PACKS: CountryPack[] = [
       doc('kr_business_registration', 'Business registration certificate', 'Sertifikat registrasi usaha'),
       doc('kr_corporate_registry', 'Corporate registry certificate', 'Sertifikat registri korporasi', { expires: true }),
     ],
-    governingLaw: { en: 'the laws of the Republic of Korea', id: 'hukum Republik Korea' },
-    disputeVenue: { en: 'the Korean Commercial Arbitration Board (KCAB)', id: 'Korean Commercial Arbitration Board (KCAB)' },
+    governingLaw: { en: 'Korean Law', id: 'Hukum Korea' },
+    disputeVenue: { en: 'KCAB International, Seoul', id: 'KCAB International, Seoul' },
     dataProtectionLaw: 'Personal Information Protection Act (PIPA)',
     indirectTaxName: 'VAT',
-    regulators: {
-      financial_services: ['Financial Services Commission (FSC)', 'Financial Supervisory Service (FSS)'],
-    },
+    regulators: bySector([[FINANCE, ['Financial Services Commission (FSC)', 'Financial Supervisory Service (FSS)']]]),
   },
   {
     code: 'CN',
@@ -399,13 +419,11 @@ export const COUNTRY_PACKS: CountryPack[] = [
     dueDiligence: [
       doc('cn_business_licence', 'Business licence (Yingye Zhizhao)', 'Izin usaha (Yingye Zhizhao)'),
     ],
-    governingLaw: { en: "the laws of the People's Republic of China", id: 'hukum Republik Rakyat Tiongkok' },
-    disputeVenue: { en: 'the China International Economic and Trade Arbitration Commission (CIETAC)', id: 'CIETAC' },
+    governingLaw: { en: 'PRC Law', id: 'Hukum RRT' },
+    disputeVenue: { en: 'CIETAC Arbitration, China', id: 'Arbitrase CIETAC, Tiongkok' },
     dataProtectionLaw: 'Personal Information Protection Law (PIPL)',
     indirectTaxName: 'VAT',
-    regulators: {
-      financial_services: ["People's Bank of China", 'National Financial Regulatory Administration'],
-    },
+    regulators: bySector([[FINANCE, ["People's Bank of China", 'National Financial Regulatory Administration']]]),
   },
   {
     code: 'HK',
@@ -426,13 +444,11 @@ export const COUNTRY_PACKS: CountryPack[] = [
       doc('hk_br_certificate', 'Business Registration Certificate', 'Business Registration Certificate', { expires: true }),
       doc('hk_incorporation', 'Certificate of incorporation', 'Sertifikat inkorporasi'),
     ],
-    governingLaw: { en: 'the laws of the Hong Kong Special Administrative Region', id: 'hukum Daerah Administratif Khusus Hong Kong' },
-    disputeVenue: { en: 'the Hong Kong International Arbitration Centre (HKIAC)', id: 'Hong Kong International Arbitration Centre (HKIAC)' },
+    governingLaw: { en: 'Hong Kong Law', id: 'Hukum Hong Kong' },
+    disputeVenue: { en: 'HKIAC Arbitration, Hong Kong', id: 'Arbitrase HKIAC, Hong Kong' },
     dataProtectionLaw: 'Personal Data (Privacy) Ordinance (Cap. 486)',
     indirectTaxName: 'sales tax',
-    regulators: {
-      financial_services: ['Hong Kong Monetary Authority (HKMA)', 'Securities and Futures Commission (SFC)'],
-    },
+    regulators: bySector([[FINANCE, ['Hong Kong Monetary Authority (HKMA)', 'Securities and Futures Commission (SFC)']]]),
   },
   {
     code: 'AE',
@@ -453,12 +469,10 @@ export const COUNTRY_PACKS: CountryPack[] = [
       doc('ae_trade_licence', 'Trade licence', 'Trade licence', { expires: true }),
       doc('ae_vat_certificate', 'VAT registration certificate', 'Sertifikat registrasi VAT'),
     ],
-    governingLaw: { en: 'the laws of the United Arab Emirates', id: 'hukum Uni Emirat Arab' },
-    disputeVenue: { en: 'the Dubai International Arbitration Centre', id: 'Dubai International Arbitration Centre' },
+    governingLaw: { en: 'UAE Law', id: 'Hukum Uni Emirat Arab' },
+    disputeVenue: { en: 'DIAC Arbitration, Dubai', id: 'Arbitrase DIAC, Dubai' },
     dataProtectionLaw: 'Federal Decree-Law No. 45 of 2021 on the Protection of Personal Data',
     indirectTaxName: 'VAT',
-    regulators: {
-      financial_services: ['Central Bank of the UAE', 'Dubai Financial Services Authority (DFSA)'],
-    },
+    regulators: bySector([[FINANCE, ['Central Bank of the UAE', 'Dubai Financial Services Authority (DFSA)']]]),
   },
 ];
