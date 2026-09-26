@@ -221,7 +221,7 @@ WantedBy=multi-user.target
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now silegal
-journalctl -u silegal -f        # wait for "Server running on http://0.0.0.0:3000"
+journalctl -u silegal -f        # wait for "Pengelola Kontrak & IO Server running on http://0.0.0.0:3000"
 ```
 
 ### 5. Put nginx and HTTPS in front
@@ -302,7 +302,7 @@ sudo systemctl restart silegal
 
 | Symptom | Cause and fix |
 | --- | --- |
-| `BETTER_AUTH_SECRET must be set in production` at startup | `.env` is missing or not in `WorkingDirectory`. Set a long random secret. |
+| `BETTER_AUTH_SECRET must be set in production` at startup | `.env` is missing, empty, or not in `WorkingDirectory`. Run `npm run setup` in that directory (it won't touch a real secret if one is already set), or set a long random value by hand. |
 | `Cannot find module 'vite'` at startup | Dependencies were installed with `--omit=dev`. Run `npm ci` without it. |
 | `better-sqlite3` / `NODE_MODULE_VERSION` error | Node was upgraded after installing. Run `npm rebuild better-sqlite3`. |
 | Crash mentioning `process.getBuiltinModule` | Node is older than 20.19. Upgrade to Node 22. |
