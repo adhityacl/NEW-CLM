@@ -20,4 +20,5 @@ data_store.json
 auth.db
 auth.db-shm
 auth.db-wal
+firebase-applet-config.json
 node_modules

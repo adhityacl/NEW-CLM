@@ -49,6 +49,7 @@ Silegal is a multi-tenant Contract Lifecycle Management (CLM) application. It ma
 - **Fix**: `npm install` no longer force-rebuilds `better-sqlite3` from source. That `postinstall` step needed a full native build toolchain (Python, a C/C++ compiler); minimal environments without one — e.g. Google Cloud's build images — failed to install at all, even though `better-sqlite3`'s own prebuilt binary already installs correctly on its own. Run `npm rebuild better-sqlite3` by hand only if you see a `NODE_MODULE_VERSION` error after upgrading Node (see Troubleshooting).
 - **Security**: demo-workspace logins (`*@example.com`, which share `DEMO_ADMIN_PASSWORD`) are no longer created with `NODE_ENV=production`, are removed on start from production servers that already have them, and are deleted by an empty-workspace reset.
 - **Security**: the SQLite browser in System Admin masks uploaded credentials. Its search no longer matches masked columns, which previously allowed their contents to be guessed from the number of results.
+- **Security**: `firebase-applet-config.json` is no longer committed. Its values (Firebase Web SDK config for Google Sign-In) now come from `VITE_FIREBASE_*` in `.env`, the same way every other credential in this app is configured; the file is gitignored going forward.
 
 **Earlier**
 - Tenant policy packs, i18n and admin settings; hardened session authentication.
@@ -120,6 +121,7 @@ All variables are read from `.env` in the working directory (see `.env.example`)
 | `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` | `admin@silegal.com` / `123456789` | Bootstrap Superuser. Outside production the six demo-workspace users (`*@example.com`) get the same password. With `NODE_ENV=production` those demo logins are never created, and any left over from older installs are removed on start. |
 | `GEMINI_API_KEY` | — | Gemini API key. It can instead be set in Settings → AI Model & Parser. |
 | `GOOGLE_*` | — | Optional fallback for the Google credentials. Uploading the JSON files in the app is preferred. |
+| `VITE_FIREBASE_*` | — | Firebase Web SDK config for Google Sign-In on the login page (`PROJECT_ID`, `APP_ID`, `API_KEY`, `AUTH_DOMAIN`, `STORAGE_BUCKET`, `MESSAGING_SENDER_ID`, optional `FIRESTORE_DATABASE_ID`). Get these from Firebase Console → Project Settings. |
 | `ALLOW_GOOGLE_SELF_SIGNUP` | `false` | When `true`, any Google account can sign in and gets a user created automatically. Otherwise an administrator must invite the user first. |
 | `BETTER_AUTH_ENABLE_INFRA` / `BETTER_AUTH_API_KEY` | — | Optional Better Auth Infra dashboard and Sentinel. |
 
@@ -137,7 +139,7 @@ A Superuser uploads the files from **Connect Google** in the first-login banner,
 - They take priority over `.env`. Removing an upload falls back to `.env`.
 - Secret values are never sent back to the browser.
 
-Sign-in with Google on the login page uses Firebase (`firebase-applet-config.json`). On a new domain, add that domain under Firebase Console → Authentication → Settings → **Authorized domains**.
+Sign-in with Google on the login page uses Firebase, configured via the `VITE_FIREBASE_*` variables in `.env` (see [Configuration reference](#configuration-reference)) — get them from Firebase Console → Project Settings → General → Your apps. On a new domain, add that domain under Firebase Console → Authentication → Settings → **Authorized domains**.
 
 ## Testing
 
