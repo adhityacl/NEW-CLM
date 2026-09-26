@@ -7,12 +7,13 @@ import {
   onAuthStateChanged,
   User,
 } from 'firebase/auth';
-import { firebaseConfig } from './firebaseConfig';
+import { firebaseConfig, isFirebaseConfigured } from './firebaseConfig';
 import { translateStatic as t } from '../context/LanguageContext';
 
-// Reuse or initialize Firebase app
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+// Null when VITE_FIREBASE_* is unset: Google sign-in then uses the GIS code flow below instead.
+const auth = isFirebaseConfigured
+  ? getAuth(getApps().length > 0 ? getApp() : initializeApp(firebaseConfig))
+  : null;
 
 const provider = new GoogleAuthProvider();
 provider.addScope('https://www.googleapis.com/auth/drive');
@@ -115,7 +116,9 @@ export const signInWithGoogleCodeFlow = async (): Promise<{ user: User; accessTo
     try {
       const client = window.google!.accounts!.oauth2!.initCodeClient({
         client_id: clientId,
-        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
+        // openid/email/profile let the server read the user's e-mail from this token
+        // (exchange-code profile, sync-session identity check) when it's also the login path.
+        scope: 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
         ux_mode: 'popup',
         access_type: 'offline', // Wajib offline agar Google menerbitkan Refresh Token
         prompt: 'consent',       // Wajib consent agar Refresh Token selalu diterbitkan
@@ -160,7 +163,7 @@ export const signInWithGoogleCodeFlow = async (): Promise<{ user: User; accessTo
             syncTokenToServer(cachedAccessToken!, data.refreshToken, profile).catch(() => {});
 
             resolve({
-              user: (auth.currentUser as User) || ({ email: profile.email, displayName: profile.name, photoURL: profile.photoURL } as any),
+              user: (auth?.currentUser as User) || ({ email: profile.email, displayName: profile.name, photoURL: profile.photoURL } as any),
               accessToken: cachedAccessToken!,
               profile,
             });
@@ -217,6 +220,10 @@ export const getSavedGoogleUser = (): GoogleUserProfile | null => {
 export const onGoogleAuthStateChange = (
   callback: (userProfile: GoogleUserProfile | null, token: string | null) => void
 ) => {
+  if (!auth) {
+    callback(getSavedGoogleUser(), isGoogleTokenValid() ? cachedAccessToken : null);
+    return () => {};
+  }
   return onAuthStateChanged(auth, (user) => {
     if (user) {
       const profile: GoogleUserProfile = {
@@ -284,8 +291,32 @@ export const syncTokenToServer = async (
   }
 };
 
+/** Exchanges a verified Google access token for an app (Better Auth) session; '' if the server refused. */
+const createAppSession = async (profile: GoogleUserProfile, accessToken: string, idToken?: string): Promise<string> => {
+  try {
+    const syncRes = await fetch('/api/auth/google/sync-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: profile.email, name: profile.name, photoURL: profile.photoURL, idToken, accessToken }),
+    });
+    if (!syncRes.ok) return '';
+    const syncData = await syncRes.json();
+    if (syncData.sessionToken && typeof window !== 'undefined') {
+      localStorage.setItem('auth_session_token', syncData.sessionToken);
+    }
+    return syncData.sessionToken || '';
+  } catch (syncErr) {
+    console.warn('Syncing Google session to backend Better Auth failed:', syncErr);
+    return '';
+  }
+};
+
 export const signInWithGoogle = async (): Promise<{ user: User; accessToken: string; profile: GoogleUserProfile; sessionToken?: string }> => {
-  // Gunakan Firebase Auth Popup dengan authDomain safeforwork-47.firebaseapp.com
+  if (!auth) {
+    const result = await signInWithGoogleCodeFlow();
+    return { ...result, sessionToken: await createAppSession(result.profile, result.accessToken) };
+  }
   try {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
@@ -310,32 +341,7 @@ export const signInWithGoogle = async (): Promise<{ user: User; accessToken: str
     }
 
     // Sinkronisasi otomatis ke backend Better Auth & SQLite
-    let sessionToken = '';
-    try {
-      const syncRes = await fetch('/api/auth/google/sync-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: user.email,
-          name: user.displayName || user.email?.split('@')[0] || 'Google User',
-          photoURL: user.photoURL,
-          idToken,
-          accessToken: oauthAccessToken,
-        }),
-      });
-      if (syncRes.ok) {
-        const syncData = await syncRes.json();
-        if (syncData.sessionToken) {
-          sessionToken = syncData.sessionToken;
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('auth_session_token', sessionToken);
-          }
-        }
-      }
-    } catch (syncErr) {
-      console.warn('Syncing Firebase session to backend Better Auth failed:', syncErr);
-    }
+    const sessionToken = await createAppSession(profile, oauthAccessToken, idToken);
 
     if (!sessionToken && idToken && typeof window !== 'undefined') {
       localStorage.setItem('auth_session_token', idToken);
@@ -358,6 +364,7 @@ export const getGoogleTokenRemainingMinutes = (): number => {
 };
 
 export const silentRefreshGoogleToken = async (): Promise<{ user: User; accessToken: string; profile: GoogleUserProfile }> => {
+  if (!auth) return signInWithGoogleCodeFlow();
   const silentProvider = new GoogleAuthProvider();
   silentProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
   silentProvider.addScope('https://www.googleapis.com/auth/drive.file');
@@ -409,7 +416,7 @@ export const logoutGoogle = async () => {
     console.warn('[GoogleAuth] Gagal mengirim disconnect ke server:', discErr);
   }
 
-  await signOut(auth);
+  if (auth) await signOut(auth);
   cachedAccessToken = null;
   if (typeof window !== 'undefined') {
     localStorage.removeItem('google_access_token');
@@ -576,7 +583,7 @@ export const initBackgroundGoogleTokenRefresh = () => {
   const checkAndRefreshToken = async () => {
     try {
       // 1. Keep Firebase ID Token alive
-      if (auth.currentUser) {
+      if (auth?.currentUser) {
         await auth.currentUser.getIdToken(false);
       }
 

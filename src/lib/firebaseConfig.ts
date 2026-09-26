@@ -17,4 +17,9 @@ export const firebaseConfig = {
   messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
 };
 
-export const firestoreDatabaseId: string = env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || '';
+/**
+ * False on a fresh install that hasn't filled in VITE_FIREBASE_*. Firebase
+ * Auth throws `auth/invalid-api-key` at init with an empty key, which used
+ * to crash the whole app on load; callers skip Firebase entirely instead.
+ */
+export const isFirebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);

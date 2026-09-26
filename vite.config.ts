@@ -17,22 +17,14 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    // No manualChunks: splitting vendors by substring ("react" in the path →
+    // react-vendor, everything else → vendor) put react-dom's `scheduler` dependency
+    // in the other chunk, making the two import each other; in production one side
+    // then saw React as undefined and the page rendered blank. Vite's own chunking
+    // plus the React.lazy route splits already keep heavy libraries out of the entry.
     build: {
       sourcemap: false,
       chunkSizeWarningLimit: 800,
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (!id.includes('node_modules')) return undefined;
-            if (id.includes('recharts')) return 'chart-vendor';
-            if (id.includes('@tiptap') || id.includes('prosemirror')) return 'editor-vendor';
-            if (id.includes('googleapis') || id.includes('firebase')) return 'external-api-vendor';
-            if (id.includes('docx') || id.includes('pdf-lib') || id.includes('pdf-parse') || id.includes('react-markdown')) return 'doc-vendor';
-            if (id.includes('react') || id.includes('@tanstack/react-query')) return 'react-vendor';
-            return 'vendor';
-          },
-        },
-      },
     },
 
     server: {
