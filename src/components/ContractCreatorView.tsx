@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import Superscript from '@tiptap/extension-superscript';
@@ -185,6 +186,23 @@ function mergeTemplateCustomFields(
 
 const BUILT_IN_FIELD_KEYS = new Set(COOPERATION_AGREEMENT_FIELDS.map((f) => f.key));
 
+/** Fillable-slot keys as they actually appear in the document right now, top to bottom,
+ * deduped by first occurrence — drives the Fields panel's order and which fields show at all. */
+function getOrderedSlotKeys(editor: Editor | null): string[] {
+  if (!editor) return [];
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  editor.state.doc.descendants((node) => {
+    const key = node.type.name === 'fillableSlot' ? (node.attrs.slotKey as string) : '';
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      keys.push(key);
+    }
+    return true;
+  });
+  return keys;
+}
+
 const INITIAL_FIELD_VALUES: Record<string, string> = {
   firstPartyName: '',
   firstPartyAlias: '',
@@ -194,9 +212,11 @@ const INITIAL_FIELD_VALUES: Record<string, string> = {
   firstPartyEmail: '',
   firstPartyBusinessDesc: '',
   partnerName: '',
+  partnerAlias: '',
   partnerAddress: '',
   partnerPic: '',
   partnerPosition: '',
+  partnerBusinessDesc: '',
   dateStr: '',
   startDate: '',
   endDate: '',
@@ -279,6 +299,8 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const [zoomLevel, setZoomLevel] = useState(100);
   const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
   const [wordCount, setWordCount] = useState(0);
+  // Fields panel order/visibility: only slots actually present in the document, in document order.
+  const [orderedSlotKeys, setOrderedSlotKeys] = useState<string[]>([]);
   const [charCount, setCharCount] = useState(0);
 
   // Fillable slot field values state - dynamically initialized with activeTenant
@@ -320,10 +342,12 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   // Form states for creating custom fields
   const [showAddCustomField, setShowAddCustomField] = useState(false);
   const [newFieldLabel, setNewFieldLabel] = useState('');
-  const [newFieldType, setNewFieldType] = useState<'text' | 'date' | 'currency' | 'textarea'>('text');
+  const [newFieldType, setNewFieldType] = useState<'text' | 'date' | 'currency' | 'textarea' | 'email' | 'boolean' | 'select'>('text');
   const [newFieldPlaceholder, setNewFieldPlaceholder] = useState('');
   const [newFieldDescription, setNewFieldDescription] = useState('');
   const [newFieldIcon, setNewFieldIcon] = useState('⭐');
+  // Comma-separated raw input for the 'select' type's option list.
+  const [newFieldOptions, setNewFieldOptions] = useState('');
   const [activeDragCategory, setActiveDragCategory] = useState<'all' | 'firstParty' | 'partner' | 'operational' | 'custom'>('all');
 
   const handleCreateCustomField = () => {
@@ -339,7 +363,19 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       if (newFieldType === 'date') finalIcon = '📅';
       else if (newFieldType === 'currency') finalIcon = '💰';
       else if (newFieldType === 'textarea') finalIcon = '📝';
+      else if (newFieldType === 'email') finalIcon = '📧';
+      else if (newFieldType === 'boolean') finalIcon = '☑️';
+      else if (newFieldType === 'select') finalIcon = '▾';
       else finalIcon = '🏷️';
+    }
+
+    const options = newFieldOptions
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+    if (newFieldType === 'select' && options.length === 0) {
+      showAlert({ title: t('contract_creator.msg.custom_field_options_required', 'Isi minimal satu opsi pilihan'), variant: 'warning' });
+      return;
     }
 
     const newField = {
@@ -349,15 +385,16 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       icon: finalIcon,
       placeholder: newFieldPlaceholder.trim() || t('contract_creator.masukkan', 'Masukkan {trim}...', { trim: newFieldLabel.trim() }),
       description: newFieldDescription.trim() || t('contract_creator.kolom_kustom_untuk', 'Kolom kustom untuk {trim}', { trim: newFieldLabel.trim() }),
-      isCustom: true
+      isCustom: true,
+      ...(newFieldType === 'select' ? { options } : {}),
     };
 
     setCustomFields((prev) => [...prev, newField]);
-    
+
     // Initialize its value in fieldValues
     setFieldValues((prev) => ({
       ...prev,
-      [safeKey]: ''
+      [safeKey]: newFieldType === 'boolean' ? t('contract_creator.field.boolean_no', 'No') : ''
     }));
 
     // Reset form
@@ -365,6 +402,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     setNewFieldPlaceholder('');
     setNewFieldDescription('');
     setNewFieldIcon('⭐');
+    setNewFieldOptions('');
     setShowAddCustomField(false);
   };
 
@@ -543,6 +581,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
         setWordCount(words);
         setCharCount(text.length);
         setHasUnsaved(differsFrom(baselineRef.current, instance.getHTML(), docTitleRef.current));
+        setOrderedSlotKeys(getOrderedSlotKeys(instance));
       }, 300);
     },
     editorProps: {
@@ -597,6 +636,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     setWordCount(words);
     setCharCount(text.length);
+    setOrderedSlotKeys(getOrderedSlotKeys(editor));
   };
 
   // Render or re-render the 15-article template into the editor
@@ -612,9 +652,11 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       firstPartyEmail: vals.firstPartyEmail,
       firstPartyBusinessDesc: vals.firstPartyBusinessDesc,
       partnerName: vals.partnerName,
+      partnerAlias: vals.partnerAlias,
       partnerAddress: vals.partnerAddress,
       partnerPic: vals.partnerPic,
       partnerPosition: vals.partnerPosition,
+      partnerBusinessDesc: vals.partnerBusinessDesc,
       dateStr: vals.dateStr,
       startDate: vals.startDate,
       endDate: vals.endDate,
@@ -1119,6 +1161,13 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   ).length;
   const totalSlotsCount = COOPERATION_AGREEMENT_FIELDS.length;
 
+  // Fields panel: only built-in/custom fields whose slot is actually in the document, ordered
+  // the way they appear there (not the fixed definition order).
+  const orderedBuiltInKeys = orderedSlotKeys.filter((key) => key === 'contractNo' || BUILT_IN_FIELD_KEYS.has(key));
+  const orderedCustomFields = orderedSlotKeys
+    .map((key) => customFields.find((f) => f.key === key))
+    .filter((f): f is (typeof customFields)[number] => Boolean(f));
+
   const saveStatus =
     saveState.status === 'saving' ? (
       <>
@@ -1539,47 +1588,59 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
               {/* TAB 1: QUICK FILL FORM (Baris yang harus diisi) */}
               {sidebarTab === 'fields' && (
                 <div className="space-y-2.5">
-                  {/* Contract Number Field */}
-                  <div
-                    className="space-y-1 p-2 rounded-lg border border-slate-200/80 dark:border-slate-800 hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-colors bg-white dark:bg-slate-900"
-                    title={t('contract_creator.field.contract_no.title', 'Nomor referensi atau nomor surat resmi perjanjian kerjasama')}
-                  >
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                        {t('contract_creator.field.contract_no.label', 'Nomor Perjanjian Kerjasama')}
-                      </label>
-                      <div className="flex items-center gap-1">
-                        {contractNumber && contractNumber.trim() && !contractNumber.startsWith('[') && (
-                          <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
-                            <Check className="w-3 h-3" /> {t('contract_creator.filled_badge', 'Terisi')}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleFocusSlot('contractNo')}
-                          className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
-                          aria-label={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
-                          title={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
-                        >
-                          <Target className="w-3.5 h-3.5" />
-                        </button>
+                  {/* Contract Number Field — only shown while its slot is actually in the document */}
+                  {orderedBuiltInKeys.includes('contractNo') && (
+                    <div
+                      className="space-y-1 p-2 rounded-lg border border-slate-200/80 dark:border-slate-800 hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-colors bg-white dark:bg-slate-900"
+                      title={t('contract_creator.field.contract_no.title', 'Nomor referensi atau nomor surat resmi perjanjian kerjasama')}
+                    >
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                          {t('contract_creator.field.contract_no.label', 'Nomor Perjanjian Kerjasama')}
+                        </label>
+                        <div className="flex items-center gap-1">
+                          {contractNumber && contractNumber.trim() && !contractNumber.startsWith('[') && (
+                            <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                              <Check className="w-3 h-3" /> {t('contract_creator.filled_badge', 'Terisi')}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleFocusSlot('contractNo')}
+                            className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                            aria-label={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
+                            title={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
+                          >
+                            <Target className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
+                      <input
+                        type="text"
+                        value={contractNumber}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setContractNumber(val);
+                          setFillableSlotValue(editor, 'contractNo', val);
+                        }}
+                        className="w-full text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        placeholder={defaultContractNo}
+                      />
                     </div>
-                    <input
-                      type="text"
-                      value={contractNumber}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setContractNumber(val);
-                        setFillableSlotValue(editor, 'contractNo', val);
-                      }}
-                      className="w-full text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      placeholder={defaultContractNo}
-                    />
-                  </div>
+                  )}
 
-                  {/* Loop over predefined fillable slots */}
-                  {COOPERATION_AGREEMENT_FIELDS.map((field) => {
+                  {orderedBuiltInKeys.length === 0 && orderedCustomFields.length === 0 && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center py-4">
+                      {t('contract_creator.fields_empty', 'Belum ada kolom isian yang dimasukkan ke dokumen ini.')}
+                    </p>
+                  )}
+
+                  {/* Fillable slots present in the document, in document order */}
+                  {orderedBuiltInKeys
+                    .filter((key) => key !== 'contractNo')
+                    .map((key) => {
+                    const field = COOPERATION_AGREEMENT_FIELDS.find((f) => f.key === key);
+                    if (!field) return null;
                     const currentVal = fieldValues[field.key] || '';
                     const isFilled = currentVal && currentVal.trim() && !currentVal.startsWith('[');
                     const fieldLabel = t(`contract_creator.field.${field.key}.label`, field.label);
@@ -1635,17 +1696,17 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                     );
                   })}
 
-                  {/* Render Custom Fields in Fields tab */}
-                  {customFields.length > 0 && (
+                  {/* Render Custom Fields in Fields tab — only ones actually present in the document, in document order */}
+                  {orderedCustomFields.length > 0 && (
                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
                       <div className="flex items-center justify-between px-1">
                         <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">{t('contract_creator.custom_fields_section_title', 'Kolom Isian Kustom Anda')}</span>
                         <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded uppercase">
-                          {t('contract_creator.custom_badge', 'Kustom')} ({customFields.length})
+                          {t('contract_creator.custom_badge', 'Kustom')} ({orderedCustomFields.length})
                         </span>
                       </div>
 
-                      {customFields.map((field) => {
+                      {orderedCustomFields.map((field) => {
                         const currentVal = fieldValues[field.key] || '';
                         const isFilled = currentVal && currentVal.trim() && !currentVal.startsWith('[');
 
@@ -1712,9 +1773,37 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                                 placeholder={field.placeholder}
                                 className="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                               />
+                            ) : field.type === 'select' ? (
+                              <select
+                                value={currentVal}
+                                onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
+                                className="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              >
+                                <option value="">{t('contract_creator.field.select_placeholder', '-- Pilih --')}</option>
+                                {(field.options || []).map((opt: string) => (
+                                  <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                              </select>
+                            ) : field.type === 'boolean' ? (
+                              <div className="flex gap-1.5">
+                                {[t('contract_creator.field.boolean_yes', 'Yes'), t('contract_creator.field.boolean_no', 'No')].map((opt) => (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => handleFieldValueChange(field.key, opt)}
+                                    className={`flex-1 text-xs font-semibold rounded-lg py-1.5 transition-colors cursor-pointer ${
+                                      currentVal === opt
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-400'
+                                    }`}
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                              </div>
                             ) : (
                               <input
-                                type="text"
+                                type={field.type === 'email' ? 'email' : 'text'}
                                 value={currentVal}
                                 onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
                                 placeholder={field.placeholder}
@@ -1832,8 +1921,24 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                             <option value="date">{t('contract_creator.custom_field_builder.type_date', 'Tanggal')}</option>
                             <option value="currency">{t('contract_creator.custom_field_builder.type_currency', 'Mata Uang')}</option>
                             <option value="textarea">{t('contract_creator.custom_field_builder.type_textarea', 'Paragraf / Textarea')}</option>
+                            <option value="email">{t('contract_creator.custom_field_builder.type_email', 'Email')}</option>
+                            <option value="boolean">{t('contract_creator.custom_field_builder.type_boolean', 'Ya / Tidak')}</option>
+                            <option value="select">{t('contract_creator.custom_field_builder.type_select', 'Pilihan (Dropdown)')}</option>
                           </select>
                         </div>
+
+                        {newFieldType === 'select' && (
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.options_label', 'Daftar Opsi (pisahkan dengan koma)')}</label>
+                            <input
+                              type="text"
+                              value={newFieldOptions}
+                              onChange={(e) => setNewFieldOptions(e.target.value)}
+                              placeholder={t('contract_creator.custom_field_builder.options_placeholder', 'Contoh: LLC, PT, CV')}
+                              className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                          </div>
+                        )}
 
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.placeholder_label', 'Placeholder Default')}</label>

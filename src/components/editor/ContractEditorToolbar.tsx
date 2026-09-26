@@ -34,8 +34,12 @@ import {
   Combine,
   SplitSquareHorizontal,
   PaintBucket,
+  Sigma,
+  Calculator,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAlertToast } from '../../context/AlertToastContext';
+import { insertPricingTable, recalculatePricingTable } from '../../lib/tiptapPricingTable';
 
 interface ContractEditorToolbarProps {
   editor: Editor | null;
@@ -125,11 +129,32 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
   editor,
 }) => {
   const { t } = useLanguage();
+  const showAlert = useAlertToast();
   const [showTableMenu, setShowTableMenu] = useState(false);
 
   if (!editor) return null;
 
   const insideTable = editor.isActive('table');
+
+  const handleInsertPricingTable = () => {
+    insertPricingTable(editor, {
+      item: t('editor.pricing_table.item', 'Item'),
+      qty: t('editor.pricing_table.qty', 'Qty'),
+      unitPrice: t('editor.pricing_table.unit_price', 'Unit Price'),
+      total: t('editor.pricing_table.total', 'Total'),
+      grandTotal: t('editor.pricing_table.grand_total', 'Grand Total'),
+    });
+  };
+
+  const handleRecalculatePricingTable = () => {
+    const ok = recalculatePricingTable(editor);
+    showAlert({
+      title: ok
+        ? t('editor.pricing_table.recalculated', 'Totals recalculated.')
+        : t('editor.pricing_table.not_in_table', 'Place your cursor inside a pricing table first.'),
+      variant: ok ? 'success' : 'warning',
+    });
+  };
 
   const setLink = () => {
     const previousUrl = editor.getAttributes('link').href as string | undefined;
@@ -369,6 +394,13 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
           </div>
         )}
       </div>
+
+      <ToolbarButton title={t('editor.pricing_table.insert', 'Insert Pricing Table')} onClick={handleInsertPricingTable}>
+        <Sigma className="w-3.5 h-3.5" />
+      </ToolbarButton>
+      <ToolbarButton title={t('editor.pricing_table.recalculate', 'Recalculate Totals')} onClick={handleRecalculatePricingTable} disabled={!insideTable}>
+        <Calculator className="w-3.5 h-3.5" />
+      </ToolbarButton>
 
       <Divider />
 

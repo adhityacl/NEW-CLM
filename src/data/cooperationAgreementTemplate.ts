@@ -132,7 +132,7 @@ export const COOPERATION_AGREEMENT_FIELDS: FillableFieldDef[] = [
   // --- PIHAK KEDUA (SECOND PARTY / MITRA) ---
   {
     key: 'partnerName',
-    label: 'Nama Perusahaan Mitra (Pihak Kedua)',
+    label: 'Nama Perusahaan Pihak Kedua',
     type: 'text',
     icon: '🏢',
     placeholder: 'PT Nama Mitra Usaha',
@@ -140,8 +140,17 @@ export const COOPERATION_AGREEMENT_FIELDS: FillableFieldDef[] = [
     description: 'Badan hukum atau perusahaan mitra yang mengadakan kerjasama',
   },
   {
+    key: 'partnerAlias',
+    label: 'Singkatan / Sebutan Pihak Kedua',
+    type: 'text',
+    icon: '🏷️',
+    placeholder: 'Singkatan / Sebutan Singkat Pihak Kedua',
+    defaultValue: '',
+    description: 'Sebutan singkat pihak kedua di dalam klausul perjanjian',
+  },
+  {
     key: 'partnerAddress',
-    label: 'Alamat Kantor Mitra',
+    label: 'Alamat Kantor Pihak Kedua',
     type: 'textarea',
     icon: '📍',
     placeholder: 'Alamat lengkap domisili kantor resmi mitra',
@@ -150,7 +159,7 @@ export const COOPERATION_AGREEMENT_FIELDS: FillableFieldDef[] = [
   },
   {
     key: 'partnerPic',
-    label: 'Nama Penandatangan Mitra',
+    label: 'Nama Penandatangan Pihak Kedua',
     type: 'text',
     icon: '👤',
     placeholder: 'Nama Lengkap Direktur / Wakil Sah',
@@ -159,7 +168,7 @@ export const COOPERATION_AGREEMENT_FIELDS: FillableFieldDef[] = [
   },
   {
     key: 'partnerPosition',
-    label: 'Jabatan Penandatangan Mitra',
+    label: 'Jabatan Penandatangan Pihak Kedua',
     type: 'text',
     icon: '💼',
     placeholder: 'Direktur Utama / Direktur',
@@ -168,12 +177,21 @@ export const COOPERATION_AGREEMENT_FIELDS: FillableFieldDef[] = [
   },
   {
     key: 'partnerEmail',
-    label: 'Email Korespondensi Mitra',
+    label: 'Email Resmi Pihak Kedua',
     type: 'text',
     icon: '📧',
     placeholder: 'legal@mitra.co.id',
     defaultValue: 'legal@mitra.co.id',
     description: 'Email resmi pemberitahuan dan korespondensi hukum mitra (Pasal 13)',
+  },
+  {
+    key: 'partnerBusinessDesc',
+    label: 'Keterangan Bisnis Pihak Kedua (Konsiderans)',
+    type: 'textarea',
+    icon: '🏢',
+    placeholder: 'Uraian izin dan bidang usaha pihak kedua...',
+    defaultValue: '',
+    description: 'Deskripsi bidang usaha pihak kedua pada bagian konsiderans',
   },
 
   // --- WAKTU, LINGKUP & KOMERSIAL ---
@@ -317,6 +335,8 @@ export const COOPERATION_AGREEMENT_PREAMBLE = {
     const p1Pic = slots?.firstPartyPic || '';
     const p1Pos = slots?.firstPartyPosition || '';
     const p1Desc = slots?.firstPartyBusinessDesc || '';
+    const p2Alias = slots?.partnerAlias || '';
+    const p2Desc = slots?.partnerBusinessDesc || '';
 
     return `<p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
 This Cooperation Agreement (hereinafter referred to as the &ldquo;<strong>Agreement</strong>&rdquo;) is made and entered into on this day ${slot('date', 'dateStr', 'DD/MM/YYYY', slots?.dateStr)}, by and between:
@@ -328,7 +348,7 @@ This Cooperation Agreement (hereinafter referred to as the &ldquo;<strong>Agreem
 And
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 10px;">
-2. <strong>${slot('entity', 'partnerName', 'Second Party Corporate Name', slots?.partnerName)}</strong>, a legal entity duly incorporated under the laws of its jurisdiction of incorporation, having its registered domicile at ${slot('location', 'partnerAddress', 'Second Party Domicile Address', slots?.partnerAddress)}, represented in this matter by ${slot('person', 'partnerPic', 'Second Party Signatory Name', slots?.partnerPic)} in their capacity as ${slot('text', 'partnerPosition', 'Director / Authorized Representative', slots?.partnerPosition)}, therefore lawfully acting for and on behalf of ${slot('entity', 'partnerName', 'Second Party Corporate Name', slots?.partnerName)} (hereinafter referred to as the &ldquo;<strong>Second Party</strong>&rdquo;).
+2. <strong>${slot('entity', 'partnerName', 'Second Party Corporate Name', slots?.partnerName)}</strong>, a legal entity duly incorporated under the laws of its jurisdiction of incorporation, having its registered domicile at ${slot('location', 'partnerAddress', 'Second Party Domicile Address', slots?.partnerAddress)}, represented in this matter by ${slot('person', 'partnerPic', 'Second Party Signatory Name', slots?.partnerPic)} in their capacity as ${slot('text', 'partnerPosition', 'Director / Authorized Representative', slots?.partnerPosition)}, therefore lawfully acting for and on behalf of ${slot('entity', 'partnerName', 'Second Party Corporate Name', slots?.partnerName)} (hereinafter referred to as &ldquo;<strong>${slot('text', 'partnerAlias', 'Second Party Alias', p2Alias)}</strong>&rdquo; or the &ldquo;<strong>Second Party</strong>&rdquo;).
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
 The First Party and the Second Party are collectively referred to as the &ldquo;<strong>Parties</strong>&rdquo; and individually as a &ldquo;<strong>Party</strong>&rdquo;.
@@ -340,7 +360,7 @@ The First Party and the Second Party are collectively referred to as the &ldquo;
 WHEREAS, the First Party is ${slot('text', 'firstPartyBusinessDesc', 'First Party Business Description', p1Desc)}.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
-WHEREAS, the Second Party is a business entity possessing the competence, resources, legal capability, and authorizations to carry out commercial, technical, and operational cooperation as described in this Agreement.
+WHEREAS, the Second Party is ${slot('text', 'partnerBusinessDesc', 'Second Party Business Description', p2Desc)}.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 WHEREAS, the Parties have agreed to execute this Cooperation Agreement to govern the legal framework, rights, obligations, service delivery, and operational parameters of their business cooperation on the basis of mutual benefit and applicable laws.
@@ -361,6 +381,11 @@ WHEREAS, the Parties have agreed to execute this Cooperation Agreement to govern
     const p1Pic = slots?.firstPartyPic || '';
     const p1Pos = slots?.firstPartyPosition || '';
     const p1Desc = slots?.firstPartyBusinessDesc || '';
+    // "MITRA" is what the other 15 articles already call the Second Party by default (Pasal
+    // 1.2, 2.3, 4.1–4.2, 5.2, and the signature blocks) — keeping it as the fallback here means
+    // a document nobody touches this new field on still reads exactly as it did before.
+    const p2Alias = slots?.partnerAlias || 'MITRA';
+    const p2Desc = slots?.partnerBusinessDesc || '';
 
     return `<p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
 Perjanjian Kerjasama ini (selanjutnya disebut sebagai &ldquo;<strong>Perjanjian</strong>&rdquo;) dibuat dan ditandatangani pada hari ${slot('date', 'dateStr', 'Hari, DD/MM/YYYY (Contoh: Senin, 19 September 2026)', slots?.dateStr)}, oleh dan antara:
@@ -372,7 +397,7 @@ Perjanjian Kerjasama ini (selanjutnya disebut sebagai &ldquo;<strong>Perjanjian<
 Dan
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 10px;">
-2. <strong>${slot('entity', 'partnerName', 'Nama Perusahaan Mitra', slots?.partnerName)}</strong>, suatu badan hukum / badan usaha yang didirikan berdasarkan hukum negara tempat pendiriannya, berkedudukan di ${slot('location', 'partnerAddress', 'Alamat Lengkap Perusahaan Mitra', slots?.partnerAddress)}, dalam hal ini diwakili oleh ${slot('person', 'partnerPic', 'Nama Penandatangan Mitra', slots?.partnerPic)} dalam kapasitasnya selaku ${slot('text', 'partnerPosition', 'Direktur / Jabatan Penandatangan', slots?.partnerPosition)}, oleh karenanya sah bertindak untuk dan atas nama ${slot('entity', 'partnerName', 'Nama Perusahaan Mitra', slots?.partnerName)} (selanjutnya disebut &ldquo;<strong>MITRA</strong>&rdquo; atau &ldquo;<strong>Pihak Kedua</strong>&rdquo;).
+2. <strong>${slot('entity', 'partnerName', 'Nama Perusahaan Mitra', slots?.partnerName)}</strong>, suatu badan hukum / badan usaha yang didirikan berdasarkan hukum negara tempat pendiriannya, berkedudukan di ${slot('location', 'partnerAddress', 'Alamat Lengkap Perusahaan Mitra', slots?.partnerAddress)}, dalam hal ini diwakili oleh ${slot('person', 'partnerPic', 'Nama Penandatangan Mitra', slots?.partnerPic)} dalam kapasitasnya selaku ${slot('text', 'partnerPosition', 'Direktur / Jabatan Penandatangan', slots?.partnerPosition)}, oleh karenanya sah bertindak untuk dan atas nama ${slot('entity', 'partnerName', 'Nama Perusahaan Mitra', slots?.partnerName)} (selanjutnya disebut &ldquo;<strong>${slot('text', 'partnerAlias', 'Singkatan Pihak Kedua', p2Alias)}</strong>&rdquo; atau &ldquo;<strong>Pihak Kedua</strong>&rdquo;).
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 12px;">
 Pihak Pertama dan Pihak Kedua secara bersama-sama disebut sebagai &ldquo;<strong>Para Pihak</strong>&rdquo; dan masing-masing disebut sebagai &ldquo;<strong>Pihak</strong>&rdquo;.
@@ -384,7 +409,7 @@ Pihak Pertama dan Pihak Kedua secara bersama-sama disebut sebagai &ldquo;<strong
 BAHWA, Pihak Pertama adalah ${slot('text', 'firstPartyBusinessDesc', 'Uraian bidang usaha Pihak Pertama', p1Desc)}.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
-BAHWA, MITRA adalah badan usaha yang memiliki keahlian, sumber daya, kapabilitas teknis, perizinan, dan kualifikasi yang dipersyaratkan untuk menyediakan produk, layanan, jasa, atau dukungan pelaksanaan kerjasama bisnis bagi Pihak Pertama.
+BAHWA, Pihak Kedua adalah ${slot('text', 'partnerBusinessDesc', 'Uraian bidang usaha Pihak Kedua', p2Desc)}.
 </p>
 <p style="text-align: justify; line-height: 1.6; margin-bottom: 8px;">
 BAHWA, Para Pihak bermaksud untuk mengadakan hubungan kemitraan strategis dan operasional yang saling menguntungkan dengan mematuhi prinsip-prinsip itikad baik, kehati-hatian, kepatuhan hukum, dan standar industri yang berlaku.
@@ -892,9 +917,11 @@ export type AgreementVars = {
   firstPartyEmail?: string;
   firstPartyBusinessDesc?: string;
   partnerName?: string;
+  partnerAlias?: string;
   partnerAddress?: string;
   partnerPic?: string;
   partnerPosition?: string;
+  partnerBusinessDesc?: string;
   dateStr?: string;
   scopeDescId?: string;
   startDate?: string;
@@ -922,9 +949,11 @@ export function buildAgreementHtml(vars?: AgreementVars, language: 'EN' | 'ID' =
     firstPartyEmail: vars?.firstPartyEmail || '',
     firstPartyBusinessDesc: vars?.firstPartyBusinessDesc || '',
     partnerName: vars?.partnerName || '',
+    partnerAlias: vars?.partnerAlias || '',
     partnerAddress: vars?.partnerAddress || '',
     partnerPic: vars?.partnerPic || '',
     partnerPosition: vars?.partnerPosition || '',
+    partnerBusinessDesc: vars?.partnerBusinessDesc || '',
     dateStr: vars?.dateStr || '',
     scopeDescId: vars?.scopeDescId || '',
     startDate: vars?.startDate || '',
@@ -987,9 +1016,11 @@ export function buildBilingualExportHtml(vars: {
   firstPartyEmail?: string;
   firstPartyBusinessDesc?: string;
   partnerName: string;
+  partnerAlias?: string;
   partnerAddress: string;
   partnerPic: string;
   partnerPosition: string;
+  partnerBusinessDesc?: string;
   dateStr?: string;
   scopeDescId?: string;
   scopeDescEn?: string;
@@ -1014,9 +1045,11 @@ export function buildBilingualExportHtml(vars: {
     firstPartyEmail: vars.firstPartyEmail || '',
     firstPartyBusinessDesc: vars.firstPartyBusinessDesc || '',
     partnerName: vars.partnerName || '',
+    partnerAlias: vars.partnerAlias || '',
     partnerAddress: vars.partnerAddress || '',
     partnerPic: vars.partnerPic || '',
     partnerPosition: vars.partnerPosition || '',
+    partnerBusinessDesc: vars.partnerBusinessDesc || '',
     dateStr: vars.dateStr || '',
     scopeDescId: vars.scopeDescId || '',
     scopeDescEn: vars.scopeDescEn || '',
