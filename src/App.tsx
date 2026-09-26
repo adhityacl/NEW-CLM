@@ -1133,7 +1133,7 @@ const AppContent = () => {
         showFade
         fadeIntensity={25}
         className="min-h-dvh w-full flex items-start justify-center px-4 bg-slate-50 dark:bg-slate-950"
-        style={{ paddingTop: 'calc(var(--spacing) * 15)' }}
+        style={{ paddingTop: 'calc(var(--spacing) * 20)' }}
       >
         <SignInForm
           onOpenPrivacyPolicy={handleOpenPrivacy}

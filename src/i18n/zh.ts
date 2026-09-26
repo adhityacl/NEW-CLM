@@ -1688,7 +1688,6 @@ export const ZH_TRANSLATIONS: Record<string, string> = {
   'login.back_to_login': '返回登录',
   'login.btn_login': '登录',
   'login.btn_register': '注册',
-  'login.copyright': '© 2026 ACL。保留所有权利。',
   'login.footer_and': '和',
   'login.footer_apply': '适用',
   'login.create_account': '创建账户',

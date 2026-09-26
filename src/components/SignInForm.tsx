@@ -116,9 +116,9 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
 
   if (registrationSuccess) {
     return (
-      <div className="dark w-full max-w-md h-[calc(100dvh-var(--spacing)*15)]">
+      <div className="dark w-full max-w-md h-[calc(100dvh-var(--spacing)*20)]">
         <div className="w-full h-full flex flex-col rounded-t-[2rem] border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm overflow-hidden">
-          <div className="p-8 flex-1 flex flex-col justify-center overflow-y-auto text-center">
+          <div className="px-8 py-6 flex-1 flex flex-col justify-center overflow-y-auto text-center">
             <div className="flex justify-center mb-6">
               <LanguageSwitcher language={language} setLanguage={setLanguage} t={t} />
             </div>
@@ -151,10 +151,10 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
   }
 
   return (
-    <div className="dark w-full max-w-md h-[calc(100dvh-var(--spacing)*15)]">
+    <div className="dark w-full max-w-md h-[calc(100dvh-var(--spacing)*20)]">
       <div className="w-full h-full flex flex-col rounded-t-[2rem] border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm overflow-hidden">
-        <div className="p-8 sm:p-10 flex-1 flex flex-col justify-center overflow-y-auto">
-          <div className="flex justify-center mb-6 sm:mb-8">
+        <div className="px-8 py-6 flex-1 flex flex-col justify-center overflow-y-auto">
+          <div className="flex justify-center mb-6">
             <LanguageSwitcher language={language} setLanguage={setLanguage} t={t} />
           </div>
           <div className="text-center mb-8">
@@ -283,7 +283,7 @@ const LanguageSwitcher: React.FC<{ language: Language; setLanguage: (lang: Langu
 );
 
 const LegalFooter: React.FC<{ onOpenPrivacy: (e: React.MouseEvent) => void; onOpenTerms: (e: React.MouseEvent) => void; t: (k: string, d?: string) => string }> = ({ onOpenPrivacy, onOpenTerms, t }) => (
-  <div className="mt-6 text-center space-y-1">
+  <div className="mt-6 text-center">
     <p className="flex flex-wrap items-center justify-center gap-x-1 text-[11px] text-[var(--muted-foreground)]">
       <button type="button" onClick={onOpenPrivacy} className="hover:text-[var(--foreground)] hover:underline transition-colors cursor-pointer">
         {t('footer.privacy_policy', 'Privacy Policy')}
@@ -294,6 +294,5 @@ const LegalFooter: React.FC<{ onOpenPrivacy: (e: React.MouseEvent) => void; onOp
       </button>
       <span>{t('login.footer_apply', 'apply')}</span>
     </p>
-    <p className="text-[11px] text-[var(--muted-foreground)]">{t('login.copyright', '© 2026 ACL')}</p>
   </div>
 );
