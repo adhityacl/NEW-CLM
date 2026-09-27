@@ -34,7 +34,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
   onNavigateToSettings: _onNavigateToSettings,
   className = '',
 }) => {
-  const { tenants, activeTenant, activeTenantId, switchTenant } = useTenant();
+  const { tenants, activeTenant, activeTenantId, loading: tenantLoading, switchTenant } = useTenant();
   const { t } = useLanguage();
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
@@ -103,9 +103,9 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
     workspaces.find((w) => w.id === activeTenantId) ||
     workspaces[0] || {
       id: 'default',
-      name: activeTenant?.brandName || activeTenant?.name || 'Locally inc.',
+      name: activeTenant?.brandName || activeTenant?.name || (tenantLoading ? t('common.loading', 'Memuat Data...') : ''),
       badgeClass: BADGE_COLOR_PALETTES[0],
-      iconLetter: 'L',
+      iconLetter: tenantLoading ? '-' : '?',
       logoUrl: activeTenant?.logoUrl && activeTenant.logoUrl !== '/favicon.png' ? activeTenant.logoUrl : undefined,
     };
 

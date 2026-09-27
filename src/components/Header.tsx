@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { language, setLanguage, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { activeTab } = useNavigation();
-  const { activeTenant } = useTenant();
+  const { activeTenant, loading: tenantLoading } = useTenant();
 
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -148,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
             <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
             <span className="font-medium truncate max-w-30 sm:max-w-45">
-              {activeTenant?.brandName || activeTenant?.name || t('header.locally_inc', 'Locally inc.')}
+              {activeTenant?.brandName || activeTenant?.name || (tenantLoading ? t('common.loading', 'Memuat Data...') : '')}
             </span>
             <span className="text-slate-400 dark:text-slate-500 select-none font-medium">/</span>
           </div>
