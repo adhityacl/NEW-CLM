@@ -1,24 +1,76 @@
-node_modules/
-dist/
-.vite/
-test-results
-playwright-report
-blob-report
-playwright/.cache
+# ==============================================================================
+# SiLegal CLM - .gitignore (Open Source Ready)
+# ==============================================================================
 
-# Secrets & runtime data — never tracked. See the credential remediation
-# plan: these used to be committed (a real Firebase/GCP service account key,
-# a live Gemini API key inside data_store.json, and password hashes/session
-# tokens in auth.db). Untracked going forward with `git rm --cached`; the
-# files themselves stay on disk and the app keeps reading/writing them
-# exactly as before.
-.env
-.env.*
-!.env.example
-credentials.json
-data_store.json
+# 1. Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# 2. Build Outputs
+dist/
+dist-ssr/
+build/
+.vite/
+
+# 3. Databases & Runtime Data (SANGAT KRUSIAL: Berisi data login, token, & kredensial Google)
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
 auth.db
-auth.db-shm
 auth.db-wal
-firebase-applet-config.json
-node_modules
+auth.db-shm
+data_store.json
+backups/
+
+# 4. User Uploads & Documents (SANGAT KRUSIAL: Berisi PDF kontrak, due diligence & lampiran mitra)
+uploads/*
+!uploads/.gitkeep
+
+# 5. Secrets, Environment Variables & Credentials
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.cert
+*service-account*.json
+*credentials*.json
+
+# 6. Test Reports & Coverage
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+coverage/
+
+# 7. Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 8. Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 9. IDE & AI Tooling Metadata
+.vscode/
+.idea/
+.cursor/
+.claude/
+.aistudio/
+CLAUDE.md
+AGENTS.md
