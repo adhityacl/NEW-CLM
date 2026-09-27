@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { getActiveFormattingLocale } from '../../lib/currencyUtils';
 import {
-  Users,
   Search,
   UserPlus,
   Shield,
@@ -28,7 +27,6 @@ interface AdminUsersTabProps {
   onOpenResetPassword: (user: ConsoleUser) => void;
   onToggleBan: (user: ConsoleUser) => void;
   onDeleteUser: (user: ConsoleUser) => void;
-  onBulkAction: (action: 'ban' | 'unban' | 'delete', userIds: string[]) => void;
   canCreateUser?: boolean;
 }
 
@@ -49,7 +47,6 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   onOpenResetPassword,
   onToggleBan,
   onDeleteUser,
-  onBulkAction,
   canCreateUser = false,
 }) => {
   const { t, language } = useLanguage();
@@ -57,11 +54,6 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-
-  React.useEffect(() => {
-    setSelectedUserIds([]);
-  }, [searchQuery, roleFilter, tenantFilter, statusFilter]);
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
@@ -156,89 +148,13 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Bulk Action Bar */}
-      {selectedUserIds.length > 0 && (
-        <div
-          role="toolbar"
-          aria-label={t('admin.bulk_actions_for_selected_users', 'Bulk actions for selected users')}
-          className="flex items-center justify-between gap-3 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/60 p-3 rounded-xl shadow-xs"
-        >
-          <div className="flex items-center gap-2 text-xs font-semibold text-purple-900 dark:text-purple-300">
-            <Users className="w-4 h-4 text-purple-600" />
-            <span>
-              {selectedUserIds.length} {t('admin.users_selected', 'users selected')}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                onBulkAction('ban', selectedUserIds);
-                setSelectedUserIds([]);
-              }}
-              className="border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/30"
-            >
-              <Ban className="w-3.5 h-3.5" />
-              <span>{t('admin.bulk_ban', 'Cekal Massal')}</span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                onBulkAction('unban', selectedUserIds);
-                setSelectedUserIds([]);
-              }}
-              className="border-emerald-300 text-emerald-800 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>{t('admin.bulk_unban', 'Buka Cekal Massal')}</span>
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                onBulkAction('delete', selectedUserIds);
-                setSelectedUserIds([]);
-              }}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{t('admin.bulk_delete', 'Hapus Massal')}</span>
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedUserIds([])}>
-              {t('admin.btn_cancel', 'Batal')}
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Users Table */}
       <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto bg-white dark:bg-slate-900">
           <table className="w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
-                <th scope="col" className="pl-6 pr-2 py-4 w-12 text-left align-middle">
-                  <div className="flex items-center justify-start">
-                    <input
-                      type="checkbox"
-                      aria-label={t('admin.select_all_users', 'Select all users')}
-                      checked={filteredUsers.length > 0 && selectedUserIds.length === filteredUsers.length}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedUserIds(filteredUsers.map((u) => u.id));
-                        } else {
-                          setSelectedUserIds([]);
-                        }
-                      }}
-                      className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755] cursor-pointer"
-                    />
-                  </div>
-                </th>
-                <th scope="col" className="p-4 text-left text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">
+                <th scope="col" className="p-4 pl-6 text-left text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">
                   {t('admin.col_identifier', 'Pengguna')}
                 </th>
                 <th scope="col" className="p-4 text-left text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">
@@ -267,32 +183,15 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-xs text-slate-500">
+                  <td colSpan={8} className="py-8 text-center text-xs text-slate-500">
                     {t('admin.no_users_found', 'Tidak ada pengguna yang cocok dengan kriteria pencarian.')}
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    {/* Checkbox */}
-                    <td className="pl-6 pr-2 py-4 text-left align-middle">
-                      <input
-                        type="checkbox"
-                        aria-label={`${t('admin.select', 'Select')} ${user.name}`}
-                        checked={selectedUserIds.includes(user.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedUserIds((prev) => [...prev, user.id]);
-                          } else {
-                            setSelectedUserIds((prev) => prev.filter((id) => id !== user.id));
-                          }
-                        }}
-                        className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755] cursor-pointer"
-                      />
-                    </td>
-
                     {/* User info */}
-                    <td className="py-4 px-4 text-left align-middle">
+                    <td className="py-4 px-4 pl-6 text-left align-middle">
                       <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 font-semibold shrink-0">
                         {user.image ? (

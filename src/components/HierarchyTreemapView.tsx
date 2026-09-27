@@ -104,7 +104,6 @@ import {
   ShieldCheck,
   FolderOpen,
   XCircle,
-  Eye,
   Info,
   GitFork,
   LayoutGrid,
@@ -335,14 +334,6 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
 
                     <div className="flex items-center gap-2 self-end md:self-center">
                       <button
-                        onClick={() => onSelectPartner(partner)}
-                        className="px-3 py-1.5 bg-[#F7F8FA] hover:bg-[#EBFBF0] hover:text-[#048C3B] text-slate-700 text-xs font-bold rounded-xl border border-[#E5E8EB] transition-colors flex items-center gap-1 cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5 text-[#06C755]" />
-                        <span>{t('hierarchy.detail_legal', 'Detail Legal')}</span>
-                      </button>
-
-                      <button
                         onClick={() => onOpenAddContract(partner.partner_id)}
                         className="px-3 py-1.5 bg-[#06C755] hover:bg-[#05B34C] text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
                       >
@@ -509,12 +500,14 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                       </a>
                                     )}
 
-                                    <button
-                                      onClick={() => onSelectContract(contract)}
-                                      className="px-2.5 py-1 hover:bg-slate-100 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer"
-                                    >
-                                      {t('hierarchy.edit_btn', 'Edit')}
-                                    </button>
+                                    {hasPermission('document.edit') && (
+                                      <button
+                                        onClick={() => onSelectContract(contract)}
+                                        className="px-2.5 py-1 hover:bg-slate-100 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer"
+                                      >
+                                        {t('hierarchy.edit_btn', 'Edit')}
+                                      </button>
+                                    )}
 
                                     <button
                                       onClick={() => onOpenAddIO(contract.contract_id, contract.partner_id)}
@@ -628,12 +621,14 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                                 </a>
                                               )}
 
-                                              <button
-                                                onClick={() => onSelectIO(io)}
-                                                className="px-2.5 py-1 hover:bg-slate-100 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer"
-                                              >
-                                                {t('hierarchy.edit_btn', 'Edit')}
-                                              </button>
+                                              {hasPermission('document.edit') && (
+                                                <button
+                                                  onClick={() => onSelectIO(io)}
+                                                  className="px-2.5 py-1 hover:bg-slate-100 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer"
+                                                >
+                                                  {t('hierarchy.edit_btn', 'Edit')}
+                                                </button>
+                                              )}
                                             </div>
                                           </div>
 

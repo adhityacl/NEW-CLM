@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import nodemailer from 'nodemailer';
-import { authzError, buildAuditEvent, canChangeRole, canInvite, type Actor } from '../../server/rbac';
+import { authzError, buildAuditEvent, canChangeRole, canInvite, actorDepartmentIds, type Actor } from '../../server/rbac';
 import { getDefaultTenantId } from '../../server/tenantPolicy';
 import { resolveTenantSettings } from '../lib/policy';
 import { isDemoAccountEmail } from './demoAccounts';
@@ -15,6 +15,21 @@ function getConsoleTenantScope(req: Request): string | null {
   const actor = (req as any).actor as Actor | null;
   if (!actor || actor.role === 'superuser') return null;
   return actor.tenantId ?? null;
+}
+
+/**
+ * Department ids a manager/editor/viewer is confined to in the Users/Teams
+ * consoles, or null when the actor should see the whole tenant (superuser,
+ * admin, or a department-scoped role with no department data yet — see
+ * maxScopeForActor() in rbac.ts for why that last case fails open to tenant).
+ */
+function getConsoleDepartmentScope(req: Request): string[] | null {
+  const actor = (req as any).actor as Actor | null;
+  if (!actor) return null;
+  const role = String(actor.role || '').toLowerCase().trim();
+  if (role === 'superuser' || role === 'admin') return null;
+  const depts = actorDepartmentIds(actor);
+  return depts.length > 0 ? depts : null;
 }
 
 /* RBAC-ADMIN-AREA-GUARD-V1 */
@@ -374,18 +389,28 @@ authConsoleRouter.get('/overview', (req: Request, res: Response) => {
 authConsoleRouter.get('/users', (req: Request, res: Response) => {
   try {
     const tenantId = getConsoleTenantScope(req);
+    const deptScope = getConsoleDepartmentScope(req);
+    const actorId = (req as any).actor?.id as string | undefined;
+    // Manager/editor/viewer only see themselves + members of their own
+    // department(s); admin/superuser (deptScope === null) see the whole tenant.
+    const deptFilterSql = deptScope
+      ? `AND (u.id = ? OR EXISTS (
+            SELECT 1 FROM teamMember tm2 WHERE tm2.userId = u.id AND tm2.teamId IN (${deptScope.map(() => '?').join(',')})
+          ))`
+      : '';
+    const deptParams = deptScope ? [actorId, ...deptScope] : [];
     const users = sqliteDb.prepare(`
-      SELECT 
-        u.id, 
-        u.name, 
-        u.email, 
-        u.emailVerified, 
-        u.image, 
-        u.createdAt, 
-        u.updatedAt, 
-        u.role, 
-        u.banned, 
-        u.banReason, 
+      SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.emailVerified,
+        u.image,
+        u.createdAt,
+        u.updatedAt,
+        u.role,
+        u.banned,
+        u.banReason,
         u.banExpires,
         (SELECT t.name FROM team t JOIN teamMember tm ON tm.teamId = t.id WHERE tm.userId = u.id LIMIT 1) as department,
         (SELECT COUNT(*) FROM session WHERE userId = u.id) as sessionCount,
@@ -395,8 +420,9 @@ authConsoleRouter.get('/users', (req: Request, res: Response) => {
       FROM user u
       LEFT JOIN member scopedMember ON scopedMember.userId = u.id
       WHERE (? IS NULL OR scopedMember.organizationId = ?)
+      ${deptFilterSql}
       ORDER BY u.createdAt DESC
-    `).all(tenantId, tenantId);
+    `).all(tenantId, tenantId, ...deptParams);
 
     return res.json({
       success: true,
@@ -1262,7 +1288,7 @@ authConsoleRouter.get('/teams', (req: Request, res: Response) => {
     }
 
     // Fetch members for each team
-    const teamsWithMembers = teams.map((team: any) => {
+    let teamsWithMembers = teams.map((team: any) => {
       const members = sqliteDb.prepare(`
         SELECT tm.id as membershipId, tm.userId, tm.createdAt as joinedAt, u.name, u.email, u.role
         FROM teamMember tm
@@ -1275,6 +1301,14 @@ authConsoleRouter.get('/teams', (req: Request, res: Response) => {
         members,
       };
     });
+
+    // Manager/editor/viewer only see their own department(s); admin/superuser
+    // (deptScope === null) see every department in the tenant.
+    const deptScope = getConsoleDepartmentScope(req);
+    if (deptScope) {
+      const allowed = new Set(deptScope);
+      teamsWithMembers = teamsWithMembers.filter((team: any) => allowed.has(team.id));
+    }
 
     return res.json({ success: true, teams: teamsWithMembers });
   } catch (err: any) {

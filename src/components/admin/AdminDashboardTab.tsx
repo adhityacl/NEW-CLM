@@ -9,7 +9,6 @@ import {
   KeyRound,
   UserPlus,
   Plus,
-  ShieldAlert,
   Clock,
   ArrowUpRight,
   ExternalLink,
@@ -195,125 +194,6 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
             </div>
           );
         })}
-      </div>
-
-      {/* Better Auth Infrastructure & Security Controls (@better-auth/infra) */}
-      <div className="rounded-xl border border-indigo-200 dark:border-indigo-900/80 bg-linear-to-r from-indigo-50/60 via-white to-purple-50/40 dark:from-indigo-950/30 dark:via-slate-900 dark:to-purple-950/20 p-4.5 sm:p-5 shadow-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 pb-3 border-b border-indigo-100 dark:border-indigo-900/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-xs font-mono font-bold text-xs flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" />
-              <span>{t('admin.infra', 'INFRA')}</span>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                  {t('admin.better_auth_infrastructure_better_auth_infra', 'Better Auth Infrastructure (@better-auth/infra)')}
-                </h4>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/80 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-800">
-                  {t('admin.v1_7_1_connected', 'v1.7.1 Connected')}
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                {t('admin.pengamanan_tingkat_lanjut_audit_log_real', 'Pengamanan tingkat lanjut, audit log real-time, dan manajemen hak akses terintegrasi.')}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-medium border border-emerald-200 dark:border-emerald-800">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              {t('admin.sentinel_security_active', 'Sentinel Security: Active')}
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-          {/* Dash Engine */}
-          <div className="p-3.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-900 dark:text-slate-100">
-              <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
-                <ShieldCheck className="w-4 h-4" />
-                {t('admin.dash_engine_dash', 'Dash Engine (`dash()`)')}
-              </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">{t('admin.online', 'ONLINE')}</span>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              {t('admin.audit_logging_terenkripsi_pelacakan_histori_sesi', 'Audit logging terenkripsi, pelacakan histori sesi, serta agregasi metrik pengguna secara otomatis.')}
-            </p>
-          </div>
-
-          {/* Sentinel Security */}
-          <div className="p-3.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-900 dark:text-slate-100">
-              <span className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
-                <ShieldAlert className="w-4 h-4" />
-                {t('admin.sentinel_sentinel', 'Sentinel (`sentinel()`)')}
-              </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">{t('admin.protected', 'PROTECTED')}</span>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              {t('admin.perlindungan_credential_stuffing_deteksi_bot_spa', 'Perlindungan credential stuffing, deteksi bot/spam otomatis, dan rate-limiting IP berbasis Proof-of-Work.')}
-            </p>
-          </div>
-
-          {/* RBAC Access Matrix */}
-          <div className="p-3.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-900 dark:text-slate-100">
-              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                <KeyRound className="w-4 h-4" />
-                {t('admin.rbac_whitelist_gate', 'RBAC & Whitelist Gate')}
-              </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">{t('admin.enforced', 'ENFORCED')}</span>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              {t('admin.matriks_hak_akses_8_role_superuser', 'Matriks hak akses 8 role (Superuser, Admin, Manager, Legal, dll) terintegrasi dengan persetujuan pendaftaran.')}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Action Shortcuts */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
-          {t('admin.quick_actions_title', 'Tindakan Cepat (Quick Actions)')}
-        </h4>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {canCreateUser && (
-            <button
-              type="button"
-              onClick={onOpenAddUser}
-              className="flex items-center justify-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-600 bg-slate-50/60 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all text-left"
-            >
-              <UserPlus className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{t('admin.quick_add_user', 'Tambah User Baru')}</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onOpenCreateOrg}
-            className="flex items-center justify-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-600 bg-slate-50/60 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all text-left"
-          >
-            <Building2 className="w-4 h-4 text-purple-600 shrink-0" />
-            <span>{t('admin.quick_create_org', 'Buat Organisasi')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={onOpenCreateTeam}
-            className="flex items-center justify-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-600 bg-slate-50/60 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all text-left"
-          >
-            <Layers className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>{t('admin.quick_create_team', 'Buat Tim/Divisi')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={onOpenCreateApiKey}
-            className="flex items-center justify-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-600 bg-slate-50/60 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all text-left"
-          >
-            <KeyRound className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>{t('admin.btn_generate_key', 'Generate API Key')}</span>
-          </button>
-        </div>
       </div>
 
       {/* Two Columns: Recent Users & Recent Sessions */}

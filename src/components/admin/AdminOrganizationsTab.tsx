@@ -125,9 +125,11 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                 </div>
 
                 {/* Tagline / metadata */}
-                <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 min-h-[32px] mb-4">
-                  {org.metadata?.tagline || (t('admin.registered_enterprise_organization_in_better_aut', 'Registered enterprise organization in Better Auth ecosystem.'))}
-                </p>
+                {org.metadata?.tagline && (
+                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 min-h-[32px] mb-4">
+                    {org.metadata.tagline}
+                  </p>
+                )}
 
                 {/* Metrics pill */}
                 <div className="grid grid-cols-2 gap-2 mb-4 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 text-xs">

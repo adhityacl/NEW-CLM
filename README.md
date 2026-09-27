@@ -1,45 +1,75 @@
-# Silegal — Contract & Insertion Order Management
+<div align="center">
 
-Silegal is a multi-tenant Contract Lifecycle Management (CLM) application. It manages contracts, partners, Insertion Orders (IOs) and Due Diligence, with role-based access control (RBAC), a WYSIWYG contract creator with drafts and redlining, and AI-assisted document workflows.
+# 🏛️ Silegal
+### Contract & Insertion Order Management
 
-- [Features](#features)
-- [What's new](#whats-new)
-- [Tech stack](#tech-stack)
-- [Project layout](#project-layout)
-- [Local development](#local-development)
-- [Configuration reference](#configuration-reference)
-- [Google integration](#google-integration)
-- [Testing](#testing)
-- [Deploying to a new server](#deploying-to-a-new-server)
-- [Moving an existing installation to a new server](#moving-an-existing-installation-to-a-new-server)
-- [Backups and updates](#backups-and-updates)
-- [Troubleshooting](#troubleshooting)
+**A multi-tenant Contract Lifecycle Management (CLM) platform** — contracts, partners, Insertion Orders and Due Diligence, role-based access control, a WYSIWYG contract creator with drafts and redlining, and AI-assisted document workflows.
+
+[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A520.19-339933?logo=node.js&logoColor=white)](package.json)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](package.json)
+[![Express](https://img.shields.io/badge/Express-black?logo=express&logoColor=white)](server.ts)
+[![SQLite](https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
+[![Better Auth](https://img.shields.io/badge/Auth-Better%20Auth-6E56CF)](https://www.better-auth.com/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](#license)
+
+</div>
+
+---
+
+### 📚 Table of contents
+
+- ✨ [Features](#features)
+- 🆕 [What's new](#whats-new)
+- 🧱 [Tech stack](#tech-stack)
+- 📁 [Project layout](#project-layout)
+- 🚀 [Local development](#local-development)
+- ⚙️ [Configuration reference](#configuration-reference)
+- 🔗 [Google integration](#google-integration)
+- 🧪 [Testing](#testing)
+- 🌐 [Deploying to a new server](#deploying-to-a-new-server)
+- 🔄 [Moving an existing installation to a new server](#moving-an-existing-installation-to-a-new-server)
+- 💾 [Backups and updates](#backups-and-updates)
+- 🩺 [Troubleshooting](#troubleshooting)
+
+---
 
 ## Features
 
-**Contracts, partners and IOs**
+**📄 Contracts, partners and IOs**
 - Full CRUD for contracts, partners, Insertion Orders, spendings and partner evaluations, scoped per organization (tenant) and department.
 - Notice-period tracking, expiry/renewal status, notifications and an activity log.
 - Bulk import, Due Diligence checklists driven by per-country policy packs, and a dashboard with charts.
 
-**Contract Creator** (sidebar → *Create Contract*)
+**✍️ Contract Creator** (sidebar → *Create Contract*)
 - **Document explorer**: the page opens on *My Documents*. You can search by name or metadata value, filter by status, type, creator, created date or a metadata field, sort by any column, and page through results 25/50/100 at a time. Each row has quick actions for open, rename, archive and delete.
 - **Editor**: a [TipTap](https://tiptap.dev/) editor with fillable-slot fields, partner auto-fill, a template library, a preview and Word (`.doc`) export.
 - **Drafts and versions**: documents autosave every 30 seconds. They also save on Ctrl/Cmd+S, when you go back to the explorer, when you navigate elsewhere in the app, and when you close the tab. The header shows *Draft vN · Last saved X ago by Y* and an unsaved-changes marker. The *History* tab lists every version, and you can view, compare (paragraph diff), restore, or name and label any of them.
 - **Metadata**: the creator, last modifier and their timestamps are recorded automatically. Organization admins define custom fields (text, select, date, multi-select), which you fill in from the *Info* tab and can search and filter in the explorer.
 - **Redlining**: select text, then add a comment or suggest a change. A suggested change shows the original text struck through and the proposed text underlined. You can reply in threads, accept, reject or resolve items one at a time or in bulk, and see a change summary and redline history. *Download with Redlines* exports a `.doc` file with the markup and a comments appendix.
 
-**Access control**
+**🛡️ Access control**
 - Five roles (Superuser, Admin, Manager, Editor, Viewer) with tenant and department scope enforcement (`server/rbac.ts`).
 - System Admin and Organization Admin consoles for users, invitations, departments, sessions and the RBAC matrix.
 
-**AI and integrations**
+**🤖 AI and integrations**
 - Google Gemini (`@google/genai`) for contract, partner and IO parsing, Due Diligence notes, redline analysis and a search-grounded news ticker.
 - Google Drive folder provisioning and Sheets sync. The Google credentials can be uploaded as JSON files in the app instead of being placed in `.env` (see [Google integration](#google-integration)).
 - SMTP e-mail for invitations and notifications, configured in Settings.
-- English and Bahasa Indonesia UI, with in-app text overrides.
+- English, Bahasa Indonesia and Simplified Chinese UI, with in-app text overrides.
+
+---
 
 ## What's new
+
+**Late September 2026**
+- **Contract Creator fullscreen mode**: a toolbar button (between *Download* and the field panel toggle) expands the editor to fill the browser viewport, hiding the app's sidebar and header. `Esc`, the toggle itself, or navigating back to the document list all exit it.
+- **Dashboard**: a new *Documents Pending Review* table lists documents awaiting review (name, type, modified by, created and last-modified dates) next to the existing expiring-contracts table, with a shortcut into the Contract Creator.
+- **Department-scoped Organization Admin**: Managers, Editors and Viewers opening *Organization Admin → Users* or *→ Departments* now only see themselves and their own department's members/teams, instead of every user and department in the tenant. Enforced server-side in `src/server/authConsoleRoutes.ts`, not just hidden in the UI.
+- **Fix — admin console breadcrumb**: the header no longer falls back to "Main Dashboard" while inside a System Admin or Organization Admin screen; it was checking a stale `admin-users-*` tab prefix that no longer matched the actual `admin-system-*`/`admin-organization-*` routes.
+- **Fix — stale locale after switching language**: number and date formatting (e.g. the Structure Audit table) no longer lags one render behind right after switching UI language. The active formatting locale used to be set inside a `useEffect`, one tick after the language actually changed; it's now set synchronously in `TenantSettingsProvider`'s render, ahead of every screen that reads it.
+- **RBAC Access Matrix relabeled**: scope badges now read *Global* (Superuser, cross-organization), *Organization* (Admin, every department in one tenant) and *Department* (Manager/Editor, their own department only) — previously Superuser and Admin shared the same ambiguous "Global" badge.
+- Console cleanup: removed the unused "Better Auth Infrastructure" banner, its quick-actions block, and the `instances.config.ts` viewer from the admin dashboard and console header; the Users and Sessions tables now share one visual style, and bulk user selection (which had no remaining trigger) was removed along with it.
 
 **September 2026**
 - **Contract Creator**: added the document explorer, autosaved drafts with version history, diff and restore, document metadata with organization custom fields, and redlining (comments, suggested changes, accept/reject, redline export). The data is stored in new SQLite tables that are created automatically on start.
@@ -59,16 +89,20 @@ Silegal is a multi-tenant Contract Lifecycle Management (CLM) application. It ma
 - Tenant policy packs, i18n and admin settings; hardened session authentication.
 - SQLite became the single source of truth (`data_store.json` is only a one-time import source).
 
+---
+
 ## Tech stack
 
 | Layer | Technology |
 | --- | --- |
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, Radix UI primitives (`src/components/ui/`), TipTap, Recharts, TanStack Query |
-| Backend | Express and TypeScript in a single process (`server.ts`). In development Vite runs inside Express as middleware, so the app uses one server and one port. |
-| Auth | Better Auth (sessions, organizations, teams) plus a custom RBAC engine (`server/rbac.ts`) |
-| Data | SQLite via `better-sqlite3`, stored in one file: `auth.db` |
-| Integrations | `@google/genai`, `googleapis`, Google Identity Services (Google Sign-In), `nodemailer`, `docx`, `pdf-lib`, `pdf-parse` |
-| Tests | Node's built-in test runner (`node:test`) and Playwright |
+| 🎨 Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, Radix UI primitives (`src/components/ui/`), TipTap, Recharts, TanStack Query |
+| 🖥️ Backend | Express and TypeScript in a single process (`server.ts`). In development Vite runs inside Express as middleware, so the app uses one server and one port. |
+| 🔐 Auth | Better Auth (sessions, organizations, teams) plus a custom RBAC engine (`server/rbac.ts`) |
+| 💾 Data | SQLite via `better-sqlite3`, stored in one file: `auth.db` |
+| 🔌 Integrations | `@google/genai`, `googleapis`, Google Identity Services (Google Sign-In), `nodemailer`, `docx`, `pdf-lib`, `pdf-parse` |
+| 🧪 Tests | Node's built-in test runner (`node:test`) and Playwright |
+
+---
 
 ## Project layout
 
@@ -84,12 +118,14 @@ src/
   context/                   Auth, language, tenant, toast and confirm providers
   lib/                       Shared logic (auth, Google clients, document model, TipTap extensions)
   server/                    Extra API routers (auth console, documents, Google credentials)
-  i18n/                      Translation catalog additions (EN + ID)
+  i18n/                      Translation catalogs (EN + ID additions, plus the full ZH/Simplified Chinese catalog)
 tests/                       node:test suites and Playwright e2e (tests/e2e)
 docs/                        Product requirements, RBAC documentation and audits
 ```
 
 Runtime files are created next to `server.ts` and are **not** tracked by Git: `.env`, `auth.db` (plus `auth.db-wal` and `auth.db-shm`), `uploads/`, and the legacy `data_store.json`.
+
+---
 
 ## Local development
 
@@ -107,6 +143,8 @@ npm run dev
 Open **http://localhost:3000**. On the very first visit you'll see *Create admin account*: enter your name, email and a password (8+ characters) and you're signed in as the Superuser. There are no default credentials.
 
 On first start the server creates `auth.db` with all tables and loads a three-country demo workspace. Until the Google credential files are uploaded, a banner offers **Connect Google**. The Gemini key (AI features) and SMTP are set in Settings — nothing goes in `.env`.
+
+---
 
 ## Configuration reference
 
@@ -126,6 +164,8 @@ All variables are read from `.env` in the working directory (see `.env.example`)
 | `ALLOW_GOOGLE_SELF_SIGNUP` | `false` | When `true`, any Google account can sign in and gets a user created automatically. Otherwise an administrator must invite the user first. |
 | `BETTER_AUTH_ENABLE_INFRA` / `BETTER_AUTH_API_KEY` | — | Optional Better Auth Infra dashboard and Sentinel. |
 
+---
+
 ## Google integration
 
 Two JSON files from [Google Cloud Console](https://console.cloud.google.com/) power Drive and Sheets:
@@ -142,6 +182,8 @@ A Superuser uploads the files from **Connect Google** in the first-login banner,
 
 "Sign in with Google" on the login page uses the same uploaded OAuth client, so it works as soon as that file is uploaded and the domain is in its **Authorized JavaScript origins**. Google accounts must be invited first unless `ALLOW_GOOGLE_SELF_SIGNUP=true`.
 
+---
+
 ## Testing
 
 ```bash
@@ -152,6 +194,8 @@ npm run test:documents    # Contract Creator API: drafts, explorer, metadata, co
 npm run test:credentials  # Google credential upload and priority over .env
 npm run test:e2e          # Playwright browser tests (run `npx playwright install` once first)
 ```
+
+---
 
 ## Deploying to a new server
 
@@ -248,6 +292,8 @@ Keep port 3000 closed to the internet; only nginx should reach it.
 3. **Connect Google** (banner or Settings): upload the two JSON files (see [Google integration](#google-integration)), and add `https://clm.example.com` to the OAuth client's **Authorized JavaScript origins**.
 4. Optional: set the Gemini key (Settings → AI Model & Parser) and SMTP (Settings → Notification Recipients), and invite your users (Organization Admin → Invitations).
 
+---
+
 ## Moving an existing installation to a new server
 
 All application data lives in `auth.db`, including users, organizations, contracts, Contract Creator documents and uploaded Google credentials. Attachments live in `uploads/`.
@@ -264,6 +310,8 @@ All application data lives in `auth.db`, including users, organizations, contrac
 4. If the old `.env` pinned `BETTER_AUTH_URL`/`TRUSTED_ORIGINS` to the old domain, remove or update them (unset, the app just follows the new host). Keep the same `BETTER_AUTH_SECRET` so existing sessions stay valid; a new secret only signs everyone out. Users and credentials come with `auth.db`, so no setup page appears.
 5. Continue with steps 4–5 above (service and nginx). New tables and columns are created automatically on start.
 6. If the domain changed, add it to the Google OAuth client's **Authorized JavaScript origins**.
+
+---
 
 ## Backups and updates
 
@@ -288,6 +336,8 @@ sudo -u silegal npm run build
 sudo systemctl restart silegal
 ```
 
+---
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
@@ -300,6 +350,8 @@ sudo systemctl restart silegal
 | Google popup fails with `origin_mismatch` / `redirect_uri_mismatch` | The app URL is not in the OAuth client's Authorized JavaScript origins. Add it, then download and upload the JSON again. |
 | Users are signed out after a restart | `BETTER_AUTH_SECRET` changed. Keep it stable across deployments. |
 | Upload fails with 413 | Raise `client_max_body_size` in nginx (the app accepts up to 30 MB). |
+
+---
 
 ## License
 

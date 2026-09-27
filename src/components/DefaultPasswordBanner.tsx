@@ -170,13 +170,13 @@ export const DefaultPasswordBanner: React.FC<DefaultPasswordBannerProps> = ({ on
             </Dialog.Portal>
           </Dialog.Root>
         )}
-        <Button type="button" size="sm" variant="outline" className="min-h-11" onClick={onOpenSecurity}>
+        <Button type="button" size="sm" className="min-h-11" onClick={onOpenSecurity}>
           {t('security.manage_users', 'Manage users')}
         </Button>
         <GoogleCredentialsDialog
           onClose={refresh}
           trigger={
-            <Button type="button" size="sm" variant="outline" className="min-h-11">
+            <Button type="button" size="sm" className="min-h-11">
               {t('google_setup.button', 'Hubungkan Google')}
             </Button>
           }

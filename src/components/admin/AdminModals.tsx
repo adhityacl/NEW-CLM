@@ -12,7 +12,6 @@ import {
   Lock,
   Copy,
   Check,
-  FileCode2,
   AlertTriangle,
   Pencil,
   Upload,
@@ -93,19 +92,20 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
     }
   }, [isOpen, activeOrgId, organizations, allowedRoles, role]);
 
+  const orgTeams = organizationId ? (teams || []).filter((tm) => tm.organizationId === organizationId) : [];
+
+  // Departments belong to one organization each — re-pick a default (and drop
+  // a stale one from a previously selected tenant) whenever the tenant changes.
   React.useEffect(() => {
-    if (!department) {
-      if (teams && teams.length > 0) {
-        setDepartment(teams[0].name);
-      } else if (DEFAULT_DEPARTMENTS && DEFAULT_DEPARTMENTS.length > 0) {
-        setDepartment(DEFAULT_DEPARTMENTS[0]);
-      }
+    const stillValid = orgTeams.some((tm) => tm.name === department);
+    if (!stillValid) {
+      setDepartment(orgTeams.length > 0 ? orgTeams[0].name : (DEFAULT_DEPARTMENTS?.[0] || ''));
     }
-  }, [teams, DEFAULT_DEPARTMENTS, department]);
+  }, [organizationId, teams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deptOptions = Array.from(
     new Set([
-      ...(teams && teams.length > 0 ? teams.map((tm) => tm.name) : DEFAULT_DEPARTMENTS),
+      ...(orgTeams.length > 0 ? orgTeams.map((tm) => tm.name) : DEFAULT_DEPARTMENTS),
       ...(department ? [department] : []),
     ])
   ).filter(Boolean);
@@ -359,10 +359,19 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
     }
   }, [user]);
 
+  // Departments belong to one organization each — when the selected tenant
+  // changes, drop a department that belonged to the previous one instead of
+  // silently keeping it selected against the new tenant's list.
+  React.useEffect(() => {
+    if (!organizationId || !department) return;
+    const stillValid = (teams || []).some((tm) => tm.organizationId === organizationId && tm.name === department);
+    if (!stillValid) setDepartment('');
+  }, [organizationId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const orgTeams = organizationId ? (teams || []).filter((tm) => tm.organizationId === organizationId) : [];
   const deptOptions = Array.from(
     new Set([
-      ...(teams && teams.length > 0 ? teams.map((tm) => tm.name) : DEFAULT_DEPARTMENTS),
-      ...(user?.department ? [user.department] : []),
+      ...(orgTeams.length > 0 ? orgTeams.map((tm) => tm.name) : DEFAULT_DEPARTMENTS),
       ...(department ? [department] : []),
     ])
   ).filter(Boolean);
@@ -2179,91 +2188,6 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
             </div>
           </form>
         )}
-      </div>
-    </div>
-  );
-};
-
-// Instances config viewer modal
-interface InstancesConfigModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export const InstancesConfigModal: React.FC<InstancesConfigModalProps> = ({
-  isOpen,
-  onClose,
-}) => {
-  const { t } = useLanguage();
-  if (!isOpen) return null;
-
-  const codeSnippet = `// instances.config.ts (Project Root)
-import Database from "better-sqlite3";
-import { betterAuth } from "better-auth";
-import { admin, organization } from "better-auth/plugins";
-
-const sqliteDb = new Database("./auth.db");
-
-export const auth = betterAuth({
-  secret: process.env.BETTER_AUTH_SECRET || "console-production-secret",
-  database: sqliteDb,
-  plugins: [
-    admin({ defaultRole: "staff" }),
-    organization({
-      teams: { enabled: true, maximumTeams: 20 },
-      ac: { /* RBAC Policies for legal, finance, admin */ },
-    }),
-  ],
-});
-
-export default [
-  {
-    id: "production",
-    name: "Production",
-    env: "production",
-    auth,
-  },
-];`;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileCode2 className="w-4 h-4 text-emerald-600" />
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
-              {t('admin.instances_config_title', 'Better Auth Console Instances Configuration')}
-            </h3>
-          </div>
-          <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-4">
-          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-            {t(
-              'admin.instances_config_desc',
-              'Konsol administrasi terhubung langsung ke file konfigurasi resmi instances.config.ts sesuai dokumentasi resmi Better Auth Console.'
-            )}
-          </p>
-
-          <div className="rounded-xl bg-slate-950 p-4 border border-slate-800 overflow-x-auto">
-            <pre className="text-xs font-mono text-slate-200 leading-relaxed">
-              <code>{codeSnippet}</code>
-            </pre>
-          </div>
-
-          <div className="pt-2 flex justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              {t('admin.close', 'Tutup')}
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

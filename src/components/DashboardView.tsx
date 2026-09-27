@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTenantSettings } from '../context/TenantSettingsContext';
 import { convertToUsdWithFallback, getActiveFormattingLocale, getDefaultUsdRate } from '../lib/currencyUtils';
 import { Contract, InsertionOrder, Partner, NotificationLog, PartnerSpending } from '../types';
@@ -15,6 +15,9 @@ import { ActionMenu } from './ui/action-menu';
 import { getStatusBadgeClass } from './ui/badge';
 import { parseMonthStr, parseAllMonths, formatMonthTagDisplay } from '../lib/monthUtils';
 import { NewsTicker } from './NewsTicker';
+import { documentsApi, errorMessage } from '../lib/documentsApi';
+import { formatDateTime, type DocumentSummary } from '../lib/documentModel';
+import { typeLabel } from './documents/documentLabels';
 import {
   FileText,
   FileSpreadsheet,
@@ -29,6 +32,7 @@ import {
   TrendingUp,
   GitFork,
   ExternalLink,
+  FileClock,
 } from 'lucide-react';
 import {
   BarChart,
@@ -85,6 +89,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const userName = user?.name?.trim() || 'Admin';
     return `${greetingWord}, ${userName}`;
   };
+
+  // Documents awaiting review, for the "Pending Review" table below
+  const [pendingReviewDocs, setPendingReviewDocs] = useState<DocumentSummary[]>([]);
+  const [pendingReviewState, setPendingReviewState] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  useEffect(() => {
+    let cancelled = false;
+    documentsApi
+      .list({ status: 'pending_review', page: '1', limit: '5', sort_by: 'modified_at', sort_dir: 'desc' })
+      .then((data) => {
+        if (!cancelled) {
+          setPendingReviewDocs(data.documents);
+          setPendingReviewState('ready');
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load pending review documents:', errorMessage(err));
+        if (!cancelled) setPendingReviewState('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Department-scoped datasets based on RBAC and Internal PIC of Partner
   const scopedPartners = useMemo(() => (partners || []).filter((p) => canViewPartner(p, user)), [partners, user]);
@@ -399,16 +426,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span>{getGreetingText()}</span>
           </h2>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <button
-            onClick={() => onNavigateTab('contracts')}
-            className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center transition-all shrink-0"
-          >
-            <FileText className="w-4 h-4 text-slate-500" />
-            <span>{t('dashboard.view_all_contracts', 'Lihat Semua Kontrak')}</span>
-          </button>
-        </div>
       </div>
 
       <NewsTicker />
@@ -635,6 +652,127 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
+      {/* Documents Pending Review Table */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 rounded-xl border border-amber-200 dark:border-amber-500/30 shrink-0">
+              <FileClock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                {t('dashboard.pending_review_table_title', 'Dokumen Menunggu Review (Pending Review)')}
+              </h3>
+            </div>
+          </div>
+
+          <button
+            onClick={() => onNavigateTab('create-contract')}
+            className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold flex items-center transition-all shrink-0"
+          >
+            <span>{t('dashboard.view_all_documents', 'Lihat Semua Dokumen')}</span>
+            <ArrowUpRight className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+
+        <div className="overflow-x-auto bg-white dark:bg-slate-900">
+          <table className="w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
+            <thead className="bg-slate-50 dark:bg-slate-800/50">
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
+                <th scope="col" className="pl-6 pr-2 py-4 w-12 text-left align-middle">
+                  <div className="flex items-center justify-start">
+                    <input
+                      type="checkbox"
+                      aria-label={t('dashboard.pilih_semua_dokumen_pending_review', 'Pilih semua dokumen pending review')}
+                      className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                      disabled
+                    />
+                  </div>
+                </th>
+                <th scope="col" className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">{t('dashboard.doc_pending_col_name', 'Nama Dokumen')}</th>
+                <th scope="col" className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">{t('dashboard.doc_pending_col_type', 'Jenis')}</th>
+                <th scope="col" className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">{t('dashboard.doc_pending_col_modified_by', 'Diubah Oleh')}</th>
+                <th scope="col" className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">{t('dashboard.doc_pending_col_created_at', 'Dibuat')}</th>
+                <th scope="col" className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">{t('dashboard.doc_pending_col_modified_at', 'Terakhir Diubah')}</th>
+                <th scope="col" className="pl-2 pr-6 py-4 text-right w-20 text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">
+                  <div className="flex items-center justify-end">{t('dashboard.action', 'Aksi')}</div>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
+              {pendingReviewState === 'loading' ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
+                    {t('common.loading', 'Memuat Data...')}
+                  </td>
+                </tr>
+              ) : pendingReviewDocs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
+                    {t('dashboard.no_pending_review', 'Tidak ada dokumen yang menunggu review saat ini.')}
+                  </td>
+                </tr>
+              ) : (
+                pendingReviewDocs.map((doc) => (
+                  <tr key={doc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="pl-6 pr-2 py-4 text-left align-middle">
+                      <div className="flex items-center justify-start">
+                        <input
+                          type="checkbox"
+                          aria-label={t('dashboard.pilih_dokumen', 'Pilih dokumen {nama}', { nama: doc.name })}
+                          className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                          disabled
+                        />
+                      </div>
+                    </td>
+
+                    {/* 1. Nama Dokumen */}
+                    <td className="py-4 px-4 text-xs font-semibold text-slate-900 dark:text-slate-100 text-left max-w-[240px]">
+                      <span className="line-clamp-2" title={doc.name}>{doc.name}</span>
+                    </td>
+
+                    {/* 2. Jenis */}
+                    <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left whitespace-nowrap">
+                      {typeLabel(t, doc.type)}
+                    </td>
+
+                    {/* 3. Diubah Oleh */}
+                    <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left whitespace-nowrap">
+                      {doc.modified_by_name || '—'}
+                    </td>
+
+                    {/* 4. Dibuat */}
+                    <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left whitespace-nowrap">
+                      {formatDateTime(doc.created_at, language)}
+                    </td>
+
+                    {/* 5. Terakhir Diubah */}
+                    <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left whitespace-nowrap">
+                      {formatDateTime(doc.modified_at, language)}
+                    </td>
+
+                    {/* 6. Aksi */}
+                    <td className="pl-2 pr-6 py-4 text-right align-middle w-20">
+                      <div className="flex items-center justify-end">
+                        <ActionMenu
+                          items={[
+                            {
+                              label: t('io.action_detail', 'Detail'),
+                              icon: <ExternalLink className="w-3.5 h-3.5" />,
+                              onClick: () => onNavigateTab('create-contract'),
+                            },
+                          ]}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Stacked Spending Chart Card (Under Table) */}
       <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
@@ -644,7 +782,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div>
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                {t('dashboard.spending_title', 'Analisis Spending')}
+                {t('dashboard.spending_title', 'Tren Spending')}
               </h3>
             </div>
           </div>

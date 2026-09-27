@@ -38,7 +38,6 @@ import {
   AddTeamMemberModal,
   InviteMemberModal,
   GenerateApiKeyModal,
-  InstancesConfigModal,
 } from './admin/AdminModals';
 import { CheckCircle2, AlertTriangle, X } from 'lucide-react';
 import { usePermissions } from '../lib/permissions';
@@ -92,7 +91,6 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
   const [selectedTeamForAddMember, setSelectedTeamForAddMember] = useState<ConsoleTeam | null>(null);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isCreateApiKeyOpen, setIsCreateApiKeyOpen] = useState(false);
-  const [isInstanceConfigOpen, setIsInstanceConfigOpen] = useState(false);
 
   // Inline toast state
   const [toast, setToast] = useState<{
@@ -358,50 +356,6 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         throw new Error(result.error || t('admin.toast.delete_user_failed', 'Failed to delete user'));
       }
       showToast(`${t('admin.toast.user', 'User')} ${user.name} ${t('admin.toast.deleted_success', 'has been deleted.')}`);
-      loadConsoleData(true);
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  // Handler: Bulk Action (ban, unban, delete)
-  const handleBulkAction = async (action: 'ban' | 'unban' | 'delete', userIds: string[]) => {
-    if (userIds.length === 0) return;
-    
-    // Confirmation for bulk action
-    if (action === 'delete') {
-      const ok = await confirmDialog({
-        description: t('admin.hapus_pengguna_terpilih_secara_permanen', 'Hapus {userIds} pengguna terpilih secara permanen?', { userIds: userIds.length }),
-        tone: 'danger',
-        confirmLabel: t('admin.action_delete', 'Hapus'),
-      });
-      if (!ok) {
-        return;
-      }
-    } else {
-      const confirmMsg =
-        action === 'ban'
-          ? `Cekal ${userIds.length} pengguna terpilih?`
-          : `Batalkan cekal ${userIds.length} pengguna terpilih?`;
-      const ok = await confirmDialog({ description: confirmMsg, tone: action === 'ban' ? 'danger' : 'default' });
-      if (!ok) {
-        return;
-      }
-    }
-
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    try {
-      const res = await fetch('/api/auth-console/users/bulk-action', {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({ action, userIds }),
-      });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || t('admin.toast.bulk_action_failed', 'Failed to execute bulk action'));
-      }
-      showToast(result.message || t('admin.toast.bulk_action_success', 'Bulk action executed successfully.'));
       loadConsoleData(true);
     } catch (err: any) {
       showToast(err.message, 'error');
@@ -784,7 +738,6 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         onCreateOrgClick={() => setIsCreateOrgOpen(true)}
         onRefresh={() => loadConsoleData(true)}
         isRefreshing={isRefreshing}
-        onOpenInstanceModal={() => setIsInstanceConfigOpen(true)}
         userCounts={{
           users: users.length,
           sessions: sessions.length,
@@ -827,7 +780,6 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
             onOpenResetPassword={(user) => setSelectedUserForPassword(user)}
             onToggleBan={handleToggleBan}
             onDeleteUser={handleDeleteUser}
-            onBulkAction={handleBulkAction}
           />
         )}
 
@@ -984,11 +936,6 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         isOpen={isCreateApiKeyOpen}
         onClose={() => setIsCreateApiKeyOpen(false)}
         onSubmit={handleGenerateApiKey}
-      />
-
-      <InstancesConfigModal
-        isOpen={isInstanceConfigOpen}
-        onClose={() => setIsInstanceConfigOpen(false)}
       />
     </div>
   );

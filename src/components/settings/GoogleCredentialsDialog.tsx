@@ -1,6 +1,6 @@
 import React, { useId, useState } from 'react';
 import { Dialog } from 'radix-ui';
-import { AlertTriangle, CheckCircle2, FileJson, Trash2, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileJson, RotateCcw, Upload, X } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useConfirm } from '../../context/ConfirmDialogContext';
 import { useAlertToast } from '../../context/AlertToastContext';
@@ -223,10 +223,11 @@ export const GoogleCredentialsDialog: React.FC<GoogleCredentialsDialogProps> = (
               type="button"
               onClick={() => remove(kind)}
               disabled={busy !== null}
-              className="ml-auto inline-flex items-center gap-1 px-3 min-h-11 rounded-lg text-xs font-semibold text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40 disabled:opacity-50 cursor-pointer"
+              aria-label={t('google_setup.reset', 'Reset file yang diunggah')}
+              title={t('google_setup.reset', 'Reset file yang diunggah')}
+              className="ml-auto inline-flex items-center justify-center h-11 w-11 rounded-lg text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40 disabled:opacity-50 cursor-pointer"
             >
-              <Trash2 className="w-3.5 h-3.5" aria-hidden />
-              {t('documents.action.delete', 'Hapus')}
+              <RotateCcw className="w-4 h-4" aria-hidden />
             </button>
           )}
         </div>

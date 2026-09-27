@@ -98,16 +98,6 @@ export const Header: React.FC<HeaderProps> = ({
         return t('nav.ios', 'Insertion Order (IO)');
       case 'notifikasi':
         return t('nav.notifications', 'Notifikasi & Log');
-      case 'admin-users':
-      case 'admin-users-dashboard':
-      case 'admin-users-users':
-      case 'admin-users-sessions':
-      case 'admin-users-organizations':
-      case 'admin-users-teams':
-      case 'admin-users-invitations':
-      case 'admin-users-apikeys':
-      case 'admin-users-rbac':
-        return t('nav.admin_users', 'Manajemen Akses & Admin');
       case 'bulk-import':
         return t('nav.bulk_import', 'Import Data');
       case 'activity-logs':
@@ -121,6 +111,9 @@ export const Header: React.FC<HeaderProps> = ({
       case 'settings-security':
         return t('nav.settings', 'Pengaturan Sistem');
       default:
+        if (tab.startsWith('admin-system-') || tab.startsWith('admin-organization-')) {
+          return t('nav.admin_users', 'Manajemen Akses & Admin');
+        }
         return t('nav.dashboard', 'Dashboard');
     }
   };

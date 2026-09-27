@@ -150,10 +150,12 @@ export const TenantSettingsProvider: React.FC<{ children: React.ReactNode }> = (
     setDocumentTerminology({ doc: profile.label, docs: profile.plural, docShort: profile.prefix });
   }, [profile.label, profile.plural, profile.prefix, setDocumentTerminology]);
 
-  // Number/date formatting follows the UI language and the tenant's country.
-  useEffect(() => {
-    setActiveFormattingLocale(formattingLocaleFor(language, policy.settings.countryCode));
-  }, [language, policy.settings.countryCode]);
+  // Number/date formatting follows the UI language and the tenant's country. Set
+  // synchronously during render (not in an effect) so it's already up to date
+  // before any consumer below in the tree reads getActiveFormattingLocale() in
+  // the same pass — an effect runs one tick too late and consumers render with
+  // the previous language's locale until something else forces a re-render.
+  setActiveFormattingLocale(formattingLocaleFor(language, policy.settings.countryCode));
 
   const saveSettings = useCallback(async (settings: Partial<TenantSettings>, legalEntity?: string) => {
     const res = await fetch('/api/tenant-settings', {

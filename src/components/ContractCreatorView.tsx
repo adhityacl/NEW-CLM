@@ -46,6 +46,8 @@ import {
   History,
   Info,
   MessageSquare,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { Partner, Contract } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -293,6 +295,15 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const panelIdPrefix = useId();
 
   // UI state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isFullscreen]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<'fields' | 'partners' | 'templates' | 'contents' | 'history' | 'info' | 'comments'>('fields');
   const [highlightFillable, setHighlightFillable] = useState(true);
@@ -847,6 +858,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       });
       if (!leave) return;
     }
+    setIsFullscreen(false);
     setScreen('explorer');
   };
 
@@ -1222,7 +1234,11 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen max-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 select-text overflow-hidden font-sans">
+    <div
+      className={`flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 select-text overflow-hidden font-sans ${
+        isFullscreen ? 'fixed inset-0 z-50 h-screen' : 'h-screen max-h-screen'
+      }`}
+    >
       {screen === 'explorer' && (
         <DocumentExplorer canEdit={canEdit} canDelete={canEdit} onOpen={openDocument} onCreate={startNewDocument} />
       )}
@@ -1326,6 +1342,17 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
           >
             {isDownloadingDocx ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
             <span>{t('contract_creator.download_label', 'Download')}</span>
+          </button>
+
+          {/* Fullscreen Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700"
+            aria-label={isFullscreen ? t('contract_creator.exit_fullscreen', 'Keluar dari Fullscreen') : t('contract_creator.enter_fullscreen', 'Tampilan Fullscreen')}
+            title={isFullscreen ? t('contract_creator.exit_fullscreen', 'Keluar dari Fullscreen') : t('contract_creator.enter_fullscreen', 'Tampilan Fullscreen')}
+          >
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
 
           {/* Sidebar Toggle */}

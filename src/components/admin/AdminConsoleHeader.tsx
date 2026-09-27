@@ -23,7 +23,6 @@ interface AdminConsoleHeaderProps {
   onCreateOrgClick: () => void;
   onRefresh: () => void;
   isRefreshing: boolean;
-  onOpenInstanceModal: () => void;
   userCounts: {
     users: number;
     sessions: number;
@@ -41,7 +40,6 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
   onCreateOrgClick: _onCreateOrgClick,
   onRefresh,
   isRefreshing,
-  onOpenInstanceModal,
   userCounts,
 }) => {
   const { t } = useLanguage();
@@ -100,15 +98,6 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onOpenInstanceModal}
-            className="hidden sm:inline-flex"
-          >
-            {t('admin.instance_config_btn', 'Konfigurasi')}
-          </Button>
           <Button
             type="button"
             variant="ghost"
