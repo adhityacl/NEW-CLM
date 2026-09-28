@@ -8,6 +8,7 @@ import { useTenant } from '../context/TenantContext';
 import { getAuthHeaders } from '../App';
 import { UITextManagerModal } from './UITextManagerModal';
 import { SQLiteDatabaseCard } from './SQLiteDatabaseCard';
+import { AiIcon } from './icons/AiIcon';
 import {
   Globe2,
   FileSpreadsheet,
@@ -31,7 +32,6 @@ import {
   FileText,
   Mail,
   Bell,
-  Bot,
   Cpu,
   Zap,
   ShieldAlert,
@@ -1017,7 +1017,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     {
       id: 'ai',
       label: t('settings.nav_ai', 'Model AI & Parser'),
-      icon: Bot,
+      icon: AiIcon,
       desc: t('settings.nav_ai_desc', 'Konfigurasi Google Gemini Extractor'),
       adminOnly: true,
     },
@@ -1645,7 +1645,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         disabled={testingApiKey || !geminiApiKey.trim()}
                         className="h-9 px-4 rounded-full text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer gap-1.5"
                       >
-                        <Sparkles className={cn('w-3.5 h-3.5 text-amber-500', testingApiKey && 'animate-spin')} />
+                        <AiIcon className={cn('w-3.5 h-3.5 text-amber-500', testingApiKey && 'animate-spin')} />
                         <span>{testingApiKey ? t('admin.test_connection_testing', 'Menguji Koneksi...') : t('settings.test_api_key_btn', 'Uji Koneksi API')}</span>
                       </Button>
                     </div>
@@ -1657,7 +1657,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <Card className="border-none shadow-[0_4px_16px_rgba(0,0,0,0.04)] rounded-[20px] overflow-hidden">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Bot className="w-5 h-5 text-[#06C755]" />
+                    <AiIcon className="w-5 h-5 text-[#06C755]" />
                     <span>{t('settings.ai_config_title', 'Pilihan Model Google Gemini')}</span>
                   </CardTitle>
                 </CardHeader>

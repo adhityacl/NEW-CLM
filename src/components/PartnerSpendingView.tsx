@@ -29,9 +29,9 @@ import {
   ArrowUp,
   ArrowDown,
   SlidersHorizontal,
-  Sparkles,
   Loader2,
 } from 'lucide-react';
+import { AiIcon } from './icons/AiIcon';
 import { ActionMenu } from './ui/action-menu';
 import { TablePagination } from './ui/TablePagination';
 import {
@@ -1019,7 +1019,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
               )}
               {parseSuccessMsg && (
                 <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[#048C3B] dark:text-emerald-300 text-xs font-bold rounded-xl flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#06C755] shrink-0" />
+                  <AiIcon className="w-4 h-4 text-[#06C755] shrink-0" />
                   <span>{parseSuccessMsg}</span>
                 </div>
               )}
@@ -1256,7 +1256,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                             </>
                           ) : (
                             <>
-                              <Sparkles className="w-3.5 h-3.5" />
+                              <AiIcon className="w-3.5 h-3.5" />
                               <span>{t('spending.parse_invoice_ai', 'Parse Invoice AI')}</span>
                             </>
                           )}

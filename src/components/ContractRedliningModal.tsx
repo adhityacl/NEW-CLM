@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { Contract, RedlineAnalysisData } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { AiIcon } from './icons/AiIcon';
 import {
-  Sparkles,
   ShieldAlert,
   ShieldCheck,
   AlertTriangle,
@@ -465,7 +465,7 @@ ${analysis.analyzedClauses
                           <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 text-xs relative group">
                             <div className="flex items-center justify-between mb-1">
                               <p className="font-semibold text-emerald-900 dark:text-emerald-300 text-[11px] flex items-center gap-1">
-                                <Sparkles className="size-3 text-emerald-500" />
+                                <AiIcon className="size-3 text-emerald-500" />
                                 {t('redline.recommended_redline', 'Rekomendasi Redlining (Revisi Lebih Adil & Patuh OJK)')}
                               </p>
                               <Button

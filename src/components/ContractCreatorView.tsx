@@ -34,7 +34,6 @@ import {
   HelpCircle,
   Check,
   ExternalLink,
-  Target,
   Trash2,
   MapPin,
   User,
@@ -42,13 +41,15 @@ import {
   FolderOpen,
   ListChecks,
   ArrowLeft,
-  Variable,
   History,
   Info,
   MessageSquare,
   Maximize2,
   Minimize2,
 } from 'lucide-react';
+import { ContentIcon } from './icons/ContentIcon';
+import { GridDotsIcon } from './icons/GridDotsIcon';
+import { AiIcon } from './icons/AiIcon';
 import { Partner, Contract } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useConfirm } from '../context/ConfirmDialogContext';
@@ -115,6 +116,38 @@ function extractSlotKeysFromHtml(html: string): Array<{ key: string; type: strin
     }
   }
   return results;
+}
+
+function escapeHtml(text: string): string {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+type AiTemplateField = { key: string; label: string; type: 'text' | 'date' | 'currency' | 'entity' | 'person' | 'location' | 'number' };
+type AiTemplateSection = { heading: string; paragraphs: string[] };
+
+/** Turns the AI's structured draft (title/sections/{{fieldKey}} tokens) into the same
+ * fillable-slot HTML the rest of the editor already produces, via `renderFillableSlot` —
+ * so an AI-generated template is indistinguishable from a hand-built one downstream. */
+function assembleAiTemplateHtml(title: string, sections: AiTemplateSection[], fields: AiTemplateField[]): string {
+  const fieldByKey = new Map(fields.map((f) => [f.key, f]));
+  const renderParagraph = (text: string) =>
+    escapeHtml(text).replace(/\{\{(\w+)\}\}/g, (token, key) => {
+      const field = fieldByKey.get(key);
+      return field ? renderFillableSlot(field.type, field.key, field.label) : token;
+    });
+  const body = sections
+    .map(
+      (s) =>
+        `<h2>${escapeHtml(s.heading)}</h2>` +
+        s.paragraphs.map((p) => `<p>${renderParagraph(p)}</p>`).join(''),
+    )
+    .join('');
+  return `<h1>${escapeHtml(title)}</h1>${body}`;
 }
 
 const SLOT_TYPE_TO_FIELD_TYPE: Record<string, 'text' | 'date' | 'currency' | 'textarea'> = {
@@ -429,6 +462,9 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   const [savedTemplates, setSavedTemplates] = useState<any[]>([]);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [aiTemplateDocType, setAiTemplateDocType] = useState<'contract' | 'agreement' | 'so'>('contract');
+  const [aiTemplatePrompt, setAiTemplatePrompt] = useState('');
+  const [isGeneratingAiTemplate, setIsGeneratingAiTemplate] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isCustomTemplateActive, setIsCustomTemplateActive] = useState(false);
   // True once the initial template-library fetch has settled (success,
@@ -518,6 +554,73 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       showAlert({ title: t('contract_creator.msg.template_save_error', 'Terjadi kesalahan saat menyimpan template'), variant: 'destructive' });
     } finally {
       setIsSavingTemplate(false);
+    }
+  };
+
+  const handleGenerateAiTemplate = async () => {
+    if (!aiTemplatePrompt.trim()) {
+      showAlert({ title: t('contract_creator.ai_template.prompt_required', 'Deskripsi template belum diisi'), variant: 'warning' });
+      return;
+    }
+    if (hasUnsaved) {
+      const ok = await confirmDialog(
+        t('contract_creator.ai_template.confirm_overwrite', 'Draf saat ini punya perubahan belum disimpan dan akan diganti oleh hasil AI. Lanjutkan?'),
+      );
+      if (!ok) return;
+    }
+
+    try {
+      setIsGeneratingAiTemplate(true);
+      const res = await fetch('/api/templates/ai-generate', {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ docType: aiTemplateDocType, prompt: aiTemplatePrompt.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        showAlert({
+          title: t('contract_creator.ai_template.failed', 'Gagal membuat template'),
+          description: data.error || data.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const html = assembleAiTemplateHtml(data.title, data.sections, data.fields);
+      editor?.commands.setContent(html);
+      setIsCustomTemplateActive(true);
+      setCustomFields((prev) =>
+        mergeTemplateCustomFields(
+          prev,
+          (data.fields as AiTemplateField[]).map((f) => ({
+            key: f.key,
+            label: f.label,
+            type: SLOT_TYPE_TO_FIELD_TYPE[f.type] || 'text',
+            icon: SLOT_TYPE_ICON[f.type] || '🏷️',
+            placeholder: '',
+            description: recoveredFieldDescription,
+            isCustom: true,
+          })),
+          html,
+          BUILT_IN_FIELD_KEYS,
+          recoveredFieldDescription,
+        ),
+      );
+      setNewTemplateName(data.title || '');
+      updateStats();
+      setAiTemplatePrompt('');
+      showAlert({
+        title: t('contract_creator.ai_template.generated', 'Draf AI siap — tinjau isinya lalu klik Simpan Template'),
+        variant: 'success',
+      });
+    } catch (err) {
+      console.error('AI template generation error:', err);
+      showAlert({ title: t('contract_creator.ai_template.error', 'Terjadi kesalahan saat membuat template'), variant: 'destructive' });
+    } finally {
+      setIsGeneratingAiTemplate(false);
     }
   };
 
@@ -1210,7 +1313,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     { id: 'fields', label: t('contract_creator.tab.fields', 'Kolom Isian'), icon: ListChecks },
     { id: 'partners', label: t('contract_creator.tab.partners', 'Mitra'), icon: Building2 },
     { id: 'templates', label: t('contract_creator.tab.templates', 'Template'), icon: FolderOpen },
-    { id: 'contents', label: t('contract_creator.tab.contents', 'Konten'), icon: Variable },
+    { id: 'contents', label: t('contract_creator.tab.contents', 'Konten'), icon: ContentIcon },
     { id: 'history', label: t('documents.tab.history', 'Riwayat'), icon: History },
     { id: 'info', label: t('documents.tab.info', 'Info'), icon: Info },
     { id: 'comments', label: t('documents.tab.comments', 'Komentar'), icon: MessageSquare },
@@ -1641,7 +1744,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                             aria-label={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
                             title={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
                           >
-                            <Target className="w-3.5 h-3.5" />
+                            <GridDotsIcon className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -1700,7 +1803,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                               aria-label={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
                               title={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
                             >
-                              <Target className="w-3.5 h-3.5" />
+                              <GridDotsIcon className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
@@ -1767,7 +1870,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                                   aria-label={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
                                   title={t('contract_creator.jump_to_slot', 'Lompat ke posisi isian di dokumen')}
                                 >
-                                  <Target className="w-3.5 h-3.5" />
+                                  <GridDotsIcon className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   type="button"
@@ -2010,7 +2113,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                       className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"
                       title={t('contract_creator.dragdrop.section_title_attr', 'Seret elemen ke posisi kursor di dokumen untuk menempatkan kolom isian dinamis')}
                     >
-                      <Target className="w-3.5 h-3.5 text-slate-400" />
+                      <GridDotsIcon className="w-3.5 h-3.5 text-slate-400" />
                       <span>{t('contract_creator.dragdrop.section_title', 'Kolom Isian Drag & Drop')}</span>
                     </h3>
 
@@ -2107,6 +2210,55 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
               {sidebarTab === 'templates' && (
                 <div className="space-y-4">
+
+                  {/* 0. GENERATE TEMPLATE WITH AI (Superuser/Admin/Manager only) */}
+                  {canManageFields && (
+                    <div
+                      className="space-y-2 p-3 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20"
+                      title={t('contract_creator.ai_template.section_title_attr', 'Buat draf template baru dari deskripsi singkat')}
+                    >
+                      <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <AiIcon className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>{t('contract_creator.ai_template.section_title', 'Buat Template dengan AI')}</span>
+                      </h3>
+                      <div className="space-y-2">
+                        <select
+                          value={aiTemplateDocType}
+                          onChange={(e) => setAiTemplateDocType(e.target.value as 'contract' | 'agreement' | 'so')}
+                          className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        >
+                          <option value="contract">{t('contract_creator.ai_template.type_contract', 'Kontrak')}</option>
+                          <option value="agreement">{t('contract_creator.ai_template.type_agreement', 'Perjanjian (Agreement)')}</option>
+                          <option value="so">{t('contract_creator.ai_template.type_so', 'Surat Pesanan (SO)')}</option>
+                        </select>
+                        <textarea
+                          value={aiTemplatePrompt}
+                          onChange={(e) => setAiTemplatePrompt(e.target.value)}
+                          rows={3}
+                          placeholder={t('contract_creator.ai_template.prompt_placeholder', 'Contoh: NDA mutual dua perusahaan teknologi, kerahasiaan 3 tahun')}
+                          className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleGenerateAiTemplate}
+                          disabled={isGeneratingAiTemplate}
+                          className="w-full py-2 px-3 text-xs font-bold text-white bg-[#06C755] hover:bg-[#05b54c] rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          {isGeneratingAiTemplate ? (
+                            <>
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                              <span>{t('contract_creator.ai_template.generating', 'Membuat draf...')}</span>
+                            </>
+                          ) : (
+                            <>
+                              <AiIcon className="w-3.5 h-3.5" />
+                              <span>{t('contract_creator.ai_template.generate_button', 'Buatkan Template')}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* 1. SAVE DRAFT AS TEMPLATE */}
                   <div

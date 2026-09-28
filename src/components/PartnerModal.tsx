@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Partner, PartyIdentifier } from '../types';
-import { Building2, User, Mail, Phone, X, MapPin, Upload, Sparkles, Loader2, Shield } from 'lucide-react';
+import { Building2, User, Mail, Phone, X, MapPin, Upload, Loader2, Shield } from 'lucide-react';
+import { AiIcon } from './icons/AiIcon';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { isGlobalRole } from '../lib/rbacScoping';
@@ -586,7 +587,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-3.5 h-3.5 text-[#06C755]" />
+                        <AiIcon className="w-3.5 h-3.5 text-[#06C755]" />
                         <span>{t('partners.generate_ai_notes', 'Generate AI Notes')}</span>
                       </>
                     )}

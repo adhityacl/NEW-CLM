@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Bot, User, Loader2, RotateCcw, Sparkles } from 'lucide-react';
+import { MessageSquare, X, Send, User, Loader2, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { AiIcon } from './icons/AiIcon';
 import { useLanguage } from '../context/LanguageContext';
 
 interface Message {
@@ -172,7 +173,7 @@ export const AIChatWidget: React.FC = () => {
           <div className="bg-[#06C755] px-4 py-3 text-white flex justify-between items-center shadow-md z-10 select-none">
             <div className="flex items-center gap-2.5">
               <div className="p-1.5 bg-white/20 rounded-lg flex items-center justify-center">
-                <Bot size={18} className="text-white" />
+                <AiIcon size={18} className="text-white" />
               </div>
               <div>
                 <h3 className="font-bold text-sm leading-tight text-white">
@@ -216,7 +217,7 @@ export const AIChatWidget: React.FC = () => {
                       : 'bg-white dark:bg-slate-800 shadow-xs text-[#06C755] border border-slate-200 dark:border-slate-700'
                   }`}
                 >
-                  {msg.role === 'user' ? <User size={14} /> : <Bot size={14} />}
+                  {msg.role === 'user' ? <User size={14} /> : <AiIcon size={14} />}
                 </div>
                 <div
                   className={`p-3 rounded-2xl text-xs leading-relaxed ${
@@ -272,7 +273,7 @@ export const AIChatWidget: React.FC = () => {
             {isInitialOnly && (
               <div className="flex gap-2.5 self-start w-full mt-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <div className="shrink-0 w-7 h-7 flex items-center justify-center text-emerald-500">
-                  <Sparkles size={16} />
+                  <AiIcon size={16} />
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col gap-2">
                   <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center h-7">

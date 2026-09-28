@@ -27,10 +27,10 @@ import {
   Lock,
   Shield,
   Database,
-  Bot,
   Languages,
   ShieldAlert,
 } from 'lucide-react';
+import { AiIcon } from './icons/AiIcon';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -271,7 +271,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const settingsSubItems = [
     { id: 'settings-region', label: t('settings.nav_region', 'Organization & region'), icon: Globe2, adminOnly: true },
     { id: 'settings-google', label: t('settings.nav_google', 'Google & Database'), icon: Database },
-    { id: 'settings-ai', label: t('settings.nav_ai', 'Model AI & Parser'), icon: Bot, adminOnly: true },
+    { id: 'settings-ai', label: t('settings.nav_ai', 'Model AI & Parser'), icon: AiIcon, adminOnly: true },
     { id: 'settings-notifications', label: t('settings.nav_notifications', 'Penerima Notifikasi'), icon: Bell, adminOnly: true },
     { id: 'settings-language', label: t('settings.nav_language', 'Teks UI & Lokalisasi'), icon: Languages, adminOnly: true },
     { id: 'settings-security', label: t('settings.nav_security', 'Keamanan & Maintenance'), icon: ShieldAlert, adminOnly: true },

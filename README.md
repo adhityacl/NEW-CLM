@@ -53,7 +53,7 @@
 - System Admin and Organization Admin consoles for users, invitations, departments, sessions and the RBAC matrix.
 
 **🤖 AI and integrations**
-- Google Gemini (`@google/genai`) for contract, partner and IO parsing, Due Diligence notes, redline analysis and a search-grounded news ticker.
+- Google Gemini (`@google/genai`) for contract, partner and IO parsing, Due Diligence notes, redline analysis, AI-generated document templates (Contract, Agreement, SO — from a text prompt; Superuser/Admin/Manager only) and a search-grounded news ticker.
 - Google Drive folder provisioning and Sheets sync. The Google credentials can be uploaded as JSON files in the app instead of being placed in `.env` (see [Google integration](#google-integration)).
 - SMTP e-mail for invitations and notifications, configured in Settings.
 - English, Bahasa Indonesia and Simplified Chinese UI, with in-app text overrides.
@@ -63,6 +63,7 @@
 ## What's new
 
 **Late September 2026**
+- **Generate Template with AI** (Contract Creator → Templates tab, Superuser/Admin/Manager only): drafts a reusable Contract, Agreement or SO template from a short text prompt via Gemini, inserted into the editor as real fillable-slot fields — reuses the existing "Save Template" flow, so the result is reviewed in the editor before it's persisted to the template library.
 - **Contract Creator fullscreen mode**: a toolbar button (between *Download* and the field panel toggle) expands the editor to fill the browser viewport, hiding the app's sidebar and header. `Esc`, the toggle itself, or navigating back to the document list all exit it.
 - **Dashboard**: a new *Documents Pending Review* table lists documents awaiting review (name, type, modified by, created and last-modified dates) next to the existing expiring-contracts table, with a shortcut into the Contract Creator.
 - **Department-scoped Organization Admin**: Managers, Editors and Viewers opening *Organization Admin → Users* or *→ Departments* now only see themselves and their own department's members/teams, instead of every user and department in the tenant. Enforced server-side in `src/server/authConsoleRoutes.ts`, not just hidden in the UI.
@@ -113,6 +114,7 @@ src/
   App.tsx, main.tsx          SPA entry
   components/                Views (ContractsView, ContractCreatorView, SettingsView, ...)
     documents/               Contract Creator explorer, history, info/metadata, comments panels
+    icons/                   Inline SVG icon components (currentColor, swap-in-place for lucide icons)
     settings/                Settings dialogs (Google credentials, reset workspace, ...)
     ui/                      Shared UI primitives
   context/                   Auth, language, tenant, toast and confirm providers

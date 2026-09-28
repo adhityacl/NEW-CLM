@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { Check, CheckCheck, FileDown, History, MessageSquarePlus, PenLine, RefreshCw, RotateCcw, Sparkles, X } from 'lucide-react';
+import { Check, CheckCheck, FileDown, History, MessageSquarePlus, PenLine, RefreshCw, RotateCcw, X } from 'lucide-react';
+import { AiIcon } from '../icons/AiIcon';
 import { useLanguage } from '../../context/LanguageContext';
 import { useConfirm } from '../../context/ConfirmDialogContext';
 import { useAlertToast } from '../../context/AlertToastContext';
@@ -373,7 +374,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
             onClick={runAiRedlining}
             className={`${SMALL_BUTTON} col-span-2 justify-center border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40`}
           >
-            <Sparkles className={`w-3.5 h-3.5 ${busy === 'ai-redline' ? 'animate-pulse' : ''}`} aria-hidden />
+            <AiIcon className={`w-3.5 h-3.5 ${busy === 'ai-redline' ? 'animate-pulse' : ''}`} />
             {busy === 'ai-redline' ? t('documents.comments.ai_redline_running', 'Meninjau dokumen…') : t('documents.comments.ai_redline', 'AI Redlining')}
           </button>
           <p className="col-span-2 text-[10px] text-slate-500 dark:text-slate-400">
