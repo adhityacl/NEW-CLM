@@ -1,6 +1,7 @@
 import { PDFDocument } from 'pdf-lib';
 import { PDFParse } from 'pdf-parse';
 import crypto from 'crypto';
+import { sqliteDb } from './auth';
 
 export interface PdfInspectionReport {
   isScanned: boolean;
@@ -57,15 +58,14 @@ export function computeInputSha256(input: string | Buffer): string {
   return computeBufferSha256(Buffer.from(clean, 'base64'));
 }
 
-interface CacheEntry {
-  data: any;
-  timestamp: number;
-  hash: string;
-  taskType: string;
-}
-
+/**
+ * SQLite-backed (table `ai_ocr_cache`, src/lib/auth.ts) instead of an
+ * in-memory Map, so a cached OCR/AI result survives a server restart —
+ * previously every deploy silently threw away every cached result and
+ * forced the next request for an already-analyzed file to re-run OCR/Gemini
+ * from scratch. Same public interface as before, so callers are unaffected.
+ */
 class OcrMemoryCache {
-  private cache = new Map<string, CacheEntry>();
   private readonly maxEntries = 300;
   private readonly ttlMs = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -76,51 +76,79 @@ class OcrMemoryCache {
   get(hash: string, taskType: string): any | null {
     if (!hash) return null;
     const key = this.makeKey(hash, taskType);
-    const entry = this.cache.get(key);
-    if (!entry) return null;
+    const row = sqliteDb.prepare(`SELECT payload, createdAt FROM ai_ocr_cache WHERE cache_key = ?`).get(key) as
+      | { payload: string; createdAt: string }
+      | undefined;
+    if (!row) return null;
 
-    // Check expiration
-    if (Date.now() - entry.timestamp > this.ttlMs) {
-      this.cache.delete(key);
+    if (Date.now() - new Date(row.createdAt).getTime() > this.ttlMs) {
+      sqliteDb.prepare(`DELETE FROM ai_ocr_cache WHERE cache_key = ?`).run(key);
       return null;
     }
 
-    // Refresh LRU order
-    this.cache.delete(key);
-    this.cache.set(key, entry);
-    return entry.data;
+    try {
+      return JSON.parse(row.payload);
+    } catch {
+      return null;
+    }
   }
 
   set(hash: string, taskType: string, data: any): void {
     if (!hash || !data) return;
     const key = this.makeKey(hash, taskType);
-
-    if (this.cache.size >= this.maxEntries) {
-      // Remove oldest entry
-      const oldestKey = this.cache.keys().next().value;
-      if (oldestKey) {
-        this.cache.delete(oldestKey);
-      }
+    const count = (sqliteDb.prepare(`SELECT COUNT(*) AS n FROM ai_ocr_cache`).get() as { n: number }).n;
+    if (count >= this.maxEntries) {
+      sqliteDb
+        .prepare(
+          `DELETE FROM ai_ocr_cache WHERE cache_key IN (
+            SELECT cache_key FROM ai_ocr_cache ORDER BY createdAt ASC LIMIT ?
+          )`,
+        )
+        .run(count - this.maxEntries + 1);
     }
-
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      hash,
-      taskType,
-    });
+    sqliteDb
+      .prepare(`INSERT OR REPLACE INTO ai_ocr_cache (cache_key, payload, createdAt) VALUES (?, ?, ?)`)
+      .run(key, JSON.stringify(data), new Date().toISOString());
   }
 
   clear(): void {
-    this.cache.clear();
+    sqliteDb.prepare(`DELETE FROM ai_ocr_cache`).run();
   }
 
   size(): number {
-    return this.cache.size;
+    return (sqliteDb.prepare(`SELECT COUNT(*) AS n FROM ai_ocr_cache`).get() as { n: number }).n;
   }
 }
 
 export const globalOcrCache = new OcrMemoryCache();
+
+/**
+ * Task-agnostic layer on top of the same `ai_ocr_cache` table (key prefix
+ * `transcript:`): the document's plain-text transcript, independent of
+ * which feature (partner/spending/contract/IO parse) first read it. A
+ * document's content doesn't go stale the way a task-specific structured
+ * result might, so reads here skip the 24h TTL the rest of the cache uses.
+ * ponytail: shares the 300-entry eviction pool with task-result entries, so
+ * a burst of unrelated writes could in theory evict a transcript early —
+ * give transcripts their own table/quota if that's ever observed in practice.
+ */
+export function getCachedTranscript(hash: string): string | null {
+  if (!hash) return null;
+  const row = sqliteDb.prepare(`SELECT payload FROM ai_ocr_cache WHERE cache_key = ?`).get(`transcript:${hash}`) as
+    | { payload: string }
+    | undefined;
+  if (!row) return null;
+  try {
+    return JSON.parse(row.payload);
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedTranscript(hash: string, text: string): void {
+  if (!hash || !text.trim()) return;
+  globalOcrCache.set(hash, 'transcript', text);
+}
 
 // Legal keyword taxonomy and category definitions
 
@@ -547,6 +575,32 @@ export async function buildCheapOcrContents(
     fileHash: string;
   };
 }> {
+  // Task-agnostic transcript cache: if some earlier call (any feature) already
+  // paid for reading this exact file, reuse that transcript instead of
+  // re-running PDF inspection/page-scoring or a fresh Gemini vision call.
+  if (!options?.forceVision) {
+    const earlyHash = computeInputSha256(rawInput);
+    const cachedTranscript = getCachedTranscript(earlyHash);
+    if (cachedTranscript) {
+      const cleanedText = cleanExtractedTextForLLM(cachedTranscript);
+      const formattedContent = `${systemPrompt}\n\n=== DOKUMEN (TRANSKRIP TERSIMPAN / CACHED TRANSCRIPT) ===\n${cleanedText}`;
+      return {
+        contents: [{ text: formattedContent }],
+        ocrStats: {
+          mode: 'text',
+          originalPages: 0,
+          processedPages: 0,
+          originalKb: 0,
+          optimizedKb: Math.round(Buffer.byteLength(cleanedText, 'utf8') / 1024),
+          hasDigitalText: true,
+          inspectionMs: 0,
+          classification: 'cached_transcript',
+          fileHash: earlyHash,
+        },
+      };
+    }
+  }
+
   const isString = typeof rawInput === 'string';
   const isPDF = isString
     ? rawInput.startsWith('JVBERi0') || rawInput.includes('application/pdf') || rawInput.startsWith('data:application/pdf')
@@ -563,7 +617,11 @@ export async function buildCheapOcrContents(
     if (opt.hasDigitalText && opt.extractedText && !options?.forceVision) {
       const cleanedText = cleanExtractedTextForLLM(opt.extractedText);
       const formattedContent = `${systemPrompt}\n\n=== DOKUMEN DIGITAL (PDF-INSPECTOR FAST-TRACK / TEKS ASLI DOKUMEN) ===\n${cleanedText}`;
-      
+      // Free byproduct: local extraction already produced this text at no
+      // extra (Gemini) cost, so cache it too — the next call for a different
+      // task skips even the local pdf-parse/page-scoring work above.
+      setCachedTranscript(fileHash, opt.extractedText);
+
       return {
         contents: [{ text: formattedContent }],
         ocrStats: {

@@ -399,6 +399,12 @@ export function initializeCoreDataSchema() {
       updatedAt TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS ai_ocr_cache (
+      cache_key TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      createdAt TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_allowed_users_org ON allowed_users (organizationId);
     CREATE INDEX IF NOT EXISTS idx_partners_org ON partners (organizationId);
     CREATE INDEX IF NOT EXISTS idx_contracts_org ON contracts (organizationId);

@@ -102,6 +102,7 @@ import {
   buildCheapOcrContents,
   globalOcrCache,
   computeInputSha256,
+  setCachedTranscript,
 } from "./src/lib/cheapOcrPipeline";
 
 const app = express();
@@ -1288,6 +1289,45 @@ function getValidAiModel(requestedModel) {
   }
   return "gemini-3.8-flash";
 }
+/**
+ * Turns a raw Gemini SDK error into one concise, actionable sentence with a
+ * troubleshooting step — never the raw error object, whose `.message` is
+ * frequently the entire HTTP error body as a JSON string (e.g.
+ * `{"error":{"code":400,"message":"API key not valid...","status":"INVALID_ARGUMENT",...}}`)
+ * and would otherwise leak straight through to the UI as-is.
+ */
+function formatGeminiError(err: any): string {
+  const raw = String(err?.message || err?.toString?.() || "");
+  let apiMessage = raw;
+  const jsonStart = raw.indexOf("{");
+  if (jsonStart >= 0) {
+    try {
+      const parsed = JSON.parse(raw.slice(jsonStart));
+      apiMessage = parsed?.error?.message || parsed?.message || apiMessage;
+    } catch {
+      /* not JSON — use the raw message as-is */
+    }
+  }
+  const lower = `${raw} ${apiMessage}`.toLowerCase();
+
+  if (lower.includes("api key not valid") || lower.includes("api_key_invalid") || lower.includes("invalid api key")) {
+    return "API Key Gemini tidak valid. Periksa kembali di Settings > Model AI & Parser — pastikan tersalin utuh tanpa spasi, dan key tersebut masih aktif di Google AI Studio.";
+  }
+  if (lower.includes("resource_exhausted") || lower.includes("quota") || lower.includes("429")) {
+    return "Batas kuota Gemini API Key telah terlampaui (Quota Exceeded / Rate Limit). Periksa akun Google AI Studio atau perbarui API Key di Settings > Model AI & Parser.";
+  }
+  if (lower.includes("permission_denied") || lower.includes("403")) {
+    return "Akses ke Gemini API ditolak. Pastikan API Key memiliki izin Generative Language API dan billing/kuota project aktif di Google AI Studio.";
+  }
+  if (lower.includes("not_found") || lower.includes("404")) {
+    return "Model AI tidak ditemukan atau tidak didukung oleh API Key ini. Coba pilih model lain di Settings > Model AI & Parser.";
+  }
+  if (lower.includes("unavailable") || lower.includes("503") || lower.includes("timeout") || lower.includes("deadline")) {
+    return "Google Gemini API sedang tidak merespons. Periksa koneksi internet Anda, lalu coba lagi beberapa saat lagi.";
+  }
+  const short = apiMessage.split("\n")[0].slice(0, 160);
+  return `Google Gemini API mengembalikan error: ${short}. Periksa koneksi internet dan status API Key di Settings > Model AI & Parser, lalu coba lagi.`;
+}
 async function generateContentWithRetryAndFallback(params: any) {
   const apiKey = getEffectiveGeminiApiKey();
   if (!apiKey) {
@@ -1335,29 +1375,10 @@ async function generateContentWithRetryAndFallback(params: any) {
     }
   }
 
-  const lastErrMsg = (lastError?.message || "").toLowerCase();
-  if (
-    lastErrMsg.includes("resource_exhausted") ||
-    lastErrMsg.includes("quota") ||
-    lastErrMsg.includes("exceeded your current quota") ||
-    lastErrMsg.includes("429")
-  ) {
-    throw new Error(
-      "Batas kuota Gemini API Key Anda telah terlampaui (Quota Exceeded / Rate Limit). Silakan periksa akun Google AI Studio atau perbarui API Key di menu Settings > AI Model & Parser.",
-    );
+  if (!lastError) {
+    throw new Error("Google AI Gemini model sedang sibuk atau tidak merespons. Silakan coba lagi beberapa saat lagi.");
   }
-  if (lastErrMsg.includes("api_key_invalid") || lastErrMsg.includes("invalid api key")) {
-    throw new Error(
-      "Gemini API Key tidak valid. Silakan periksa kembali API Key Anda di menu Settings > AI Model & Parser.",
-    );
-  }
-
-  throw (
-    lastError ||
-    new Error(
-      "Google AI Gemini model sedang sibuk atau tidak merespons. Silakan coba lagi beberapa saat lagi.",
-    )
-  );
+  throw new Error(formatGeminiError(lastError));
 }
 __name(
   generateContentWithRetryAndFallback,
@@ -2862,6 +2883,42 @@ function ensureAiAvailable(req: express.Request, res: express.Response): boolean
   }
   return true;
 }
+/**
+ * Adds an optional `document_text` field to a parse route's response schema,
+ * but only when OCR ran in vision mode (a scanned/image document, the
+ * expensive path). Vision mode already has Gemini "read" the whole document
+ * to extract task-specific fields, so asking it to also return the plain
+ * transcript is a free byproduct of a call that's happening anyway — that
+ * transcript then gets cached (see `extractAndCacheDocumentTranscript`
+ * below), so the NEXT analysis of the same file (any feature, not just this
+ * one) skips OCR/vision entirely via `getCachedTranscript`. Digital-text PDFs
+ * don't need this: `buildCheapOcrContents` already caches their transcript
+ * for free, since local PDF text extraction cost nothing extra to begin with.
+ */
+function withDocumentTranscriptField(schema: any, ocrMode: "text" | "vision"): any {
+  if (ocrMode !== "vision") return schema;
+  return {
+    ...schema,
+    properties: {
+      ...schema.properties,
+      document_text: {
+        type: Type.STRING,
+        description:
+          "The full plain-text transcript of the entire document, verbatim, all pages — used to cache this document's content so future analyses of the same file don't need to re-read it.",
+      },
+    },
+  };
+}
+/** Pulls `document_text` out of a parsed AI response, caches it by file hash, and
+ * strips it from the object so it never leaks into the API response or the
+ * per-task result cache (which would otherwise duplicate the whole transcript). */
+function extractAndCacheDocumentTranscript(parsedData: any, fileHash: string): void {
+  const text = parsedData?.document_text;
+  if (typeof text === "string" && text.trim()) {
+    setCachedTranscript(fileHash, text);
+  }
+  delete parsedData?.document_text;
+}
 app.post("/api/partners/parse", upload.single("file") as any, async (req: express.Request, res: express.Response) => {
   if (!ensureAiAvailable(req, res)) return;
   try {
@@ -2908,22 +2965,26 @@ Return strictly one valid JSON object matching the schema.`;
       contents: ocrContents,
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            nama_partner: { type: Type.STRING },
-            country: { type: Type.STRING },
-            entity_type: { type: Type.STRING },
-            nama_pic: { type: Type.STRING },
-            email_pic: { type: Type.STRING },
-            telepon_pic: { type: Type.STRING },
-            alamat_pic: { type: Type.STRING },
-            notes: { type: Type.STRING },
+        responseSchema: withDocumentTranscriptField(
+          {
+            type: Type.OBJECT,
+            properties: {
+              nama_partner: { type: Type.STRING },
+              country: { type: Type.STRING },
+              entity_type: { type: Type.STRING },
+              nama_pic: { type: Type.STRING },
+              email_pic: { type: Type.STRING },
+              telepon_pic: { type: Type.STRING },
+              alamat_pic: { type: Type.STRING },
+              notes: { type: Type.STRING },
+            },
           },
-        },
+          ocrStats.mode,
+        ),
       },
     });
     const parsedData = JSON.parse((response as any).text);
+    extractAndCacheDocumentTranscript(parsedData, ocrStats.fileHash);
     const responsePayload = { success: true, data: parsedData, ocrStats };
     if (ocrStats.fileHash) {
       globalOcrCache.set(ocrStats.fileHash, cacheScope, responsePayload);
@@ -3497,23 +3558,27 @@ Return strictly one valid JSON object matching the schema. Use an empty string "
       contents: ocrContents,
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            invoice_number: { type: Type.STRING },
-            invoice_date: { type: Type.STRING },
-            invoice_month: { type: Type.STRING },
-            invoice_description: { type: Type.STRING },
-            currency: { type: Type.STRING },
-            total_amount: { type: Type.NUMBER },
-            bank_name: { type: Type.STRING },
-            account_number: { type: Type.STRING },
-            account_holder: { type: Type.STRING },
+        responseSchema: withDocumentTranscriptField(
+          {
+            type: Type.OBJECT,
+            properties: {
+              invoice_number: { type: Type.STRING },
+              invoice_date: { type: Type.STRING },
+              invoice_month: { type: Type.STRING },
+              invoice_description: { type: Type.STRING },
+              currency: { type: Type.STRING },
+              total_amount: { type: Type.NUMBER },
+              bank_name: { type: Type.STRING },
+              account_number: { type: Type.STRING },
+              account_holder: { type: Type.STRING },
+            },
           },
-        },
+          ocrStats.mode,
+        ),
       },
     });
     const parsedData = JSON.parse((response as any).text);
+    extractAndCacheDocumentTranscript(parsedData, ocrStats.fileHash);
     if (parsedData.invoice_date) {
       parsedData.invoice_date = normalizeParsedDate(parsedData.invoice_date);
     }
@@ -4464,34 +4529,38 @@ Return strictly one valid JSON object matching the schema. Use "" for any text f
       contents: ocrContents,
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            jenis_dokumen: { type: Type.STRING },
-            judul_kontrak: { type: Type.STRING },
-            nama_partner: { type: Type.STRING },
-            nomor_kontrak: { type: Type.STRING },
-            nomor_kontrak_induk: { type: Type.STRING },
-            tanggal_mulai: { type: Type.STRING },
-            tanggal_berakhir: { type: Type.STRING },
-            klausul_jangka_waktu: { type: Type.STRING },
-            durasi_perjanjian: { type: Type.STRING },
-            nilai_kontrak: { type: Type.NUMBER },
-            currency: { type: Type.STRING },
-            auto_renewal: { type: Type.BOOLEAN },
-            notice_period_hari: { type: Type.NUMBER },
-            ringkasan_perubahan: { type: Type.STRING },
-            field_yang_berubah: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
+        responseSchema: withDocumentTranscriptField(
+          {
+            type: Type.OBJECT,
+            properties: {
+              jenis_dokumen: { type: Type.STRING },
+              judul_kontrak: { type: Type.STRING },
+              nama_partner: { type: Type.STRING },
+              nomor_kontrak: { type: Type.STRING },
+              nomor_kontrak_induk: { type: Type.STRING },
+              tanggal_mulai: { type: Type.STRING },
+              tanggal_berakhir: { type: Type.STRING },
+              klausul_jangka_waktu: { type: Type.STRING },
+              durasi_perjanjian: { type: Type.STRING },
+              nilai_kontrak: { type: Type.NUMBER },
+              currency: { type: Type.STRING },
+              auto_renewal: { type: Type.BOOLEAN },
+              notice_period_hari: { type: Type.NUMBER },
+              ringkasan_perubahan: { type: Type.STRING },
+              field_yang_berubah: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
+              internal_notes: { type: Type.STRING },
             },
-            internal_notes: { type: Type.STRING },
+            required: ["internal_notes"],
           },
-          required: ["internal_notes"],
-        },
+          ocrStats.mode,
+        ),
       },
     });
     const parsedData = JSON.parse((response as any).text);
+    extractAndCacheDocumentTranscript(parsedData, ocrStats.fileHash);
     if (parsedData.tanggal_mulai) {
       parsedData.tanggal_mulai = normalizeParsedDate(parsedData.tanggal_mulai);
     }
@@ -5487,26 +5556,30 @@ Return strictly one valid JSON object matching the schema.`;
       contents: ocrContents,
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            nomor_io: { type: Type.STRING },
-            judul_io: { type: Type.STRING },
-            nama_partner: { type: Type.STRING },
-            contract_nomor: { type: Type.STRING },
-            kanal_media: { type: Type.STRING },
-            pricing_model: { type: Type.STRING },
-            tanggal_mulai: { type: Type.STRING },
-            tanggal_berakhir: { type: Type.STRING },
-            durasi_campaign: { type: Type.STRING },
-            nilai_io: { type: Type.NUMBER },
-            currency: { type: Type.STRING },
-            deliverables: { type: Type.STRING },
+        responseSchema: withDocumentTranscriptField(
+          {
+            type: Type.OBJECT,
+            properties: {
+              nomor_io: { type: Type.STRING },
+              judul_io: { type: Type.STRING },
+              nama_partner: { type: Type.STRING },
+              contract_nomor: { type: Type.STRING },
+              kanal_media: { type: Type.STRING },
+              pricing_model: { type: Type.STRING },
+              tanggal_mulai: { type: Type.STRING },
+              tanggal_berakhir: { type: Type.STRING },
+              durasi_campaign: { type: Type.STRING },
+              nilai_io: { type: Type.NUMBER },
+              currency: { type: Type.STRING },
+              deliverables: { type: Type.STRING },
+            },
           },
-        },
+          ocrStats.mode,
+        ),
       },
     });
     const parsedData = JSON.parse((response as any).text);
+    extractAndCacheDocumentTranscript(parsedData, ocrStats.fileHash);
     if (parsedData.tanggal_mulai) {
       parsedData.tanggal_mulai = normalizeParsedDate(parsedData.tanggal_mulai);
     }
@@ -6717,13 +6790,7 @@ app.post("/api/ai/test-key", async (req: express.Request, res: express.Response)
     throw lastErr || new Error("Tidak ada respon dari Gemini API.");
   } catch (err) {
     console.error("Test API Key error:", err);
-    return res
-      .status(400)
-      .json({
-        error:
-          err?.message ||
-          "Gagal terhubung ke Google Gemini API. Pastikan API Key valid.",
-      });
+    return res.status(400).json({ error: formatGeminiError(err) });
   }
 });
 app.post("/api/google-integration/sync", (req: express.Request, res: express.Response) => {

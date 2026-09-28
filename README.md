@@ -63,6 +63,7 @@
 ## What's new
 
 **Late September 2026**
+- **Persistent, cross-feature OCR/AI cache**: the document-parsing pipeline (`src/lib/cheapOcrPipeline.ts`, used by the Partner/Spending/Contract/IO "Parse with AI" actions) now caches results in SQLite (table `ai_ocr_cache`) instead of an in-memory map, so cached results survive a server restart. A scanned document's plain-text transcript is also cached independently of which feature first read it — for a scanned file, that costs one Gemini vision call for its lifetime instead of one per feature per call; a digital-text PDF's local extraction is cached the same way at no extra cost.
 - **Generate Template with AI** (Contract Creator → Templates tab, Superuser/Admin/Manager only): drafts a reusable Contract, Agreement or SO template from a short text prompt via Gemini, inserted into the editor as real fillable-slot fields — reuses the existing "Save Template" flow, so the result is reviewed in the editor before it's persisted to the template library.
 - **Contract Creator fullscreen mode**: a toolbar button (between *Download* and the field panel toggle) expands the editor to fill the browser viewport, hiding the app's sidebar and header. `Esc`, the toggle itself, or navigating back to the document list all exit it.
 - **Dashboard**: a new *Documents Pending Review* table lists documents awaiting review (name, type, modified by, created and last-modified dates) next to the existing expiring-contracts table, with a shortcut into the Contract Creator.
