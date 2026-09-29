@@ -40,6 +40,16 @@ export default defineConfig(() => {
           '**/data_store.json',
         ],
       },
+      // Only used when Vite runs as its own dev server (`npm run
+      // dev:frontend`, backend on its own process via `npm run
+      // dev:backend`). When `npm run dev` runs the combined single-process
+      // setup instead, Express already handles /api and /uploads itself
+      // before a request ever reaches Vite's middleware, so this proxy is
+      // simply never consulted — safe to always define.
+      proxy: {
+        '/api': `http://localhost:${process.env.PORT || 3000}`,
+        '/uploads': `http://localhost:${process.env.PORT || 3000}`,
+      },
     },
   };
 });

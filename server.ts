@@ -8370,10 +8370,13 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 async function startServer() {
   let viteServer;
-  if (process.env.NODE_ENV !== "production") {
-    // Dev-only: dynamically imported so `vite` never ends up in the
-    // production server bundle — the backend is a standalone API in
-    // production, the frontend build is served separately (see README).
+  // API_ONLY=true (set by `npm run dev:backend`) skips Vite entirely, for
+  // running the backend as its own process against a separate `npm run
+  // dev:frontend` — the default `npm run dev` still runs both combined.
+  if (process.env.NODE_ENV !== "production" && process.env.API_ONLY !== "true") {
+    // Dynamically imported so `vite` never ends up in the production
+    // server bundle — the backend is a standalone API in production, the
+    // frontend build is served separately (see README).
     const { createServer: createViteServer } = await import("vite");
     viteServer = await createViteServer({
       server: { middlewareMode: true },

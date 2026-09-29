@@ -8,6 +8,8 @@
   },
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:backend": "API_ONLY=true tsx server.ts",
+    "dev:frontend": "vite",
     "setup": "node scripts/setup-env.mjs",
     "postinstall": "node scripts/setup-env.mjs",
     "build": "npm run build:frontend && npm run build:backend",
