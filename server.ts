@@ -6,7 +6,6 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
-import { createServer as createViteServer } from "vite";
 /* RBAC-INTEGRATION-V1 */
 import { createRbacRouter, requirePermission } from "./server/rbacRoutes";
 import { hasPermission as rbacHasPermission, normalizeRole as rbacNormalizeRole } from "./server/rbac";
@@ -8372,17 +8371,15 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 async function startServer() {
   let viteServer;
   if (process.env.NODE_ENV !== "production") {
+    // Dev-only: dynamically imported so `vite` never ends up in the
+    // production server bundle — the backend is a standalone API in
+    // production, the frontend build is served separately (see README).
+    const { createServer: createViteServer } = await import("vite");
     viteServer = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(viteServer.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*all", (req: express.Request, res: express.Response) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
   }
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(
