@@ -2,7 +2,7 @@
 # Dijalankan otomatis setiap Codespace dimulai (postStartCommand).
 # Tujuan: aplikasi langsung menyala tanpa Anda mengetik apa pun di terminal.
 #
-# Log ada di: /tmp/silegal-dev.log
+# Log ada di: /tmp/legalio-dev.log
 
 cd /workspaces/NEW-CLM 2>/dev/null || cd "$(pwd)"
 
@@ -14,15 +14,15 @@ fi
 
 if [ ! -d node_modules ]; then
   echo "Memasang dependensi (sekali saja)..."
-  npm install >/tmp/silegal-install.log 2>&1
+  npm install >/tmp/legalio-install.log 2>&1
 fi
 
-nohup npm run dev >/tmp/silegal-dev.log 2>&1 &
+nohup npm run dev >/tmp/legalio-dev.log 2>&1 &
 sleep 6
 
 if lsof -ti:3000 >/dev/null 2>&1; then
-  echo "Aplikasi berjalan. Log: /tmp/silegal-dev.log"
+  echo "Aplikasi berjalan. Log: /tmp/legalio-dev.log"
 else
   echo "Aplikasi belum berjalan. 20 baris terakhir log:"
-  tail -20 /tmp/silegal-dev.log
+  tail -20 /tmp/legalio-dev.log
 fi

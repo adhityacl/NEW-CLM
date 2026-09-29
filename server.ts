@@ -1105,10 +1105,10 @@ async function ensureAllPartnersFolders(token?: string, targetTenantId?: string)
 }
 const dataFilePath = path.join(process.cwd(), "data_store.json");
 const DEFAULT_BRANDING = {
-  appName: "Silegal CLM",
+  appName: "Legalio CLM",
   logoUrl: "/favicon.png",
   primaryColor: "#06C755",
-  footerText: "Silegal — open-source contract lifecycle management.",
+  footerText: "Legalio — open-source contract lifecycle management.",
   loginHeadline: "Contract, partner and commercial document management",
 };
 // Only used when the store has no tenants at all (e.g. a store emptied by
@@ -1169,7 +1169,7 @@ function seedDemoAdminAccount() {
     id: "demo-admin",
     organizationId: getDefaultTenantId(),
     email: demoAdminEmail,
-    name: "Silegal Admin",
+    name: "Legalio Admin",
     role: "Superuser",
     department: null,
     status: "Active",
@@ -1994,9 +1994,9 @@ function buildReminderEmail(params: {
     .map(([k, v]) => `<tr><td style="padding:6px 8px;border-bottom:1px solid #F1F5F9;color:#475569;width:35%;">${escapeHtml(k)}</td><td style="padding:6px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;">${escapeHtml(v)}</td></tr>`)
     .join("");
   const footer = pick(
-    `Automated e-mail from Silegal for ${orgName}.`,
-    `E-mail otomatis dari Silegal untuk ${orgName}.`,
-    `此邮件由 Silegal 为 ${orgName} 自动发送。`,
+    `Automated e-mail from Legalio for ${orgName}.`,
+    `E-mail otomatis dari Legalio untuk ${orgName}.`,
+    `此邮件由 Legalio 为 ${orgName} 自动发送。`,
   );
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
@@ -8097,7 +8097,7 @@ app.post("/api/chat", async (req: express.Request, res: express.Response) => {
     const moduleNote = settings.modules.commercialDocuments
       ? `"commercial_documents" are ${ctx.commercialDocumentLabel}s issued under master agreements.`
       : "";
-    const systemInstruction = `You are a context-aware legal, commercial and business assistant embedded in the Silegal contract lifecycle management workspace of ${ctx.organizationName}.
+    const systemInstruction = `You are a context-aware legal, commercial and business assistant embedded in the Legalio contract lifecycle management workspace of ${ctx.organizationName}.
 Answer strictly from the workspace JSON below and the ongoing conversation. ${moduleNote}
 Contact details, identity/tax numbers and full bank account numbers are intentionally withheld for privacy; if asked for them, say they are not available to the assistant.
 

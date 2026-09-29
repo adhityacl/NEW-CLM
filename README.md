@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏛️ Silegal
+# 🏛️ Legalio
 ### Contract & Insertion Order Management
 
 **A multi-tenant Contract Lifecycle Management (CLM) platform** — contracts, partners, Insertion Orders and Due Diligence, role-based access control, a WYSIWYG contract creator with drafts and redlining, and AI-assisted document workflows.
@@ -82,7 +82,7 @@
 - **Fix**: `npm install` no longer force-rebuilds `better-sqlite3` from source. That `postinstall` step needed a full native build toolchain (Python, a C/C++ compiler); minimal environments without one — e.g. Google Cloud's build images — failed to install at all, even though `better-sqlite3`'s own prebuilt binary already installs correctly on its own. Run `npm rebuild better-sqlite3` by hand only if you see a `NODE_MODULE_VERSION` error after upgrading Node (see Troubleshooting).
 - **Security**: demo-workspace logins (`*@example.com`, which share `DEMO_ADMIN_PASSWORD`) are no longer created with `NODE_ENV=production`, are removed on start from production servers that already have them, and are deleted by an empty-workspace reset.
 - **Security**: the SQLite browser in System Admin masks uploaded credentials. Its search no longer matches masked columns, which previously allowed their contents to be guessed from the number of results.
-- **Plug-and-play install, no default credentials**: nothing in `.env` has to be filled in. The first visit to a new install shows a *Create admin account* page, the Google credentials are uploaded as JSON files, and the Gemini key and SMTP are set in Settings. The old shipped login (`admin@silegal.com` / `123456789`) no longer exists; installs upgraded from it keep working and still get a banner asking to change it.
+- **Plug-and-play install, no default credentials**: nothing in `.env` has to be filled in. The first visit to a new install shows a *Create admin account* page, the Google credentials are uploaded as JSON files, and the Gemini key and SMTP are set in Settings. The old shipped login (`admin@legalio.com` / `123456789`) no longer exists; installs upgraded from it keep working and still get a banner asking to change it.
 - **Security**: users without a password are no longer given a shared default one on start (previously every such user, including invited colleagues, got `123456789`), and the first account registered on an empty install is no longer made an admin automatically.
 - **Firebase removed**: "Sign in with Google" uses the OAuth Client JSON you upload in *Connect Google*, so there is no Firebase project or `firebase-applet-config.json` to configure. This also fixes a fresh install crashing on load with `auth/invalid-api-key`.
 - **Fix**: production builds (`npm run build` / `npm start`) no longer render a blank page. A hand-written vendor chunk split made two bundles import each other, leaving React undefined; Vite's default chunking is used instead and first-load JavaScript is ~20% smaller.
@@ -210,16 +210,16 @@ The guide below assumes a Linux server (Ubuntu or Debian), a domain pointing at 
 # Node.js 22 (e.g. via nvm or NodeSource), then:
 node -v   # must be v20.19+ (v22 recommended)
 sudo apt install -y git nginx build-essential python3   # build tools compile better-sqlite3 if no prebuilt binary matches
-sudo useradd --system --create-home --home-dir /opt/silegal silegal
+sudo useradd --system --create-home --home-dir /opt/legalio legalio
 ```
 
 ### 2. Get the code and build it
 
 ```bash
-sudo -u silegal git clone <repository-url> /opt/silegal/app
-cd /opt/silegal/app
-sudo -u silegal npm ci          # install ALL dependencies: do not use --omit=dev
-sudo -u silegal npm run build   # dist/ (frontend) + dist/server.cjs
+sudo -u legalio git clone <repository-url> /opt/legalio/app
+cd /opt/legalio/app
+sudo -u legalio npm ci          # install ALL dependencies: do not use --omit=dev
+sudo -u legalio npm run build   # dist/ (frontend) + dist/server.cjs
 ```
 
 > The production bundle still loads `vite` at startup, and `vite` is a devDependency. `npm ci --omit=dev` therefore produces a server that crashes on start.
@@ -229,23 +229,23 @@ sudo -u silegal npm run build   # dist/ (frontend) + dist/server.cjs
 There is nothing to fill in: `npm ci` already created `.env` with a random `BETTER_AUTH_SECRET` (its `postinstall` script). Just restrict its permissions:
 
 ```bash
-sudo -u silegal chmod 600 .env
+sudo -u legalio chmod 600 .env
 ```
 
 `NODE_ENV=production` comes from the service file in step 4, the admin account is created in the browser in step 6, and the Google credentials are uploaded there too.
 
 ### 4. Run it as a service
 
-Create `/etc/systemd/system/silegal.service`:
+Create `/etc/systemd/system/legalio.service`:
 
 ```ini
 [Unit]
-Description=Silegal CLM
+Description=Legalio CLM
 After=network.target
 
 [Service]
-User=silegal
-WorkingDirectory=/opt/silegal/app
+User=legalio
+WorkingDirectory=/opt/legalio/app
 ExecStart=/usr/bin/env node dist/server.cjs
 Restart=on-failure
 Environment=NODE_ENV=production
@@ -258,13 +258,13 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now silegal
-journalctl -u silegal -f        # wait for "Pengelola Kontrak & IO Server running on http://0.0.0.0:3000"
+sudo systemctl enable --now legalio
+journalctl -u legalio -f        # wait for "Pengelola Kontrak & IO Server running on http://0.0.0.0:3000"
 ```
 
 ### 5. Put nginx and HTTPS in front
 
-`/etc/nginx/sites-available/silegal`:
+`/etc/nginx/sites-available/legalio`:
 
 ```nginx
 server {
@@ -281,7 +281,7 @@ server {
 ```
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/silegal /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/legalio /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 sudo apt install -y certbot python3-certbot-nginx && sudo certbot --nginx -d clm.example.com
 ```
@@ -304,12 +304,12 @@ All application data lives in `auth.db`, including users, organizations, contrac
 1. Prepare the new server with steps 1–2 above.
 2. On the **old** server, stop the app and take a consistent copy of the database:
    ```bash
-   sudo systemctl stop silegal
-   cd /opt/silegal/app
+   sudo systemctl stop legalio
+   cd /opt/legalio/app
    node -e "require('better-sqlite3')('auth.db').backup('auth-migrate.db').then(() => console.log('ok'))"
-   tar czf silegal-data.tgz auth-migrate.db uploads .env
+   tar czf legalio-data.tgz auth-migrate.db uploads .env
    ```
-3. Copy `silegal-data.tgz` to the new server and unpack it into `/opt/silegal/app`. Rename `auth-migrate.db` to `auth.db`, then run `chown -R silegal: .` and `chmod 600 .env`.
+3. Copy `legalio-data.tgz` to the new server and unpack it into `/opt/legalio/app`. Rename `auth-migrate.db` to `auth.db`, then run `chown -R legalio: .` and `chmod 600 .env`.
 4. If the old `.env` pinned `BETTER_AUTH_URL`/`TRUSTED_ORIGINS` to the old domain, remove or update them (unset, the app just follows the new host). Keep the same `BETTER_AUTH_SECRET` so existing sessions stay valid; a new secret only signs everyone out. Users and credentials come with `auth.db`, so no setup page appears.
 5. Continue with steps 4–5 above (service and nginx). New tables and columns are created automatically on start.
 6. If the domain changed, add it to the Google OAuth client's **Authorized JavaScript origins**.
@@ -321,7 +321,7 @@ All application data lives in `auth.db`, including users, organizations, contrac
 **Backup** (safe while the app is running, because it uses SQLite's online backup):
 
 ```bash
-cd /opt/silegal/app
+cd /opt/legalio/app
 mkdir -p backups
 node -e "require('better-sqlite3')('auth.db').backup('backups/auth-' + new Date().toISOString().slice(0,10) + '.db').then(() => console.log('ok'))"
 tar czf backups/uploads-$(date +%F).tgz uploads
@@ -332,11 +332,11 @@ Do not copy `auth.db` with `cp` while the server runs: recent writes may still b
 **Update to a new version:**
 
 ```bash
-cd /opt/silegal/app
-sudo -u silegal git pull
-sudo -u silegal npm ci
-sudo -u silegal npm run build
-sudo systemctl restart silegal
+cd /opt/legalio/app
+sudo -u legalio git pull
+sudo -u legalio npm ci
+sudo -u legalio npm run build
+sudo systemctl restart legalio
 ```
 
 ---

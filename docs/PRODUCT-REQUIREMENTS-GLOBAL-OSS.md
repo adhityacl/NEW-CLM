@@ -1,4 +1,4 @@
-# Silegal Global Open-Source CLM
+# Legalio Global Open-Source CLM
 ## Product Requirements Document
 
 **Status:** Draft for architecture and implementation planning  
@@ -13,9 +13,9 @@
 
 ### 1.1 Vision
 
-Silegal menjadi platform Contract Lifecycle Management (CLM) open-source yang modular, extensible, privacy-aware, dan dapat digunakan oleh organisasi lintas negara serta lintas industri. Produk harus memisahkan **core contract capability** dari aturan negara, industri, provider, dan kebijakan internal organisasi.
+Legalio menjadi platform Contract Lifecycle Management (CLM) open-source yang modular, extensible, privacy-aware, dan dapat digunakan oleh organisasi lintas negara serta lintas industri. Produk harus memisahkan **core contract capability** dari aturan negara, industri, provider, dan kebijakan internal organisasi.
 
-Silegal bukan sekadar repository dokumen. Silegal adalah system of record untuk:
+Legalio bukan sekadar repository dokumen. Legalio adalah system of record untuk:
 
 - siklus hidup kontrak dari request sampai renewal atau termination;
 - hubungan legal dan operasional dengan vendor, partner, customer, dan pihak ketiga;
@@ -25,7 +25,7 @@ Silegal bukan sekadar repository dokumen. Silegal adalah system of record untuk:
 
 ### 1.2 Positioning
 
-Silegal diposisikan sebagai:
+Legalio diposisikan sebagai:
 
 > **An open, self-hostable, workflow-first CLM platform for organizations that need control over their contract data, policies, and integrations.**
 
@@ -497,7 +497,7 @@ Setiap job wajib idempotent, tenant-aware, observable, retryable, dan memiliki d
 
 ### 5.1 Privacy dan Compliance
 
-Silegal harus menyediakan privacy-by-design capability, bukan mengklaim sertifikasi secara otomatis.
+Legalio harus menyediakan privacy-by-design capability, bukan mengklaim sertifikasi secara otomatis.
 
 Requirement minimum:
 
@@ -688,7 +688,7 @@ Core, official plugins, dan community plugins harus memiliki ownership serta sup
 
 ### Phase 1 - Decoupling Local Logic dan Dynamic Custom Fields
 
-**Tujuan:** membangun boundary domain global tanpa memutus kemampuan Silegal saat ini.
+**Tujuan:** membangun boundary domain global tanpa memutus kemampuan Legalio saat ini.
 
 Deliverables:
 
@@ -834,7 +834,7 @@ Sebuah capability dianggap selesai bila:
 
 ## Appendix B - Referensi Implementasi Saat Ini
 
-Dokumen ini digeneralisasi dari capability Silegal yang saat ini mencakup:
+Dokumen ini digeneralisasi dari capability Legalio yang saat ini mencakup:
 
 - React/Vite frontend dan Express backend;
 - Better Auth dan SQLite untuk local runtime;

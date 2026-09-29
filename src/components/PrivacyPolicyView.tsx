@@ -55,7 +55,7 @@ export const PrivacyPolicyView: React.FC<PrivacyPolicyViewProps> = ({ onBack }) 
             )}
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
               <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>{t('legal_privacy.silegal_privacy_policy', 'SiLegal • Privacy Policy')}</span>
+              <span>{t('legal_privacy.silegal_privacy_policy', 'Legalio • Privacy Policy')}</span>
             </div>
           </div>
 
@@ -104,7 +104,7 @@ export const PrivacyPolicyView: React.FC<PrivacyPolicyViewProps> = ({ onBack }) 
                 {t('legal_privacy.privacy_policy', 'Privacy Policy')}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                {t('legal_privacy.enterprise_legal_contract_corporate_document_man', 'Enterprise Legal Contract & Corporate Document Management System (SiLegal)')}
+                {t('legal_privacy.enterprise_legal_contract_corporate_document_man', 'Enterprise Legal Contract & Corporate Document Management System (Legalio)')}
               </p>
             </div>
 
@@ -204,7 +204,7 @@ export const PrivacyPolicyView: React.FC<PrivacyPolicyViewProps> = ({ onBack }) 
                 </h2>
               </div>
               <p className="mb-3">
-                {t('legal_privacy.this_privacy_policy_governs_how_the', 'This Privacy Policy governs how the SiLegal platform ("Application", "We", or "Service") collects, uses, stores, processes, and protects personal data and corporate information within the SiLegal application (Legal Contract & Document Management System).')}
+                {t('legal_privacy.this_privacy_policy_governs_how_the', 'This Privacy Policy governs how the Legalio platform ("Application", "We", or "Service") collects, uses, stores, processes, and protects personal data and corporate information within the Legalio application (Legal Contract & Document Management System).')}
               </p>
               <p>
                 {t('legal_privacy.this_application_is_dedicated_to_internal', 'This application is dedicated to internal contract management, partner/vendor compliance verification (Due Diligence), Insertion Order (IO) tracking, and notice period alert workflows in compliance with applicable laws (including Indonesian Law No. 27/2022 on Personal Data Protection).')}
@@ -339,7 +339,7 @@ export const PrivacyPolicyView: React.FC<PrivacyPolicyViewProps> = ({ onBack }) 
                     {t('legal_privacy.limited_use_disclosure_requirement', 'Limited Use Disclosure Requirement:')}
                   </p>
                   <blockquote className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900 text-xs font-mono text-slate-800 dark:text-slate-200 leading-relaxed">
-                    {t('legal_privacy.silegal_s_use_and_transfer_to', 'SiLegal\'s use and transfer to any other app of information received from Google APIs will adhere to the Google API Services User Data Policy, including the Limited Use requirements.')}
+                    {t('legal_privacy.silegal_s_use_and_transfer_to', 'Legalio\'s use and transfer to any other app of information received from Google APIs will adhere to the Google API Services User Data Policy, including the Limited Use requirements.')}
                   </blockquote>
 
                   <p>
@@ -492,7 +492,7 @@ export const PrivacyPolicyView: React.FC<PrivacyPolicyViewProps> = ({ onBack }) 
 
           {/* Footer of the Document */}
           <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 dark:text-slate-500">
-            <p>{t('legal_privacy.2026_silegal_all_rights_reserved', '© 2026 SiLegal. All rights reserved.')}</p>
+            <p>{t('legal_privacy.2026_silegal_all_rights_reserved', '© 2026 Legalio. All rights reserved.')}</p>
             {onBack && (
               <button
                 type="button"

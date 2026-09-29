@@ -1,6 +1,6 @@
 # Laporan Audit RBAC — PRD vs Implementasi
 
-- **Repo:** `adhityacl/NEW-CLM` (app *silegal*)
+- **Repo:** `adhityacl/NEW-CLM` (app *legalio*)
 - **Baseline commit:** `0368290` (branch `main`, setelah devcontainer) → perubahan di branch `feat/rbac-alignment`
 - **Sumber kebenaran:** `Engineering PRD — RBAC Structure & Authorization.md` v1.0 (35 seksi)
 - **Metode:** pembacaan kode langsung (`server.ts` 7.791 baris, `src/server/authConsoleRoutes.ts` 1.877 baris, `src/lib/rbacScoping.ts`, `src/lib/auth.ts`, context & komponen UI) + pengujian otorisasi otomatis (`tests/rbac.test.ts`).

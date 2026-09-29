@@ -50,7 +50,7 @@ export const TermsOfServiceView: React.FC<TermsOfServiceViewProps> = ({ onBack }
             )}
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
               <Scale className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>{t('legal_terms.silegal_terms_of_service', 'SiLegal • Terms of Service')}</span>
+              <span>{t('legal_terms.silegal_terms_of_service', 'Legalio • Terms of Service')}</span>
             </div>
           </div>
 
@@ -99,7 +99,7 @@ export const TermsOfServiceView: React.FC<TermsOfServiceViewProps> = ({ onBack }
                 {t('legal_terms.terms_of_service', 'Terms of Service')}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                {t('legal_terms.terms_of_use_for_corporate_contract', 'Terms of Use for Corporate Contract & Legal Document Management System (SiLegal)')}
+                {t('legal_terms.terms_of_use_for_corporate_contract', 'Terms of Use for Corporate Contract & Legal Document Management System (Legalio)')}
               </p>
             </div>
 
@@ -199,7 +199,7 @@ export const TermsOfServiceView: React.FC<TermsOfServiceViewProps> = ({ onBack }
                 </h2>
               </div>
               <p className="mb-3">
-                {t('legal_terms.welcome_to_silegal_corporate_legal_contract', 'Welcome to SiLegal (Corporate Legal Contract & Document Management System). By accessing, registering, or using the SiLegal platform, you confirm that you have read, understood, and agreed to be bound by these Terms of Service.')}
+                {t('legal_terms.welcome_to_silegal_corporate_legal_contract', 'Welcome to Legalio (Corporate Legal Contract & Document Management System). By accessing, registering, or using the Legalio platform, you confirm that you have read, understood, and agreed to be bound by these Terms of Service.')}
               </p>
               <p>
                 {t('legal_terms.if_you_are_using_this_system', 'If you are using this system on behalf of an organization or corporate entity, you represent and warrant that you possess full legal authority to bind that entity to these terms.')}
@@ -217,7 +217,7 @@ export const TermsOfServiceView: React.FC<TermsOfServiceViewProps> = ({ onBack }
                 </h2>
               </div>
               <p className="mb-3">
-                {t('legal_terms.silegal_enforces_role_based_access_controls', 'SiLegal enforces Role-Based Access Controls (RBAC) to protect sensitive corporate operations:')}
+                {t('legal_terms.silegal_enforces_role_based_access_controls', 'Legalio enforces Role-Based Access Controls (RBAC) to protect sensitive corporate operations:')}
               </p>
               <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                 <li>
@@ -252,7 +252,7 @@ export const TermsOfServiceView: React.FC<TermsOfServiceViewProps> = ({ onBack }
                 </h2>
               </div>
               <p className="mb-3">
-                {t('legal_terms.all_agreement_drafts_master_service_agreements', 'All agreement drafts, Master Service Agreements (PKS), Addendums, Insertion Orders (IO), partner compliance files (NIB, Tax ID, Articles), and transaction values stored in SiLegal are strictly confidential corporate trade secrets.')}
+                {t('legal_terms.all_agreement_drafts_master_service_agreements', 'All agreement drafts, Master Service Agreements (PKS), Addendums, Insertion Orders (IO), partner compliance files (NIB, Tax ID, Articles), and transaction values stored in Legalio are strictly confidential corporate trade secrets.')}
               </p>
               <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200">
                 <strong>{t('legal_terms.prohibition_against_unauthorized_distribution', 'Prohibition Against Unauthorized Distribution:')}</strong>{' '}
@@ -271,7 +271,7 @@ export const TermsOfServiceView: React.FC<TermsOfServiceViewProps> = ({ onBack }
                 </h2>
               </div>
               <p className="mb-3">
-                {t('legal_terms.when_utilizing_the_silegal_system_users', 'When utilizing the SiLegal system, users covenant and agree to:')}
+                {t('legal_terms.when_utilizing_the_silegal_system_users', 'When utilizing the Legalio system, users covenant and agree to:')}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
                 <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-start gap-2.5">
@@ -334,7 +334,7 @@ export const TermsOfServiceView: React.FC<TermsOfServiceViewProps> = ({ onBack }
                 </h2>
               </div>
               <p>
-                {t('legal_terms.the_silegal_system_is_deployed_to', 'The SiLegal system is deployed to facilitate contract governance. While automated expiration reminder workflows operate continuously, legal obligations and notice periods strictly defer to executed physical contracts.')}
+                {t('legal_terms.the_silegal_system_is_deployed_to', 'The Legalio system is deployed to facilitate contract governance. While automated expiration reminder workflows operate continuously, legal obligations and notice periods strictly defer to executed physical contracts.')}
               </p>
             </section>
 

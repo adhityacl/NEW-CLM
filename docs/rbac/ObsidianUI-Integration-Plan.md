@@ -3,7 +3,7 @@
 - **Sumber:** https://www.obsidianui.dev/ · https://gitlab.com/Atharvsinh-codez/ObsidianUI
 - **Lisensi:** **MIT** (terverifikasi dari file `LICENSE` di GitLab + field `license.key = "mit"`) → aman untuk internal/komersial, wajib menyertakan notice.
 - **Model distribusi:** **shadcn-registry** (copy-paste / CLI). **Tidak ada paket npm resmi** — `npm i obsidian-ui` menarik paket lama 2019 yang sudah di-unpublish dan **tidak terkait**.
-- **Kompatibilitas:** dibangun tepat di **React 19 + Tailwind v4** — sama dengan stack *silegal*.
+- **Kompatibilitas:** dibangun tepat di **React 19 + Tailwind v4** — sama dengan stack *legalio*.
 
 ## 1. Kesiapan (terverifikasi)
 

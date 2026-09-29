@@ -58,7 +58,7 @@ git commit -m "feat(rbac): terapkan strict3 + guard area admin + audit impersona
 info "Me-restart app..."
 kill -9 $(lsof -ti:3000) 2>/dev/null || true
 sleep 1
-nohup npm run dev > /tmp/silegal-dev.log 2>&1 &
+nohup npm run dev > /tmp/legalio-dev.log 2>&1 &
 echo "  Menunggu app siap..."
 for i in $(seq 1 30); do
   CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/rbac/matrix 2>/dev/null)

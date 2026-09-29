@@ -1226,7 +1226,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     window.print();
   };
 
-  // Save to SILEGAL system repository
+  // Save to LEGALIO system repository
   const handleSaveToSystem = async () => {
     setIsSaving(true);
     setExportMessage(null);
@@ -1257,7 +1257,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
       setExportMessage({
         type: 'success',
-        text: t('contract_creator.kontrak_berhasil_disimpan_ke_sistem_repositori', 'Kontrak "{docTitle}" berhasil disimpan ke sistem repositori SILEGAL!', { docTitle }),
+        text: t('contract_creator.kontrak_berhasil_disimpan_ke_sistem_repositori', 'Kontrak "{docTitle}" berhasil disimpan ke sistem repositori LEGALIO!', { docTitle }),
       });
     } catch (err: any) {
       console.error('Save to system error:', err);

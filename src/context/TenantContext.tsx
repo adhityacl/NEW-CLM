@@ -18,10 +18,10 @@ interface TenantContextType {
 }
 
 const DEFAULT_BRANDING: TenantBranding = {
-  appName: 'Silegal CLM',
+  appName: 'Legalio CLM',
   logoUrl: '/favicon.png',
   primaryColor: '#06C755',
-  footerText: 'Silegal — open-source contract lifecycle management.',
+  footerText: 'Legalio — open-source contract lifecycle management.',
   loginHeadline: 'Contract, partner and commercial document management',
 };
 

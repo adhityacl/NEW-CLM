@@ -13,7 +13,7 @@ interface Message {
 const INITIAL_MESSAGE: Message = {
   id: 'welcome',
   role: 'ai',
-  text: 'Halo! Saya Asisten AI SiLegal dengan **Session Context**. Anda bisa bertanya seputar partner, kontrak, atau IO, lalu melanjutkan dengan pertanyaan bertahap (follow-up) terkait topik sebelumnya.'
+  text: 'Halo! Saya Asisten AI Legalio dengan **Session Context**. Anda bisa bertanya seputar partner, kontrak, atau IO, lalu melanjutkan dengan pertanyaan bertahap (follow-up) terkait topik sebelumnya.'
 };
 
 // [catalog key, default text]
@@ -177,7 +177,7 @@ export const AIChatWidget: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-sm leading-tight text-white">
-                  {t('ai_chat.silegal_ai', 'SiLegal AI')}
+                  {t('ai_chat.silegal_ai', 'Legalio AI')}
                 </h3>
               </div>
             </div>
@@ -338,7 +338,7 @@ export const AIChatWidget: React.FC = () => {
         className={`w-13 h-13 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 transform hover:scale-105 cursor-pointer ${
           isOpen ? 'bg-[#05b34c] rotate-12' : 'bg-[#06C755] hover:bg-[#05b34c]'
         }`}
-        title={isOpen ? t('ai_chat.tutup_ai_assistant', 'Tutup AI Assistant') : t('ai_chat.buka_asisten_ai_silegal', 'Buka Asisten AI SiLegal')}
+        title={isOpen ? t('ai_chat.tutup_ai_assistant', 'Tutup AI Assistant') : t('ai_chat.buka_asisten_ai_silegal', 'Buka Asisten AI Legalio')}
       >
         <MessageSquare size={22} className="text-white" />
       </button>

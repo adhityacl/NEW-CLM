@@ -1527,7 +1527,7 @@ async function dispatchInvitationEmail(
   const baseUrl = `${protocol}://${host}`;
   const inviteUrl = `${baseUrl}/?accept_invite=${inv.id}&email=${encodeURIComponent(inv.email)}`;
 
-  let orgName = 'Silegal';
+  let orgName = 'Legalio';
   if (inv.organizationId) {
     try {
       const org = sqliteDb.prepare('SELECT name FROM organization WHERE id = ?').get(inv.organizationId) as any;
@@ -1555,7 +1555,7 @@ async function dispatchInvitationEmail(
 
       const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
       const role = esc(String(inv.role || '').toUpperCase());
-      const subject = `Invitation to join ${orgName} on Silegal (${String(inv.role || '').toUpperCase()})`;
+      const subject = `Invitation to join ${orgName} on Legalio (${String(inv.role || '').toUpperCase()})`;
       const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
           <div style="text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #06C755;">
@@ -1564,7 +1564,7 @@ async function dispatchInvitationEmail(
           </div>
           <p style="color: #334155; font-size: 14px; line-height: 1.6;">Hello,</p>
           <p style="color: #334155; font-size: 14px; line-height: 1.6;">
-            <strong>${esc(inviter)}</strong> invited you to join <strong>${esc(orgName)}</strong> as <strong>${role}</strong> on Silegal.
+            <strong>${esc(inviter)}</strong> invited you to join <strong>${esc(orgName)}</strong> as <strong>${role}</strong> on Legalio.
           </p>
           <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #cbd5e1;">
             <p style="margin: 0; font-size: 13px; color: #475569;"><strong>E-mail:</strong> ${esc(inv.email)}</p>

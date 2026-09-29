@@ -149,7 +149,7 @@ export function TenantDashboard() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-                {t('tenant_dashboard.silegal_tenant_portal', 'Silegal Tenant Portal')}
+                {t('tenant_dashboard.silegal_tenant_portal', 'Legalio Tenant Portal')}
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('tenant_dashboard.better_auth_multi_tenant_rbac_organization', 'Better Auth Multi-Tenant & RBAC Organization Management')}

@@ -1,4 +1,4 @@
-# Audit Kesiapan Global & Open-Source — Silegal CLM
+# Audit Kesiapan Global & Open-Source — Legalio CLM
 
 **Tanggal audit:** 2026-09-24
 **Acuan:** [PRODUCT-REQUIREMENTS-GLOBAL-OSS.md](PRODUCT-REQUIREMENTS-GLOBAL-OSS.md)

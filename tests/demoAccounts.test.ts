@@ -20,7 +20,7 @@ function authDb() {
     db.prepare(`INSERT INTO "user" VALUES (?, ?)`).run(id, email);
     for (const t of ['session', 'account', 'member', 'teamMember']) db.prepare(`INSERT INTO ${t} VALUES (?, ?)`).run(`${t}-${id}`, id);
   };
-  add('admin', 'admin@silegal.com');
+  add('admin', 'admin@legalio.com');
   add('real', 'owner@company.com');
   add('usr-demo-sg-legal', 'Legal.SG@example.com');
   add('usr-demo-id-fin', 'finance.id@example.com');
@@ -37,7 +37,7 @@ test('the six demo dataset accounts are the ones targeted', () => {
 test('removes demo logins with their sessions, credentials and memberships; keeps everyone else', () => {
   const db = authDb();
   const allowedUsers = [
-    { id: 'admin', email: 'admin@silegal.com' },
+    { id: 'admin', email: 'admin@legalio.com' },
     { id: 'real', email: 'owner@company.com' },
     { id: 'usr-demo-sg-legal', email: 'legal.sg@example.com' },
     { id: 'usr-demo-jp-legal', email: 'legal.jp@example.com' },
