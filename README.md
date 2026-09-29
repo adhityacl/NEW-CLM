@@ -98,7 +98,7 @@
 | Layer | Technology |
 | --- | --- |
 | 🎨 Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, Radix UI primitives (`src/components/ui/`), TipTap, Recharts, TanStack Query |
-| 🖥️ Backend | Express and TypeScript in a single process (`server.ts`). In development Vite runs inside Express as middleware, so the app uses one server and one port. |
+| 🖥️ Backend | Express and TypeScript, API-only (`server.ts`), no frontend assets. In development Vite still runs inside Express as middleware for convenience (one server, one port); in production the frontend build is served separately (see [Deploying to a new server](#deploying-to-a-new-server)). |
 | 🔐 Auth | Better Auth (sessions, organizations, teams) plus a custom RBAC engine (`server/rbac.ts`) |
 | 💾 Data | SQLite via `better-sqlite3`, stored in one file: `auth.db` |
 | 🔌 Integrations | `@google/genai`, `googleapis`, Google Identity Services (Google Sign-In), `nodemailer`, `docx`, `pdf-lib`, `pdf-parse` |
@@ -202,7 +202,7 @@ npm run test:e2e          # Playwright browser tests (run `npx playwright instal
 
 ## Deploying to a new server
 
-The guide below assumes a Linux server (Ubuntu or Debian), a domain pointing at it, systemd, and nginx for HTTPS. The app is a single Node process listening on one port.
+The guide below assumes a Linux server (Ubuntu or Debian), a domain pointing at it, systemd, and nginx for HTTPS. The frontend is a static build (`dist/`, minus `dist/server.cjs`) served directly by nginx; the backend is a Node API process (`dist/server.cjs`) that nginx reverse-proxies `/api/` and `/uploads/` to. They can live on the same server (as below) or be deployed and scaled independently.
 
 ### 1. Install the prerequisites
 
@@ -218,11 +218,11 @@ sudo useradd --system --create-home --home-dir /opt/legalio legalio
 ```bash
 sudo -u legalio git clone <repository-url> /opt/legalio/app
 cd /opt/legalio/app
-sudo -u legalio npm ci          # install ALL dependencies: do not use --omit=dev
-sudo -u legalio npm run build   # dist/ (frontend) + dist/server.cjs
+sudo -u legalio npm ci
+sudo -u legalio npm run build   # dist/ (frontend static files) + dist/server.cjs (backend)
 ```
 
-> The production bundle still loads `vite` at startup, and `vite` is a devDependency. `npm ci --omit=dev` therefore produces a server that crashes on start.
+`npm run build:frontend` and `npm run build:backend` also run independently — useful if the two are built or deployed on separate machines/pipelines.
 
 ### 3. Create `.env`
 
@@ -271,11 +271,31 @@ server {
     server_name clm.example.com;
     client_max_body_size 30m;   # document uploads are limited to 30 MB by the app
 
-    location / {
+    location /api/ {
         proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # `dist/` also holds the backend bundle (server.cjs, server.cjs.map) —
+    # never serve those as static files, they'd leak server source/secrets.
+    location ~* \.cjs(\.map)?$ {
+        deny all;
+    }
+
+    # Everything else is the frontend's static build — nginx serves it
+    # directly, the Node process is never involved.
+    location / {
+        root /opt/legalio/app/dist;
+        try_files $uri /index.html;
     }
 }
 ```
