@@ -377,7 +377,8 @@ sudo systemctl restart legalio
 | Symptom | Cause and fix |
 | --- | --- |
 | `BETTER_AUTH_SECRET must be set in production` at startup | `.env` is missing, empty, or not in `WorkingDirectory`. Run `npm run setup` in that directory (it won't touch a real secret if one is already set), or set a long random value by hand. |
-| `Cannot find module 'vite'` at startup | Dependencies were installed with `--omit=dev`. Run `npm ci` without it. |
+| `Cannot find module 'vite'` when running `npm run dev` / `dev:backend` | Dependencies were installed with `--omit=dev` on a dev machine. Run `npm ci` without it. Production (`node dist/server.cjs`) never needs `vite`, so this doesn't affect a deployed server. |
+| Blank page or 404 at the site root in production | The Node process no longer serves the frontend build — nginx must serve `dist/` directly and only proxy `/api/` and `/uploads/` to Node. Check the `location` blocks in step 5 of [Deploying to a new server](#deploying-to-a-new-server). |
 | `better-sqlite3` / `NODE_MODULE_VERSION` error | Node was upgraded after installing. Run `npm rebuild better-sqlite3`. |
 | Crash mentioning `process.getBuiltinModule` | Node is older than 20.19. Upgrade to Node 22. |
 | Repeated `DECODER routines::unsupported` in the log | The service account private key in `.env` is malformed. Upload the service account JSON in the app, or fix/clear `GOOGLE_PRIVATE_KEY`. |
