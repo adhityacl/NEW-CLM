@@ -147,6 +147,17 @@ Open **http://localhost:3000**. On the very first visit you'll see *Create admin
 
 On first start the server creates `auth.db` with all tables and loads a three-country demo workspace. Until the Google credential files are uploaded, a banner offers **Connect Google**. The Gemini key (AI features) and SMTP are set in Settings — nothing goes in `.env`.
 
+### Running frontend and backend as separate processes
+
+`npm run dev` runs both together in one process (Vite mounted as Express middleware) and is the default for day-to-day work. To run them separately — closer to how production is deployed, see [Deploying to a new server](#deploying-to-a-new-server) — use two terminals instead:
+
+```bash
+npm run dev:backend    # Express API only, on :3000
+npm run dev:frontend   # Vite dev server, proxies /api and /uploads to :3000
+```
+
+Open the URL `dev:frontend` prints (not `:3000`). No code changes needed either way: components call `fetch('/api/...')` the same way in both modes.
+
 ---
 
 ## Configuration reference
