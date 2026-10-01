@@ -703,6 +703,14 @@ div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-
 .app-data-table th[data-numeric="true"] { text-align: right; }
 .app-data-table th[data-numeric="true"] button { margin-left: auto; }
 .app-data-table td.text-right { font-variant-numeric: tabular-nums; }
+.dashboard-document-table { table-layout: fixed; }
+.dashboard-document-table :is(th, td):nth-child(1) { width: 4%; }
+.dashboard-document-table :is(th, td):nth-child(2) { width: 24%; }
+.dashboard-document-table :is(th, td):nth-child(3) { width: 18%; }
+.dashboard-document-table :is(th, td):nth-child(4) { width: 24%; }
+.dashboard-document-table :is(th, td):nth-child(5) { width: 14%; }
+.dashboard-document-table :is(th, td):nth-child(6) { width: 11%; }
+.dashboard-document-table :is(th, td):nth-child(7) { width: 5%; }
 .form-dialog label { font-size: 0.875rem; line-height: 1.5; }
 .form-dialog input:not([type="checkbox"]):not([type="radio"]),
 .form-dialog select, .form-dialog textarea { min-width: 0; max-width: 100%; }

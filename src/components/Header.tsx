@@ -94,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'contracts':
         return t('nav.contracts', 'Kontrak');
       case 'create-contract':
-        return t('nav.create_contract', 'Buat Kontrak Baru');
+        return t('nav.create_contract', 'Buat Dokumen');
       case 'ios':
         return t('nav.ios', 'Insertion Order (IO)');
       case 'notifikasi':

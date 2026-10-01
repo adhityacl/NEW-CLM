@@ -179,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const docNavItems: SidebarNavItem[] = [
     {
       id: 'create-contract',
-      label: t('nav.create_contract', 'Buat Kontrak'),
+      label: t('nav.create_contract', 'Buat Dokumen'),
       icon: FileSignature,
       permission: 'document.create',
     },

@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { ArrowUpRight, FilePlus2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import { formatDateTime } from '../lib/documentModel';
 import { CONTRACT_STATUS_LABEL_KEY } from '../lib/domainStatus';
 import type { Contract, InsertionOrder } from '../types';
 import { getStatusBadgeClass } from './ui/badge';
@@ -47,7 +46,7 @@ export function RecentDocumentsTable({ contracts, ios, onNavigate }: {
           <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">{t('ui.recent_documents')}</h3>
       </div>
       <div className="overflow-x-auto" role="region" tabIndex={0} aria-label={t('ui.recent_documents')}>
-        <table className="dashboard-data-table w-full min-w-[760px] text-left text-xs">
+        <table className="dashboard-data-table dashboard-document-table w-full min-w-[760px] text-left text-xs">
           <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300"><tr>
             <th scope="col" className="pl-6 pr-2 py-4 w-12 text-left align-middle">
               <input
@@ -57,7 +56,10 @@ export function RecentDocumentsTable({ contracts, ios, onNavigate }: {
                 disabled
               />
             </th>
-            {[t('dashboard.doc_pending_col_name'), t('dashboard.doc_pending_col_type'), t('dashboard.partner'), t('ui.filter_status'), t('dashboard.doc_pending_col_created_at'), t('dashboard.action')].map(label => <th key={label} scope="col" className="px-6 py-4 font-bold last:text-right">{label}</th>)}
+            {[t('dashboard.doc_pending_col_name'), t('dashboard.doc_pending_col_type'), t('dashboard.partner'), t('ui.filter_status'), t('dashboard.doc_pending_col_created_at')].map(label => <th key={label} scope="col" className="px-6 py-4 font-bold">{label}</th>)}
+            <th scope="col" className="pl-2 pr-6 py-4 text-right w-20 font-bold align-middle">
+              <div className="flex items-center justify-end">{t('dashboard.action')}</div>
+            </th>
           </tr></thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {records.length === 0 ? <tr><td colSpan={7} className="px-6 py-6 text-center text-slate-500 dark:text-slate-400">{t('ui.recent_empty')}</td></tr> : records.map(record => <tr key={`${record.tab}-${record.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -73,8 +75,8 @@ export function RecentDocumentsTable({ contracts, ios, onNavigate }: {
               <td className="px-6 py-4 text-slate-700 dark:text-slate-300">{record.type}</td>
               <td className="px-6 py-4 text-slate-700 dark:text-slate-300">{record.partner}</td>
               <td className="px-6 py-4"><span className={`inline-flex rounded-full border px-3 py-0.5 whitespace-nowrap ${getStatusBadgeClass(record.status)}`}>{t(CONTRACT_STATUS_LABEL_KEY[record.status], record.status)}</span></td>
-              <td className="px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300">{formatDateTime(record.createdAt, language)}</td>
-              <td className="px-6 py-4 text-right"><button type="button" onClick={() => onNavigate(record.tab)} aria-label={`${t('common.open', 'Open')} ${record.title}`} className="inline-flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-700 dark:hover:bg-slate-800 dark:hover:text-emerald-300 cursor-pointer"><ArrowUpRight className="size-4" /></button></td>
+              <td className="px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300">{new Date(record.createdAt).toLocaleDateString(language === 'EN' ? 'en-GB' : language === 'ZH' ? 'zh-CN' : 'id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+              <td className="pl-2 pr-6 py-4 text-right align-middle w-20"><button type="button" onClick={() => onNavigate(record.tab)} aria-label={`${t('common.open', 'Open')} ${record.title}`} className="inline-flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-700 dark:hover:bg-slate-800 dark:hover:text-emerald-300 cursor-pointer"><ArrowUpRight className="size-4" /></button></td>
             </tr>)}
           </tbody>
         </table>

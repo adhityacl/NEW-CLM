@@ -281,7 +281,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="overflow-x-auto" role="region" tabIndex={0} aria-label={t('dashboard.expiring_table_title')}>
-          <table className="dashboard-data-table w-full min-w-[760px] text-left text-xs">
+          <table className="dashboard-data-table dashboard-document-table w-full min-w-[760px] text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
                 <th scope="col" className="pl-6 pr-2 py-4 w-12 text-left align-middle">

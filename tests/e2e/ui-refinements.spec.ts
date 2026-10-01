@@ -37,13 +37,17 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('requiring action table combines contracts and order forms', async ({ page }) => {
-  const section = page.getByRole('region', { name: /Contracts & .* Requiring Action/ }).first();
+  const section = page.getByRole('region', { name: 'Expiring Documents', exact: true }).first();
   const headers = section.locator('thead th');
   await expect(headers.nth(1)).toHaveText('Document Name');
   await expect(headers.nth(2)).toHaveText('Type');
   await expect(section.locator('tbody tr')).toHaveCount(2);
   await expect(section.locator('tbody')).toContainText('Cloud Hosting Master Services Agreement');
   await expect(section.locator('tbody')).toContainText('Reserved compute capacity FY2026');
+  const latestHeaders = page.getByRole('region', { name: 'Latest Documents', exact: true }).first().locator('thead th');
+  const expiringColumns = await headers.evaluateAll(cells => cells.map(cell => Math.round(cell.getBoundingClientRect().x)));
+  const latestColumns = await latestHeaders.evaluateAll(cells => cells.map(cell => Math.round(cell.getBoundingClientRect().x)));
+  expect(latestColumns).toEqual(expiringColumns);
 });
 
 test('latest records combine contracts and order forms in creation order', async ({ page }) => {
@@ -57,7 +61,7 @@ test('latest records combine contracts and order forms in creation order', async
     ...data.contracts.filter(record => !record.organizationId || record.organizationId === tenantId).map(record => ({ title: record.judul_kontrak, createdAt: record.created_at })),
     ...data.ios.filter(record => !record.organizationId || record.organizationId === tenantId).map(record => ({ title: record.judul_io, createdAt: record.created_at })),
   ].filter(record => Date.parse(record.createdAt) >= cutoff.getTime()).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-  const section = page.getByRole('region', { name: 'Latest Contracts & OF/SO/SOW', exact: true }).first();
+  const section = page.getByRole('region', { name: 'Latest Documents', exact: true }).first();
   await expect(section.locator('tbody tr')).toHaveCount(records.length);
   await expect(section.locator('tbody tr').first()).toContainText(records[0].title);
   const checkboxes = section.locator('input[type="checkbox"]');
@@ -68,7 +72,7 @@ test('latest records combine contracts and order forms in creation order', async
 });
 
 test('mobile editor keeps a usable canvas and opens its panel as a dismissible overlay', async ({ page }) => {
-  await page.getByRole('button', { name: 'Create Contract', exact: true }).click();
+  await page.getByRole('button', { name: 'Create Document', exact: true }).click();
   await page.getByRole('button', { name: 'New Document', exact: true }).first().click();
   await page.setViewportSize({ width: 390, height: 844 });
   const editor = page.locator('.tiptap.ProseMirror:visible');

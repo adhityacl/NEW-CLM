@@ -1,6 +1,6 @@
 export const UI_REFINEMENTS = {
   "ID": {
-    "ui.recent_documents": "Kontrak & IO/SO/SOW Terbaru",
+    "ui.recent_documents": "Dokumen Terbaru",
     "ui.recent_empty": "Belum ada kontrak atau IO/SO/SOW yang dibuat dalam 3 bulan terakhir.",
     "ui.select_all_recent": "Pilih semua kontrak dan IO/SO/SOW terbaru",
     "ui.select_recent": "Pilih {name}",
@@ -47,7 +47,7 @@ export const UI_REFINEMENTS = {
     "import.title": "Import Data CSV",
   },
   "EN": {
-    "ui.recent_documents": "Latest Contracts & IO/SO/SOW",
+    "ui.recent_documents": "Latest Documents",
     "ui.recent_empty": "No contracts or IO/SO/SOW were created in the last 3 months.",
     "ui.select_all_recent": "Select all latest contracts and IO/SO/SOW",
     "ui.select_recent": "Select {name}",
@@ -94,7 +94,7 @@ export const UI_REFINEMENTS = {
     "import.title": "Import CSV Data",
   },
   "ZH": {
-    "ui.recent_documents": "最新合同及 IO/SO/SOW",
+    "ui.recent_documents": "最新文档",
     "ui.recent_empty": "过去 3 个月内没有新建合同或 IO/SO/SOW。",
     "ui.select_all_recent": "选择所有最新合同及 IO/SO/SOW",
     "ui.select_recent": "选择 {name}",
