@@ -225,7 +225,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
             size="sm"
             onClick={handleOptimize}
             disabled={optimizing}
-            className="h-8 px-3 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5 shadow-2xs"
+            className="h-8 px-3 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5 shadow-2xs"
           >
             <Sparkles className={cn('w-3 h-3', optimizing && 'animate-spin')} />
             <span>{optimizing ? t('sqlite.optimizing', 'Optimizing...') : t('sqlite.optimize', 'Optimize')}</span>
@@ -313,7 +313,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
                   className={cn(
                     'px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer shrink-0 flex items-center gap-1.5 border',
                     selectedTable === t.name
-                      ? 'bg-[#06C755] text-white border-[#06C755] font-semibold shadow-2xs'
+                      ? 'bg-[#04803D] text-white border-[#06C755] font-semibold shadow-2xs'
                       : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
                   )}
                 >

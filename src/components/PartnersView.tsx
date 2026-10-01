@@ -1,3 +1,5 @@
+import { AlphabeticalSelect } from './ui/alphabetical-select';
+import { FilterSummary } from './ui/filter-summary';
 import React, { useState, useEffect } from 'react';
 import { CONTRACT_STATUS_LABEL_KEY, DD_STATUS_LABEL_KEY, DOC_STATUS_LABEL_KEY } from '../lib/domainStatus';
 import { useTenantSettings } from '../context/TenantSettingsContext';
@@ -413,7 +415,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                 <button
                   onClick={handleExportCSV}
                   disabled={filteredPartners.length === 0}
-                  className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('contracts.export_csv', 'Ekspor CSV')}
                 >
                   <Download className="w-4 h-4" />
@@ -424,10 +426,10 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
               {canCreatePartner(user) && (
                 <button
                   onClick={onAddPartner}
-                  className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
+                  className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0"
                 >
                   <Plus className="w-4 h-4 text-white" />
-                  <span>{t('io.add_btn', 'Tambah')}</span>
+                  <span>{t('ui.add_partner')}</span>
                 </button>
               )}
             </div>
@@ -442,7 +444,8 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                 <input
                   type="text"
                   placeholder={t('partners.search_placeholder')}
-                  value={searchTerm}
+                  aria-label={t('ui.search')}
+              value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
                     setCurrentPage(1);
@@ -452,43 +455,45 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
               </div>
 
               {/* Partner Status Filter (Aktif / Nonaktif) */}
-              <select
-                value={selectedPartnerStatus}
+              <AlphabeticalSelect
+                aria-label={t('ui.filter_status')}
+              value={selectedPartnerStatus}
                 onChange={(e) => {
                   setSelectedPartnerStatus(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+                className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
               >
                 <option value="ALL">{t('partners.all_status')}</option>
                 <option value="Active">{t('partners.active')}</option>
                 <option value="Nonaktif">{t('partners.inactive')}</option>
-              </select>
+              </AlphabeticalSelect>
 
               {/* DD Status Filter */}
-              <select
-                value={selectedDDStatus}
+              <AlphabeticalSelect
+                aria-label={t('ui.filter_dd')}
+              value={selectedDDStatus}
                 onChange={(e) => {
                   setSelectedDDStatus(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+                className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
               >
                 <option value="ALL">{t('partners.all_dd_status')}</option>
                 <option value="Complete">{t('partners.dd_complete')}</option>
                 <option value="Incomplete">{t('partners.dd_incomplete')}</option>
                 <option value="Expired">{t('partners.dd_expired')}</option>
-              </select>
+              </AlphabeticalSelect>
 
               {/* Country of incorporation filter */}
-              <select
+              <AlphabeticalSelect
                 aria-label={t('partners.country_filter', 'Country of incorporation')}
-                value={selectedBadanHukum}
+              value={selectedBadanHukum}
                 onChange={(e) => {
                   setSelectedBadanHukum(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+                className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
               >
                 <option value="ALL">{t('partners.all_legal_entity')}</option>
                 <option value="DOMESTIC">{t('partners.domestic', 'Domestic')}</option>
@@ -496,13 +501,13 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                 {Array.from(new Set(partners.map(partnerCountry).filter(Boolean))).sort().map((code) => (
                   <option key={code} value={code}>{countryLabel(code)}</option>
                 ))}
-              </select>
+              </AlphabeticalSelect>
 
               {/* Column Toggle */}
               <div className="relative flex-initial">
                 <button
                   onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-                  className="h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
+                  className="min-h-11 sm:min-h-9 h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
                   title={t('io.view_settings', 'Pengaturan Tampilan Kolom')}
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
@@ -548,8 +553,10 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
 
           {/* Partners List: TABLE VIEW */}
           <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-              <div className="overflow-x-auto bg-white dark:bg-slate-900">
-                <table className="w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
+              <FilterSummary filters={[{ label: t('ui.search'), value: searchTerm, active: Boolean(searchTerm) }, { label: t('ui.filter_dd'), value: selectedDDStatus, active: selectedDDStatus !== 'ALL' }, { label: t('ui.filter_country'), value: selectedBadanHukum, active: selectedBadanHukum !== 'ALL' }, { label: t('ui.filter_status'), value: selectedPartnerStatus, active: selectedPartnerStatus !== 'ALL' }, { label: t('ui.filter_department'), value: selectedDepartment, active: selectedDepartment !== 'ALL' }]} onReset={() => { setSearchTerm(''); setSelectedDDStatus('ALL'); setSelectedBadanHukum('ALL'); setSelectedPartnerStatus('ALL'); setSelectedDepartment('ALL'); }} />
+        <p className="px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
+        <div className="data-table-scroll overflow-x-auto bg-white dark:bg-slate-900" tabIndex={0} role="region" aria-label={t('ui.scroll_table')}>
+                <table className="app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
                   <thead className="bg-slate-50 dark:bg-slate-800/50">
                     <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
                       <th scope="col" className="pl-6 pr-2 py-4 w-12 text-left align-middle">
@@ -869,7 +876,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                                 docName: doc.nama,
                               });
                             }}
-                            className="px-3 py-1.5 bg-[#06C755] hover:bg-[#05B34C] text-white rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            className="px-3 py-1.5 bg-[#04803D] hover:bg-[#036B33] text-white rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
                           >
                             <Upload className="w-3 h-3" />
                             <span>{t('partners.upload_file', 'Upload File')}</span>

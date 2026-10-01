@@ -208,7 +208,7 @@ export const GoogleCredentialsDialog: React.FC<GoogleCredentialsDialogProps> = (
           />
           <label
             htmlFor={inputId}
-            className="inline-flex items-center gap-1.5 px-3 min-h-11 rounded-lg bg-[#06C755] hover:bg-[#05a847] text-white text-xs font-bold cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-2 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-3 min-h-11 rounded-lg bg-[#04803D] hover:bg-[#05a847] text-white text-xs font-bold cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-2 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
           >
             <Upload className="w-3.5 h-3.5" aria-hidden />
             {busy === kind

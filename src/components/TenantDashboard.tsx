@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from './ui/alphabetical-select';
 import React, { useState } from "react";
 import { authClient, useSession, organization } from "../lib/auth-client";
 import { useAuth } from "../context/AuthContext";
@@ -363,7 +364,7 @@ export function TenantDashboard() {
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
                 {t('tenant_dashboard.role_peran_di_tenant', 'Role / Peran di Tenant')}
               </label>
-              <select
+              <AlphabeticalSelect
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as "admin" | "member")}
                 disabled={!activeOrg}
@@ -371,7 +372,7 @@ export function TenantDashboard() {
               >
                 <option value="member">{t('tenant_dashboard.member_staf_operator', 'Member (Staf / Operator)')}</option>
                 <option value="admin">{t('tenant_dashboard.admin_pengelola_tenant', 'Admin (Pengelola Tenant)')}</option>
-              </select>
+              </AlphabeticalSelect>
             </div>
 
             <button

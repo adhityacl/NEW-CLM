@@ -1166,7 +1166,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           size="sm"
                           onClick={handleGoogleConnect}
                           disabled={connectingAuth}
-                          className="h-9 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5"
+                          className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5"
                         >
                           <Zap className="w-3.5 h-3.5" />
                           <span>{t('settings.connect_google_btn', 'Hubungkan Akun Google')}</span>
@@ -1225,7 +1225,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         {/* Master Storage Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-700/60">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs bg-[#06C755]">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs bg-[#04803D]">
                               <Folder className="w-4 h-4 text-white" />
                             </div>
                             <div className="min-w-0 space-y-0.5">
@@ -1348,7 +1348,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     type="submit"
                                     size="sm"
                                     disabled={saving || !driveFolderId}
-                                    className="h-9 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5 shadow-2xs"
+                                    className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5 shadow-2xs"
                                   >
                                     <Save className="w-3.5 h-3.5" />
                                     <span>{saving ? t('settings.saving_and_provisioning', 'Menyimpan...') : t('settings.save_config_btn', 'Simpan Konfigurasi')}</span>
@@ -1390,7 +1390,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     type="submit"
                                     size="sm"
                                     disabled={saving}
-                                    className="h-9 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5 shadow-2xs"
+                                    className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5 shadow-2xs"
                                   >
                                     <Save className="w-3.5 h-3.5" />
                                     <span>{saving ? t('settings.saving_and_provisioning', 'Menyimpan...') : t('settings.save_config_btn', 'Simpan Konfigurasi')}</span>
@@ -1460,7 +1460,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     size="sm"
                                     disabled={isProvisioning || !isTokenActive}
                                     onClick={() => handleAutoProvisionTenantGoogle(tenant)}
-                                    className="h-7 px-3 rounded-full text-[11px] font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5 shadow-2xs"
+                                    className="h-7 px-3 rounded-full text-[11px] font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5 shadow-2xs"
                                     title={!isTokenActive ? t('settings.org_connect_google_first', 'Hubungkan akun Google terlebih dahulu') : t('settings.org_auto_provision_tooltip', 'Buat Folder otomatis di Google Drive')}
                                   >
                                     <Sparkles className={cn('w-3 h-3', isProvisioning && 'animate-spin')} />
@@ -1632,7 +1632,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <Button
                         type="submit"
                         disabled={savingApiKey || !isAdmin}
-                        className="h-9 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5"
+                        className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
                         <span>{savingApiKey ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_api_key_btn', 'Simpan API Key')}</span>
@@ -1937,7 +1937,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <Button
                         type="submit"
                         disabled={savingSmtp || !isAdmin}
-                        className="h-9 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5"
+                        className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
                         <span>{savingSmtp ? t('settings.smtp_saving_btn', 'Menyimpan...') : t('settings.smtp_save_btn', 'Simpan Konfigurasi SMTP')}</span>
@@ -1993,7 +1993,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         type="submit"
                         size="sm"
                         disabled={savingNotifEmails || !isAdmin}
-                        className="h-9 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5"
+                        className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
                         <span>{savingNotifEmails ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_notif_emails_btn', 'Simpan Email Notifikasi')}</span>
@@ -2025,7 +2025,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <Button
                     size="sm"
                     onClick={() => setShowUITextModal(true)}
-                    className="h-9 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer shrink-0"
+                    className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer shrink-0"
                   >
                     {t('settings.open_ui_editor_btn', 'Buka Editor Teks UI')}
                   </Button>
@@ -2176,7 +2176,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   setShowEditConfirmModal(false);
                   setIsEditUnlocked(true);
                 }}
-                className="h-8 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer shadow-2xs"
+                className="h-8 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer shadow-2xs"
               >
                 {t('settings.edit_confirm_proceed', 'Lanjutkan Edit')}
               </Button>
@@ -2338,7 +2338,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="submit"
                   size="sm"
                   disabled={savingTenantGoogle}
-                  className="h-8 px-4 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer gap-1.5 shadow-2xs"
+                  className="h-8 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5 shadow-2xs"
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>{savingTenantGoogle ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_tenant_google_btn', 'Simpan Konfigurasi Organisasi')}</span>

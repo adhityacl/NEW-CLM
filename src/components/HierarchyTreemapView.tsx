@@ -217,7 +217,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
               onClick={() => onOpenAddPartner()}
-              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
+              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0"
             >
               <Plus className="w-4 h-4 text-white" />
               <span>{t('hierarchy.new_partner', 'Partner Baru')}</span>
@@ -225,7 +225,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
 
             <button
               onClick={() => onOpenAddContract()}
-              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
+              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0"
             >
               <Plus className="w-4 h-4 text-white" />
               <span>{t('hierarchy.new_contract', 'Kontrak Baru')}</span>
@@ -233,7 +233,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
 
             <button
               onClick={() => onOpenAddIO()}
-              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
+              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0"
             >
               <Plus className="w-4 h-4 text-white" />
               <span>{t('hierarchy.new_io', 'Insertion Order Baru')}</span>
@@ -250,7 +250,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
             onClick={() => setViewMode('treemap')}
             className={`h-9.5 px-4.5 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer text-xs font-bold shadow-xs ${
               viewMode === 'treemap'
-                ? 'bg-[#06C755] text-white border border-transparent shadow-md'
+                ? 'bg-[#04803D] text-white border border-transparent shadow-md'
                 : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
@@ -261,7 +261,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
             onClick={() => setViewMode('audit')}
             className={`h-9.5 px-4.5 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer text-xs font-bold shadow-xs ${
               viewMode === 'audit'
-                ? 'bg-[#06C755] text-white border border-transparent shadow-md'
+                ? 'bg-[#04803D] text-white border border-transparent shadow-md'
                 : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
@@ -321,7 +321,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                         )}
                       </button>
 
-                      <div className="w-9 h-9 rounded-xl bg-[#06C755] text-white flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0">
+                      <div className="w-9 h-9 rounded-xl bg-[#04803D] text-white flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0">
                         L1
                       </div>
 
@@ -335,7 +335,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                     <div className="flex items-center gap-2 self-end md:self-center">
                       <button
                         onClick={() => onOpenAddContract(partner.partner_id)}
-                        className="px-3 py-1.5 bg-[#06C755] hover:bg-[#05B34C] text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+                        className="px-3 py-1.5 bg-[#04803D] hover:bg-[#036B33] text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5 text-white" />
                         <span>{t('hierarchy.kontrak_induk_short', 'New Contract')}</span>
@@ -403,7 +403,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                           </p>
                           <button
                             onClick={() => onOpenAddContract(partner.partner_id)}
-                            className="mt-3 px-3 py-1.5 bg-[#06C755] hover:bg-[#05B34C] text-white text-xs font-bold rounded-xl transition-colors inline-flex items-center gap-1 cursor-pointer shadow-xs"
+                            className="mt-3 px-3 py-1.5 bg-[#04803D] hover:bg-[#036B33] text-white text-xs font-bold rounded-xl transition-colors inline-flex items-center gap-1 cursor-pointer shadow-xs"
                           >
                             <Plus className="w-3.5 h-3.5 text-white" />
                             <span>{t('hierarchy.create_new_master_contract', 'Buat Kontrak Induk Baru')}</span>
@@ -511,7 +511,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
 
                                     <button
                                       onClick={() => onOpenAddIO(contract.contract_id, contract.partner_id)}
-                                      className="px-2.5 py-1 bg-[#06C755] hover:bg-[#05B34C] text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+                                      className="px-2.5 py-1 bg-[#04803D] hover:bg-[#036B33] text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
                                     >
                                       <Plus className="w-3.5 h-3.5" />
                                       <span>{t('hierarchy.new_io', 'Insertion Order Baru')}</span>
@@ -586,7 +586,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                         >
                                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                             <div className="flex items-center gap-2.5">
-                                              <div className="w-6 h-6 rounded bg-[#06C755] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                                              <div className="w-6 h-6 rounded bg-[#04803D] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
                                                 L3
                                               </div>
                                               <div>
@@ -1240,7 +1240,7 @@ const exportToCSV = () => {
                 {hasPermission('export.csv') && (
                   <button
                     onClick={exportToCSV}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-[#06C755] text-white font-bold flex items-center gap-1.5 hover:bg-[#048C3B] shadow-sm transition-colors"
+                    className="text-xs px-3 py-1.5 rounded-lg bg-[#04803D] text-white font-bold flex items-center gap-1.5 hover:bg-[#048C3B] shadow-sm transition-colors"
                   >
                     <FileDown className="w-3.5 h-3.5" />
                     {t('hierarchy.export_csv', 'Ekspor CSV')}

@@ -105,7 +105,7 @@ export function getActiveFormattingLocale(): string {
 export function formatMoney(amount: number, currency = 'USD', locale: string = activeFormattingLocale): string {
   const code = normalizeCurrencyCode(currency);
   try {
-    return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(Number(amount) || 0);
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: code, currencyDisplay: 'code' }).format(Number(amount) || 0);
   } catch {
     return `${code} ${(Number(amount) || 0).toLocaleString(locale)}`;
   }

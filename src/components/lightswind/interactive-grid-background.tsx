@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 
 export interface InteractiveGridBackgroundProps
   extends React.HTMLProps<HTMLDivElement> {
+  staticOnly?: boolean;
   gridSize?: number;
   gridColor?: string;
   darkGridColor?: string;
@@ -22,6 +23,7 @@ export interface InteractiveGridBackgroundProps
 }
 
 const InteractiveGridBackground: React.FC<InteractiveGridBackgroundProps> = ({
+  staticOnly = false,
   gridSize = 50,
   gridColor = "#cbcbcb",
   darkGridColor = "#303030",
@@ -65,6 +67,7 @@ const InteractiveGridBackground: React.FC<InteractiveGridBackgroundProps> = ({
 
   // Mouse tracking (zero layout thrashing during scroll)
   useEffect(() => {
+    if (staticOnly) return;
     let rect: DOMRect | null = null;
     const container = containerRef.current;
 
@@ -107,10 +110,11 @@ const InteractiveGridBackground: React.FC<InteractiveGridBackgroundProps> = ({
       window.removeEventListener("scroll", onScrollOrResize);
       window.removeEventListener("mousemove", handleMouseMove);
     };
-  }, [gridSize, trailLength]);
+  }, [gridSize, trailLength, staticOnly]);
 
   // Drawing logic
   useEffect(() => {
+    if (staticOnly) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -218,6 +222,7 @@ const InteractiveGridBackground: React.FC<InteractiveGridBackgroundProps> = ({
       if (observer) observer.disconnect();
     };
   }, [
+    staticOnly,
     gridSize,
     width,
     height,
@@ -242,7 +247,8 @@ const InteractiveGridBackground: React.FC<InteractiveGridBackgroundProps> = ({
     >
       <canvas
         ref={canvasRef}
-        className="absolute top-0 left-0 z-0 pointer-events-none"
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full z-0 pointer-events-none"
         style={{
           backgroundImage: `linear-gradient(to right, ${lineColor} 1px, transparent 1px), linear-gradient(to bottom, ${lineColor} 1px, transparent 1px)`,
           backgroundSize: `${gridSize}px ${gridSize}px`,

@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { useLanguage } from '../context/LanguageContext';
 import React, { useState } from 'react';
 import { Contract, InsertionOrder } from '../types';
@@ -222,7 +223,7 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs">{t('amendments.tipe_induk_perjanjian', 'Tipe Induk Perjanjian *')}</label>
-                <select
+                <AlphabeticalSelect
                   value={parentType}
                   onChange={(e) => {
                     const val = e.target.value as 'Contract' | 'IO';
@@ -233,12 +234,12 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
                 >
                   <option value="Contract">{t('amendments.kontrak_utama_master_contract', 'Kontrak Utama (Master Contract)')}</option>
                   <option value="IO">{t('import.type_io', 'Insertion Order (IO)')}</option>
-                </select>
+                </AlphabeticalSelect>
               </div>
 
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs">{t('amendments.pilih_perjanjian_induk', 'Pilih Perjanjian Induk *')}</label>
-                <select
+                <AlphabeticalSelect
                   value={parentId}
                   onChange={(e) => setParentId(e.target.value)}
                   className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
@@ -254,7 +255,7 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
                           {i.nomor_io} ({i.partner_nama})
                         </option>
                       ))}
-                </select>
+                </AlphabeticalSelect>
               </div>
             </div>
 
@@ -374,7 +375,7 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
                 type="submit"
                 disabled={submitting || !isFormValid}
                 title={!isFormValid ? t('form.common.required_hint', 'Lengkapi semua kolom wajib (*) untuk menyimpan') : ''}
-                className="px-5 py-2.5 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold rounded-xl text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 bg-[#04803D] hover:bg-[#036B33] text-white font-bold rounded-xl text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {submitting ? t('eval.btn_saving', 'Menyimpan...') : t('amendments.simpan_track_change_addendum', 'Simpan Track-Change Addendum')}
               </button>

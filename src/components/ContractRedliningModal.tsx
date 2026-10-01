@@ -382,7 +382,7 @@ ${analysis.analyzedClauses
                     onClick={() => setActiveTab('clauses')}
                     className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                       activeTab === 'clauses'
-                        ? 'bg-[#06C755] text-white shadow-xs'
+                        ? 'bg-[#04803D] text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
@@ -392,7 +392,7 @@ ${analysis.analyzedClauses
                     onClick={() => setActiveTab('summary')}
                     className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                       activeTab === 'summary'
-                        ? 'bg-[#06C755] text-white shadow-xs'
+                        ? 'bg-[#04803D] text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
@@ -616,7 +616,7 @@ ${analysis.analyzedClauses
           <Button
             size="sm"
             onClick={onClose}
-            className="h-9 px-5 rounded-full text-xs font-bold bg-[#06C755] text-white hover:bg-[#05b34c] cursor-pointer"
+            className="h-9 px-5 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer"
           >
             {t('redline.close', 'Tutup')}
           </Button>

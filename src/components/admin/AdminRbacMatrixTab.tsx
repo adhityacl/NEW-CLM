@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from '../ui/alphabetical-select';
 import React, { useState } from 'react';
 import {
   Shield,
@@ -386,7 +387,7 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
               {t('admin.rbac_role_label', 'Peran Pengguna (Role)')}
             </label>
-            <select
+            <AlphabeticalSelect
               value={testRole}
               onChange={(e) => setTestRole(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
@@ -396,14 +397,14 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
               <option value="manager">{t('admin.rbac_tester_role_manager', 'Manager (Department Level)')}</option>
               <option value="editor">{t('admin.rbac_tester_role_editor', 'Editor (Department Level)')}</option>
               <option value="viewer">{t('admin.rbac_tester_role_viewer', 'Viewer (Department, Read-Only)')}</option>
-            </select>
+            </AlphabeticalSelect>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
               {t('admin.col_resource', 'Sumber Daya (Resource)')}
             </label>
-            <select
+            <AlphabeticalSelect
               value={testResource}
               onChange={(e) => setTestResource(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
@@ -416,14 +417,14 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
               <option value="organization">{t('admin.organization', 'organization (')}{t('admin.organizations', 'Organizations')})</option>
               <option value="team">{t('admin.team', 'team (')}{t('admin.departments', 'Departments')})</option>
               <option value="settings">{t('admin.settings', 'settings (')}{t('admin.settings_2', 'Settings')})</option>
-            </select>
+            </AlphabeticalSelect>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
               {t('admin.rbac_action_label', 'Tindakan (Action)')}
             </label>
-            <select
+            <AlphabeticalSelect
               value={testAction}
               onChange={(e) => setTestAction(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
@@ -438,7 +439,7 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
               <option value="export">{t('admin.export_unduh_laporan', 'export (Unduh Laporan)')}</option>
               <option value="set-role">{t('admin.set_role_atur_peran_akun', 'set-role (Atur Peran Akun)')}</option>
               <option value="ban">{t('admin.ban_cekal_pengguna', 'ban (Cekal Pengguna)')}</option>
-            </select>
+            </AlphabeticalSelect>
           </div>
 
           <div className="sm:col-span-1">

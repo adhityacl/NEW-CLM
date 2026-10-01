@@ -1,3 +1,5 @@
+import { AlphabeticalSelect } from '../ui/alphabetical-select';
+import { DateInput } from '../DateInput';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Archive,
@@ -7,7 +9,6 @@ import {
   ArrowUpDown,
   FilePlus2,
   FileText,
-  FolderOpen,
   FolderInput,
   Pencil,
   RefreshCw,
@@ -32,7 +33,7 @@ import {
 import { RelativeTime } from './RelativeTime';
 import { ActionMenu, type ActionMenuItem } from '../ui/action-menu';
 import { TablePagination } from '../ui/TablePagination';
-import { FIELD_CLASS, INPUT_CLASS, statusBadgeClass, statusLabel, typeBadgeClass, typeLabel } from './documentLabels';
+import { INPUT_CLASS, statusBadgeClass, statusLabel, typeBadgeClass, typeLabel } from './documentLabels';
 
 interface DocumentExplorerProps {
   canEdit: boolean;
@@ -233,23 +234,19 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
   };
 
   return (
-    <section className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-950 p-4 sm:p-6" aria-labelledby="document-explorer-heading">
-      <div className="max-w-6xl mx-auto space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className="w-full min-w-0 bg-transparent" aria-labelledby="document-explorer-heading">
+      <div className="w-full space-y-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 id="document-explorer-heading" ref={headingRef} tabIndex={-1} className="outline-none text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <FolderOpen className="w-5 h-5 text-[#06C755]" aria-hidden />
+            <h1 id="document-explorer-heading" ref={headingRef} tabIndex={-1} className="outline-none text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               {t('documents.explorer.title', 'Dokumen Saya')}
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {t('documents.explorer.subtitle', 'Lanjutkan draf yang tersimpan atau mulai dokumen baru.')}
-            </p>
           </div>
           {canEdit && (
             <button
               type="button"
               onClick={onCreate}
-              className="inline-flex items-center gap-1.5 px-4 min-h-11 sm:min-h-9 rounded-xl text-sm font-bold bg-[#06C755] hover:bg-[#05a847] text-white shadow-xs cursor-pointer"
+              className="inline-flex w-fit shrink-0 items-center gap-1.5 px-4 min-h-11 sm:min-h-9 rounded-xl text-sm font-bold bg-[#04803D] hover:bg-[#036B33] text-white shadow-sm cursor-pointer"
             >
               <FilePlus2 className="w-4 h-4" aria-hidden />
               {t('documents.explorer.new', 'Dokumen Baru')}
@@ -257,10 +254,10 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
           )}
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" aria-hidden />
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-5 space-y-4">
+          <div className="flex flex-wrap items-center gap-2.5 w-full">
+            <div className="relative flex-1 min-w-[200px] sm:min-w-[240px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
               <label htmlFor="document-search" className="sr-only">
                 {t('documents.explorer.search_label', 'Cari dokumen')}
               </label>
@@ -270,17 +267,17 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder={t('documents.explorer.search_placeholder', 'Cari nama dokumen atau nilai metadata…')}
-                className={`${INPUT_CLASS} pl-8 min-h-11 sm:min-h-9`}
+                className="h-11 sm:h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] font-medium transition-colors"
               />
             </div>
             <label htmlFor="document-status-filter" className="sr-only">
               {t('documents.field.status', 'Status')}
             </label>
-            <select
+            <AlphabeticalSelect
               id="document-status-filter"
               value={filters.status}
               onChange={(e) => updateFilter('status', e.target.value)}
-              className={`${FIELD_CLASS} min-h-11 sm:min-h-9`}
+              className="h-11 sm:h-9 min-w-0 flex-1 sm:min-w-[200px] px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] cursor-pointer"
             >
               <option value="">{t('documents.filter.status_active', 'Semua status aktif')}</option>
               {DOCUMENT_STATUSES.map((s) => (
@@ -289,13 +286,13 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                 </option>
               ))}
               <option value="all">{t('documents.filter.status_all', 'Semua (termasuk arsip)')}</option>
-            </select>
+            </AlphabeticalSelect>
             <button
               type="button"
               onClick={() => setShowFilters((v) => !v)}
               aria-expanded={showFilters}
               aria-controls="document-advanced-filters"
-              className="inline-flex items-center gap-1.5 px-3 min-h-11 sm:min-h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+              className="inline-flex shrink-0 items-center gap-1.5 px-4 min-h-11 sm:min-h-9 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden />
               {t('documents.filter.more', 'Filter')}
@@ -306,46 +303,46 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
             <div id="document-advanced-filters" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
               <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                 <span>{t('documents.field.type', 'Jenis')}</span>
-                <select value={filters.type} onChange={(e) => updateFilter('type', e.target.value)} className={INPUT_CLASS}>
+                <AlphabeticalSelect value={filters.type} onChange={(e) => updateFilter('type', e.target.value)} className={INPUT_CLASS}>
                   <option value="">{t('documents.filter.any', 'Semua')}</option>
                   {DOCUMENT_TYPES.map((type) => (
                     <option key={type} value={type}>
                       {typeLabel(t, type)}
                     </option>
                   ))}
-                </select>
+                </AlphabeticalSelect>
               </label>
               <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                 <span>{t('documents.field.created_by', 'Dibuat oleh')}</span>
-                <select value={filters.created_by} onChange={(e) => updateFilter('created_by', e.target.value)} className={INPUT_CLASS}>
+                <AlphabeticalSelect value={filters.created_by} onChange={(e) => updateFilter('created_by', e.target.value)} className={INPUT_CLASS}>
                   <option value="">{t('documents.filter.any', 'Semua')}</option>
                   {data?.creators.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name || c.id}
                     </option>
                   ))}
-                </select>
+                </AlphabeticalSelect>
               </label>
               <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                 <span>{t('documents.filter.created_from', 'Dibuat sejak')}</span>
-                <input type="date" value={filters.from} onChange={(e) => updateFilter('from', e.target.value)} className={INPUT_CLASS} />
+                <DateInput value={filters.from} onChange={(value) => updateFilter('from', value)} />
               </label>
               <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                 <span>{t('documents.filter.created_to', 'Dibuat sampai')}</span>
-                <input type="date" value={filters.to} onChange={(e) => updateFilter('to', e.target.value)} className={INPUT_CLASS} />
+                <DateInput value={filters.to} onChange={(value) => updateFilter('to', value)} />
               </label>
               {fields.length > 0 && (
                 <>
                   <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                     <span>{t('documents.filter.meta_field', 'Kolom metadata')}</span>
-                    <select value={filters.meta_field} onChange={(e) => updateFilter('meta_field', e.target.value)} className={INPUT_CLASS}>
+                    <AlphabeticalSelect value={filters.meta_field} onChange={(e) => updateFilter('meta_field', e.target.value)} className={INPUT_CLASS}>
                       <option value="">{t('documents.filter.any', 'Semua')}</option>
                       {fields.map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.name}
                         </option>
                       ))}
-                    </select>
+                    </AlphabeticalSelect>
                   </label>
                   <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                     <span>{t('documents.filter.meta_value', 'Nilai metadata')}</span>
@@ -432,7 +429,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
           {data && data.total > 0 && (
             <>
               <div className="relative overflow-x-auto bg-white dark:bg-slate-900">
-                <table className="w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
+                <table className="app-data-table document-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
                   <caption className="sr-only">{t('documents.explorer.title', 'Dokumen Saya')}</caption>
                   <thead className="bg-slate-50 dark:bg-slate-800/50">
                     <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">

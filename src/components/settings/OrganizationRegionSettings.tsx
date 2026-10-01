@@ -1,3 +1,4 @@
+import { AlphabeticalDatalist, AlphabeticalSelect } from '../ui/alphabetical-select';
 import React, { useEffect, useId, useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle2, Globe2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
@@ -167,41 +168,41 @@ export const OrganizationRegionSettings: React.FC = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label htmlFor={ids.country} className={labelClass}>{t('settings.region.country', 'Country / jurisdiction pack')}</label>
-              <select id={ids.country} className={fieldClass} value={draft.countryCode} onChange={(e) => onCountryChange(e.target.value)}>
+              <AlphabeticalSelect id={ids.country} className={fieldClass} value={draft.countryCode} onChange={(e) => onCountryChange(e.target.value)}>
                 {countries.map((c) => <option key={c.code} value={c.code}>{localizeName(c.name, language)}</option>)}
-              </select>
+              </AlphabeticalSelect>
             </div>
             <div>
               <label htmlFor={ids.industry} className={labelClass}>{t('settings.region.industry', 'Industry pack')}</label>
-              <select id={ids.industry} className={fieldClass} value={draft.industry} onChange={(e) => onIndustryChange(e.target.value)}>
+              <AlphabeticalSelect id={ids.industry} className={fieldClass} value={draft.industry} onChange={(e) => onIndustryChange(e.target.value)}>
                 {industries.map((i) => <option key={i.key} value={i.key}>{localize(i.name, language)}</option>)}
-              </select>
+              </AlphabeticalSelect>
             </div>
             <div>
               <label htmlFor={ids.language} className={labelClass}>{t('settings.region.language', 'Default language for e-mails and AI answers')}</label>
-              <select id={ids.language} className={fieldClass} value={draft.language} onChange={(e) => update('language', e.target.value as 'EN' | 'ID' | 'ZH')}>
+              <AlphabeticalSelect id={ids.language} className={fieldClass} value={draft.language} onChange={(e) => update('language', e.target.value as 'EN' | 'ID' | 'ZH')}>
                 <option value="EN">{t('settings.english', 'English')}</option>
                 <option value="ID">{t('settings.bahasa_indonesia', 'Bahasa Indonesia')}</option>
                 <option value="ZH">{t('settings.chinese', '中文')}</option>
-              </select>
+              </AlphabeticalSelect>
             </div>
             <div>
               <label htmlFor={ids.timezone} className={labelClass}>{t('settings.region.timezone', 'Time zone')}</label>
               <input id={ids.timezone} list={ids.tzList} className={fieldClass} value={draft.timezone} onChange={(e) => update('timezone', e.target.value)} aria-describedby={`${ids.timezone}-hint`} />
-              <datalist id={ids.tzList}>{tzOptions.map((tz) => <option key={tz} value={tz} />)}</datalist>
+              <AlphabeticalDatalist id={ids.tzList}>{tzOptions.map((tz) => <option key={tz} value={tz} />)}</AlphabeticalDatalist>
               <p id={`${ids.timezone}-hint`} className={hintClass}>{t('settings.region.timezone_hint', 'IANA name, e.g. Asia/Singapore. Deadlines are calculated in this time zone.')}</p>
             </div>
             <div>
               <label htmlFor={ids.currency} className={labelClass}>{t('settings.region.default_currency', 'Default currency')}</label>
-              <select id={ids.currency} className={fieldClass} value={draft.defaultCurrency} onChange={(e) => update('defaultCurrency', e.target.value)}>
+              <AlphabeticalSelect id={ids.currency} className={fieldClass} value={draft.defaultCurrency} onChange={(e) => update('defaultCurrency', e.target.value)}>
                 {SUPPORTED_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.code} — {currencyLabel(c.code, language)}</option>)}
-              </select>
+              </AlphabeticalSelect>
             </div>
             <div>
               <label htmlFor={ids.reporting} className={labelClass}>{t('settings.region.reporting_currency', 'Reporting currency')}</label>
-              <select id={ids.reporting} className={fieldClass} value={draft.reportingCurrency} onChange={(e) => update('reportingCurrency', e.target.value)}>
+              <AlphabeticalSelect id={ids.reporting} className={fieldClass} value={draft.reportingCurrency} onChange={(e) => update('reportingCurrency', e.target.value)}>
                 {SUPPORTED_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.code} — {currencyLabel(c.code, language)}</option>)}
-              </select>
+              </AlphabeticalSelect>
             </div>
           </div>
         </div>
@@ -293,7 +294,7 @@ export const OrganizationRegionSettings: React.FC = () => {
         <button
           type="submit"
           disabled={!canEdit || save.kind === 'saving'}
-          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#06C755] px-5 text-sm font-bold text-white hover:bg-[#05b34c] disabled:opacity-60"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#04803D] px-5 text-sm font-bold text-white hover:bg-[#036B33] disabled:opacity-60"
         >
           {save.kind === 'saving' ? t('common.saving', 'Saving…') : t('settings.region.save', 'Save organization settings')}
         </button>

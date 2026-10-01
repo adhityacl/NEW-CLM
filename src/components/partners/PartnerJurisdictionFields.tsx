@@ -1,3 +1,4 @@
+import { AlphabeticalDatalist, AlphabeticalSelect } from '../ui/alphabetical-select';
 import React, { useId } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
@@ -56,12 +57,12 @@ export const PartnerJurisdictionFields: React.FC<PartnerJurisdictionFieldsProps>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor={countryId} className={labelClass}>{t('form.partner.country', 'Country of incorporation')}</label>
-          <select id={countryId} className={`${fieldClass} cursor-pointer`} value={country} onChange={(e) => onCountryChange(e.target.value)}>
+          <AlphabeticalSelect id={countryId} className={`${fieldClass} cursor-pointer`} value={country} onChange={(e) => onCountryChange(e.target.value)}>
             <option value="">{t('form.partner.country_unknown', 'Unknown / not stated')}</option>
             {countries.filter((c) => c.code !== 'INTL').map((c) => (
               <option key={c.code} value={c.code}>{localizeName(c.name, language)}</option>
             ))}
-          </select>
+          </AlphabeticalSelect>
         </div>
         <div>
           <label htmlFor={entityId} className={labelClass}>{t('form.partner.entity_type', 'Legal form')}</label>
@@ -73,9 +74,9 @@ export const PartnerJurisdictionFields: React.FC<PartnerJurisdictionFieldsProps>
             placeholder={t('form.partner.entity_type_ph', 'e.g. Private Limited, Sendirian Berhad')}
             onChange={(e) => onEntityTypeChange(e.target.value)}
           />
-          <datalist id={formsListId}>
+          <AlphabeticalDatalist id={formsListId}>
             {(pack?.legalForms || []).map((form) => <option key={form} value={form} />)}
-          </datalist>
+          </AlphabeticalDatalist>
         </div>
       </div>
 
@@ -90,7 +91,7 @@ export const PartnerJurisdictionFields: React.FC<PartnerJurisdictionFieldsProps>
             const schemeLabel = (scheme && localizeName(scheme.label, language)) || t('form.partner.identifier_other', 'Other identifier');
             return (
               <li key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                <select
+                <AlphabeticalSelect
                   aria-label={t('form.partner.identifier_scheme', 'Identifier type')}
                   className={`${fieldClass} cursor-pointer`}
                   value={item.scheme}
@@ -98,7 +99,7 @@ export const PartnerJurisdictionFields: React.FC<PartnerJurisdictionFieldsProps>
                 >
                   {schemes.map((s) => <option key={s.key} value={s.key}>{localizeName(s.label, language)}</option>)}
                   <option value="other">{t('form.partner.identifier_other', 'Other identifier')}</option>
-                </select>
+                </AlphabeticalSelect>
                 <input
                   aria-label={`${t('form.partner.identifier_value', 'Identifier value')}: ${schemeLabel}`}
                   className={fieldClass}

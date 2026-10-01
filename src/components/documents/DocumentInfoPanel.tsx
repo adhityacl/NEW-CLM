@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from '../ui/alphabetical-select';
 import React, { useEffect, useId, useState } from 'react';
 import { Info, PlusCircle, Save, Tags, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
@@ -147,14 +148,14 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
           {field.name}
         </label>
         {field.field_type === 'select' ? (
-          <select id={inputId} disabled={!canEdit} value={text} onChange={(e) => set(e.target.value)} className={INPUT_CLASS}>
+          <AlphabeticalSelect id={inputId} disabled={!canEdit} value={text} onChange={(e) => set(e.target.value)} className={INPUT_CLASS}>
             <option value="">—</option>
             {field.options.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
             ))}
-          </select>
+          </AlphabeticalSelect>
         ) : (
           <input
             id={inputId}
@@ -197,7 +198,7 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
                   </label>
                 </dt>
                 <dd>
-                  <select
+                  <AlphabeticalSelect
                     id={typeSelectId}
                     disabled={!canEdit}
                     value={document.type}
@@ -209,7 +210,7 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
                         {typeLabel(t, type)}
                       </option>
                     ))}
-                  </select>
+                  </AlphabeticalSelect>
                 </dd>
               </div>
               <div className="space-y-1">
@@ -219,7 +220,7 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
                   </label>
                 </dt>
                 <dd>
-                  <select
+                  <AlphabeticalSelect
                     id={statusSelectId}
                     disabled={!canEdit}
                     value={document.status}
@@ -231,7 +232,7 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
                         {statusLabel(t, status)}
                       </option>
                     ))}
-                  </select>
+                  </AlphabeticalSelect>
                 </dd>
               </div>
             </div>
@@ -339,7 +340,7 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
             </label>
             <label className="block space-y-1">
               <span className={LABEL}>{t('documents.metadata.field_type', 'Tipe')}</span>
-              <select
+              <AlphabeticalSelect
                 value={newField.type}
                 onChange={(e) => isOneOf(METADATA_FIELD_TYPES, e.target.value) && setNewField({ ...newField, type: e.target.value })}
                 className={INPUT_CLASS}
@@ -349,7 +350,7 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
                     {fieldTypeLabel(type)}
                   </option>
                 ))}
-              </select>
+              </AlphabeticalSelect>
             </label>
             {(newField.type === 'select' || newField.type === 'multi_select') && (
               <label className="block space-y-1">

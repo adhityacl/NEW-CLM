@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from '../ui/alphabetical-select';
 import React, { useEffect, useId, useState } from 'react';
 import { Dialog } from 'radix-ui';
 import { RefreshCw, ShieldAlert, Trash2, X } from 'lucide-react';
@@ -136,15 +137,15 @@ export const ResetWorkspaceDialog: React.FC<ResetWorkspaceDialogProps> = ({ open
                 </div>
                 <div>
                   <label htmlFor={ids.country} className={labelClass}>{t('settings.region.country', 'Country / jurisdiction pack')}</label>
-                  <select id={ids.country} className={fieldClass} value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
+                  <AlphabeticalSelect id={ids.country} className={fieldClass} value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
                     {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                  </select>
+                  </AlphabeticalSelect>
                 </div>
                 <div>
                   <label htmlFor={ids.industry} className={labelClass}>{t('settings.region.industry', 'Industry pack')}</label>
-                  <select id={ids.industry} className={fieldClass} value={industry} onChange={(e) => setIndustry(e.target.value)}>
+                  <AlphabeticalSelect id={ids.industry} className={fieldClass} value={industry} onChange={(e) => setIndustry(e.target.value)}>
                     {industries.map((i) => <option key={i.key} value={i.key}>{localize(i.name, language)}</option>)}
-                  </select>
+                  </AlphabeticalSelect>
                 </div>
               </div>
             )}

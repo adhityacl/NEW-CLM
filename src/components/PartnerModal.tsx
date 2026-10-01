@@ -1,3 +1,5 @@
+import { AlphabeticalDatalist, AlphabeticalSelect } from './ui/alphabetical-select';
+import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import React, { useState } from 'react';
 import { Partner, PartyIdentifier } from '../types';
 import { Building2, User, Mail, Phone, X, MapPin, Upload, Loader2, Shield } from 'lucide-react';
@@ -313,56 +315,56 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <ModalFrame onClose={onClose}>
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900">
           <div>
-            <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <ModalTitle className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               <Building2 className="w-5 h-5 text-[#06C755]" />
               <span>
                 {partnerToEdit
                   ? t('form.partner.title_edit', 'Edit Data Partner')
                   : t('form.partner.title_add', 'Tambah Partner / Vendor Baru')}
               </span>
-            </h3>
+            </ModalTitle>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label={t('common.close', 'Close')}
+            className="min-w-11 min-h-11 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
-          <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs flex-1 text-slate-900 dark:text-slate-100">
+          <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-sm flex-1 text-slate-900 dark:text-slate-100">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs">
+                <label htmlFor="PartnerModal-field-1" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm">
                   {t('form.partner.nama_legal', 'Nama Legal *')}
                 </label>
-                <input
+                <input id="PartnerModal-field-1"
                   type="text"
                   required
                   placeholder={t('form.partner.nama_legal_placeholder', 'contoh: PT Telekomunikasi Selular')}
                   value={namaPartner}
                   onChange={(e) => setNamaPartner(e.target.value)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs">
+                <label htmlFor="PartnerModal-field-2" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm">
                   {t('form.partner.nama_channel', 'Nama Channel')}
                 </label>
-                <input
+                <input id="PartnerModal-field-2"
                   type="text"
                   placeholder={t('form.partner.nama_channel_placeholder', 'mis. TSEL, XL, INDOSAT')}
                   value={codename}
                   onChange={(e) => setCodename(e.target.value)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
                 />
               </div>
             </div>
@@ -378,14 +380,14 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs flex items-center justify-between">
+                <label htmlFor="PartnerModal-field-3" className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-sm flex items-center justify-between">
                   <span>{t('form.partner.department', 'Department')}</span>
                 </label>
 
                 {isGlobal ? (
                   <div className="space-y-2">
                     {/* Primary Department Dropdown */}
-                    <select
+                    <AlphabeticalSelect id="PartnerModal-field-3"
                       value={
                         ENTERPRISE_DEPARTMENTS.includes(picInternal)
                           ? picInternal
@@ -401,7 +403,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                           setPicInternal(val);
                         }
                       }}
-                      className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
+                      className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
                     >
                       <option value="" disabled>{t('partners.pilih_department', '-- Pilih Department --')}</option>
                       {ENTERPRISE_DEPARTMENTS.map((dept) => (
@@ -410,7 +412,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                         </option>
                       ))}
                       <option value="__custom__">{t('partners.input_departemen_lainnya_kustom', '+ Input Departemen Lainnya / Kustom...')}</option>
-                    </select>
+                    </AlphabeticalSelect>
 
                     {/* Custom Department text input if user selected custom */}
                     {isCustomDept && (
@@ -420,7 +422,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                         placeholder={t('partners.ketik_nama_departemen_kustom', 'Ketik nama departemen kustom...')}
                         value={picInternal}
                         onChange={(e) => setPicInternal(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                        className="w-full bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                       />
                     )}
                   </div>
@@ -432,13 +434,13 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                       placeholder={t('form.partner.department_placeholder', 'contoh: Marketing')}
                       value={picInternal}
                       onChange={(e) => setPicInternal(e.target.value)}
-                      className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                      className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
                     />
-                    <datalist id="departments-list">
+                    <AlphabeticalDatalist id="departments-list">
                       {ENTERPRISE_DEPARTMENTS.map((dept) => (
                         <option key={dept} value={dept} />
                       ))}
-                    </datalist>
+                    </AlphabeticalDatalist>
                   </div>
                 )}
               </div>
@@ -452,73 +454,73 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs">
+                <label htmlFor="PartnerModal-field-4" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm">
                   {t('form.partner.nama_pic', 'Nama PIC *')}
                 </label>
-                <input
+                <input id="PartnerModal-field-4"
                   type="text"
                   required
                   placeholder={t('form.partner.nama_pic_placeholder', 'contoh: Andi Hermawan')}
                   value={namaPic}
                   onChange={(e) => setNamaPic(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs flex items-center gap-1">
+                  <label htmlFor="PartnerModal-field-5" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm flex items-center gap-1">
                     <Mail className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                     <span>{t('form.partner.email_pic', 'Email PIC *')}</span>
                   </label>
-                  <input
+                  <input id="PartnerModal-field-5"
                     type="email"
                     required
                     placeholder={t('form.partner.email_pic_placeholder', 'contoh: andi@telkomsel.co.id')}
                     value={emailPic}
                     onChange={(e) => setEmailPic(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs flex items-center gap-1">
+                  <label htmlFor="PartnerModal-field-6" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm flex items-center gap-1">
                     <Phone className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                     <span>{t('form.partner.telepon_pic', 'Nomor Telepon / WA PIC *')}</span>
                   </label>
-                  <input
+                  <input id="PartnerModal-field-6"
                     type="text"
                     required
                     placeholder={t('form.partner.telepon_pic_placeholder', 'contoh: 0811-2233-4455')}
                     value={teleponPic}
                     onChange={(e) => setTeleponPic(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
                   />
                 </div>
 
                 <div className="md:col-span-2 mt-2">
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs flex items-center gap-1">
+                  <label htmlFor="PartnerModal-field-7" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                     <span>{t('form.partner.alamat_pic', 'Alamat *')}</span>
                   </label>
-                  <textarea
+                  <textarea id="PartnerModal-field-7"
                     required
                     placeholder={t('form.partner.alamat_pic_placeholder', 'contoh: Jl. Jend. Sudirman Kav 52-53...')}
                     value={alamatPic}
                     onChange={(e) => setAlamatPic(e.target.value)}
                     rows={2}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all resize-none"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all resize-none"
                   />
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1.5">
+              <label htmlFor="PartnerModal-field-8" className="block font-bold text-slate-700 dark:text-slate-300 text-sm mb-1.5">
                 {t('form.partner.kategori_kerjasama', 'Kategori Kerjasama *')}
               </label>
               <div className="flex gap-2 mb-2">
-                <input
+                <input id="PartnerModal-field-8"
                   type="text"
                   list="partner-category-templates-list"
                   placeholder={t('form.partner.tag_placeholder', 'Tambah tag kategori (mis. Advertising, IT, Logistics)...')}
@@ -530,17 +532,17 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                       handleAddTag();
                     }
                   }}
-                  className="flex-1 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="min-w-0 flex-1 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
                 />
-                <datalist id="partner-category-templates-list">
+                <AlphabeticalDatalist id="partner-category-templates-list">
                   {savedTemplates.map((cat) => (
                     <option key={cat} value={cat} />
                   ))}
-                </datalist>
+                </AlphabeticalDatalist>
                 <button
                   type="button"
                   onClick={handleAddTag}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer shrink-0"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer shrink-0"
                 >
                   {t('form.partner.add_tag_btn', 'Tambah Tag')}
                 </button>
@@ -551,7 +553,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                 {tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#EBFBF0] dark:bg-emerald-950/50 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 dark:border-emerald-500/40 rounded-lg text-xs font-semibold shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#EBFBF0] dark:bg-emerald-950/50 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 dark:border-emerald-500/40 rounded-lg text-sm font-semibold shadow-2xs"
                   >
                     <span>{tag}</span>
                     <button
@@ -569,7 +571,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
 
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs">
+                <label htmlFor="PartnerModal-field-9" className="block font-bold text-slate-700 dark:text-slate-300 text-sm">
                   {t('form.partner.notes_label', 'Catatan Due Diligence / Internal Notes')}
                 </label>
                 <div className="flex flex-wrap items-center gap-2">
@@ -595,24 +597,24 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                 </div>
               </div>
 
-              <textarea
+              <textarea id="PartnerModal-field-9"
                 rows={4}
                 placeholder={t('partners.format_1_paragraf_narrative_analyst_nama', 'Format 1 Paragraf Narrative Analyst: [Nama Entitas] merupakan vendor digital/ad-tech berbadan hukum... (Mencakup: 1. Core Business, 2. Media Network, 3. Proprietary Tech/AI, 4. Strategic Function/Location)')}
                 value={catatan}
                 onChange={(e) => setCatatan(e.target.value)}
-                className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all leading-relaxed"
+                className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl p-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all leading-relaxed"
               />
             </div>
 
 
             {/* File Upload Area for Parsing */}
             <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs">
+              <label htmlFor="PartnerModal-field-10" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm">
                 {t('form.partner.upload_label', 'Auto-fill dari Dokumen Kontrak (AI Parse)')}
               </label>
               <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-[#06C755] dark:hover:border-[#06C755] rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all">
                 <Upload className="w-6 h-6 text-[#06C755] mx-auto mb-1.5" />
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
                   {fileName
                     ? `${t('form.contract.file_selected', 'File terpilih:')} ${fileName}`
                     : t('form.partner.drag_ref', 'Pilih atau Drag Dokumen Referensi ke sini')}
@@ -623,22 +625,22 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                       type="button"
                       onClick={handleParsePartner}
                       disabled={isParsing}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 hover:bg-[#06C755]/20 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 hover:bg-[#06C755]/20 font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
                       {isParsing ? t('partners.parsing', 'Parsing...') : t('partners.parse_file', 'Parse File')}
                     </button>
                   )}
-                  <input
+                  <input id="PartnerModal-field-10"
                     type="file"
                     accept=".pdf,.doc,.docx"
                     onChange={handleFileChange}
-                    className="w-[220px] text-xs text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#EBFBF0] dark:file:bg-emerald-950/60 file:text-[#048C3B] dark:file:text-emerald-400 hover:file:bg-[#06C755]/20 cursor-pointer"
+                    className="w-[220px] text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-[#EBFBF0] dark:file:bg-emerald-950/60 file:text-[#048C3B] dark:file:text-emerald-400 hover:file:bg-[#06C755]/20 cursor-pointer"
                   />
                 </div>
               </div>
             </div>
             {error && (
-              <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl text-xs font-bold flex items-center gap-2">
+              <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl text-sm font-bold flex items-center gap-2">
                 <span>⚠️</span>
                 <span>{error}</span>
               </div>
@@ -653,7 +655,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-sm transition-colors cursor-pointer"
               >
                 {t('form.common.cancel', 'Batal')}
               </button>
@@ -661,7 +663,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                 type="submit"
                 disabled={submitting || !isFormValid}
                 title={!isFormValid ? t('form.common.required_hint', 'Lengkapi semua kolom wajib (*) untuk menyimpan') : ''}
-                className="px-5 py-2.5 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold rounded-xl text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 bg-[#04803D] hover:bg-[#036B33] text-white font-bold rounded-xl text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {submitting
                   ? t('form.partner.saving_btn', 'Menyimpan Partner...')
@@ -670,7 +672,6 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
             </div>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalFrame>
   );
 };

@@ -406,7 +406,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
             <button
               type="submit"
               disabled={!selectedFile || isUploading}
-              className="px-4 py-2 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold rounded-xl text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-[#04803D] hover:bg-[#036B33] text-white font-bold rounded-xl text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isUploading ? (
                 <>

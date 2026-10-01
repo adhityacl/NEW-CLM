@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from './ui/alphabetical-select';
 import React, { useState, useRef, useEffect } from 'react';
 import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { useAuth } from '../context/AuthContext';
@@ -152,7 +153,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2.5">
         {/* Theme Toggle (Light / Dark) with 44px tap target */}
         <button
           type="button"
@@ -168,11 +169,21 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
 
+        <AlphabeticalSelect
+          aria-label={t('header.switch_language', 'Pilih bahasa')}
+          value={language}
+          onChange={(event) => setLanguage(event.target.value as typeof language)}
+          className="sm:hidden h-11 w-16 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-1 text-base"
+        >
+          {LANGUAGE_OPTIONS.map((option) => (
+            <option key={option.code} value={option.code}>{option.label}</option>
+          ))}
+        </AlphabeticalSelect>
         {/* Language Switcher Pill with accessible tap targets */}
         <div
           role="group"
           aria-label={t('header.switch_language', 'Pilih bahasa')}
-          className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold min-h-12"
+          className="hidden sm:flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold min-h-12"
         >
           {LANGUAGE_OPTIONS.map((option) => (
             <button
@@ -182,7 +193,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setLanguage(option.code)}
               className={`min-w-11 min-h-11 px-2.5 py-1.5 rounded-full transition-all cursor-pointer text-xs font-bold flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
                 language === option.code
-                  ? 'bg-[#06C755] text-white shadow-2xs'
+                  ? 'bg-[#04803D] text-white shadow-2xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
               title={option.nativeName}
@@ -215,7 +226,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {showNotifDropdown && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:top-auto sm:right-0 mt-2 sm:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
               {/* Header */}
               <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">

@@ -1,3 +1,7 @@
+import { AlphabeticalSelect } from './ui/alphabetical-select';
+import { formatBusinessDate } from '../lib/displayDate';
+import { FilterSummary } from './ui/filter-summary';
+import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useTenantSettings } from '../context/TenantSettingsContext';
 import { Partner, PartnerSpending } from '../types';
@@ -594,7 +598,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
       scope="col"
       aria-sort={sortField === field ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
       className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left select-none align-middle"
-    >
+     data-numeric={field === 'amount'}>
       <button
         type="button"
         onClick={() => handleSort(field)}
@@ -665,7 +669,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
             <button
               onClick={handleExportCSV}
               disabled={sortedSpendings.length === 0}
-              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
               title={t('contracts.export_csv', 'Ekspor CSV')}
             >
               <Download className="w-4 h-4" />
@@ -676,10 +680,10 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
           {canCreateContract(user) && (
             <button
               onClick={handleAddNew}
-              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
+              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0"
             >
               <Plus className="w-4 h-4 text-white" />
-              <span>{t('io.add_btn', 'Tambah')}</span>
+              <span>{t('ui.add_spending')}</span>
             </button>
           )}
         </div>
@@ -695,6 +699,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
             <input
               type="text"
               placeholder={t('spending.search_placeholder', 'Cari invoice, partner, deskripsi...')}
+              aria-label={t('ui.search')}
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -706,12 +711,13 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
           
           {/* Filter 1: Tahun */}
           <select
-            value={selectedYear}
+            aria-label={t('ui.filter_year')}
+              value={selectedYear}
             onChange={(e) => {
               setSelectedYear(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('dashboard.all_years', 'Semua Tahun')}</option>
             {availableYears.map(year => (
@@ -720,28 +726,30 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
           </select>
           
           {/* Filter 2: Partner */}
-          <select
-            value={selectedVendorFilter}
+          <AlphabeticalSelect
+            aria-label={t('ui.filter_partner')}
+              value={selectedVendorFilter}
             onChange={(e) => {
               setSelectedVendorFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('spending.all_vendors', 'Semua Partner')}</option>
             {Array.from(new Set(spendings.map(s => s.vendor_name).filter(Boolean))).sort().map(vendor => (
               <option key={vendor} value={vendor}>{vendor}</option>
             ))}
-          </select>
+          </AlphabeticalSelect>
 
           {/* Filter 3: Periode Bulan */}
           <select
-            value={selectedMonthFilter}
+            aria-label={t('ui.filter_month')}
+              value={selectedMonthFilter}
             onChange={(e) => {
               setSelectedMonthFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('spending.semua_bulan', 'Semua Bulan')}</option>
             <option value="01">{t('spending.januari_01', 'Januari (01)')}</option>
@@ -762,7 +770,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
           <div className="relative flex-initial">
             <button
               onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-              className="h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
+              className="min-h-11 sm:min-h-9 h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
               title={t('io.view_settings', 'Pengaturan Tampilan Kolom')}
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
@@ -806,8 +814,10 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
 
       {/* Table */}
       <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto bg-white dark:bg-slate-900">
-          <table className="w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
+        <FilterSummary filters={[{ label: t('ui.search'), value: searchTerm, active: Boolean(searchTerm) }, { label: t('ui.filter_year'), value: selectedYear, active: selectedYear !== 'ALL' }, { label: t('ui.filter_partner'), value: selectedVendorFilter, active: selectedVendorFilter !== 'ALL' }, { label: t('ui.filter_month'), value: selectedMonthFilter, active: selectedMonthFilter !== 'ALL' }]} onReset={() => { setSearchTerm(''); setSelectedYear('ALL'); setSelectedVendorFilter('ALL'); setSelectedMonthFilter('ALL'); }} />
+        <p className="px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
+        <div className="data-table-scroll overflow-x-auto bg-white dark:bg-slate-900" tabIndex={0} role="region" aria-label={t('ui.scroll_table')}>
+          <table className="app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
                 <th scope="col" className="pl-6 pr-2 py-4 w-12 text-left align-middle">
@@ -889,13 +899,13 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                     {/* 4. Invoice Date */}
                     {visibleColumns.invoice_date && (
                       <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left whitespace-nowrap">
-                        {s.invoice_date || '-'}
+                        {formatBusinessDate(s.invoice_date)}
                       </td>
                     )}
 
                     {/* 5. Amount */}
                     {visibleColumns.amount && (
-                      <td className="py-4 px-4 text-xs font-normal text-slate-700 text-left whitespace-nowrap">
+                      <td className="py-4 px-4 text-xs font-normal text-slate-700 text-right whitespace-nowrap tabular-nums">
                         {formatMoney(s.total_amount, s.currency)}
                       </td>
                     )}
@@ -986,24 +996,24 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
 
       {/* 3. INPUT FORM MODAL */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <ModalFrame onClose={() => setShowModal(false)}>
             {/* Modal Header */}
             <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900">
               <div>
-                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <ModalTitle className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-[#06C755]" />
                   <span>
                     {editingSpending
                       ? t('spending.modal_edit_title', 'Edit Data Spending')
                       : t('spending.modal_title', 'Input Data Spending')}
                   </span>
-                </h3>
+                </ModalTitle>
               </div>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                aria-label={t('common.close', 'Close')}
+            className="min-w-11 min-h-11 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1011,14 +1021,14 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
 
             {/* Modal Form */}
             <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
-              <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs flex-1 text-slate-900 dark:text-slate-100">
+              <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-sm flex-1 text-slate-900 dark:text-slate-100">
               {errorMessage && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium rounded-xl">
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-sm font-medium rounded-xl">
                   {errorMessage}
                 </div>
               )}
               {parseSuccessMsg && (
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[#048C3B] dark:text-emerald-300 text-xs font-bold rounded-xl flex items-center gap-2">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[#048C3B] dark:text-emerald-300 text-sm font-bold rounded-xl flex items-center gap-2">
                   <AiIcon className="w-4 h-4 text-[#06C755] shrink-0" />
                   <span>{parseSuccessMsg}</span>
                 </div>
@@ -1026,13 +1036,13 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
 
               {/* Vendor Name (Dropdown from existing partners) */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="PartnerSpendingView-field-1" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t('spending.vendor_name_label', 'Vendor Name')} <span className="text-rose-500">*</span>
                 </label>
-                <select
+                <AlphabeticalSelect id="PartnerSpendingView-field-1"
                   value={formVendorName}
                   onChange={(e) => handleVendorSelect(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800 cursor-pointer"
+                  className="w-full px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800 cursor-pointer"
                 >
                   <option value="">{t('spending.vendor_select_ph', '-- Pilih Partner / Vendor --')}</option>
                   {partners.map((p) => (
@@ -1040,21 +1050,21 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                       {p.nama_partner} ({p.partner_id})
                     </option>
                   ))}
-                </select>
+                </AlphabeticalSelect>
               </div>
 
               {/* Invoice Number & Invoice Date */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="PartnerSpendingView-field-2" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t('spending.invoice_no_label', 'Invoice Number')} <span className="text-rose-500">*</span>
                   </label>
-                  <input
+                  <input id="PartnerSpendingView-field-2"
                     type="text"
                     placeholder={t('spending.invoice_no_ph', 'Contoh: INV-2026-0801')}
                     value={formInvoiceNumber}
                     onChange={(e) => setFormInvoiceNumber(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800"
+                    className="w-full px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800"
                   />
                   {formInvoiceNumber.trim() && spendings.some(s => s.invoice_number.toLowerCase() === formInvoiceNumber.trim().toLowerCase() && (!editingSpending || s.id !== editingSpending.id)) && (
                     <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-1 flex items-center gap-1">
@@ -1064,10 +1074,10 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="PartnerSpendingView-field-3" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t('spending.invoice_date_label', 'Invoice Date')}
                   </label>
-                  <DateInput
+                  <DateInput id="PartnerSpendingView-field-3"
                     value={formInvoiceDate}
                     onChange={setFormInvoiceDate}
                     focusColor="emerald"
@@ -1077,21 +1087,21 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
 
               {/* Invoice Month (Multi MMYYYY Date Picker) */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="PartnerSpendingView-field-4" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t('spending.invoice_month_label', 'Invoice Month')}
                 </label>
                 <div className="space-y-2">
                   <div className="flex gap-2">
-                    <input
+                    <input id="PartnerSpendingView-field-4"
                       type="month"
                       value={monthInput}
                       onChange={(e) => setMonthInput(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800 cursor-pointer"
+                      className="flex-1 px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800 cursor-pointer"
                     />
                     <button
                       type="button"
                       onClick={handleAddMonthTag}
-                      className="px-3.5 py-2 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 dark:border-emerald-500/40 rounded-xl text-xs font-bold hover:bg-[#06C755] hover:text-white transition-colors cursor-pointer shrink-0"
+                      className="px-3.5 py-2 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 dark:border-emerald-500/40 rounded-xl text-sm font-bold hover:bg-[#04803D] hover:text-white transition-colors cursor-pointer shrink-0"
                     >
                       {t('spending.add_month_btn', '+ Tambah Bulan')}
                     </button>
@@ -1105,7 +1115,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                       return (
                         <span
                           key={m}
-                          className="px-2.5 py-1 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 dark:border-emerald-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5"
+                          className="px-2.5 py-1 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 dark:border-emerald-500/40 rounded-lg text-sm font-bold flex items-center gap-1.5"
                         >
                           <span>{displayTag}</span>
                           <button
@@ -1124,47 +1134,47 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
 
               {/* Invoice Description (Long Text Format) */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="PartnerSpendingView-field-5" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t('spending.invoice_desc_label', 'Invoice Description')}
                 </label>
-                <textarea
+                <textarea id="PartnerSpendingView-field-5"
                   rows={4}
                   placeholder={t('spending.invoice_desc_ph', 'Keterangan lengkap pengeluaran / rincian invoice...')}
                   value={formInvoiceDesc}
                   onChange={(e) => setFormInvoiceDesc(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800 resize-y min-h-[100px]"
+                  className="w-full px-3.5 py-2.5 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800 resize-y min-h-[100px]"
                 />
               </div>
 
               {/* Currency & Total Amount */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{t('spending.currency_label', 'Currency')}</label>
-                  <select
+                  <label htmlFor="PartnerSpendingView-field-6" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('spending.currency_label', 'Currency')}</label>
+                  <AlphabeticalSelect id="PartnerSpendingView-field-6"
                     value={formCurrency}
                     onChange={(e) => setFormCurrency(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800"
+                    className="w-full px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800"
                   >
                     {SUPPORTED_CURRENCIES.map((c) => (
                       <option key={c.code} value={c.code}>
                         {c.code} — {currencyLabel(c.code, language)}
                       </option>
                     ))}
-                  </select>
+                  </AlphabeticalSelect>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="PartnerSpendingView-field-7" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t('spending.total_amount_label', 'Total Amount')} <span className="text-rose-500">*</span>
                   </label>
-                  <input
+                  <input id="PartnerSpendingView-field-7"
                     type="number"
                     placeholder={t('spending.total_amount_ph', '150000000')}
                     value={formTotalAmount}
                     onChange={(e) =>
                       setFormTotalAmount(e.target.value === '' ? '' : Number(e.target.value))
                     }
-                    className="w-full px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800"
+                    className="w-full px-3 py-2 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-[#06C755] focus:bg-white dark:focus:bg-slate-800"
                   />
                   {formTotalAmount !== '' && Number(formTotalAmount) > 0 && (
                     <p className="text-[10px] text-[#048C3B] dark:text-emerald-400 font-bold mt-1">
@@ -1175,7 +1185,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
               </div>
 
               {/* USD Conversion Info Banner */}
-              <div className="bg-[#06C755]/5 dark:bg-emerald-950/20 border border-[#06C755]/20 dark:border-emerald-500/20 rounded-xl p-3 text-xs flex flex-wrap items-center justify-between gap-2 mt-4">
+              <div className="bg-[#06C755]/5 dark:bg-emerald-950/20 border border-[#06C755]/20 dark:border-emerald-500/20 rounded-xl p-3 text-sm flex flex-wrap items-center justify-between gap-2 mt-4">
                 <div>
                   <span className="font-semibold text-slate-700 dark:text-slate-300">{t('spending.estimasi_konversi_usd_kurs', 'Estimasi Konversi USD (Kurs')} {formInvoiceDate || t('spending.hari_ini', 'Hari Ini')}):</span>
                   <span className="ml-2 font-bold text-[#06C755] dark:text-emerald-400">
@@ -1189,46 +1199,46 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
 
               {/* Bank Account Info Section (Auto-fillable) */}
               <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
-                <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                   <CreditCard className="w-4 h-4 text-[#06C755]" />
                   <span>{t('spending.bank_info_title', 'Bank Account Information (Auto-filled if previously entered)')}</span>
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('spending.bank_name_label', 'Bank Name')}</label>
-                    <input
+                    <label htmlFor="PartnerSpendingView-field-8" className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('spending.bank_name_label', 'Bank Name')}</label>
+                    <input id="PartnerSpendingView-field-8"
                       type="text"
                       placeholder={t('spending.bca_mandiri_bni', 'BCA / Mandiri / BNI')}
                       value={formBankName}
                       onChange={(e) => setFormBankName(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#06C755]"
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#06C755]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                    <label htmlFor="PartnerSpendingView-field-9" className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
                       {t('spending.bank_account_no_label', 'Account Number')}
                     </label>
-                    <input
+                    <input id="PartnerSpendingView-field-9"
                       type="text"
                       placeholder="8820123984"
                       value={formBankAccountNumber}
                       onChange={(e) => setFormBankAccountNumber(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#06C755]"
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#06C755]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                    <label htmlFor="PartnerSpendingView-field-10" className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
                       {t('spending.bank_account_holder_label', 'Account Holder')}
                     </label>
-                    <input
+                    <input id="PartnerSpendingView-field-10"
                       type="text"
                       placeholder={t('spending.pt_vendor_indonesia', 'PT Vendor Indonesia')}
                       value={formBankAccountHolder}
                       onChange={(e) => setFormBankAccountHolder(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#06C755]"
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#06C755]"
                     />
                   </div>
                 </div>
@@ -1236,7 +1246,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
 
               {/* Upload Invoice File */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="PartnerSpendingView-field-11" className="block text-sm font-bold text-slate-700 dark:text-slate-300">
                   {t('spending.upload_invoice_label', 'Upload Invoice')}
                 </label>
                 <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-300 dark:border-slate-700 hover:border-[#06C755] dark:hover:border-[#06C755] rounded-xl transition-all">
@@ -1247,7 +1257,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                           type="button"
                           onClick={handleParseSpending}
                           disabled={isParsing}
-                          className="py-1.5 px-3 rounded-lg border-0 text-xs font-bold bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-400 hover:bg-[#06C755] hover:text-white transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+                          className="py-1.5 px-3 rounded-lg border-0 text-sm font-bold bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-400 hover:bg-[#04803D] hover:text-white transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shrink-0"
                         >
                           {isParsing ? (
                             <>
@@ -1262,15 +1272,15 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                           )}
                         </button>
                       )}
-                      <input
+                      <input id="PartnerSpendingView-field-11"
                         type="file"
                         accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
                         onChange={(e) => handleFileChange(e, 'invoice')}
-                        className="block text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#EBFBF0] dark:file:bg-emerald-950/60 file:text-[#048C3B] dark:file:text-emerald-400 hover:file:bg-[#06C755] hover:file:text-white file:transition-colors cursor-pointer"
+                        className="block text-sm text-slate-500 dark:text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-[#EBFBF0] dark:file:bg-emerald-950/60 file:text-[#048C3B] dark:file:text-emerald-400 hover:file:bg-[#04803D] hover:file:text-white file:transition-colors cursor-pointer"
                       />
                     </div>
                     {invoiceFileObj && (
-                      <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs space-y-1 mt-1">
+                      <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm space-y-1 mt-1">
                         <p className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                           <span>{t('spending.file_terpilih', '📄 File terpilih:')}</span>
                           <span className="font-bold text-slate-900 dark:text-white">{invoiceFileObj.fileName}</span>
@@ -1283,16 +1293,16 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
 
               {/* Upload Billing File */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">{t('spending.upload_billing_label', 'Upload Billing')}</label>
+                <label htmlFor="PartnerSpendingView-field-12" className="block text-sm font-bold text-slate-700 dark:text-slate-300">{t('spending.upload_billing_label', 'Upload Billing')}</label>
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-300 dark:border-slate-700 hover:border-[#06C755] dark:hover:border-[#06C755] rounded-xl transition-all">
-                  <input
+                  <input id="PartnerSpendingView-field-12"
                     type="file"
                     accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
                     onChange={(e) => handleFileChange(e, 'billing')}
-                    className="block w-full text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#EBFBF0] dark:file:bg-emerald-950/60 file:text-[#048C3B] dark:file:text-emerald-400 hover:file:bg-[#06C755] hover:file:text-white file:transition-colors cursor-pointer"
+                    className="block w-full text-sm text-slate-500 dark:text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-[#EBFBF0] dark:file:bg-emerald-950/60 file:text-[#048C3B] dark:file:text-emerald-400 hover:file:bg-[#04803D] hover:file:text-white file:transition-colors cursor-pointer"
                   />
                   {billingFileObj && (
-                    <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs space-y-1 mt-2">
+                    <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm space-y-1 mt-2">
                       <p className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                         <span>{t('spending.file_terpilih', '📄 File terpilih:')}</span>
                         <span className="font-bold text-slate-900 dark:text-white">{billingFileObj.fileName}</span>
@@ -1312,14 +1322,14 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-sm transition-colors cursor-pointer"
                   >
                     {t('spending.cancel_btn', 'Batal')}
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-5 py-2.5 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold rounded-xl text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-5 py-2.5 bg-[#04803D] hover:bg-[#036B33] text-white font-bold rounded-xl text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isSubmitting
                       ? t('spending.saving_btn', 'Menyimpan...')
@@ -1328,8 +1338,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                 </div>
               </div>
             </form>
-          </div>
-        </div>
+        </ModalFrame>
       )}
     </div>
   );

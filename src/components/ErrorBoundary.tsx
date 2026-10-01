@@ -73,7 +73,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <button
                 type="button"
                 onClick={this.handleReload}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-[#06C755] hover:bg-[#05b34c] text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-[#04803D] hover:bg-[#036B33] text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>{t('error_boundary.reload', 'Muat Ulang Halaman')}</span>

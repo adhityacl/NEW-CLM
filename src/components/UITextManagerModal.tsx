@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from './ui/alphabetical-select';
 import React, { useRef, useState } from 'react';
 import { LANGUAGE_OPTIONS, useLanguage, type Language } from '../context/LanguageContext';
 import { useConfirm } from '../context/ConfirmDialogContext';
@@ -119,7 +120,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
           />
           <button
             type="submit"
-            className="p-1 bg-[#06C755] text-white rounded-lg hover:bg-[#05B34C] cursor-pointer shrink-0"
+            className="p-1 bg-[#04803D] text-white rounded-lg hover:bg-[#036B33] cursor-pointer shrink-0"
             aria-label={t('common.save', 'Simpan')}
           >
             <Check className="w-3.5 h-3.5" aria-hidden />
@@ -258,7 +259,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
               className="w-full pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-xs focus:ring-2 focus:ring-[#06C755]/20 focus:border-[#06C755] outline-none"
             />
           </div>
-          <select
+          <AlphabeticalSelect
             aria-label={t('ui_text.module_filter', 'Filter modul')}
             value={selectedModule}
             onChange={(e) => {
@@ -273,7 +274,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
                 {moduleLabel(mod)} ({allKeys.filter((k) => moduleOf(k) === mod).length})
               </option>
             ))}
-          </select>
+          </AlphabeticalSelect>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50 dark:bg-slate-900/60">

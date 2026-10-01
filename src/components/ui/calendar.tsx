@@ -104,10 +104,7 @@ function Calendar({
           defaultClassNames.week_number
         ),
         day: cn(
-          "group/day relative aspect-square h-full w-full p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-r-md",
-          props.showWeekNumber
-            ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-md"
-            : "[&:first-child[data-selected=true]_button]:rounded-l-md",
+          "group/day relative aspect-square h-full w-full p-0 text-center select-none",
           defaultClassNames.day
         ),
         range_start: cn(
@@ -117,7 +114,7 @@ function Calendar({
         range_middle: cn("rounded-none", defaultClassNames.range_middle),
         range_end: cn("rounded-r-md bg-[var(--accent)]", defaultClassNames.range_end),
         today: cn(
-          "rounded-md bg-[var(--accent)] text-[var(--accent-foreground)] data-[selected=true]:rounded-none",
+          "text-[var(--accent-foreground)]",
           defaultClassNames.today
         ),
         outside: cn(
@@ -198,6 +195,7 @@ function CalendarDayButton({
       variant="ghost"
       size="icon"
       data-day={day.date.toLocaleDateString()}
+      data-today={modifiers.today}
       data-selected-single={
         modifiers.selected &&
         !modifiers.range_start &&
@@ -215,6 +213,7 @@ function CalendarDayButton({
         // caption/weekday labels, which do set one).
         "flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 text-xs leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-[var(--ring)] group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-[var(--ring)]/50 data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-end=true]:bg-[var(--primary)] data-[range-end=true]:text-[var(--primary-foreground)] data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-[var(--accent)] data-[range-middle=true]:text-[var(--accent-foreground)] data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md data-[range-start=true]:bg-[var(--primary)] data-[range-start=true]:text-[var(--primary-foreground)] data-[selected-single=true]:bg-[var(--primary)] data-[selected-single=true]:text-[var(--primary-foreground)] dark:hover:text-[var(--accent-foreground)] [&>span]:text-xs [&>span]:opacity-70",
         defaultClassNames.day,
+        "mx-auto size-(--cell-size) min-w-0 rounded-full hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] dark:hover:text-[var(--primary-foreground)] data-[today=true]:not-data-[selected-single=true]:bg-[var(--accent)] data-[today=true]:hover:bg-[var(--primary)]",
         className
       )}
       {...props}

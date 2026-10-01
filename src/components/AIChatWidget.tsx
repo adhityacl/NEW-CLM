@@ -162,15 +162,15 @@ export const AIChatWidget: React.FC = () => {
   const isInitialOnly = messages.length === 1 && (messages[0].id === 'welcome' || messages[0].id.startsWith('welcome-'));
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999]">
+    <div className="fixed bottom-3 right-3 sm:bottom-6 sm:right-6 z-30">
       {/* Chat Window */}
       {isOpen && (
         <div
-          className="absolute bottom-16 right-0 w-84 sm:w-[410px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden transition-all duration-300 ease-in-out transform origin-bottom-right"
-          style={{ height: '520px', maxHeight: '82vh' }}
+          className="absolute bottom-16 right-0 w-[calc(100vw-1.5rem)] sm:w-[410px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in transform origin-bottom-right"
+          style={{ height: '520px', maxHeight: 'calc(100dvh - 6rem)' }}
         >
           {/* Header */}
-          <div className="bg-[#06C755] px-4 py-3 text-white flex justify-between items-center shadow-md z-10 select-none">
+          <div className="bg-[#04803D] px-4 py-3 text-white flex justify-between items-center shadow-md z-10 select-none">
             <div className="flex items-center gap-2.5">
               <div className="p-1.5 bg-white/20 rounded-lg flex items-center justify-center">
                 <AiIcon size={18} className="text-white" />
@@ -213,7 +213,7 @@ export const AIChatWidget: React.FC = () => {
                 <div
                   className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs ${
                     msg.role === 'user'
-                      ? 'bg-[#06C755] text-white'
+                      ? 'bg-[#04803D] text-white'
                       : 'bg-white dark:bg-slate-800 shadow-xs text-[#06C755] border border-slate-200 dark:border-slate-700'
                   }`}
                 >
@@ -222,7 +222,7 @@ export const AIChatWidget: React.FC = () => {
                 <div
                   className={`p-3 rounded-2xl text-xs leading-relaxed ${
                     msg.role === 'user'
-                      ? 'bg-[#06C755] text-white rounded-tr-xs shadow-xs'
+                      ? 'bg-[#04803D] text-white rounded-tr-xs shadow-xs'
                       : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-tl-xs shadow-xs'
                   }`}
                 >
@@ -322,7 +322,7 @@ export const AIChatWidget: React.FC = () => {
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className="p-2.5 bg-[#06C755] text-white rounded-xl hover:bg-[#05b34c] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                className="p-2.5 bg-[#04803D] text-white rounded-xl hover:bg-[#036B33] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
                 title={t('ai_chat.kirim_pesan', 'Kirim Pesan')}
               >
                 <Send size={15} />
@@ -334,9 +334,10 @@ export const AIChatWidget: React.FC = () => {
 
       {/* Toggle Button */}
       <button
+        aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-13 h-13 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 transform hover:scale-105 cursor-pointer ${
-          isOpen ? 'bg-[#05b34c] rotate-12' : 'bg-[#06C755] hover:bg-[#05b34c]'
+        className={`w-13 h-13 rounded-full shadow-xl flex items-center justify-center transition-colors duration-150 cursor-pointer ${
+          isOpen ? 'bg-[#036B33]' : 'bg-[#04803D] hover:bg-[#036B33]'
         }`}
         title={isOpen ? t('ai_chat.tutup_ai_assistant', 'Tutup AI Assistant') : t('ai_chat.buka_asisten_ai_silegal', 'Buka Asisten AI Legalio')}
       >

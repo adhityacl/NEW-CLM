@@ -1,3 +1,4 @@
+import { UI_REFINEMENTS } from '../i18n/uiRefinements';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { EXTRA_TRANSLATIONS } from '../i18n/extraTranslations';
 import { ZH_TRANSLATIONS } from '../i18n/zh';
@@ -115,9 +116,10 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'dashboard.remaining_time': 'Sisa Waktu',
     'dashboard.min_one_contract': 'Minimal 1 Kontrak Aktif',
     'dashboard.need_notice': 'Perlu Notice',
-    'dashboard.expiring_table_title': 'Daftar Kontrak & IO Membutuhkan Tindakan (Akan Berakhir ≤ 90 Hari)',
-    'dashboard.view_all_contracts': 'Lihat Semua Kontrak',
-    'dashboard.no_expiring': 'Tidak ada kontrak yang akan berakhir dalam 90 hari ke depan.',
+    'dashboard.expiring_table_title': 'Daftar Kontrak & IO Membutuhkan Tindakan',
+    'dashboard.no_expiring': 'Tidak ada kontrak atau IO yang memerlukan tindakan.',
+    'dashboard.select_all_requiring_action': 'Pilih semua dokumen yang memerlukan tindakan',
+    'dashboard.select_requiring_action': 'Pilih {name}',
     'dashboard.spending_title': 'Tren Spending',
     'dashboard.all_years': 'Semua Tahun',
     'dashboard.year_prefix': 'Tahun',
@@ -1165,9 +1167,10 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'dashboard.remaining_time': 'Remaining Time',
     'dashboard.min_one_contract': 'Min. 1 Active Contract',
     'dashboard.need_notice': 'Requires Notice',
-    'dashboard.expiring_table_title': 'Contracts & IOs Requiring Action (Expiring ≤ 90 Days)',
-    'dashboard.view_all_contracts': 'View All Contracts',
-    'dashboard.no_expiring': 'No contracts expiring within the next 90 days.',
+    'dashboard.expiring_table_title': 'Contracts & IOs Requiring Action',
+    'dashboard.no_expiring': 'No contracts or IOs require action.',
+    'dashboard.select_all_requiring_action': 'Select all documents requiring action',
+    'dashboard.select_requiring_action': 'Select {name}',
     'dashboard.spending_title': 'Spending Trend',
     'dashboard.all_years': 'All Years',
     'dashboard.year_prefix': 'Year',
@@ -2167,9 +2170,9 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
 
 /** Built-in catalog: base keys plus newer feature keys kept in src/i18n. */
 export const translations: Record<Language, Record<string, string>> = {
-  ID: { ...baseTranslations.ID, ...EXTRA_TRANSLATIONS.ID },
-  EN: { ...baseTranslations.EN, ...EXTRA_TRANSLATIONS.EN },
-  ZH: ZH_TRANSLATIONS,
+  ID: { ...baseTranslations.ID, ...EXTRA_TRANSLATIONS.ID, ...UI_REFINEMENTS.ID },
+  EN: { ...baseTranslations.EN, ...EXTRA_TRANSLATIONS.EN, ...UI_REFINEMENTS.EN },
+  ZH: { ...ZH_TRANSLATIONS, ...UI_REFINEMENTS.ZH },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

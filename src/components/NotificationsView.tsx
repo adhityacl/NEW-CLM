@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from './ui/alphabetical-select';
 import React, { useState, useMemo } from 'react';
 import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { NotificationLog } from '../types';
@@ -220,7 +221,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           {unreadCount > 0 && onMarkRead && (
             <button
               onClick={handleMarkAllRead}
-              className="h-9 text-xs cursor-pointer shadow-xs gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center transition-all shrink-0"
+              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-xs gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center transition-all shrink-0"
             >
               <CheckCheck className="w-4 h-4 text-slate-600" />
               <span>{t('notifications.mark_all', 'Tandai Semua Dibaca')}</span>
@@ -230,7 +231,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           <button
             onClick={handleManualTrigger}
             disabled={runningCron}
-            className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
+            className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 text-white ${runningCron ? 'animate-spin' : ''}`} />
             <span>{runningCron ? t('notifications.processing', 'Memproses...') : t('notifications.refresh_logs', 'Refresh Logs')}</span>
@@ -257,7 +258,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           </div>
 
           {/* 2. Filter 1: Status Notifikasi (Semua / Belum Dibaca / Sudah Dibaca) */}
-          <select
+          <AlphabeticalSelect
             value={filterStatus}
             onChange={(e) => {
               setFilterStatus(e.target.value);
@@ -268,10 +269,10 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
             <option value="ALL">{t('notifications.all_status', 'Semua Status')} ({notifications.length})</option>
             <option value="UNREAD">{t('notifications.status_unread', 'Belum Dibaca')} ({unreadCount})</option>
             <option value="READ">{t('notifications.status_read', 'Sudah Dibaca')} ({notifications.length - unreadCount})</option>
-          </select>
+          </AlphabeticalSelect>
 
           {/* 3. Filter 2: Jenis Notifikasi */}
-          <select
+          <AlphabeticalSelect
             value={filterType}
             onChange={(e) => {
               setFilterType(e.target.value);
@@ -283,7 +284,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
             {typeOptions.map((opt) => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
-          </select>
+          </AlphabeticalSelect>
 
           {/* 4. Filter 3: Periode Waktu */}
           <select
@@ -304,7 +305,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           <div className="relative flex-initial">
             <button
               onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-              className="h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
+              className="min-h-11 sm:min-h-9 h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
               title={t('notifications.view_settings', 'Pengaturan Tampilan Kolom')}
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
@@ -360,7 +361,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
               <button
                 type="button"
                 onClick={handleMarkSelectedRead}
-                className="h-8 px-3 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-700 dark:text-slate-200 hover:text-[#06C755] font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                className="min-h-11 sm:min-h-9 h-9 px-3 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-700 dark:text-slate-200 hover:text-[#06C755] font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
               >
                 <CheckCircle2 className="w-3.5 h-3.5 text-[#06C755]" />
                 <span>{t('notifications.mark_read_btn', 'Tandai Dibaca')}</span>
@@ -371,7 +372,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
               <button
                 type="button"
                 onClick={handleDeleteSelected}
-                className="h-8 px-3 text-xs bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl text-rose-700 dark:text-rose-300 hover:bg-rose-100 font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                className="min-h-11 sm:min-h-9 h-9 px-3 text-xs bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl text-rose-700 dark:text-rose-300 hover:bg-rose-100 font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                 <span>{t('notifications.delete_selected', 'Hapus Terpilih')}</span>
@@ -553,7 +554,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                             <button
                               type="button"
                               onClick={(e) => handleMarkSingleRead(notif.notif_id, e)}
-                              className="p-1.5 text-slate-400 hover:text-[#06C755] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
+                              className="inline-flex size-9 items-center justify-center rounded-lg text-slate-400 hover:text-[#06C755] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                               title={t('notifications.mark_read', 'Tandai Dibaca')}
                             >
                               <CheckCircle2 className="w-4 h-4" />
@@ -565,7 +566,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                             <button
                               type="button"
                               onClick={(e) => handleDeleteSingle(notif.notif_id, e)}
-                              className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
+                              className="inline-flex size-9 items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                               title={t('notifications.delete_notif', 'Hapus Notifikasi')}
                             >
                               <Trash2 className="w-4 h-4" />

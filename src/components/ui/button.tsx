@@ -16,7 +16,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
  */
 export function buttonVariants(variant: ButtonVariant = "default", size: ButtonSize = "default", className?: string) {
   return cn(
-    "inline-flex items-center justify-center gap-1.5 font-semibold transition-all cursor-pointer shrink-0 active:translate-y-px",
+    "inline-flex items-center justify-center gap-1.5 font-semibold transition-colors duration-150 cursor-pointer shrink-0",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40",
     "disabled:pointer-events-none disabled:opacity-50",
     {

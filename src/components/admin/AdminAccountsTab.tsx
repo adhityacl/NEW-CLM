@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from '../ui/alphabetical-select';
 import React, { useState } from 'react';
 import { getActiveFormattingLocale } from '../../lib/currencyUtils';
 import { KeyRound, Shield, Search, CheckCircle2, Lock, Mail, Globe } from 'lucide-react';
@@ -78,7 +79,7 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
           />
         </div>
 
-        <select
+        <AlphabeticalSelect
           value={providerFilter}
           onChange={(e) => setProviderFilter(e.target.value)}
           className="px-3 py-1.5 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
@@ -86,7 +87,7 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
           <option value="all">{t('admin.filter_prov_all', 'Semua Provider')}</option>
           <option value="credential">{t('admin.credential_password', 'Credential (Password)')}</option>
           <option value="google">{t('admin.google_oauth', 'Google OAuth')}</option>
-        </select>
+        </AlphabeticalSelect>
       </div>
 
       {/* Accounts Table */}

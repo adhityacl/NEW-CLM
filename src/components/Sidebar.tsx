@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Dialog } from 'radix-ui';
 import {
   Globe2,
   LayoutDashboard,
@@ -73,6 +74,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen = false,
   onCloseMobile,
 }) => {
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!isMobileOpen) return;
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const closeOnDesktop = () => { if (desktop.matches) onCloseMobile?.(); };
+    closeOnDesktop();
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
+  }, [isMobileOpen, onCloseMobile]);
   const { standardRole } = useAuth();
   const { hasPermission } = usePermissions();
   const { t } = useLanguage();
@@ -346,7 +356,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       aria-current={collapsedActive ? 'page' : undefined}
                       className={`relative w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
                         collapsedActive
-                          ? 'bg-[#06C755] text-white shadow-2xs font-semibold'
+                          ? 'bg-[#04803D] text-white shadow-2xs font-semibold'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
@@ -365,29 +375,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   return (
                     <div key={item.id} className="space-y-0.5">
                       <div
-                        className={`w-full flex items-center justify-between px-3 py-2 ${
+                        className={`w-full flex items-center justify-between px-3 ${
                           isMobile ? 'min-h-11' : 'min-h-9.5'
                         } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                           isPartnerActive
-                            ? 'bg-[#06C755] text-white shadow-2xs'
+                            ? 'bg-[#04803D] text-white shadow-2xs'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                         }`}
-                        onClick={() => {
-                          handleNavClick('partners');
-                          setIsPartnerExpanded((prev) => !prev);
-                        }}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
+                        <button type="button" onClick={() => {
+                          handleNavClick('partners');
+                          setIsPartnerExpanded(true);
+                        }} className="flex flex-1 self-stretch min-w-0 items-center gap-2.5 text-left">
                           <Icon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{item.label}</span>
-                        </div>
+                        </button>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setIsPartnerExpanded((prev) => !prev);
                           }}
-                          className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none"
+                          className={`${isMobile ? 'size-11' : 'size-9'} shrink-0 inline-flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none`}
                           aria-label={isPartnerExpanded ? t('nav.tutup_submenu', 'Tutup Submenu') : t('nav.buka_submenu', 'Buka Submenu')}
                           aria-expanded={isPartnerExpanded}
                         >
@@ -435,29 +444,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   return (
                     <div key={item.id} className="space-y-0.5">
                       <div
-                        className={`w-full flex items-center justify-between px-3 py-2 ${
+                        className={`w-full flex items-center justify-between px-3 ${
                           isMobile ? 'min-h-11' : 'min-h-9.5'
                         } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                           isAdminActive
-                            ? 'bg-[#06C755] text-white shadow-2xs'
+                            ? 'bg-[#04803D] text-white shadow-2xs'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                         }`}
-                        onClick={() => {
-                          handleNavClick(isSystemAdminItem ? `${adminPrefix}dashboard` : `${adminPrefix}users`);
-                          setIsAdminExpanded((prev) => !prev);
-                        }}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
+                        <button type="button" onClick={() => {
+                          handleNavClick(isSystemAdminItem ? `${adminPrefix}dashboard` : `${adminPrefix}users`);
+                        }} className="flex flex-1 self-stretch min-w-0 items-center gap-2.5 text-left">
                           <Icon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{item.label}</span>
-                        </div>
+                        </button>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setIsAdminExpanded((prev) => !prev);
                           }}
-                          className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none"
+                          className={`${isMobile ? 'size-11' : 'size-9'} shrink-0 inline-flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none`}
                           aria-label={isAdminExpanded ? t('nav.tutup_submenu', 'Tutup Submenu') : t('nav.buka_submenu', 'Buka Submenu')}
                           aria-expanded={isAdminExpanded}
                         >
@@ -503,29 +510,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   return (
                     <div key={item.id} className="space-y-0.5">
                       <div
-                        className={`w-full flex items-center justify-between px-3 py-2 ${
+                        className={`w-full flex items-center justify-between px-3 ${
                           isMobile ? 'min-h-11' : 'min-h-9.5'
                         } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                           isSettingsActive
-                            ? 'bg-[#06C755] text-white shadow-2xs'
+                            ? 'bg-[#04803D] text-white shadow-2xs'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                         }`}
-                        onClick={() => {
-                          handleNavClick('settings-region');
-                          setIsSettingsExpanded((prev) => !prev);
-                        }}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
+                        <button type="button" onClick={() => {
+                          handleNavClick('settings-region');
+                        }} className="flex flex-1 self-stretch min-w-0 items-center gap-2.5 text-left">
                           <Icon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{item.label}</span>
-                        </div>
+                        </button>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setIsSettingsExpanded((prev) => !prev);
                           }}
-                          className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none"
+                          className={`${isMobile ? 'size-11' : 'size-9'} shrink-0 inline-flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none`}
                           aria-label={isSettingsExpanded ? t('nav.tutup_submenu', 'Tutup Submenu') : t('nav.buka_submenu', 'Buka Submenu')}
                           aria-expanded={isSettingsExpanded}
                         >
@@ -578,7 +583,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       isMobile ? 'min-h-11' : 'min-h-9.5'
                     } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
                       isActive
-                        ? 'bg-[#06C755] text-white shadow-2xs'
+                        ? 'bg-[#04803D] text-white shadow-2xs'
                         : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
@@ -684,24 +689,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </aside>
 
-      {/* Mobile Drawer Backdrop */}
-      <div
-        className={`fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 transition-opacity duration-200 md:hidden ${
-          isMobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={onCloseMobile}
-        aria-hidden={!isMobileOpen}
-      />
-
-      {/* Mobile Drawer Sheet */}
-      <aside
-        className={`fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white dark:bg-slate-900 z-50 flex flex-col shadow-2xl border-r border-slate-200 dark:border-slate-800 transition-transform duration-300 ease-in-out md:hidden ${
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'
-        }`}
-        aria-hidden={!isMobileOpen}
-        role="dialog"
-        aria-label={t('nav.menu_navigasi_mobile', 'Menu Navigasi Mobile')}
-      >
+      <Dialog.Root open={isMobileOpen} onOpenChange={(open) => { if (!open) onCloseMobile?.(); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 md:hidden animate-in" />
+          <Dialog.Content
+            onOpenAutoFocus={() => { returnFocusRef.current = document.activeElement as HTMLElement; }}
+            onCloseAutoFocus={(event) => { event.preventDefault(); returnFocusRef.current?.focus(); }}
+            aria-describedby={undefined}
+            className="mobile-drawer fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white dark:bg-slate-900 z-50 flex flex-col shadow-2xl border-r border-slate-200 dark:border-slate-800 md:hidden"
+          >
+            <Dialog.Title className="sr-only">{t('nav.menu_navigasi_mobile', 'Menu Navigasi Mobile')}</Dialog.Title>
         {/* Mobile Header: Workspace Switcher + Close Button */}
         <div className="h-16 px-3 flex items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 shrink-0">
           <div className="flex-1 min-w-0">
@@ -742,7 +739,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {t('nav.version', 'v2.5.0 • ACL')}
           </span>
         </div>
-      </aside>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 };

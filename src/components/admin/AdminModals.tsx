@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from '../ui/alphabetical-select';
 import React, { useState, useEffect } from 'react';
 import { useTenantSettings } from '../../context/TenantSettingsContext';
 import { SUPPORTED_CURRENCIES, currencyLabel } from '../../lib/currencyUtils';
@@ -208,7 +209,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.role_label', 'Role Hak Akses Aplikasi *')}
             </label>
-            <select
+            <AlphabeticalSelect
               value={role}
               onChange={(e) => handleRoleChange(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-medium"
@@ -218,7 +219,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               {allowedRoles.includes('manager') && <option value="manager">{t('admin.manager', 'Manager')}</option>}
               {allowedRoles.includes('editor') && <option value="editor">{t('admin.editor', 'Editor')}</option>}
               {allowedRoles.includes('viewer') && <option value="viewer">{t('admin.viewer', 'Viewer')}</option>}
-            </select>
+            </AlphabeticalSelect>
           </div>
 
           <div>
@@ -232,7 +233,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                 </span>
               )}
             </div>
-            <select
+            <AlphabeticalSelect
               value={role === 'superuser' ? '' : organizationId}
               onChange={(e) => setOrganizationId(e.target.value)}
               disabled={role === 'superuser'}
@@ -260,14 +261,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                   ))}
                 </>
               )}
-            </select>
+            </AlphabeticalSelect>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.tab_teams', 'Departemen')}
             </label>
-            <select
+            <AlphabeticalSelect
               value={role === 'superuser' || role === 'admin' ? '' : department}
               onChange={(e) => setDepartment(e.target.value)}
               disabled={role === 'superuser' || role === 'admin'}
@@ -282,7 +283,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                   </option>
                 ))
               )}
-            </select>
+            </AlphabeticalSelect>
           </div>
 
           <div>
@@ -456,7 +457,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.select_new_role', 'Pilih Peran Baru (Role)')}
             </label>
-            <select
+            <AlphabeticalSelect
               value={role}
               onChange={(e) => setRole(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium"
@@ -466,7 +467,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               <option value="manager">{t('admin.manager', 'Manager')}</option>
               <option value="editor">{t('admin.editor', 'Editor')}</option>
               <option value="viewer">{t('admin.viewer', 'Viewer')}</option>
-            </select>
+            </AlphabeticalSelect>
           </div>
 
           <div>
@@ -480,7 +481,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                 </span>
               )}
             </div>
-            <select
+            <AlphabeticalSelect
               value={role === 'superuser' ? '' : organizationId}
               onChange={(e) => setOrganizationId(e.target.value)}
               disabled={role === 'superuser'}
@@ -508,14 +509,14 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                   ))}
                 </>
               )}
-            </select>
+            </AlphabeticalSelect>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.tab_teams', 'Departmens / Tim')}
             </label>
-            <select
+            <AlphabeticalSelect
               value={role === 'superuser' || role === 'admin' ? '' : department}
               onChange={(e) => setDepartment(e.target.value)}
               disabled={role === 'superuser' || role === 'admin'}
@@ -530,7 +531,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                   </option>
                 ))
               )}
-            </select>
+            </AlphabeticalSelect>
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-2">
@@ -963,7 +964,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
               <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('admin.org_currency_label', 'Mata Uang Utama')}
               </label>
-              <select
+              <AlphabeticalSelect
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
@@ -971,13 +972,13 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>{c.code} — {currencyLabel(c.code, language)}</option>
                 ))}
-              </select>
+              </AlphabeticalSelect>
             </div>
             <div>
               <label htmlFor="create-org-country" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 {t('settings.region.country', 'Country / jurisdiction pack')}
               </label>
-              <select
+              <AlphabeticalSelect
                 id="create-org-country"
                 value={countryCode}
                 onChange={(e) => {
@@ -988,20 +989,20 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
               >
                 {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-              </select>
+              </AlphabeticalSelect>
             </div>
             <div>
               <label htmlFor="create-org-industry" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 {t('settings.region.industry', 'Industry pack')}
               </label>
-              <select
+              <AlphabeticalSelect
                 id="create-org-industry"
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
               >
                 {industries.map((i) => <option key={i.key} value={i.key}>{i.name.en}</option>)}
-              </select>
+              </AlphabeticalSelect>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -1184,7 +1185,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
               <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('admin.org_currency_label', 'Mata Uang Utama')}
               </label>
-              <select
+              <AlphabeticalSelect
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 outline-none"
@@ -1192,7 +1193,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>{c.code} — {currencyLabel(c.code, language)}</option>
                 ))}
-              </select>
+              </AlphabeticalSelect>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -1833,7 +1834,7 @@ export const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
                 {t('admin.all_users_in_team', 'Semua pengguna yang terdaftar sudah tergabung dalam tim ini.')}
               </div>
             ) : (
-              <select
+              <AlphabeticalSelect
                 required
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
@@ -1845,7 +1846,7 @@ export const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
                     {u.name} ({u.email}) - {u.role.toUpperCase()}
                   </option>
                 ))}
-              </select>
+              </AlphabeticalSelect>
             )}
           </div>
 
@@ -1952,7 +1953,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.inv_col_role', 'Peran Diminta')}
             </label>
-            <select
+            <AlphabeticalSelect
               value={role}
               onChange={(e) => setRole(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium"
@@ -1962,14 +1963,14 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               <option value="manager">{t('admin.manager_group_approval', 'Manager (Group Approval)')}</option>
               <option value="editor">{t('admin.editor_group_draft_upload', 'Editor (Group Draft & Upload)')}</option>
               <option value="viewer">{t('admin.viewer_read_only_final', 'Viewer (Read-Only Final)')}</option>
-            </select>
+            </AlphabeticalSelect>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.team_optional_label', 'Divisi / Tim (Opsional)')}
             </label>
-            <select
+            <AlphabeticalSelect
               value={teamId}
               onChange={(e) => setTeamId(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
@@ -1980,7 +1981,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                   {t.name}
                 </option>
               ))}
-            </select>
+            </AlphabeticalSelect>
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-2">

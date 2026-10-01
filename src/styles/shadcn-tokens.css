@@ -29,7 +29,7 @@
   --popover-foreground: #111111;
 
   /* Brand accent — LINE green */
-  --primary: #06c755;
+  --primary: #04803d;
   --primary-foreground: #ffffff;
 
   --secondary: #f1f5f9;
@@ -59,7 +59,7 @@
 
   --sidebar: #ffffff;
   --sidebar-foreground: #111111;
-  --sidebar-primary: #06c755;
+  --sidebar-primary: #04803d;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #ebfbf0;
   --sidebar-accent-foreground: #037436;

@@ -1122,6 +1122,7 @@ const AppContent = () => {
   if (!user) {
     return (
       <InteractiveGridBackground
+        staticOnly
         gridSize={40}
         gridColor="#d1d5db"
         darkGridColor="#1f2937"
@@ -1132,13 +1133,15 @@ const AppContent = () => {
         glowRadius={28}
         showFade
         fadeIntensity={25}
-        className="min-h-dvh w-full flex items-start justify-center px-4 bg-slate-50 dark:bg-slate-950"
-        style={{ paddingTop: 'calc(var(--spacing) * 20)' }}
+        className="w-full bg-slate-50 dark:bg-slate-950"
+        style={{ height: '100dvh' }}
       >
-        <SignInForm
-          onOpenPrivacyPolicy={handleOpenPrivacy}
-          onOpenTermsOfService={handleOpenTerms}
-        />
+        <div className="flex h-full w-full flex-col items-center overflow-y-auto px-4 py-6 sm:px-6 sm:py-10">
+          <SignInForm
+            onOpenPrivacyPolicy={handleOpenPrivacy}
+            onOpenTermsOfService={handleOpenTerms}
+          />
+        </div>
       </InteractiveGridBackground>
     );
   }

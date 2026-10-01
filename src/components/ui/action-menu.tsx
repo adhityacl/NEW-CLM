@@ -1,113 +1,34 @@
-import React, { useState, useRef, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+import React from 'react';
+import { DropdownMenu } from 'radix-ui';
 import { MoreHorizontal } from 'lucide-react';
-
+import { useLanguage } from '../../context/LanguageContext';
 export interface ActionMenuItem {
-  label: string;
-  icon?: React.ReactNode;
-  onClick: () => void;
-  variant?: 'default' | 'danger';
-  dividerBefore?: boolean;
+  label: string; icon?: React.ReactNode; onClick: () => void;
+  variant?: 'default' | 'danger'; dividerBefore?: boolean;
 }
-
-export interface ActionMenuProps {
-  items: ActionMenuItem[];
-  title?: string;
-}
-
-export const ActionMenu: React.FC<ActionMenuProps> = ({ items, title = 'Aksi' }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  const toggleMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    if (isOpen) {
-      setIsOpen(false);
-      return;
-    }
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openUpwards = spaceBelow < 180;
-
-    setPosition({
-      top: openUpwards ? undefined : rect.bottom + 6,
-      bottom: openUpwards ? window.innerHeight - rect.top + 6 : undefined,
-      right: window.innerWidth - rect.right,
-    });
-    setIsOpen(true);
-  };
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClose = () => setIsOpen(false);
-    window.addEventListener('scroll', handleClose, true);
-    window.addEventListener('resize', handleClose);
-    return () => {
-      window.removeEventListener('scroll', handleClose, true);
-      window.removeEventListener('resize', handleClose);
-    };
-  }, [isOpen]);
-
-  return (
-    <div className="inline-block relative">
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={toggleMenu}
-        className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer inline-flex items-center justify-center min-w-[36px] min-h-[36px]"
-        title={title}
-      >
+export interface ActionMenuProps { items: ActionMenuItem[]; title?: string; }
+export const ActionMenu: React.FC<ActionMenuProps> = ({ items, title }) => {
+  const { t } = useLanguage();
+  const label = title || t('common.actions', 'Actions');
+  return <DropdownMenu.Root>
+    <DropdownMenu.Trigger asChild>
+      <button type="button" title={label} aria-label={label} onClick={e => e.stopPropagation()}
+        className="inline-flex items-center justify-center min-w-11 min-h-11 sm:min-w-9 sm:min-h-9 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
         <MoreHorizontal className="w-4 h-4" />
       </button>
-
-      {isOpen &&
-        position &&
-        ReactDOM.createPortal(
-          <>
-            <div
-              className="fixed inset-0 z-[9998]"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsOpen(false);
-              }}
-            />
-            <div
-              style={{
-                position: 'fixed',
-                top: position.top !== undefined ? `${position.top}px` : 'auto',
-                bottom: position.bottom !== undefined ? `${position.bottom}px` : 'auto',
-                right: `${position.right}px`,
-              }}
-              className="w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-[9999] py-1.5 animate-in fade-in zoom-in-95 text-left"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {items.map((item, idx) => (
-                <React.Fragment key={idx}>
-                  {item.dividerBefore && <div className="border-t border-slate-100 dark:border-slate-800 my-1" />}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsOpen(false);
-                      item.onClick();
-                    }}
-                    className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors cursor-pointer font-medium ${
-                      item.variant === 'danger'
-                        ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#048C3B] dark:hover:text-[#06C755]'
-                    }`}
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </button>
-                </React.Fragment>
-              ))}
-            </div>
-          </>,
-          document.body
-        )}
-    </div>
-  );
+    </DropdownMenu.Trigger>
+    <DropdownMenu.Portal>
+      <DropdownMenu.Content align="end" sideOffset={6} collisionPadding={12}
+        onClick={e => e.stopPropagation()}
+        className="z-[1001] min-w-44 max-w-[calc(100vw-1.5rem)] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-1.5 animate-in">
+        {items.map((item, index) => <React.Fragment key={index}>
+          {item.dividerBefore && <DropdownMenu.Separator className="h-px bg-slate-200 dark:bg-slate-700 my-1" />}
+          <DropdownMenu.Item onSelect={item.onClick}
+            className={`flex items-center gap-2 min-h-11 sm:min-h-9 px-3 py-2 rounded-lg text-sm cursor-pointer outline-none data-[highlighted]:bg-slate-100 dark:data-[highlighted]:bg-slate-800 ${item.variant === 'danger' ? 'text-rose-700 dark:text-rose-400' : 'text-slate-700 dark:text-slate-200'}`}>
+            {item.icon}<span>{item.label}</span>
+          </DropdownMenu.Item>
+        </React.Fragment>)}
+      </DropdownMenu.Content>
+    </DropdownMenu.Portal>
+  </DropdownMenu.Root>;
 };

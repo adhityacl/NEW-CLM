@@ -140,9 +140,9 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
 
   if (registrationSuccess) {
     return (
-      <div className="w-full max-w-md h-[calc(100dvh-var(--spacing)*20)]">
-        <div className="w-full h-full flex flex-col rounded-t-[2rem] border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm overflow-hidden">
-          <div className="px-8 py-6 flex-1 flex flex-col justify-center overflow-y-auto text-center">
+      <div className="my-auto w-full min-w-0 max-w-md shrink-0">
+        <div className="w-full rounded-2xl sm:rounded-[2rem] border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm">
+          <div className="px-5 py-6 sm:px-8 sm:py-8 text-center">
             <div className="flex justify-center mb-6">
               <LanguageSwitcher language={language} setLanguage={setLanguage} t={t} />
             </div>
@@ -175,14 +175,14 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
   }
 
   return (
-    <div className="w-full max-w-md h-[calc(100dvh-var(--spacing)*20)]">
-      <div className="w-full h-full flex flex-col rounded-t-[2rem] border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm overflow-hidden">
-        <div className="px-8 py-6 flex-1 flex flex-col justify-center overflow-y-auto">
+    <div className="my-auto w-full min-w-0 max-w-md shrink-0">
+      <div className="w-full rounded-2xl sm:rounded-[2rem] border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm">
+        <div className="px-5 py-6 sm:px-8 sm:py-8">
           <div className="flex justify-center mb-6">
             <LanguageSwitcher language={language} setLanguage={setLanguage} t={t} />
           </div>
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold">
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-xl sm:text-2xl font-bold break-words">
               {setupMode
                 ? t('login.setup_title', 'Create your admin account')
                 : isRegister ? t('login.create_account') : t('login.welcome_app', 'Welcome to {appName}', { appName: branding.appName })}
@@ -207,7 +207,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
                 <Label htmlFor="signin-name">{t('login.fullname_label')}</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none" />
-                  <Input id="signin-name" type="text" required value={name} onChange={(e) => setName(e.target.value)} className="pl-9" placeholder={t('login.fullname_placeholder')} />
+                  <Input id="signin-name" type="text" required value={name} onChange={(e) => setName(e.target.value)} className="h-11 pl-9 text-base sm:text-sm" placeholder={t('login.fullname_placeholder')} />
                 </div>
               </div>
             )}
@@ -216,7 +216,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
               <Label htmlFor="signin-email">{t('login.email_label')}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none" />
-                <Input id="signin-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9" placeholder={t('login.email_placeholder')} />
+                <Input id="signin-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 pl-9 text-base sm:text-sm" placeholder={t('login.email_placeholder')} />
               </div>
             </div>
 
@@ -232,7 +232,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
                   autoComplete={setupMode ? 'new-password' : 'current-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9"
+                  className="h-11 pl-9 text-base sm:text-sm"
                   placeholder="••••••••"
                 />
               </div>
@@ -285,7 +285,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
                 <Button
                   type="button"
                   variant="link"
-                  className="text-sm"
+                  className="h-auto min-h-11 max-w-full whitespace-normal text-sm"
                   onClick={() => {
                     setIsRegister(!isRegister);
                     setError('');
@@ -309,7 +309,7 @@ const LanguageSwitcher: React.FC<{ language: Language; setLanguage: (lang: Langu
   <div
     role="group"
     aria-label={t('header.switch_language', 'Pilih bahasa')}
-    className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold mb-4"
+    className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold"
   >
     {LANGUAGE_OPTIONS.map((option) => (
       <button
@@ -319,7 +319,7 @@ const LanguageSwitcher: React.FC<{ language: Language; setLanguage: (lang: Langu
         onClick={() => setLanguage(option.code)}
         className={`min-w-11 min-h-11 px-2.5 py-1.5 rounded-full transition-all cursor-pointer text-xs font-bold flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
           language === option.code
-            ? 'bg-[#06C755] text-white shadow-2xs'
+            ? 'bg-[#04803D] text-white shadow-2xs'
             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
         }`}
         title={option.nativeName}

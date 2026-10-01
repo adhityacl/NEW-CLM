@@ -57,7 +57,9 @@ const ToolbarButton: React.FC<{
     onClick={onClick}
     disabled={disabled}
     title={title}
-    className={`p-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+    aria-label={title}
+    aria-pressed={active}
+    className={`min-w-11 min-h-11 lg:min-w-8 lg:min-h-8 inline-flex items-center justify-center p-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
       active
         ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
         : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -131,6 +133,7 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
   const { t } = useLanguage();
   const showAlert = useAlertToast();
   const [showTableMenu, setShowTableMenu] = useState(false);
+  const [showAllTools, setShowAllTools] = useState(false);
 
   if (!editor) return null;
 
@@ -168,7 +171,14 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 py-1.5 flex flex-wrap items-center gap-0.5 shrink-0 z-10 shadow-xs">
+    <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-2 py-1 shrink-0 z-10">
+      <div className="flex items-center gap-1 lg:hidden">
+        <ToolbarButton title={t('editor.undo_ctrl_z')} onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}><Undo2 className="w-4 h-4" /></ToolbarButton>
+        <ToolbarButton title={t('editor.tebal_ctrl_b')} active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}><Bold className="w-4 h-4" /></ToolbarButton>
+        <ToolbarButton title={t('editor.miring_ctrl_i')} active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}><Italic className="w-4 h-4" /></ToolbarButton>
+        <button type="button" aria-expanded={showAllTools} onClick={() => setShowAllTools(!showAllTools)} className="ml-auto min-h-11 px-2 text-sm font-medium rounded-lg">{t(showAllTools ? 'ui.fewer_tools' : 'ui.more_tools')}</button>
+      </div>
+      <div className={`${showAllTools ? 'flex' : 'hidden'} lg:flex flex-wrap items-center gap-0.5`}>
       {/* History */}
       <ToolbarButton title={t('editor.undo_ctrl_z', 'Undo (Ctrl+Z)')} onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
         <Undo2 className="w-3.5 h-3.5" />
@@ -417,6 +427,7 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
       <ToolbarButton title={t('editor.hapus_format_teks', 'Hapus Format Teks')} onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}>
         <Eraser className="w-3.5 h-3.5" />
       </ToolbarButton>
+      </div>
     </div>
   );
 };

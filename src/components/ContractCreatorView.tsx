@@ -1,3 +1,6 @@
+import { AlphabeticalSelect } from './ui/alphabetical-select';
+import { EditorSidePanel } from './editor/EditorSidePanel';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
@@ -337,7 +340,9 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isFullscreen]);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const desktopEditor = useMediaQuery('(min-width: 1024px)');
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
+  useEffect(() => { setSidebarOpen(desktopEditor); }, [desktopEditor]);
   const [sidebarTab, setSidebarTab] = useState<'fields' | 'partners' | 'templates' | 'contents' | 'history' | 'info' | 'comments'>('fields');
   const [highlightFillable, setHighlightFillable] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(100);
@@ -1339,7 +1344,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
   return (
     <div
       className={`flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 select-text overflow-hidden font-sans ${
-        isFullscreen ? 'fixed inset-0 z-50 h-screen' : 'h-screen max-h-screen'
+        screen === 'explorer' ? 'w-full bg-transparent dark:bg-transparent' : isFullscreen ? 'fixed inset-0 z-50 h-screen' : 'h-screen max-h-screen'
       }`}
     >
       {screen === 'explorer' && (
@@ -1352,7 +1357,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
       {/* No z-index here: as a flex item (via the `contents` wrapper above) it applies even at
           position:static, and matching the app Header's z-20 let this later-in-DOM element win
           the tie-break and paint over the Header's user-menu dropdown. */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+      <header className="editor-header bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2.5 min-w-0 max-w-full">
           <button
             type="button"
@@ -1440,7 +1445,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
             type="button"
             onClick={handleDownloadIndonesianDocx}
             disabled={isDownloadingDocx}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#06C755] hover:bg-[#05a847] text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#04803D] hover:bg-[#036B33] text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
             title={t('contract_creator.download_title', 'Download file Word (.doc)')}
           >
             {isDownloadingDocx ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
@@ -1461,6 +1466,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
           {/* Sidebar Toggle */}
           <button
             type="button"
+            aria-expanded={sidebarOpen}
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={`p-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer ml-1 ${
               sidebarOpen
@@ -1507,7 +1513,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
       {/* 2. WYSIWYG FORMATTING TOOLBAR (Only shown in Editor Mode) */}
       {viewMode === 'editor' && (
-        <div className="flex items-stretch">
+        <div className="flex flex-col lg:flex-row items-stretch">
           <div className="flex-1 min-w-0">
             <ContractEditorToolbar editor={editor} />
           </div>
@@ -1530,7 +1536,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
         
         {/* VIEW MODE A: WYSIWYG CANVAS WORKSPACE (Versi Bahasa Indonesia) */}
         <div
-          className={`flex-1 overflow-y-auto p-4 sm:p-8 md:p-12 justify-center items-start bg-slate-200/70 dark:bg-slate-950/80 ${
+          className={`flex-1 min-w-0 overflow-y-auto p-2 sm:p-6 md:p-8 justify-center items-start bg-slate-200/70 dark:bg-slate-950/80 ${
             viewMode === 'editor' ? 'flex' : 'hidden'
           }`}
         >
@@ -1541,7 +1547,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
             {/* White Paper Sheet */}
             <div
               ref={paperSheetRef}
-              className={`bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl rounded-sm border border-slate-300/80 dark:border-slate-800 min-h-[1150px] p-10 sm:p-16 md:p-20 relative ${
+              className={`bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl rounded-sm border border-slate-300/80 dark:border-slate-800 min-h-[900px] p-5 sm:p-12 md:p-16 relative ${
                 highlightFillable ? 'highlight-fillable-mode' : ''
               }`}
             >
@@ -1558,7 +1564,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
         {/* VIEW MODE B: READ-ONLY DOCUMENT PREVIEW (mirrors the editor paper, slots as plain text) */}
         <div
-          className={`flex-1 overflow-y-auto p-4 sm:p-8 md:p-12 justify-center items-start bg-slate-200/70 dark:bg-slate-950/80 ${
+          className={`flex-1 min-w-0 overflow-y-auto p-2 sm:p-6 md:p-8 justify-center items-start bg-slate-200/70 dark:bg-slate-950/80 ${
             viewMode === 'preview' ? 'flex' : 'hidden'
           }`}
         >
@@ -1594,7 +1600,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
               </div>
             )}
             {/* White Paper Sheet */}
-            <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl rounded-sm border border-slate-300/80 dark:border-slate-800 min-h-[1150px] p-10 sm:p-16 md:p-20 relative">
+            <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl rounded-sm border border-slate-300/80 dark:border-slate-800 min-h-[900px] p-5 sm:p-12 md:p-16 relative">
               <div className="min-h-[900px] font-sans leading-relaxed text-slate-900 dark:text-slate-100">
                 {/* "ProseMirror" class reused so this read-only preview picks up the exact
                     same heading/paragraph/table typography rules as the live editor content. */}
@@ -1634,7 +1640,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
         {/* 4. RIGHT SIDEBAR: QUICK FILL FORM & CLAUSE INSERTER */}
         {sidebarOpen && (
-          <aside className="w-80 sm:w-[23rem] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex shrink-0 z-10 shadow-sm overflow-hidden">
+          <EditorSidePanel onClose={() => setSidebarOpen(false)}>
             <div
               role="tablist"
               aria-orientation="vertical"
@@ -1907,7 +1913,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                                 className="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                               />
                             ) : field.type === 'select' ? (
-                              <select
+                              <AlphabeticalSelect
                                 value={currentVal}
                                 onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
                                 className="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -1916,7 +1922,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                                 {(field.options || []).map((opt: string) => (
                                   <option key={opt} value={opt}>{opt}</option>
                                 ))}
-                              </select>
+                              </AlphabeticalSelect>
                             ) : field.type === 'boolean' ? (
                               <div className="flex gap-1.5">
                                 {[t('contract_creator.field.boolean_yes', 'Yes'), t('contract_creator.field.boolean_no', 'No')].map((opt) => (
@@ -1963,7 +1969,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                       {t('contract_creator.partners.select_label', 'Pilih Mitra Terdaftar (Auto-Fill)')}
                     </label>
 
-                    <select
+                    <AlphabeticalSelect
                       value={selectedPartnerId}
                       onChange={(e) => {
                         const id = e.target.value;
@@ -1979,7 +1985,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                           {p.nama_partner} ({p.partner_id})
                         </option>
                       ))}
-                    </select>
+                    </AlphabeticalSelect>
                   </div>
 
                   {selectedPartner && (
@@ -2045,7 +2051,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
 
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.type_label', 'Tipe Isian')}</label>
-                          <select
+                          <AlphabeticalSelect
                             value={newFieldType}
                             onChange={(e: any) => setNewFieldType(e.target.value)}
                             className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -2057,7 +2063,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                             <option value="email">{t('contract_creator.custom_field_builder.type_email', 'Email')}</option>
                             <option value="boolean">{t('contract_creator.custom_field_builder.type_boolean', 'Ya / Tidak')}</option>
                             <option value="select">{t('contract_creator.custom_field_builder.type_select', 'Pilihan (Dropdown)')}</option>
-                          </select>
+                          </AlphabeticalSelect>
                         </div>
 
                         {newFieldType === 'select' && (
@@ -2222,7 +2228,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                         <span>{t('contract_creator.ai_template.section_title', 'Buat Template dengan AI')}</span>
                       </h3>
                       <div className="space-y-2">
-                        <select
+                        <AlphabeticalSelect
                           value={aiTemplateDocType}
                           onChange={(e) => setAiTemplateDocType(e.target.value as 'contract' | 'agreement' | 'so')}
                           className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -2230,7 +2236,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                           <option value="contract">{t('contract_creator.ai_template.type_contract', 'Kontrak')}</option>
                           <option value="agreement">{t('contract_creator.ai_template.type_agreement', 'Perjanjian (Agreement)')}</option>
                           <option value="so">{t('contract_creator.ai_template.type_so', 'Surat Pesanan (SO)')}</option>
-                        </select>
+                        </AlphabeticalSelect>
                         <textarea
                           value={aiTemplatePrompt}
                           onChange={(e) => setAiTemplatePrompt(e.target.value)}
@@ -2242,7 +2248,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                           type="button"
                           onClick={handleGenerateAiTemplate}
                           disabled={isGeneratingAiTemplate}
-                          className="w-full py-2 px-3 text-xs font-bold text-white bg-[#06C755] hover:bg-[#05b54c] rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                          className="w-full py-2 px-3 text-xs font-bold text-white bg-[#04803D] hover:bg-[#05b54c] rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                         >
                           {isGeneratingAiTemplate ? (
                             <>
@@ -2281,7 +2287,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
                         type="button"
                         onClick={handleSaveTemplate}
                         disabled={isSavingTemplate}
-                        className="w-full py-2 px-3 text-xs font-bold text-white bg-[#06C755] hover:bg-[#05b54c] rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        className="w-full py-2 px-3 text-xs font-bold text-white bg-[#04803D] hover:bg-[#05b54c] rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                       >
                         {isSavingTemplate ? (
                           <>
@@ -2356,7 +2362,7 @@ export const ContractCreatorView: React.FC<ContractCreatorViewProps> = ({
               )}
             </div>
             </div>
-          </aside>
+          </EditorSidePanel>
         )}
       </div>
 

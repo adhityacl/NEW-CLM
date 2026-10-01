@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from './ui/alphabetical-select';
 import React, { useState, useEffect } from 'react';
 import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { ActivityLog } from '../types';
@@ -123,7 +124,7 @@ export const ActivityLogsView: React.FC = () => {
         <button
           onClick={loadLogs}
           disabled={loading}
-          className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
+          className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 text-white ${loading ? 'animate-spin' : ''}`} />
           <span>{t('logs.refresh_btn', 'Refresh Log')}</span>
@@ -149,7 +150,7 @@ export const ActivityLogsView: React.FC = () => {
           </div>
 
           {/* Filter 1: Modul */}
-          <select
+          <AlphabeticalSelect
             value={filterModule}
             onChange={(e) => {
               setFilterModule(e.target.value);
@@ -163,10 +164,10 @@ export const ActivityLogsView: React.FC = () => {
                 {mod}
               </option>
             ))}
-          </select>
+          </AlphabeticalSelect>
 
           {/* Filter 2: Jenis Aksi */}
-          <select
+          <AlphabeticalSelect
             value={selectedAction}
             onChange={(e) => {
               setSelectedAction(e.target.value);
@@ -184,7 +185,7 @@ export const ActivityLogsView: React.FC = () => {
             <option value="UPLOAD_FAILED">{t('logs.upload_failed', 'UPLOAD_FAILED')}</option>
             <option value="SYSTEM_ERROR">{t('logs.system_error', 'SYSTEM_ERROR')}</option>
             <option value="ADD_USER">{t('logs.add_user', 'ADD_USER')}</option>
-          </select>
+          </AlphabeticalSelect>
 
           {/* Filter 3: Periode Waktu */}
           <select

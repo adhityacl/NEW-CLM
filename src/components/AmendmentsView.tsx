@@ -1,3 +1,4 @@
+import { AlphabeticalSelect } from './ui/alphabetical-select';
 import React, { useState } from 'react';
 import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { Contract, InsertionOrder } from '../types';
@@ -56,7 +57,7 @@ export const AmendmentsView: React.FC<AmendmentsViewProps> = ({
         {isLegal && (
           <button
             onClick={() => onOpenAddendumModal()}
-            className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
+            className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0"
           >
             <Plus className="w-4 h-4 text-white" />
             <span>{t('io.add_btn', 'Tambah')}</span>
@@ -78,7 +79,7 @@ export const AmendmentsView: React.FC<AmendmentsViewProps> = ({
             />
           </div>
 
-          <select
+          <AlphabeticalSelect
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
             className="h-9 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[140px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2313192B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
@@ -86,7 +87,7 @@ export const AmendmentsView: React.FC<AmendmentsViewProps> = ({
             <option value="ALL">{t('amendments.filter_all')}</option>
             <option value="Contract">{t('amendments.filter_contract')}</option>
             <option value="IO">{t('amendments.filter_io')}</option>
-          </select>
+          </AlphabeticalSelect>
         </div>
       </div>
 

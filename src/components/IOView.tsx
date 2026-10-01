@@ -1,3 +1,6 @@
+import { AlphabeticalSelect } from './ui/alphabetical-select';
+import { formatBusinessDate } from '../lib/displayDate';
+import { FilterSummary } from './ui/filter-summary';
 import React, { useState, useMemo } from 'react';
 import { CONTRACT_STATUS_LABEL_KEY, DD_STATUS_LABEL_KEY, DOC_STATUS_LABEL_KEY } from '../lib/domainStatus';
 import { InsertionOrder, Contract, Partner } from '../types';
@@ -211,7 +214,7 @@ export const IOView: React.FC<IOViewProps> = ({
         scope="col"
         aria-sort={isSorted ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
         className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left select-none align-middle"
-      >
+       data-numeric={field === 'value'}>
         <button
           type="button"
           onClick={() => handleSort(field)}
@@ -344,7 +347,7 @@ export const IOView: React.FC<IOViewProps> = ({
             <button
               onClick={handleExportCSV}
               disabled={filteredIOs.length === 0}
-              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
               title={t('io.export_csv', 'Ekspor CSV')}
             >
               <Download className="w-4 h-4" />
@@ -355,10 +358,10 @@ export const IOView: React.FC<IOViewProps> = ({
           {canCreateIO(user) && (
             <button
               onClick={onAddIO}
-              className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#06C755] hover:bg-[#05B34C] text-white font-bold flex items-center transition-all shrink-0"
+              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0"
             >
               <Plus className="w-4 h-4 text-white" />
-              <span>{t('io.add_btn', 'Tambah')}</span>
+              <span>{t('ui.add_io')}</span>
             </button>
           )}
         </div>
@@ -373,6 +376,7 @@ export const IOView: React.FC<IOViewProps> = ({
             <input
               type="text"
               placeholder={t('io.search_ph', 'Cari insertion orders...')}
+              aria-label={t('ui.search')}
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -383,23 +387,25 @@ export const IOView: React.FC<IOViewProps> = ({
           </div>
 
           {/* Simple Select Filter: Status */}
-          <select
-            value={selectedStatus}
+          <AlphabeticalSelect
+            aria-label={t('ui.filter_status')}
+              value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('io.all_status', 'Semua Status')}</option>
             <option value="Berjalan">{t('io.status_berjalan', 'Berjalan')}</option>
             <option value="Selesai">{t('io.status_selesai', 'Selesai')}</option>
             <option value="Draft">{t('io.status_draft', 'Draft')}</option>
             <option value="Dibatalkan">{t('io.status_dibatalkan', 'Dibatalkan')}</option>
-          </select>
+          </AlphabeticalSelect>
 
           {/* Simple Select Filter: Pricing Model */}
-          <select
-            value={selectedPricingModel}
+          <AlphabeticalSelect
+            aria-label={t('ui.filter_pricing')}
+              value={selectedPricingModel}
             onChange={(e) => setSelectedPricingModel(e.target.value)}
-            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('io.all_pricing_models', 'Semua Model Pricing')}</option>
             <option value="CPM">{t('io.cpm', 'CPM')}</option>
@@ -407,19 +413,20 @@ export const IOView: React.FC<IOViewProps> = ({
             <option value="Flat Fee">{t('io.flat_fee', 'Flat Fee')}</option>
             <option value="Revenue Share">{t('io.revenue_share', 'Revenue Share')}</option>
             <option value="Fixed Package">{t('io.fixed_package', 'Fixed Package')}</option>
-          </select>
+          </AlphabeticalSelect>
 
           {/* Simple Select Filter: Charging Scheme */}
-          <select
-            value={selectedChargingType}
+          <AlphabeticalSelect
+            aria-label={t('ui.filter_charging')}
+              value={selectedChargingType}
             onChange={(e) => setSelectedChargingType(e.target.value)}
-            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('io.all_charging_types', 'Semua Skema Pembayaran')}</option>
             <option value="Prepaid">{t('io.prepaid', 'Prepaid')}</option>
             <option value="Postpaid">{t('io.postpaid', 'Postpaid')}</option>
             <option value="Milestone">{t('io.milestone', 'Milestone')}</option>
-          </select>
+          </AlphabeticalSelect>
 
           {/* Reset Filters */}
           {isFiltered && (
@@ -437,7 +444,7 @@ export const IOView: React.FC<IOViewProps> = ({
           <div className="relative flex-initial">
             <button
               onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-              className="h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
+              className="min-h-11 sm:min-h-9 h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
               title={t('io.view_settings', 'Pengaturan Tampilan Kolom')}
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
@@ -487,8 +494,10 @@ export const IOView: React.FC<IOViewProps> = ({
 
       {/* DataTable Container */}
       <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto bg-white dark:bg-slate-900">
-          <table className="w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
+        <FilterSummary filters={[{ label: t('ui.search'), value: searchTerm, active: Boolean(searchTerm) }, { label: t('ui.filter_status'), value: selectedStatus, active: selectedStatus !== 'ALL' }, { label: t('ui.filter_pricing'), value: selectedPricingModel, active: selectedPricingModel !== 'ALL' }, { label: t('ui.filter_charging'), value: selectedChargingType, active: selectedChargingType !== 'ALL' }]} onReset={() => { setSearchTerm(''); setSelectedStatus('ALL'); setSelectedPricingModel('ALL'); setSelectedChargingType('ALL'); }} />
+        <p className="px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
+        <div className="data-table-scroll overflow-x-auto bg-white dark:bg-slate-900" tabIndex={0} role="region" aria-label={t('ui.scroll_table')}>
+          <table className="app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
                 <th scope="col" className="pl-6 pr-2 py-4 w-12 text-left align-middle">
@@ -616,18 +625,18 @@ export const IOView: React.FC<IOViewProps> = ({
                       {/* Tanggal Mulai */}
                       {visibleColumns.tanggal_mulai && (
                         <td className="py-4 px-4 text-xs text-slate-700 text-left font-normal whitespace-nowrap">
-                          {io.tanggal_mulai || '-'}
+                          {formatBusinessDate(io.tanggal_mulai)}
                         </td>
                       )}
                       {/* Tanggal Selesai */}
                       {visibleColumns.tanggal_selesai && (
                         <td className="py-4 px-4 text-xs text-slate-700 text-left font-normal whitespace-nowrap">
-                          {io.tanggal_berakhir || io.tanggal_selesai || '-'}
+                          {formatBusinessDate(io.tanggal_berakhir || io.tanggal_selesai)}
                         </td>
                       )}
                       {/* Nilai IO */}
                       {visibleColumns.nilai && (
-                        <td className="py-4 px-4 text-left text-xs font-normal text-slate-700 whitespace-nowrap">
+                        <td className="py-4 px-4 text-right text-xs font-normal text-slate-700 whitespace-nowrap tabular-nums">
                           {formatMoney(io.nilai_io, io.mata_uang)}
                         </td>
                       )}
