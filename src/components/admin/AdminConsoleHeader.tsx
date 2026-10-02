@@ -104,9 +104,11 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
             <h1 className="truncate text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
               {isSystemArea ? t('admin.system_admin', 'System Admin') : t('admin.organization_admin', 'Organization Admin')}
             </h1>
-            <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-              {isSystemArea ? t('admin.global_platform_controls', 'Global platform controls') : t('admin.active_organization_controls', 'Active organization controls')}
-            </p>
+            {!isSystemArea && (
+              <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+                {t('admin.active_organization_controls', 'Active organization controls')}
+              </p>
+            )}
           </div>
         </div>
 
