@@ -1,5 +1,5 @@
 import { AlphabeticalSelect } from '../ui/alphabetical-select';
-import { DateInput } from '../DateInput';
+import { TableEmptyState } from '../ui/table-empty-state';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Archive,
@@ -28,7 +28,6 @@ import {
   type DocumentListResponse,
   type DocumentSortKey,
   type DocumentSummary,
-  type MetadataField,
 } from '../../lib/documentModel';
 import { RelativeTime } from './RelativeTime';
 import { ActionMenu, type ActionMenuItem } from '../ui/action-menu';
@@ -51,13 +50,9 @@ interface Filters {
   status: string;
   type: string;
   created_by: string;
-  from: string;
-  to: string;
-  meta_field: string;
-  meta_value: string;
 }
 
-const EMPTY_FILTERS: Filters = { status: '', type: '', created_by: '', from: '', to: '', meta_field: '', meta_value: '' };
+const EMPTY_FILTERS: Filters = { status: '', type: '', created_by: '' };
 const ASCENDING_FIRST: DocumentSortKey[] = ['name', 'type', 'status', 'created_by'];
 
 export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, canDelete, onOpen, onCreate }) => {
@@ -68,14 +63,21 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [showFilters, setShowFilters] = useState(false);
+  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState({
+    type: true,
+    status: true,
+    created: false,
+    modified: true,
+    createdBy: true,
+    size: false,
+  });
   const [sort, setSort] = useState<{ key: DocumentSortKey; dir: 'asc' | 'desc' }>({ key: 'modified_at', dir: 'desc' });
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(PAGE_SIZES[0]);
   const [reloadKey, setReloadKey] = useState(0);
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [isFetching, setIsFetching] = useState(false);
-  const [fields, setFields] = useState<MetadataField[]>([]);
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -90,10 +92,6 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
     }, 300);
     return () => clearTimeout(id);
   }, [searchInput]);
-
-  useEffect(() => {
-    documentsApi.listFields().then(setFields).catch(() => setFields([]));
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -118,10 +116,8 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
     setFilters((prev) => ({ ...prev, [key]: value }));
     setPage(1);
   };
-  const resetFilters = () => {
-    setFilters(EMPTY_FILTERS);
-    setSearchInput('');
-    setPage(1);
+  const toggleColumnVisibility = (column: keyof typeof visibleColumns) => {
+    setVisibleColumns((current) => ({ ...current, [column]: !current[column] }));
   };
   const toggleSort = (key: DocumentSortKey) => {
     setSort((prev) =>
@@ -200,7 +196,6 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
     ];
   };
 
-  const isFiltered = Boolean(search) || Object.values(filters).some(Boolean);
   const data = state.status === 'ready' ? state.data : null;
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
 
@@ -254,30 +249,30 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
           )}
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-5 space-y-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-2.5 w-full">
             <div className="relative flex-1 min-w-[200px] sm:min-w-[240px]">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
               <label htmlFor="document-search" className="sr-only">
-                {t('documents.explorer.search_label', 'Cari dokumen')}
+                {t('documents.explorer.search_label', 'Search Document')}
               </label>
               <input
                 id="document-search"
                 type="search"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder={t('documents.explorer.search_placeholder', 'Cari nama dokumen atau nilai metadata…')}
+                placeholder={t('documents.explorer.search_placeholder', 'Search Documents…')}
                 className="h-11 sm:h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] font-medium transition-colors"
               />
             </div>
             <label htmlFor="document-status-filter" className="sr-only">
-              {t('documents.field.status', 'Status')}
+              {t('documents.filter.status_label', 'Document Status')}
             </label>
             <AlphabeticalSelect
               id="document-status-filter"
               value={filters.status}
               onChange={(e) => updateFilter('status', e.target.value)}
-              className="h-11 sm:h-9 min-w-0 flex-1 sm:min-w-[200px] px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] cursor-pointer"
+              className="min-h-11 sm:min-h-9 h-9 min-w-[130px] flex-1 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] cursor-pointer"
             >
               <option value="">{t('documents.filter.status_active', 'Semua status aktif')}</option>
               {DOCUMENT_STATUSES.map((s) => (
@@ -287,86 +282,82 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
               ))}
               <option value="all">{t('documents.filter.status_all', 'Semua (termasuk arsip)')}</option>
             </AlphabeticalSelect>
-            <button
-              type="button"
-              onClick={() => setShowFilters((v) => !v)}
-              aria-expanded={showFilters}
-              aria-controls="document-advanced-filters"
-              className="inline-flex shrink-0 items-center gap-1.5 px-4 min-h-11 sm:min-h-9 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden />
-              {t('documents.filter.more', 'Filter')}
-            </button>
-          </div>
 
-          {showFilters && (
-            <div id="document-advanced-filters" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-              <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                <span>{t('documents.field.type', 'Jenis')}</span>
-                <AlphabeticalSelect value={filters.type} onChange={(e) => updateFilter('type', e.target.value)} className={INPUT_CLASS}>
-                  <option value="">{t('documents.filter.any', 'Semua')}</option>
-                  {DOCUMENT_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {typeLabel(t, type)}
-                    </option>
-                  ))}
-                </AlphabeticalSelect>
-              </label>
-              <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                <span>{t('documents.field.created_by', 'Dibuat oleh')}</span>
-                <AlphabeticalSelect value={filters.created_by} onChange={(e) => updateFilter('created_by', e.target.value)} className={INPUT_CLASS}>
-                  <option value="">{t('documents.filter.any', 'Semua')}</option>
-                  {data?.creators.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name || c.id}
-                    </option>
-                  ))}
-                </AlphabeticalSelect>
-              </label>
-              <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                <span>{t('documents.filter.created_from', 'Dibuat sejak')}</span>
-                <DateInput value={filters.from} onChange={(value) => updateFilter('from', value)} />
-              </label>
-              <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                <span>{t('documents.filter.created_to', 'Dibuat sampai')}</span>
-                <DateInput value={filters.to} onChange={(value) => updateFilter('to', value)} />
-              </label>
-              {fields.length > 0 && (
+            <label htmlFor="document-type-filter" className="sr-only">
+              {t('documents.filter.type_label', 'Document Type')}
+            </label>
+            <AlphabeticalSelect
+              id="document-type-filter"
+              value={filters.type}
+              onChange={(e) => updateFilter('type', e.target.value)}
+              className="min-h-11 sm:min-h-9 h-9 min-w-[130px] flex-1 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] cursor-pointer"
+            >
+              <option value="">{t('documents.filter.type_all', 'All Document Types')}</option>
+              {DOCUMENT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {typeLabel(t, type)}
+                </option>
+              ))}
+            </AlphabeticalSelect>
+
+            <label htmlFor="document-creator-filter" className="sr-only">
+              {t('documents.filter.created_by_label', 'Created By')}
+            </label>
+            <AlphabeticalSelect
+              id="document-creator-filter"
+              value={filters.created_by}
+              onChange={(e) => updateFilter('created_by', e.target.value)}
+              className="min-h-11 sm:min-h-9 h-9 min-w-[130px] flex-1 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] cursor-pointer"
+            >
+              <option value="">{t('documents.filter.created_by_all', 'All Creators')}</option>
+              {(data?.creators ?? []).map((creator) => (
+                <option key={creator.id} value={creator.id}>
+                  {creator.name || creator.id}
+                </option>
+              ))}
+            </AlphabeticalSelect>
+
+            <div className="relative flex-initial">
+              <button
+                type="button"
+                onClick={() => setIsViewMenuOpen((open) => !open)}
+                aria-expanded={isViewMenuOpen}
+                aria-haspopup="menu"
+                className="min-h-11 sm:min-h-9 h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98]"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" aria-hidden />
+                <span>{t('documents.filter.view', 'View')}</span>
+              </button>
+              {isViewMenuOpen && (
                 <>
-                  <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                    <span>{t('documents.filter.meta_field', 'Kolom metadata')}</span>
-                    <AlphabeticalSelect value={filters.meta_field} onChange={(e) => updateFilter('meta_field', e.target.value)} className={INPUT_CLASS}>
-                      <option value="">{t('documents.filter.any', 'Semua')}</option>
-                      {fields.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </AlphabeticalSelect>
-                  </label>
-                  <label className="space-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                    <span>{t('documents.filter.meta_value', 'Nilai metadata')}</span>
-                    <input
-                      type="text"
-                      value={filters.meta_value}
-                      disabled={!filters.meta_field}
-                      onChange={(e) => updateFilter('meta_value', e.target.value)}
-                      className={`${INPUT_CLASS} disabled:opacity-50`}
-                    />
-                  </label>
+                  <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)} />
+                  <div className="absolute right-0 top-11 z-30 w-52 rounded-2xl border border-slate-200 bg-white py-2 shadow-xl dark:border-slate-800 dark:bg-slate-900" role="menu">
+                    <div className="mb-1 border-b border-slate-100 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">
+                      {t('documents.filter.toggle_columns', 'Toggle Columns')}
+                    </div>
+                    {([
+                      ['type', t('documents.field.type', 'Type')],
+                      ['status', t('documents.field.status', 'Status')],
+                      ['created', t('documents.field.created', 'Created')],
+                      ['modified', t('documents.field.modified', 'Modified')],
+                      ['createdBy', t('documents.field.created_by', 'Created by')],
+                      ['size', t('documents.field.size', 'Size')],
+                    ] as const).map(([column, label]) => (
+                      <label key={column} className="flex cursor-pointer items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
+                        <input
+                          type="checkbox"
+                          checked={visibleColumns[column]}
+                          onChange={() => toggleColumnVisibility(column)}
+                          className="rounded border-slate-300 text-[#06C755] focus:ring-[#06C755] dark:border-slate-700"
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </>
               )}
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="min-h-11 sm:min-h-9 px-3 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                >
-                  {t('documents.filter.reset', 'Reset filter')}
-                </button>
-              </div>
             </div>
-          )}
+          </div>
         </div>
 
         <section
@@ -404,29 +395,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
             </div>
           )}
 
-          {data && data.total === 0 && (
-            <div className="p-10 text-center space-y-3">
-              <FileText className="w-8 h-8 mx-auto text-slate-300" aria-hidden />
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                {isFiltered
-                  ? t('documents.explorer.no_match', 'Tidak ada dokumen yang cocok — coba ubah pencarian atau filter.')
-                  : t('documents.explorer.empty', 'Belum ada dokumen tersimpan.')}
-              </p>
-              {isFiltered ? (
-                <button type="button" onClick={resetFilters} className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 underline cursor-pointer">
-                  {t('documents.filter.reset', 'Reset filter')}
-                </button>
-              ) : (
-                canEdit && (
-                  <button type="button" onClick={onCreate} className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 underline cursor-pointer">
-                    {t('documents.explorer.new', 'Dokumen Baru')}
-                  </button>
-                )
-              )}
-            </div>
-          )}
-
-          {data && data.total > 0 && (
+          {data && (
             <>
               <div className="relative overflow-x-auto bg-white dark:bg-slate-900">
                 <table className="app-data-table document-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
@@ -434,19 +403,19 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                   <thead className="bg-slate-50 dark:bg-slate-800/50">
                     <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
                       {sortHeader('name', t('documents.field.name', 'Nama'), 'pl-6 pr-4 py-4')}
-                      {sortHeader('type', t('documents.field.type', 'Jenis'), 'p-4 hidden md:table-cell')}
-                      {sortHeader('status', t('documents.field.status', 'Status'))}
-                      {sortHeader('created_at', t('documents.field.created', 'Dibuat'), 'p-4 hidden lg:table-cell')}
-                      {sortHeader('modified_at', t('documents.field.modified', 'Diubah'))}
-                      {sortHeader('created_by', t('documents.field.created_by', 'Dibuat oleh'), 'p-4 hidden md:table-cell')}
-                      {sortHeader('file_size', t('documents.field.size', 'Ukuran'), 'p-4 hidden lg:table-cell')}
+                      {visibleColumns.type && sortHeader('type', t('documents.field.type', 'Jenis'), 'p-4 hidden md:table-cell')}
+                      {visibleColumns.status && sortHeader('status', t('documents.field.status', 'Status'))}
+                      {visibleColumns.created && sortHeader('created_at', t('documents.field.created', 'Dibuat'), 'p-4 hidden lg:table-cell')}
+                      {visibleColumns.modified && sortHeader('modified_at', t('documents.field.modified', 'Diubah'))}
+                      {visibleColumns.createdBy && sortHeader('created_by', t('documents.field.created_by', 'Dibuat oleh'), 'p-4 hidden md:table-cell')}
+                      {visibleColumns.size && sortHeader('file_size', t('documents.field.size', 'Ukuran'), 'p-4 hidden lg:table-cell')}
                       <th scope="col" className="pl-2 pr-6 py-4 text-right w-20 text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">
                         <div className="flex items-center justify-end">{t('documents.field.actions', 'Aksi')}</div>
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
-                    {data.documents.map((doc) => (
+                    {data.documents.length === 0 ? <TableEmptyState colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} /> : data.documents.map((doc) => (
                       <tr key={doc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="pl-6 pr-4 py-4 text-xs text-left align-middle max-w-[320px]">
                           {renaming?.id === doc.id ? (
@@ -474,24 +443,24 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                           )}
                           <span className="text-[11px] text-slate-500 dark:text-slate-400">v{doc.current_version}</span>
                         </td>
-                        <td className="py-4 px-4 text-xs text-left align-middle hidden md:table-cell">
+                        {visibleColumns.type && <td className="py-4 px-4 text-xs text-left align-middle hidden md:table-cell">
                           <span className={typeBadgeClass(doc.type)}>{typeLabel(t, doc.type)}</span>
-                        </td>
-                        <td className="py-4 px-4 text-xs text-left align-middle">
+                        </td>}
+                        {visibleColumns.status && <td className="py-4 px-4 text-xs text-left align-middle">
                           <span className={statusBadgeClass(doc.status)}>{statusLabel(t, doc.status)}</span>
-                        </td>
-                        <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle whitespace-nowrap hidden lg:table-cell">
+                        </td>}
+                        {visibleColumns.created && <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle whitespace-nowrap hidden lg:table-cell">
                           <RelativeTime iso={doc.created_at} />
-                        </td>
-                        <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle whitespace-nowrap">
+                        </td>}
+                        {visibleColumns.modified && <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle whitespace-nowrap">
                           <RelativeTime iso={doc.modified_at} />
-                        </td>
-                        <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle hidden md:table-cell">
+                        </td>}
+                        {visibleColumns.createdBy && <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle hidden md:table-cell">
                           {doc.created_by_name || '—'}
-                        </td>
-                        <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle whitespace-nowrap hidden lg:table-cell">
+                        </td>}
+                        {visibleColumns.size && <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left align-middle whitespace-nowrap hidden lg:table-cell">
                           {formatBytes(doc.file_size)}
-                        </td>
+                        </td>}
                         <td className="pl-2 pr-6 py-4 text-right align-middle w-20">
                           <div className="flex items-center justify-end">
                             <ActionMenu items={rowActions(doc)} title={`${t('documents.field.actions', 'Aksi')}: ${doc.name}`} />

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useConfirm } from '../context/ConfirmDialogContext';
 import { useTenant } from '../context/TenantContext';
+import { useNavigation } from '../context/NavigationContext';
 import { getAuthHeaders } from '../App';
 import {
   ConsoleSubmenu,
@@ -39,8 +40,8 @@ import {
   InviteMemberModal,
   GenerateApiKeyModal,
 } from './admin/AdminModals';
-import { CheckCircle2, AlertTriangle, X } from 'lucide-react';
-import { usePermissions } from '../lib/permissions';
+import { CheckCircle2, AlertTriangle, Loader2, X } from 'lucide-react';
+import { ROLE_LEVEL, normalizeRole, usePermissions } from '../lib/permissions';
 
 interface AdminUsersViewProps {
   initialTab?: ConsoleSubmenu;
@@ -51,7 +52,8 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
   const { user: currentUser, refreshUser } = useAuth();
   const { t, language } = useLanguage();
   const confirmDialog = useConfirm();
-  const { switchTenant } = useTenant();
+  const { activeTenantId, switchTenant } = useTenant();
+  const { setActiveTab: setNavigationTab } = useNavigation();
   const { hasPermission, role } = usePermissions();
   const isSystemArea = area === 'system';
 
@@ -65,6 +67,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
   }, [initialTab]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Data states
   const [metrics, setMetrics] = useState<ConsoleMetrics | null>(null);
@@ -103,10 +106,16 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
     setTimeout(() => setToast(null), 4000);
   };
 
+  const navigateToTab = useCallback((tab: ConsoleSubmenu) => {
+    setActiveTab(tab);
+    setNavigationTab(`admin-${area}-${tab}`);
+  }, [area, setNavigationTab]);
+
   // Fetch all console data
   const loadConsoleData = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
     setIsRefreshing(true);
+    setLoadError(null);
 
     try {
       const headers = getAuthHeaders();
@@ -144,6 +153,13 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
           : Promise.resolve(null),
       ]);
 
+      const failedResponse = [overviewRes, usersRes, accountsRes, sessionsRes, orgsRes, teamsRes, invitesRes, apiKeysRes, matrixRes]
+        .find((response): response is Response => Boolean(response && !response.ok));
+      if (failedResponse) {
+        const body = await failedResponse.clone().json().catch(() => null);
+        throw new Error(body?.error || body?.message || `HTTP ${failedResponse.status}`);
+      }
+
       if (overviewRes?.ok) {
         const data = await overviewRes.json();
         if (data.success && data.data) {
@@ -176,10 +192,11 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         const data = await orgsRes.json();
         if (data.success && Array.isArray(data.organizations)) {
           setOrganizations(data.organizations);
-          // Set active org if none selected yet
-          if (!activeOrg && data.organizations.length > 0) {
-            setActiveOrg(data.organizations[0]);
-          }
+          const selectedOrg = data.organizations.find((org: ConsoleOrganization) => org.id === activeTenantId)
+            || data.organizations.find((org: ConsoleOrganization) => org.id === activeOrg?.id)
+            || data.organizations[0]
+            || null;
+          setActiveOrg(selectedOrg);
         }
       }
 
@@ -212,22 +229,27 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
       }
     } catch (err: any) {
       console.error('Failed to load Better Auth Console data:', err);
-      showToast(t('admin.toast.load_failed', 'Failed to load authentication console data'), 'error');
+      const message = err?.message || t('admin.toast.load_failed', 'Gagal memuat data konsol autentikasi');
+      setLoadError(message);
+      showToast(message, 'error');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [activeOrg, isSystemArea, t]);
+  }, [activeOrg?.id, activeTenantId, isSystemArea, t]);
 
   useEffect(() => {
     loadConsoleData();
   }, [loadConsoleData]);
 
-  const handleSelectOrg = (org: ConsoleOrganization) => {
-    setActiveOrg(org);
-    if (org.id) {
-      switchTenant(org.id);
+  const handleSelectOrg = async (org: ConsoleOrganization) => {
+    if (!org.id || org.id === activeOrg?.id) return;
+    const switched = await switchTenant(org.id);
+    if (switched) {
+      setActiveOrg(org);
+      return;
     }
+    showToast(t('admin.toast.switch_org_failed', 'Gagal mengganti organisasi.'), 'error');
   };
 
   // Handler: Add User
@@ -700,6 +722,20 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
     }
   };
 
+  const allowedRoles = role === 'superuser'
+    ? ['superuser', 'admin', 'manager', 'editor', 'viewer']
+    : role === 'admin'
+      ? ['manager', 'editor', 'viewer']
+      : role === 'manager'
+        ? ['editor', 'viewer']
+        : [];
+  const canManageUser = (user: ConsoleUser) => user.email.toLowerCase() !== currentUser?.email.toLowerCase()
+    && (role === 'superuser' || ROLE_LEVEL[normalizeRole(user.role)] > ROLE_LEVEL[role]);
+  const canEditUser = (user: ConsoleUser) => hasPermission('user.edit') && canManageUser(user);
+  const canResetUserPassword = (user: ConsoleUser) => hasPermission('admin.user.manage') && canManageUser(user);
+  const canChangeUserStatus = (user: ConsoleUser) => hasPermission('user.status.update') && canManageUser(user);
+  const canDeleteUser = (user: ConsoleUser) => hasPermission('user.delete') && canManageUser(user);
+
   return (
     <div className="w-full flex flex-col space-y-6 text-slate-900 dark:text-slate-100">
       {/* Toast Banner */}
@@ -734,7 +770,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
       <AdminConsoleHeader
         area={area}
         activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab)}
+        onTabChange={navigateToTab}
         onCreateOrgClick={() => setIsCreateOrgOpen(true)}
         onRefresh={() => loadConsoleData(true)}
         isRefreshing={isRefreshing}
@@ -749,20 +785,38 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
       />
 
       {/* Main Tab Content */}
-      <div className="w-full">
+      <div
+        id={`admin-${area}-${activeTab}-panel`}
+        role="tabpanel"
+        aria-labelledby={`admin-${area}-${activeTab}-tab`}
+        className="w-full"
+      >
+        {loadError && (
+          <div role="alert" className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+            <span>{t('admin.load_error', 'Data gagal dimuat')}: {loadError}</span>
+            <button type="button" onClick={() => loadConsoleData()} className="shrink-0 font-semibold underline underline-offset-2">
+              {t('admin.retry', 'Coba lagi')}
+            </button>
+          </div>
+        )}
+
+        {loadError ? null : isLoading ? (
+          <div role="status" className="flex min-h-56 items-center justify-center gap-2 text-sm text-slate-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t('admin.loading', 'Memuat data akses admin...')}
+          </div>
+        ) : <>
         {activeTab === 'dashboard' && (
           <AdminDashboardTab
             metrics={metrics}
             activeOrg={activeOrg}
             recentUsers={users}
             recentSessions={sessions}
-            onNavigateTab={(tab) => setActiveTab(tab)}
-            onOpenAddUser={() => setIsAddUserOpen(true)}
+            onNavigateTab={navigateToTab}
             onOpenCreateOrg={() => setIsCreateOrgOpen(true)}
             onOpenCreateTeam={() => setIsCreateTeamOpen(true)}
             onOpenCreateApiKey={() => setIsCreateApiKeyOpen(true)}
             onRevokeSession={handleRevokeSession}
-            canCreateUser={hasPermission('user.create') || hasPermission('user.invite')}
           />
         )}
 
@@ -780,6 +834,10 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
             onOpenResetPassword={(user) => setSelectedUserForPassword(user)}
             onToggleBan={handleToggleBan}
             onDeleteUser={handleDeleteUser}
+            canEditUser={canEditUser}
+            canResetPassword={canResetUserPassword}
+            canChangeStatus={canChangeUserStatus}
+            canDeleteUser={canDeleteUser}
           />
         )}
 
@@ -834,6 +892,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         )}
 
         {activeTab === 'rbac' && <AdminRbacMatrixTab matrixData={matrixData} />}
+        </>}
       </div>
 
       {/* Modals */}
@@ -842,16 +901,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         teams={teams}
         organizations={organizations}
         activeOrgId={activeOrg?.id}
-        allowedRoles={isSystemArea
-          // Per server/rbac.ts assignableRoles(): Superuser is the one
-          // exception to "target role must be strictly lower" — there's no
-          // role above it, so it may also create another Superuser. This
-          // area is only reachable by an actual Superuser actor (see
-          // App.tsx's admin-system-* guard), so offering it here is safe.
-          ? ['superuser', 'admin', 'manager', 'editor', 'viewer']
-          : role === 'manager'
-          ? ['editor', 'viewer']
-          : ['manager', 'editor', 'viewer']}
+        allowedRoles={allowedRoles}
         onClose={() => setIsAddUserOpen(false)}
         onSubmit={handleAddUser}
       />
@@ -861,6 +911,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
         teams={teams}
         organizations={organizations}
         isOpen={Boolean(selectedUserForEdit)}
+        allowedRoles={allowedRoles}
         onClose={() => setSelectedUserForEdit(null)}
         onSubmit={handleEditUser}
       />

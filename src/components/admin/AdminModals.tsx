@@ -326,6 +326,7 @@ interface EditUserModalProps {
   user: ConsoleUser | null;
   teams?: ConsoleTeam[];
   organizations?: ConsoleOrganization[];
+  allowedRoles?: string[];
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (userId: string, newRole: string, newDepartment?: string, organizationId?: string, newName?: string, newEmail?: string) => Promise<void>;
@@ -335,6 +336,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   user,
   teams,
   organizations,
+  allowedRoles = ['manager', 'editor', 'viewer'],
   isOpen,
   onClose,
   onSubmit,
@@ -462,11 +464,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               onChange={(e) => setRole(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium"
             >
-              <option value="superuser">{t('admin.superuser', 'Superuser')}</option>
-              <option value="admin">{t('admin.admin', 'Admin')}</option>
-              <option value="manager">{t('admin.manager', 'Manager')}</option>
-              <option value="editor">{t('admin.editor', 'Editor')}</option>
-              <option value="viewer">{t('admin.viewer', 'Viewer')}</option>
+              {allowedRoles.includes('superuser') && <option value="superuser">{t('admin.superuser', 'Superuser')}</option>}
+              {allowedRoles.includes('admin') && <option value="admin">{t('admin.admin', 'Admin')}</option>}
+              {allowedRoles.includes('manager') && <option value="manager">{t('admin.manager', 'Manager')}</option>}
+              {allowedRoles.includes('editor') && <option value="editor">{t('admin.editor', 'Editor')}</option>}
+              {allowedRoles.includes('viewer') && <option value="viewer">{t('admin.viewer', 'Viewer')}</option>}
             </AlphabeticalSelect>
           </div>
 
@@ -2027,6 +2029,7 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
   const [generatedSecret, setGeneratedSecret] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
 
   if (!isOpen) return null;
 
@@ -2048,25 +2051,34 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
     e.preventDefault();
     if (!name.trim()) return;
     setIsSubmitting(true);
+    setError('');
     try {
       const res = await onSubmit({ name: name.trim(), scopes: selectedScopes });
       setGeneratedSecret(res.secret);
+    } catch (err: any) {
+      setError(err?.message || t('admin.toast.generate_key_failed', 'Gagal membuat API Key'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (generatedSecret) {
-      navigator.clipboard.writeText(generatedSecret);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      try {
+        await navigator.clipboard.writeText(generatedSecret);
+        setError('');
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        setError(t('admin.copy_failed', 'API Secret tidak dapat disalin.'));
+      }
     }
   };
 
   const handleFinish = () => {
     setGeneratedSecret(null);
     setName('');
+    setError('');
     onClose();
   };
 
@@ -2086,6 +2098,12 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {error && (
+          <div role="alert" className="mx-5 mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300">
+            {error}
+          </div>
+        )}
 
         {generatedSecret ? (
           <div className="p-5 space-y-4">
@@ -2193,4 +2211,3 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
     </div>
   );
 };
-

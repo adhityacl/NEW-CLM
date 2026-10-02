@@ -128,7 +128,6 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
 
     // Bulk Import
     'import.title': 'Import Data Massal (Excel / CSV)',
-    'import.select_type': 'Pilih Tipe Data',
     'import.download_template': 'Unduh Template CSV',
     'import.upload_label': 'Unggah File CSV',
     'import.choose_file': 'Pilih File CSV',
@@ -476,9 +475,6 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'admin.btn_generate_key': 'Buat API Key',
     'admin.recent_users_title': 'Pengguna Terbaru',
     'admin.active_login_sessions_title': 'Sesi Login Aktif',
-    'admin.org_banner_default_tagline': 'Organisasi Enterprise aktif untuk tata kelola kontrak & hak akses RBAC.',
-    'admin.btn_manage_org': 'Kelola Organisasi',
-    'admin.btn_add_member': 'Tambah Anggota',
     'admin.view_all': 'Lihat Semua',
     'admin.online_status': 'Online',
     'admin.generic_user': 'Pengguna',
@@ -1179,7 +1175,6 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
 
     // Bulk Import
     'import.title': 'Bulk Data Import (Excel / CSV)',
-    'import.select_type': 'Select Data Type',
     'import.download_template': 'Download CSV Template',
     'import.upload_label': 'Upload CSV File',
     'import.choose_file': 'Choose CSV File',
@@ -1528,9 +1523,6 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'admin.btn_generate_key': 'Generate API Key',
     'admin.recent_users_title': 'Recent Users',
     'admin.active_login_sessions_title': 'Active Login Sessions',
-    'admin.org_banner_default_tagline': 'Active Enterprise Organization for contract governance & RBAC access control.',
-    'admin.btn_manage_org': 'Manage Organization',
-    'admin.btn_add_member': 'Add Member',
     'admin.view_all': 'View All',
     'admin.online_status': 'Online',
     'admin.generic_user': 'User',

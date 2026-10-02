@@ -1,6 +1,7 @@
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { formatBusinessDate } from '../lib/displayDate';
 import { FilterSummary } from './ui/filter-summary';
+import { TableEmptyState } from './ui/table-empty-state';
 import React, { useState, useMemo } from 'react';
 import { CONTRACT_STATUS_LABEL_KEY, DD_STATUS_LABEL_KEY, DOC_STATUS_LABEL_KEY } from '../lib/domainStatus';
 import { InsertionOrder, Contract, Partner } from '../types';
@@ -553,11 +554,7 @@ export const IOView: React.FC<IOViewProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {paginatedIOs.length === 0 ? (
-                <tr>
-                  <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} className="py-8 text-center text-xs text-slate-500">
-                    {t('io.empty_filter_match', 'Tidak ada Insertion Order yang cocok dengan filter pencarian.')}
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} />
               ) : (
                 paginatedIOs.map((io) => {
                   const isSelected = selectedRowIds.has(io.io_id);

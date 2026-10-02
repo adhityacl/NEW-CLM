@@ -4,6 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { CONTRACT_STATUS_LABEL_KEY } from '../lib/domainStatus';
 import type { Contract, InsertionOrder } from '../types';
 import { getStatusBadgeClass } from './ui/badge';
+import { TableEmptyState } from './ui/table-empty-state';
 
 export function RecentDocumentsTable({ contracts, ios, onNavigate }: {
   contracts: Contract[];
@@ -62,7 +63,7 @@ export function RecentDocumentsTable({ contracts, ios, onNavigate }: {
             </th>
           </tr></thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {records.length === 0 ? <tr><td colSpan={7} className="px-6 py-6 text-center text-slate-500 dark:text-slate-400">{t('ui.recent_empty')}</td></tr> : records.map(record => <tr key={`${record.tab}-${record.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+            {records.length === 0 ? <TableEmptyState colSpan={7} /> : records.map(record => <tr key={`${record.tab}-${record.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
               <td className="pl-6 pr-2 py-4 w-12 align-middle">
                 <input
                   type="checkbox"

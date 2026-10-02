@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { TableEmptyMessage, TableEmptyState } from './ui/table-empty-state';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { cn } from '../lib/utils';
@@ -363,10 +364,8 @@ export const SQLiteDatabaseCard: React.FC = () => {
                   <RefreshCw className="w-5 h-5 mx-auto animate-spin mb-2 text-[#06C755]" />
                   <span>{t('sqlite.loading', 'Loading...')}</span>
                 </div>
-              ) : !tableData || tableData.rows.length === 0 ? (
-                <div className="p-8 text-center text-slate-400">
-                  <span>{t('sqlite.no_records_found', 'No records found')}</span>
-                </div>
+              ) : !tableData ? (
+                <TableEmptyMessage />
               ) : (
                 <table className="w-full text-left border-collapse text-xs font-mono">
                   <thead>
@@ -389,7 +388,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {tableData.rows.map((row, rIdx) => (
+                    {tableData.rows.length === 0 ? <TableEmptyState colSpan={Math.max(tableData.columns.length, 1)} /> : tableData.rows.map((row, rIdx) => (
                       <tr
                         key={rIdx}
                         className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"

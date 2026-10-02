@@ -51,7 +51,7 @@ export function buildSpendingSeries(rows: PartnerSpending[], year: string, categ
     bucket[key] = (bucket[key] || 0) + row.value;
     buckets.set(period, bucket);
   }
-  const data = Array.from({ length: 12 }, (_, index) => {
+  const data: Array<{ month: string; [key: string]: string | number }> = Array.from({ length: 12 }, (_, index) => {
     const month = String(index + 1).padStart(2, '0');
     const period = year === 'ALL' ? month : `${year}-${month}`;
     return { month: period, ...Object.fromEntries(series.map(s => [s.key, buckets.get(period)?.[s.key] || 0])) };

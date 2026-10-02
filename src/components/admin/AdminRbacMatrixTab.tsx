@@ -17,6 +17,7 @@ import {
   Award,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { TableEmptyState } from '../ui/table-empty-state';
 
 interface RbacMatrixProps {
   matrixData?: {
@@ -116,7 +117,7 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
   };
 
   // 8 Capability Rows matching User's Exact RBAC Specification
-  const rbacTableRows = [
+  const legacyRbacTableRows = [
     {
       id: 'system_config',
       label: t('admin.user_system_config', 'User & System Config'),
@@ -199,6 +200,31 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
     },
   ];
 
+  type RoleKey = 'superuser' | 'admin' | 'manager' | 'editor' | 'viewer';
+  const roleKeys: RoleKey[] = ['superuser', 'admin', 'manager', 'editor', 'viewer'];
+  const permissionCatalog = matrixData?.statement || {};
+  const makeCell = (roleKey: RoleKey, resource: string, action: string) => {
+    const allowed = Boolean(roles[roleKey]?.permissions[resource]?.includes(action));
+    if (!allowed) return { type: 'deny', text: '—' };
+    if (roleKey === 'superuser') return { type: 'global', text: t('admin.rbac_badge_global', 'Global') };
+    if (roleKey === 'admin') return { type: 'org', text: t('admin.rbac_badge_org', 'Organisasi') };
+    if (roleKey === 'viewer') return { type: 'readonly', text: t('admin.read_only', 'Read-only') };
+    return { type: 'department', text: t('admin.rbac_badge_department', 'Departemen') };
+  };
+  const rbacTableRows = Object.entries(permissionCatalog).flatMap(([resource, actions]) =>
+    actions.map((action) => ({
+      id: `${resource}.${action}`,
+      label: `${resource}.${action}`,
+      desc: `${resource} · ${action}`,
+      superuser: makeCell('superuser', resource, action),
+      admin: makeCell('admin', resource, action),
+      manager: makeCell('manager', resource, action),
+      editor: makeCell('editor', resource, action),
+      viewer: makeCell('viewer', resource, action),
+    })),
+  );
+  void legacyRbacTableRows;
+
   const renderBadge = (cell: { type: string; text: string }) => {
     switch (cell.type) {
       case 'allow':
@@ -250,12 +276,15 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
 
   // State for live policy tester
   const [testRole, setTestRole] = useState('manager');
-  const [testResource, setTestResource] = useState('contract');
-  const [testAction, setTestAction] = useState('approve-internal');
+  const [testResource, setTestResource] = useState('user');
+  const [testAction, setTestAction] = useState('view');
 
   const roleObj = roles[testRole];
+  const resources = Object.keys(permissionCatalog);
+  const availableActions = permissionCatalog[testResource] || [];
+  const effectiveAction = availableActions.includes(testAction) ? testAction : (availableActions[0] || '');
   const allowedActions = roleObj?.permissions[testResource] || [];
-  const isAllowed = allowedActions.includes(testAction);
+  const isAllowed = allowedActions.includes(effectiveAction);
 
   return (
     <div className="space-y-6">
@@ -350,7 +379,7 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {rbacTableRows.map((row) => (
+              {rbacTableRows.length === 0 ? <TableEmptyState colSpan={6} /> : rbacTableRows.map((row) => (
                 <tr
                   key={row.id}
                   className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
@@ -406,17 +435,14 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
             </label>
             <AlphabeticalSelect
               value={testResource}
-              onChange={(e) => setTestResource(e.target.value)}
+              onChange={(e) => {
+                const resource = e.target.value;
+                setTestResource(resource);
+                setTestAction(permissionCatalog[resource]?.[0] || '');
+              }}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
             >
-              <option value="contract">{t('admin.contract', 'contract (')}{t('admin.contracts', 'Contracts')})</option>
-              <option value="partner">{t('admin.partner', 'partner (')}{t('admin.partners', 'Partners')})</option>
-              <option value="report">{t('admin.report', 'report (')}{t('admin.reports', 'Reports')})</option>
-              <option value="user">{t('admin.user', 'user (')}{t('admin.users', 'Users')})</option>
-              <option value="session">{t('admin.session', 'session (')}{t('admin.sessions', 'Sessions')})</option>
-              <option value="organization">{t('admin.organization', 'organization (')}{t('admin.organizations', 'Organizations')})</option>
-              <option value="team">{t('admin.team', 'team (')}{t('admin.departments', 'Departments')})</option>
-              <option value="settings">{t('admin.settings', 'settings (')}{t('admin.settings_2', 'Settings')})</option>
+              {resources.map((resource) => <option key={resource} value={resource}>{resource}</option>)}
             </AlphabeticalSelect>
           </div>
 
@@ -425,20 +451,11 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
               {t('admin.rbac_action_label', 'Tindakan (Action)')}
             </label>
             <AlphabeticalSelect
-              value={testAction}
+              value={effectiveAction}
               onChange={(e) => setTestAction(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
             >
-              <option value="create">{t('admin.create_buat_baru', 'create (Buat baru)')}</option>
-              <option value="read">{t('admin.read_lihat_baca', 'read (Lihat / Baca)')}</option>
-              <option value="update">{t('admin.update_edit_revisi', 'update (Edit / Revisi)')}</option>
-              <option value="delete">{t('admin.delete_hapus_hapus_permanen', 'delete (Hapus / Hapus permanen)')}</option>
-              <option value="approve-internal">{t('admin.approve_internal_persetujuan_divisi', 'approve-internal (Persetujuan Divisi)')}</option>
-              <option value="approve">{t('admin.approve_final_approval', 'approve (Final Approval)')}</option>
-              <option value="archive">{t('admin.archive_arsipkan', 'archive (Arsipkan)')}</option>
-              <option value="export">{t('admin.export_unduh_laporan', 'export (Unduh Laporan)')}</option>
-              <option value="set-role">{t('admin.set_role_atur_peran_akun', 'set-role (Atur Peran Akun)')}</option>
-              <option value="ban">{t('admin.ban_cekal_pengguna', 'ban (Cekal Pengguna)')}</option>
+              {availableActions.map((action) => <option key={action} value={action}>{action}</option>)}
             </AlphabeticalSelect>
           </div>
 
@@ -468,7 +485,7 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
         </div>
 
         <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 text-xs font-mono text-slate-600 dark:text-slate-300">
-          {t('admin.authclient_haspermission', 'authClient.hasPermission(')}{'{'} {t('admin.role_resource_action', 'role: "{testRole}", resource: "{testResource}", action: "{testAction}"', { testRole, testResource, testAction })} {'}'}{t('admin.text', ') =>')}{' '}
+          {t('admin.authclient_haspermission', 'authClient.hasPermission(')}{'{'} {t('admin.role_resource_action', 'role: "{testRole}", resource: "{testResource}", action: "{testAction}"', { testRole, testResource, testAction: effectiveAction })} {'}'}{t('admin.text', ') =>')}{' '}
           <strong className={isAllowed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
             {isAllowed ? t('admin.true_aksi_diizinkan', 'true (Aksi Diizinkan)') : t('admin.false_aksi_dibatasi', 'false (Aksi Dibatasi)')}
           </strong>

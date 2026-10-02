@@ -2,6 +2,7 @@ import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import { formatBusinessDate } from '../lib/displayDate';
 import { FilterSummary } from './ui/filter-summary';
+import { TableEmptyState } from './ui/table-empty-state';
 import React, { useState } from 'react';
 import { Partner, PartnerEvaluation, Contract } from '../types';
 import { DateInput } from './DateInput';
@@ -769,11 +770,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
             </thead>
             <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
               {currentEvaluations.length === 0 ? (
-                <tr>
-                  <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} className="py-12 text-center text-slate-400">
-                    {t('eval.no_data')} {selectedYear}.
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} />
               ) : (
                 currentEvaluations.map((item) => {
                   const isNotReviewed = item.final_evaluation === 'Not reviewed';

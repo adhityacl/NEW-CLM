@@ -1,6 +1,7 @@
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { formatBusinessDate } from '../lib/displayDate';
 import { FilterSummary } from './ui/filter-summary';
+import { TableEmptyState } from './ui/table-empty-state';
 import React, { useState } from 'react';
 import { getActiveFormattingLocale, convertToUsdWithFallback } from '../lib/currencyUtils';
 import { Contract, Partner, InsertionOrder } from '../types';
@@ -515,11 +516,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
             </thead>
             <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
               {currentContracts.length === 0 ? (
-                <tr>
-                  <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} className="py-8 text-center text-xs text-slate-500">
-                    {t('contracts.no_data')}
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} />
               ) : (
                 currentContracts.map((ctr) => {
                   const isAddendum = ctr.jenis_dokumen === 'Agreement Addendum';

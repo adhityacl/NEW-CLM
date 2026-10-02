@@ -7030,6 +7030,9 @@ app.post("/api/admin/reset-database", async (req: express.Request, res: express.
   }
   const primaryTenantId = dataset.tenants[0].id;
 
+  // Remove current and legacy demo logins before rebuilding demo memberships.
+  removeDemoAccounts(sqliteDb, db.allowedUsers || [], actor.id);
+
   // Keep every registered (non-demo) login account and attach it to the primary tenant.
   const authUsers: any[] = (() => {
     try {

@@ -7,7 +7,6 @@ import {
   Layers,
   ShieldCheck,
   KeyRound,
-  UserPlus,
   Plus,
   Clock,
   ArrowUpRight,
@@ -28,12 +27,10 @@ interface AdminDashboardTabProps {
   recentUsers: ConsoleUser[];
   recentSessions: ConsoleSession[];
   onNavigateTab: (tab: ConsoleSubmenu) => void;
-  onOpenAddUser: () => void;
   onOpenCreateOrg: () => void;
   onOpenCreateTeam: () => void;
   onOpenCreateApiKey: () => void;
   onRevokeSession: (sessionId: string) => void;
-  canCreateUser?: boolean;
 }
 
 export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
@@ -42,14 +39,13 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
   recentUsers,
   recentSessions,
   onNavigateTab,
-  onOpenAddUser,
   onOpenCreateOrg,
   onOpenCreateTeam,
   onOpenCreateApiKey,
   onRevokeSession,
-  canCreateUser = false,
 }) => {
   const { t, language } = useLanguage();
+  const activeSessions = recentSessions.filter((session) => new Date(session.expiresAt) >= new Date());
 
   const statCards = [
     {
@@ -105,59 +101,6 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Active Organization Banner */}
-      {activeOrg && (
-        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-linear-to-r from-emerald-50/70 via-white to-emerald-50/30 dark:from-emerald-950/30 dark:via-slate-900 dark:to-emerald-950/20 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-lg bg-emerald-600 dark:bg-emerald-500 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0 overflow-hidden">
-              {activeOrg.logo && activeOrg.logo !== '/favicon.png' ? (
-                <img
-                  src={activeOrg.logo}
-                  alt={activeOrg.name}
-                  className="w-full h-full object-contain p-1 bg-white dark:bg-slate-900"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLElement).style.display = 'none';
-                  }}
-                />
-              ) : (
-                <span>{activeOrg.name.charAt(0)}</span>
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-base">
-                  {activeOrg.name}
-                </h3>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                {activeOrg.metadata?.tagline || t('admin.org_banner_default_tagline', 'Organisasi Enterprise aktif untuk tata kelola kontrak & hak akses RBAC.')}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-stretch sm:self-auto">
-            <button
-              type="button"
-              onClick={() => onNavigateTab('organizations')}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-colors flex items-center gap-1.5"
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              {t('admin.btn_manage_org', 'Kelola Organisasi')}
-            </button>
-            {canCreateUser && (
-              <button
-                type="button"
-                onClick={onOpenAddUser}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors flex items-center gap-1.5 shadow-xs"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                {t('admin.btn_add_member', 'Tambah Anggota')}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {statCards.map((card, idx) => {
@@ -291,18 +234,18 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
               onClick={() => onNavigateTab('sessions')}
               className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 flex items-center gap-1"
             >
-              {t('admin.view_all', 'Lihat Semua')} ({recentSessions.length})
+              {t('admin.view_all', 'Lihat Semua')} ({activeSessions.length})
               <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {recentSessions.length === 0 ? (
+            {activeSessions.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-500">
                 {t('admin.no_sessions_found', 'Tidak ada sesi login aktif saat ini.')}
               </div>
             ) : (
-              recentSessions.slice(0, 5).map((session) => (
+              activeSessions.slice(0, 5).map((session) => (
                 <div
                   key={session.id}
                   className="p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
@@ -313,7 +256,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                         {session.userName || t('admin.generic_user', 'Pengguna')}
                       </span>
                       <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                        {session.ipAddress || '127.0.0.1'}
+                        {session.ipAddress || t('admin.not_available', 'Tidak tersedia')}
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-400 truncate mt-0.5 font-mono">

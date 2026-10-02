@@ -14,6 +14,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Card, CardContent } from '../ui/card';
+import { TableEmptyState } from '../ui/table-empty-state';
 
 interface AdminSessionsTabProps {
   sessions: ConsoleSession[];
@@ -29,12 +30,20 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState('');
 
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleCopy = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyError('');
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      setCopyError(t('admin.copy_failed', 'Token tidak dapat disalin.'));
+    }
   };
+
+  const activeSessionCount = sessions.filter((session) => new Date(session.expiresAt) >= new Date()).length;
 
   const filteredSessions = sessions.filter((s) => {
     const q = searchQuery.toLowerCase();
@@ -66,11 +75,12 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
           <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">
             <Radio className="w-4 h-4 text-emerald-500 animate-pulse" />
             <span>
-              <strong className="text-slate-900 dark:text-slate-100">{sessions.length}</strong> {t('admin.active_sessions_in_database', 'Active Sessions in Database')}
+              <strong className="text-slate-900 dark:text-slate-100">{activeSessionCount}</strong> {t('admin.active_sessions_in_database', 'Sesi aktif di database')}
             </span>
           </div>
         </CardContent>
       </Card>
+      {copyError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">{copyError}</div>}
 
       {/* Sessions Table */}
       <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
@@ -100,11 +110,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredSessions.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-xs text-slate-500">
-                    {t('admin.no_sessions_found', 'Tidak ada sesi aktif yang ditemukan.')}
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={6} />
               ) : (
                 filteredSessions.map((s) => {
                   const isCopied = copiedId === s.id;
@@ -141,6 +147,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
                             onClick={() => handleCopy(s.token || s.id, s.id)}
                             className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                             title={t('admin.copy_token', 'Copy Token')}
+                            aria-label={t('admin.copy_token', 'Salin token sesi')}
                           >
                             {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                           </button>
@@ -150,7 +157,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
                       {/* IP & User Agent */}
                       <td className="py-4 px-4 text-left align-middle">
                         <div className="font-mono text-[11px] text-slate-700 dark:text-slate-300">
-                          {s.ipAddress || '127.0.0.1'}
+                          {s.ipAddress || t('admin.not_available', 'Tidak tersedia')}
                         </div>
                         <div className="text-[10px] text-slate-400 truncate max-w-[200px]" title={s.userAgent}>
                           {s.userAgent || t('admin.standard_browser', 'Standard Browser')}

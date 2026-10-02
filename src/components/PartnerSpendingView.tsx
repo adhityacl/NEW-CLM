@@ -1,6 +1,7 @@
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { formatBusinessDate } from '../lib/displayDate';
 import { FilterSummary } from './ui/filter-summary';
+import { TableEmptyState } from './ui/table-empty-state';
 import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useTenantSettings } from '../context/TenantSettingsContext';
@@ -853,11 +854,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
             </thead>
             <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
               {sortedSpendings.length === 0 ? (
-                <tr>
-                  <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} className="py-12 text-center text-slate-400 text-xs font-medium">
-                    {t('spending.no_data', 'Belum ada data spending yang tercatat.')}
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} />
               ) : (
                 currentSpendings.map((s) => (
                   <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">

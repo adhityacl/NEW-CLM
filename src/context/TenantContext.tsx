@@ -145,6 +145,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [branding, activeTenant]);
 
   const switchTenant = async (tenantId: string): Promise<boolean> => {
+    const previousTenantId = activeTenantId;
     setActiveTenantId(tenantId);
     localStorage.setItem('activeOrganizationId', tenantId);
     try {
@@ -157,6 +158,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         credentials: 'include',
         body: JSON.stringify({ tenantId }),
       });
+      if (!res.ok) throw new Error(`Failed to switch tenant (${res.status})`);
       // Also try auth-console endpoint if needed
       fetch(`/api/auth-console/organizations/${tenantId}/set-active`, {
         method: 'POST',
@@ -169,7 +171,13 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return true;
     } catch (e) {
       console.warn('Error switching tenant:', e);
-      return true;
+      setActiveTenantId(previousTenantId);
+      if (previousTenantId) localStorage.setItem('activeOrganizationId', previousTenantId);
+      else localStorage.removeItem('activeOrganizationId');
+      if (previousTenantId) {
+        await (authClient.organization as any).setActive({ organizationId: previousTenantId }).catch(() => {});
+      }
+      return false;
     }
   };
 

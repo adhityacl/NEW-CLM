@@ -4,7 +4,19 @@ import { buildDemoDataset } from "../data/demoDataset";
 /** Login accounts shipped with the demo dataset — all on the reserved example.com domain. */
 export const DEMO_ACCOUNT_EMAILS = new Set(buildDemoDataset().allowedUsers.map((u) => String(u.email).toLowerCase()));
 
-export const isDemoAccountEmail = (email: unknown) => DEMO_ACCOUNT_EMAILS.has(String(email ?? "").trim().toLowerCase());
+const LEGACY_DEMO_ACCOUNT_EMAILS = new Set([
+  'legal.sg@example.com',
+  'procurement.sg@example.com',
+  'viewer.sg@example.com',
+  'legal.id@example.com',
+  'finance.id@example.com',
+  'legal.jp@example.com',
+]);
+
+export const isDemoAccountEmail = (email: unknown) => {
+  const normalized = String(email ?? "").trim().toLowerCase();
+  return DEMO_ACCOUNT_EMAILS.has(normalized) || LEGACY_DEMO_ACCOUNT_EMAILS.has(normalized);
+};
 
 /**
  * Deletes the demo-dataset login accounts (user, credentials, sessions, memberships) and returns

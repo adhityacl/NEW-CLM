@@ -292,23 +292,13 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
 
       {/* ── Page Header ─────────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-[#EBFBF0] dark:bg-emerald-950/60 rounded-xl border border-[#06C755]/30 shrink-0">
-            <Upload className="w-5 h-5 text-[#06C755]" />
-          </div>
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              {t('import.title', 'Import Data Massal (Excel / CSV)')}
-            </h2>
-          </div>
-        </div>
+        <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          {t('import.title', 'Import Data Massal (Excel / CSV)')}
+        </h2>
       </div>
 
       {/* ── Type Selector ────────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6">
-        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
-          {t('import.select_type', 'Pilih Tipe Data')}
-        </p>
         <div className="flex flex-wrap gap-2">
           {IMPORT_TYPES.map((item) => {
             const Icon = item.icon;

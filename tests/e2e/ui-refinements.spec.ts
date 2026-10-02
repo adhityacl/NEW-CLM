@@ -42,8 +42,8 @@ test('requiring action table combines contracts and order forms', async ({ page 
   await expect(headers.nth(1)).toHaveText('Document Name');
   await expect(headers.nth(2)).toHaveText('Type');
   await expect(section.locator('tbody tr')).toHaveCount(2);
-  await expect(section.locator('tbody')).toContainText('Cloud Hosting Master Services Agreement');
-  await expect(section.locator('tbody')).toContainText('Reserved compute capacity FY2026');
+  await expect(section.locator('tbody')).toContainText('Master Services Agreement PT Mitra Nusantara 01');
+  await expect(section.locator('tbody')).toContainText('2026 Service Order PT Mitra Nusantara 01');
   const latestHeaders = page.getByRole('region', { name: 'Latest Documents', exact: true }).first().locator('thead th');
   const expiringColumns = await headers.evaluateAll(cells => cells.map(cell => Math.round(cell.getBoundingClientRect().x)));
   const latestColumns = await latestHeaders.evaluateAll(cells => cells.map(cell => Math.round(cell.getBoundingClientRect().x)));
@@ -69,6 +69,24 @@ test('latest records combine contracts and order forms in creation order', async
   for (const checkbox of await checkboxes.all()) await expect(checkbox).toBeDisabled();
   await section.getByRole('button', { name: `Open ${records[0].title}` }).click();
   await expect(section).toBeHidden();
+});
+
+test('create document toolbar exposes the four standard filters', async ({ page }) => {
+  await page.getByRole('button', { name: 'Create Document', exact: true }).click();
+  await expect(page.getByRole('searchbox', { name: 'Search Document', exact: true })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Document Status', exact: true })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Document Type', exact: true })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Created By', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Filters', exact: true })).toHaveCount(0);
+  for (const column of ['Name', 'Type', 'Status', 'Modified', 'Created by', 'Action']) {
+    await expect(page.getByRole('columnheader', { name: column, exact: true })).toBeVisible();
+  }
+  await expect(page.getByRole('columnheader', { name: 'Created', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('columnheader', { name: 'Size', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: 'Created', exact: true })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: 'Created', exact: true }).check();
+  await expect(page.getByRole('columnheader', { name: 'Created', exact: true })).toBeVisible();
 });
 
 test('mobile editor keeps a usable canvas and opens its panel as a dismissible overlay', async ({ page }) => {
@@ -144,6 +162,7 @@ test('chart exposes every month, has theme colors and keeps dashboard checkboxes
   ];
   const controlBoxes = await Promise.all(chartControls.map(control => control.boundingBox()));
   expect(Math.max(...controlBoxes.map(box => box!.y)) - Math.min(...controlBoxes.map(box => box!.y))).toBeLessThan(2);
+  expect(Math.max(...controlBoxes.map(box => box!.height)) - Math.min(...controlBoxes.map(box => box!.height))).toBeLessThan(2);
   const chart = page.locator('.recharts-responsive-container');
   const chartBox = await chart.boundingBox();
   expect(chartBox!.width).toBeLessThanOrEqual(358);

@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
-import { DEMO_ACCOUNT_EMAILS, removeDemoAccounts } from '../src/server/demoAccounts';
+import { DEMO_ACCOUNT_EMAILS, isDemoAccountEmail, removeDemoAccounts } from '../src/server/demoAccounts';
 
 function authDb() {
   const db = new Database(':memory:');
@@ -22,16 +22,21 @@ function authDb() {
   };
   add('admin', 'admin@legalio.com');
   add('real', 'owner@company.com');
-  add('usr-demo-sg-legal', 'Legal.SG@example.com');
-  add('usr-demo-id-fin', 'finance.id@example.com');
+  add('usr-demo-id-admin', 'Admin.ID@example.com');
+  add('usr-demo-my-admin', 'admin.my@example.com');
   return db;
 }
 
 const count = (db: Database.Database, table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM "${table}"`).get() as { n: number }).n;
 
-test('the six demo dataset accounts are the ones targeted', () => {
-  assert.equal(DEMO_ACCOUNT_EMAILS.size, 6);
+test('the three demo dataset accounts are the ones targeted', () => {
+  assert.equal(DEMO_ACCOUNT_EMAILS.size, 3);
   for (const email of DEMO_ACCOUNT_EMAILS) assert.ok(email.endsWith('@example.com'), email);
+});
+
+test('legacy demo accounts remain removable after the dataset changes', () => {
+  assert.equal(isDemoAccountEmail('legal.sg@example.com'), true);
+  assert.equal(isDemoAccountEmail('finance.id@example.com'), true);
 });
 
 test('removes demo logins with their sessions, credentials and memberships; keeps everyone else', () => {
@@ -39,8 +44,8 @@ test('removes demo logins with their sessions, credentials and memberships; keep
   const allowedUsers = [
     { id: 'admin', email: 'admin@legalio.com' },
     { id: 'real', email: 'owner@company.com' },
-    { id: 'usr-demo-sg-legal', email: 'legal.sg@example.com' },
-    { id: 'usr-demo-jp-legal', email: 'legal.jp@example.com' },
+    { id: 'usr-demo-id-admin', email: 'admin.id@example.com' },
+    { id: 'usr-demo-ph-admin', email: 'admin.ph@example.com' },
   ];
   const result = removeDemoAccounts(db, allowedUsers);
   assert.equal(result.removed, 2, 'case-insensitive email match');
@@ -52,8 +57,8 @@ test('removes demo logins with their sessions, credentials and memberships; keep
 
 test('never removes the acting user', () => {
   const db = authDb();
-  const result = removeDemoAccounts(db, [{ id: 'usr-demo-id-fin', email: 'finance.id@example.com' }], 'usr-demo-id-fin');
+  const result = removeDemoAccounts(db, [{ id: 'usr-demo-my-admin', email: 'admin.my@example.com' }], 'usr-demo-my-admin');
   assert.equal(result.removed, 1);
-  assert.deepEqual(result.allowedUsers.map((u) => u.id), ['usr-demo-id-fin']);
-  assert.ok(db.prepare(`SELECT 1 FROM "user" WHERE id = 'usr-demo-id-fin'`).get());
+  assert.deepEqual(result.allowedUsers.map((u) => u.id), ['usr-demo-my-admin']);
+  assert.ok(db.prepare(`SELECT 1 FROM "user" WHERE id = 'usr-demo-my-admin'`).get());
 });

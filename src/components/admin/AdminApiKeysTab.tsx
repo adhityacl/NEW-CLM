@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ConsoleApiKey } from './types';
 import { useLanguage } from '../../context/LanguageContext';
+import { TableEmptyState } from '../ui/table-empty-state';
 
 interface AdminApiKeysTabProps {
   apiKeys: ConsoleApiKey[];
@@ -82,11 +83,7 @@ export const AdminApiKeysTab: React.FC<AdminApiKeysTabProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredKeys.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
-                    {t('admin.no_keys_found', 'Belum ada API Key yang digenerate untuk integrasi mesin/sistem eksternal.')}
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={6} />
               ) : (
                 filteredKeys.map((k) => (
                   <tr

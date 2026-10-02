@@ -1,6 +1,7 @@
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { DashboardOverview } from './DashboardOverview';
 import { RecentDocumentsTable } from './RecentDocumentsTable';
+import { TableEmptyState } from './ui/table-empty-state';
 import { buildSpendingSeries, contractTotalInCurrency } from '../lib/dashboardMetrics';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import React, { useState, useMemo, useEffect } from 'react';
@@ -306,11 +307,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </thead>
             <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
               {requiringActionDocuments.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-6 text-center text-slate-500 dark:text-slate-400">
-                    {t('dashboard.no_expiring')}
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={7} />
               ) : (
                 requiringActionDocuments.map((document) => (
                   <tr key={document.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -425,11 +422,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </td>
                 </tr>
               ) : pendingReviewDocs.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-6 text-center text-slate-500 dark:text-slate-400">
-                    {t('dashboard.no_pending_review', 'Tidak ada dokumen yang menunggu review saat ini.')}
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={7} />
               ) : (
                 pendingReviewDocs.map((doc) => (
                   <tr key={doc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -496,7 +489,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <DollarSign className="w-5 h-5 text-[#06C755]" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                 {t('dashboard.spending_title', 'Tren Spending')}
               </h3>
             </div>
@@ -535,14 +528,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </AlphabeticalSelect>
 
             {/* 3. Currency Toggle */}
-            <div role="group" aria-label={t('settings.region.reporting_currency', 'Reporting currency')} className="flex shrink-0 items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div role="group" aria-label={t('settings.region.reporting_currency', 'Reporting currency')} className="flex h-11 shrink-0 items-center bg-slate-100 p-1 sm:h-9 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
               {currencyViews.map((code) => (
                 <button
                   key={code}
                   type="button"
                   aria-pressed={viewCurrency === code}
                   onClick={() => setSpendingCurrencyView(code)}
-                  className={`min-h-9 px-2.5 py-1 text-sm font-extrabold rounded-lg transition-all cursor-pointer ${
+                  className={`h-full px-2.5 text-sm font-extrabold rounded-lg transition-all cursor-pointer ${
                     viewCurrency === code
                       ? 'bg-[#04803D] text-white shadow-2xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'

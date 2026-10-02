@@ -4,6 +4,7 @@ import { getActiveFormattingLocale } from '../../lib/currencyUtils';
 import { KeyRound, Shield, Search, CheckCircle2, Lock, Mail, Globe } from 'lucide-react';
 import { ConsoleAccount } from './types';
 import { useLanguage } from '../../context/LanguageContext';
+import { TableEmptyState } from '../ui/table-empty-state';
 
 interface AdminAccountsTabProps {
   accounts: ConsoleAccount[];
@@ -105,11 +106,7 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredAccounts.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-400">
-                    {t('admin.no_accounts_found', 'Tidak ada akun terhubung yang cocok.')}
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={5} />
               ) : (
                 filteredAccounts.map((acc) => (
                   <tr

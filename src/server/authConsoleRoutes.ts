@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { sqliteDb, ac, roles, statement } from '../lib/auth';
+import { sqliteDb } from '../lib/auth';
 import { hashPassword } from 'better-auth/crypto';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import nodemailer from 'nodemailer';
-import { authzError, buildAuditEvent, canChangeRole, canInvite, actorDepartmentIds, type Actor } from '../../server/rbac';
+import { authzError, buildAuditEvent, canChangeRole, canInvite, actorDepartmentIds, PERMISSIONS, ROLES, permissionsFor, type Actor } from '../../server/rbac';
 import { getDefaultTenantId } from '../../server/tenantPolicy';
 import { resolveTenantSettings } from '../lib/policy';
 import { isDemoAccountEmail } from './demoAccounts';
@@ -1887,133 +1887,19 @@ authConsoleRouter.delete('/api-keys/:id', (req: Request, res: Response) => {
 // 9. GET /rbac-matrix - Comprehensive matrix of Access Control definitions
 authConsoleRouter.get('/rbac-matrix', (req: Request, res: Response) => {
   try {
+    const groupPermissions = (codes: string[]) => codes.reduce<Record<string, string[]>>((groups, code) => {
+      const [resource, ...actionParts] = code.split('.');
+      (groups[resource] ||= []).push(actionParts.join('.'));
+      return groups;
+    }, {});
     const matrix = {
-      statement,
-      roles: {
-        superuser: {
-          name: 'Superuser',
-          scope: 'System Level',
-          description: 'Akses tertinggi: Kelola akun pengguna, peran (role), audit sistem, konfigurasi enterprise, serta memiliki seluruh kontrol dan approval dokumen operasional (seperti Admin) secara global.',
-          permissions: {
-            user: ['create', 'list', 'set-role', 'ban', 'delete', 'set-password', 'set-email', 'get', 'update', 'read'],
-            session: ['list', 'revoke', 'delete'],
-            organization: ['create', 'read', 'update', 'delete', 'set-active'],
-            team: ['create', 'read', 'update', 'delete'],
-            settings: ['read', 'update'],
-            audit: ['view'],
-            contract: ['create', 'read', 'update', 'delete', 'approve', 'archive'],
-            partner: ['create', 'read', 'update', 'delete'],
-            report: ['view', 'export'],
-          },
-        },
-        admin: {
-          name: 'Admin',
-          scope: 'Global Level',
-          description: 'Tinjau, edit, dan berikan persetujuan akhir (final approval) seluruh dokumen perusahaan di semua departemen.',
-          permissions: {
-            user: ['read', 'list'],
-            session: ['list'],
-            organization: ['read'],
-            team: ['read'],
-            contract: ['create', 'read', 'update', 'delete', 'approve', 'archive'],
-            partner: ['create', 'read', 'update', 'delete'],
-            report: ['view', 'export'],
-            audit: ['view'],
-            settings: ['read'],
-          },
-        },
-        manager: {
-          name: 'Manager',
-          scope: 'Group / Dept Level',
-          description: 'Persetujuan internal tingkat departemen sebelum dokumen diajukan ke Approver final.',
-          permissions: {
-            user: ['read'],
-            session: [],
-            organization: ['read'],
-            team: ['read'],
-            contract: ['create', 'read', 'update', 'approve-internal'],
-            partner: ['create', 'read', 'update'],
-            report: ['view'],
-            settings: [],
-          },
-        },
-        editor: {
-          name: 'Editor',
-          scope: 'Group / Dept Level',
-          description: 'Buat, unggah, dan revisi draf dokumen mitra dan kontrak di lingkup departemennya.',
-          permissions: {
-            user: ['read'],
-            session: [],
-            organization: ['read'],
-            team: ['read'],
-            contract: ['create', 'read', 'update'],
-            partner: ['create', 'read', 'update'],
-            report: ['view'],
-            settings: [],
-          },
-        },
-        viewer: {
-          name: 'Viewer',
-          scope: 'Restricted / Read-Only',
-          description: 'Hanya membaca dan melihat dokumen yang sudah berstatus final/aktif pada departemennya.',
-          permissions: {
-            user: ['read'],
-            session: [],
-            organization: ['read'],
-            team: ['read'],
-            contract: ['read'],
-            partner: ['read'],
-            report: ['view'],
-            settings: [],
-          },
-        },
-        // Legacy roles for backwards compatibility
-        legal: {
-          name: 'Legal Counsel (Legacy)',
-          scope: 'Group Level',
-          description: 'Penyusunan & peninjauan kontrak, addendum, due diligence vendor, dan kepatuhan hukum.',
-          permissions: {
-            user: ['read'],
-            session: [],
-            organization: ['read'],
-            team: ['read'],
-            contract: ['create', 'read', 'update'],
-            partner: ['create', 'read', 'update'],
-            report: ['view'],
-            settings: [],
-          },
-        },
-        finance: {
-          name: 'Finance & Accounting (Legacy)',
-          scope: 'Group Level',
-          description: 'Pengelolaan nilai transaksi, insertion order (IO), invoice, pengeluaran, dan ekspor laporan.',
-          permissions: {
-            user: ['read'],
-            session: [],
-            organization: ['read'],
-            team: ['read'],
-            contract: ['read'],
-            partner: ['read'],
-            report: ['view', 'export'],
-            settings: [],
-          },
-        },
-        staff: {
-          name: 'General Staff (Legacy)',
-          scope: 'Read-Only',
-          description: 'Akses lihat dokumen aktif dan direktori mitra.',
-          permissions: {
-            user: ['read'],
-            session: [],
-            organization: ['read'],
-            team: ['read'],
-            contract: ['read'],
-            partner: ['read'],
-            report: ['view'],
-            settings: [],
-          },
-        },
-      },
+      statement: groupPermissions(PERMISSIONS.map((permission) => permission.code)),
+      roles: Object.fromEntries(ROLES.map((role) => [role.code, {
+        name: role.name,
+        scope: role.scope,
+        description: role.description,
+        permissions: groupPermissions(permissionsFor(role.code)),
+      }])),
     };
 
     return res.json({ success: true, matrix });

@@ -8,6 +8,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { ActionMenu } from './ui/action-menu';
 import { TablePagination } from './ui/TablePagination';
 import { getStatusBadgeClass } from './ui/badge';
+import { TableEmptyState } from './ui/table-empty-state';
 
 export const ActivityLogsView: React.FC = () => {
   const { fetchActivityLogs } = useAuth();
@@ -281,11 +282,7 @@ export const ActivityLogsView: React.FC = () => {
                   </td>
                 </tr>
               ) : currentLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} className="py-12 text-center text-slate-400">
-                    {t('logs.no_data', 'Belum ada data log aktivitas.')}
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} />
               ) : (
                 currentLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">

@@ -80,6 +80,19 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
     return hasPermission(requiredPermission[item.id]);
   });
 
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % visibleNavItems.length;
+    if (event.key === 'ArrowLeft') nextIndex = (index - 1 + visibleNavItems.length) % visibleNavItems.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = visibleNavItems.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const nextTab = visibleNavItems[nextIndex].id;
+    onTabChange(nextTab);
+    requestAnimationFrame(() => document.getElementById(`admin-${area}-${nextTab}-tab`)?.focus());
+  };
+
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
       <div className="flex min-h-14 items-center justify-between gap-4 border-b border-slate-200 px-4 dark:border-slate-800 sm:px-5">
@@ -117,7 +130,7 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
         aria-label={isSystemArea ? t('admin.system_admin', 'System Admin') : t('admin.organization_admin', 'Organization Admin')}
         className="flex items-center gap-1 overflow-x-auto bg-slate-50/70 px-3 py-2 dark:bg-slate-950/30 sm:px-4"
       >
-        {visibleNavItems.map((item) => {
+        {visibleNavItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
@@ -127,8 +140,12 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
               variant="ghost"
               size="sm"
               role="tab"
+              id={`admin-${area}-${item.id}-tab`}
+              aria-controls={`admin-${area}-${item.id}-panel`}
               aria-selected={isActive}
+              tabIndex={isActive ? 0 : -1}
               onClick={() => onTabChange(item.id)}
+              onKeyDown={(event) => handleTabKeyDown(event, index)}
               className={
                 isActive
                   ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-xs font-semibold hover:bg-white dark:hover:bg-slate-800'

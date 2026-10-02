@@ -5,6 +5,7 @@ import { useConfirm } from '../context/ConfirmDialogContext';
 import { AlertCircle, Check, Download, Edit2, FileSpreadsheet, Languages, RotateCcw, Search, Sparkles, Upload, X } from 'lucide-react';
 import { TablePagination } from './ui/TablePagination';
 import { getStatusBadgeClass } from './ui/badge';
+import { TableEmptyState } from './ui/table-empty-state';
 
 interface UITextManagerModalProps {
   isOpen?: boolean;
@@ -294,11 +295,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                 {filteredKeys.length === 0 ? (
-                  <tr>
-                    <td colSpan={CODES.length + 3} className="py-12 text-center text-slate-400 dark:text-slate-500 font-medium">
-                      {t('ui_text.no_match', 'Tidak ada teks UI yang cocok dengan pencarian.')}
-                    </td>
-                  </tr>
+                  <TableEmptyState colSpan={CODES.length + 3} />
                 ) : (
                   currentKeys.map((key) => {
                     const isCustom = CODES.some((code) => customTranslations[code]?.[key]);

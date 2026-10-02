@@ -18,6 +18,7 @@ import { Badge, type BadgeVariant } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { Card, CardContent } from '../ui/card';
+import { TableEmptyState } from '../ui/table-empty-state';
 
 interface AdminUsersTabProps {
   users: ConsoleUser[];
@@ -28,6 +29,10 @@ interface AdminUsersTabProps {
   onToggleBan: (user: ConsoleUser) => void;
   onDeleteUser: (user: ConsoleUser) => void;
   canCreateUser?: boolean;
+  canEditUser?: (user: ConsoleUser) => boolean;
+  canResetPassword?: (user: ConsoleUser) => boolean;
+  canChangeStatus?: (user: ConsoleUser) => boolean;
+  canDeleteUser?: (user: ConsoleUser) => boolean;
 }
 
 const ROLE_BADGE_VARIANT: Record<string, BadgeVariant> = {
@@ -48,6 +53,10 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   onToggleBan,
   onDeleteUser,
   canCreateUser = false,
+  canEditUser = () => false,
+  canResetPassword = () => false,
+  canChangeStatus = () => false,
+  canDeleteUser = () => false,
 }) => {
   const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
@@ -182,11 +191,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-8 text-center text-xs text-slate-500">
-                    {t('admin.no_users_found', 'Tidak ada pengguna yang cocok dengan kriteria pencarian.')}
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={8} />
               ) : (
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -291,7 +296,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                   {/* Actions */}
                   <td className="pl-2 pr-6 py-4 text-right align-middle w-20">
                     <div className="flex items-center justify-end gap-1">
-                      <Button
+                      {canEditUser(user) && <Button
                         type="button"
                         variant="ghost"
                         size="icon"
@@ -301,8 +306,8 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                         className="h-7 w-7 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40"
                       >
                         <Shield className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
+                      </Button>}
+                      {canResetPassword(user) && <Button
                         type="button"
                         variant="ghost"
                         size="icon"
@@ -312,8 +317,8 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                         className="h-7 w-7 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40"
                       >
                         <KeyRound className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
+                      </Button>}
+                      {canChangeStatus(user) && <Button
                         type="button"
                         variant="ghost"
                         size="icon"
@@ -327,8 +332,8 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                         }`}
                       >
                         {user.banned ? <UserCheck className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
-                      </Button>
-                      <Button
+                      </Button>}
+                      {canDeleteUser(user) && <Button
                         type="button"
                         variant="ghost"
                         size="icon"
@@ -338,7 +343,10 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                         className="h-7 w-7 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      </Button>}
+                      {!canEditUser(user) && !canResetPassword(user) && !canChangeStatus(user) && !canDeleteUser(user) && (
+                        <span className="text-slate-400" aria-label={t('admin.no_actions', 'Tidak ada aksi tersedia')}>—</span>
+                      )}
                     </div>
                   </td>
                 </tr>

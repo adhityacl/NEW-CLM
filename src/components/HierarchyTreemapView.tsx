@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePermissions } from '../lib/permissions';
+import { TableEmptyState } from './ui/table-empty-state';
 
 
 export const INITIAL_COLUMNS = [
@@ -1323,11 +1324,7 @@ const exportToCSV = () => {
                   ))}
                   
                   {auditRows.length === 0 && (
-                     <tr>
-                        <td colSpan={columns.filter(c => auditVisibleCols[c.id]).length} className="border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500">
-                           {t('hierarchy.data_not_found', 'Data tidak ditemukan.')}
-                        </td>
-                     </tr>
+                    <TableEmptyState colSpan={columns.filter(c => auditVisibleCols[c.id]).length} />
                   )}
                 </tbody>
               </table>

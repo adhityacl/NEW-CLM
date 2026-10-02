@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { getActiveFormattingLocale } from '../../lib/currencyUtils';
-import { Mail, Search, Clock, CheckCircle2, XCircle, RotateCw, Trash2, Copy, Check, Send, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Mail, Search, Clock, CheckCircle2, XCircle, RotateCw, Trash2, Copy, Check } from 'lucide-react';
 import { ConsoleInvitation, ConsoleOrganization } from './types';
 import { useLanguage } from '../../context/LanguageContext';
+import { TableEmptyState } from '../ui/table-empty-state';
 
 interface AdminInvitationsTabProps {
   invitations: ConsoleInvitation[];
@@ -22,17 +23,23 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
   const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState('');
 
   const filteredInvites = invitations.filter((inv) =>
     inv.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCopyInviteLink = (inv: ConsoleInvitation) => {
+  const handleCopyInviteLink = async (inv: ConsoleInvitation) => {
     const baseUrl = window.location.origin;
     const link = `${baseUrl}/?accept_invite=${inv.id}&email=${encodeURIComponent(inv.email)}`;
-    navigator.clipboard.writeText(link);
-    setCopiedId(inv.id);
-    setTimeout(() => setCopiedId(null), 2500);
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopyError('');
+      setCopiedId(inv.id);
+      setTimeout(() => setCopiedId(null), 2500);
+    } catch {
+      setCopyError(t('admin.copy_failed', 'Tautan tidak dapat disalin. Salin dari browser secara manual.'));
+    }
   };
 
   return (
@@ -59,6 +66,7 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
           <span>{t('admin.btn_send_invitation', 'Kirim Undangan Baru')}</span>
         </button>
       </div>
+      {copyError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">{copyError}</div>}
 
       {/* Invitations Table */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
@@ -76,14 +84,13 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredInvites.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
-                    {t('admin.no_invitations_found', 'Belum ada undangan anggota yang terkirim.')}
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={6} />
               ) : (
                 filteredInvites.map((inv) => {
                   const isExpired = new Date(inv.expiresAt) < new Date();
+                  const canUseLink = inv.status === 'pending' && !isExpired;
+                  const canResend = inv.status === 'pending' || inv.status === 'expired';
+                  const canCancel = inv.status === 'pending' || inv.status === 'expired';
                   return (
                     <tr
                       key={inv.id}
@@ -118,6 +125,12 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
                             {t('admin.status_expired', 'Kadaluarsa')}
                           </span>
                         )}
+                        {inv.status === 'canceled' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            <XCircle className="h-3 w-3" />
+                            {t('admin.status_canceled', 'Dibatalkan')}
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-slate-500 text-[11px]">
                         {new Date(inv.expiresAt).toLocaleDateString(getActiveFormattingLocale())}
@@ -127,11 +140,12 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
+                          {canUseLink && <button
                             type="button"
                             onClick={() => handleCopyInviteLink(inv)}
                             className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
                             title={t('admin.salin_tautan_undangan_langsung', 'Salin Tautan Undangan Langsung')}
+                            aria-label={t('admin.salin_tautan_undangan_langsung', 'Salin Tautan Undangan Langsung')}
                           >
                             {copiedId === inv.id ? (
                               <>
@@ -144,24 +158,27 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
                                 <span>{t('admin.salin_link', 'Salin Link')}</span>
                               </>
                             )}
-                          </button>
+                          </button>}
 
-                          <button
+                          {canResend && <button
                             type="button"
                             onClick={() => onResendInvitation(inv.id)}
                             className="p-1.5 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-md transition-colors"
                             title={t('admin.title_resend_invite', 'Kirim Ulang Undangan (SMTP)')}
+                            aria-label={t('admin.title_resend_invite', 'Kirim Ulang Undangan (SMTP)')}
                           >
                             <RotateCw className="w-3.5 h-3.5" />
-                          </button>
-                          <button
+                          </button>}
+                          {canCancel && <button
                             type="button"
                             onClick={() => onCancelInvitation(inv.id)}
                             className="p-1.5 text-slate-500 hover:text-red-600 dark:hover:text-red-400 rounded-md transition-colors"
                             title={t('admin.title_cancel_invite', 'Batalkan Undangan')}
+                            aria-label={t('admin.title_cancel_invite', 'Batalkan Undangan')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          </button>}
+                          {!canUseLink && !canResend && !canCancel && <span className="text-slate-400">—</span>}
                         </div>
                       </td>
                     </tr>

@@ -18,6 +18,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useConfirm } from '../context/ConfirmDialogContext';
 import { getStatusBadgeClass } from './ui/badge';
 import { TablePagination } from './ui/TablePagination';
+import { TableEmptyState } from './ui/table-empty-state';
 
 interface NotificationsViewProps {
   notifications: NotificationLog[];
@@ -448,16 +449,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
             {/* Table Body */}
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
               {currentNotifications.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-16 text-center">
-                    <div className="flex flex-col items-center justify-center text-slate-400">
-                      <Inbox className="w-10 h-10 mb-2 stroke-1" />
-                      <p className="text-xs font-medium">
-                        {t('notifications.no_data', 'Belum ada notifikasi atau warning notice period yang tercatat.')}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
+                <TableEmptyState colSpan={7} />
               ) : (
                 currentNotifications.map((notif) => {
                   const isSelected = selectedIds.includes(notif.notif_id);
