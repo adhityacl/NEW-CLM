@@ -4,7 +4,7 @@ import { RecentDocumentsTable } from './RecentDocumentsTable';
 import { TableEmptyState } from './ui/table-empty-state';
 import { buildSpendingSeries, contractTotalInCurrency } from '../lib/dashboardMetrics';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTenantSettings } from '../context/TenantSettingsContext';
 import { convertToUsdWithFallback, getActiveFormattingLocale, getDefaultUsdRate } from '../lib/currencyUtils';
 import { Contract, InsertionOrder, Partner, NotificationLog, PartnerSpending } from '../types';
@@ -20,8 +20,8 @@ import { getSavedCategories } from '../lib/categoryUtils';
 import { getStatusBadgeClass } from './ui/badge';
 import { parseMonthStr, parseAllMonths, formatMonthTagDisplay } from '../lib/monthUtils';
 import { NewsTicker } from './NewsTicker';
-import { documentsApi, errorMessage } from '../lib/documentsApi';
-import { formatDateTime, type DocumentSummary } from '../lib/documentModel';
+import { useDocumentList } from '../features/documents/useDocumentList';
+import { formatDateTime } from '../lib/documentModel';
 import { typeLabel } from './documents/documentLabels';
 import {
   FileText,
@@ -97,27 +97,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   // Documents awaiting review, for the "Pending Review" table below
-  const [pendingReviewDocs, setPendingReviewDocs] = useState<DocumentSummary[]>([]);
-  const [pendingReviewState, setPendingReviewState] = useState<'loading' | 'ready' | 'error'>('loading');
-
-  useEffect(() => {
-    let cancelled = false;
-    documentsApi
-      .list({ status: 'pending_review', page: '1', limit: '5', sort_by: 'modified_at', sort_dir: 'desc' })
-      .then((data) => {
-        if (!cancelled) {
-          setPendingReviewDocs(data.documents);
-          setPendingReviewState('ready');
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load pending review documents:', errorMessage(err));
-        if (!cancelled) setPendingReviewState('error');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const pendingReviewQuery = useDocumentList({ status: 'pending_review', page: '1', limit: '5', sort_by: 'modified_at', sort_dir: 'desc' });
+  const pendingReviewDocs = pendingReviewQuery.data?.documents || [];
+  const pendingReviewState = pendingReviewQuery.isError ? 'error' : pendingReviewQuery.data ? 'ready' : 'loading';
 
   // Department-scoped datasets based on RBAC and Internal PIC of Partner
   const scopedPartners = useMemo(() => (partners || []).filter((p) => canViewPartner(p, user)), [partners, user]);

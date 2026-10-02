@@ -1,3 +1,4 @@
+import { TableViewMenu } from './ui/table-view-menu';
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { FilterSummary } from './ui/filter-summary';
 import { TableEmptyState } from './ui/table-empty-state';
@@ -31,7 +32,6 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  SlidersHorizontal,
   X,
   Shield,
 } from 'lucide-react';
@@ -52,7 +52,7 @@ import { ActionMenu } from './ui/action-menu';
 import { getStatusBadgeClass } from './ui/badge';
 import { getSavedColumnPreferences, saveColumnPreferences } from '../lib/tablePreferences';
 import { UploadDDModal } from './UploadDDModal';
-import { getAuthHeaders } from '../App';
+import { getAuthHeaders } from '../lib/apiFetch';
 import { usePermissions } from '../lib/permissions';
 
 export function getValidPartnerTags(tags?: string[]): string[] {
@@ -132,7 +132,6 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() =>
     getSavedColumnPreferences('partners', DEFAULT_PARTNER_COLUMNS)
   );
-  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
 
   const toggleColumnVisibility = (id: string) => {
@@ -505,50 +504,35 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
               </AlphabeticalSelect>
 
               {/* Column Toggle */}
-              <div className="relative flex-initial">
-                <button
-                  onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-                  className="min-h-11 sm:min-h-9 h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
-                  title={t('io.view_settings', 'Pengaturan Tampilan Kolom')}
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                  <span>{t('io.view', 'View')}</span>
-                </button>
-                {isViewMenuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)}></div>
-                    <div className="absolute right-0 top-11 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 py-2 animate-in fade-in zoom-in-95">
-                    <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
-                      {t('io.toggle_columns', 'Toggle Kolom')}
-                    </div>
-                    {Object.keys(visibleColumns).map((col) => {
-                      let label = col;
-                      if (col === 'nama_partner') label = t('partners.col_name', 'Nama Partner');
-                      else if (col === 'channel') label = t('partners.col_channel', 'Nama Channel');
-                      else if (col === 'badan_hukum') label = t('partners.col_entity', 'Badan Hukum');
-                      else if (col === 'kategori') label = t('partners.col_category', 'Kategori Kerjasama');
-                      else if (col === 'pic') label = t('partners.col_pic', 'PIC Partner');
-                      else if (col === 'email') label = t('partners.col_email', 'Email');
-                      else if (col === 'telepon') label = t('partners.col_phone', 'Telepon');
-                      else if (col === 'status') label = t('partners.col_status', 'Status Partner');
-                      else if (col === 'due_diligence') label = t('partners.col_dd_status', 'Status Due Diligence');
+              <TableViewMenu title={t('io.view_settings', 'Pengaturan Tampilan Kolom')} label={t('io.view', 'View')}>
+                <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
+                  {t('io.toggle_columns', 'Toggle Kolom')}
+                </div>
+                {Object.keys(visibleColumns).map((col) => {
+                  let label = col;
+                  if (col === 'nama_partner') label = t('partners.col_name', 'Nama Partner');
+                  else if (col === 'channel') label = t('partners.col_channel', 'Nama Channel');
+                  else if (col === 'badan_hukum') label = t('partners.col_entity', 'Badan Hukum');
+                  else if (col === 'kategori') label = t('partners.col_category', 'Kategori Kerjasama');
+                  else if (col === 'pic') label = t('partners.col_pic', 'PIC Partner');
+                  else if (col === 'email') label = t('partners.col_email', 'Email');
+                  else if (col === 'telepon') label = t('partners.col_phone', 'Telepon');
+                  else if (col === 'status') label = t('partners.col_status', 'Status Partner');
+                  else if (col === 'due_diligence') label = t('partners.col_dd_status', 'Status Due Diligence');
 
-                      return (
-                        <label key={col} className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300 select-none">
-                          <input
-                            type="checkbox"
-                            checked={visibleColumns[col]}
-                            onChange={() => toggleColumnVisibility(col)}
-                            className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
-                          />
-                          <span className="capitalize">{label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
+                  return (
+                    <label key={col} className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300 select-none">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns[col]}
+                        onChange={() => toggleColumnVisibility(col)}
+                        className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                      />
+                      <span className="capitalize">{label}</span>
+                    </label>
+                  );
+                })}
+              </TableViewMenu>
           </div>
         </div>
 

@@ -1,8 +1,9 @@
+import { TableViewMenu } from './ui/table-view-menu';
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { formatBusinessDate } from '../lib/displayDate';
 import { FilterSummary } from './ui/filter-summary';
 import { TableEmptyState } from './ui/table-empty-state';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { getActiveFormattingLocale, convertToUsdWithFallback } from '../lib/currencyUtils';
 import { Contract, Partner, InsertionOrder } from '../types';
 import { formatMoney } from '../lib/currencyUtils';
@@ -32,7 +33,6 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  SlidersHorizontal,
   X,
   Scale,
 } from 'lucide-react';
@@ -80,12 +80,11 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
   const [redliningContract, setRedliningContract] = useState<Contract | null>(null);
 
   // Categories list
-  const allCategories = Array.from(
-    new Set(contracts.flatMap((c) => c.kategori_kerjasama || []))
-  );
+  const allCategories = useMemo(() => Array.from(new Set(contracts.flatMap(c => c.kategori_kerjasama || []))), [contracts]);
+  const partnersById = useMemo(() => new Map(partners.map(partner => [partner.partner_id, partner])), [partners]);
 
   // Filter logic
-  const filteredContracts = contracts.filter((c) => {
+  const filteredContracts = useMemo(() => contracts.filter((c) => {
     // 1. Department Scoping & RBAC restriction (based on internal PIC of partner)
     if (!canViewContract(c, partners, user)) {
       return false;
@@ -107,7 +106,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
     const matchStatus = selectedStatus === 'ALL' || c.status === selectedStatus;
 
     return matchJenis && matchSearch && matchCategory && matchStatus;
-  });
+  }), [contracts, partners, user, selectedJenisDokumen, selectedCategory, selectedStatus, searchTerm]);
 
   type SortField = 'no' | 'partner' | 'doc_type' | 'value' | 'duration' | 'status' | 'document';
   type SortOrder = 'asc' | 'desc';
@@ -130,7 +129,6 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() =>
     getSavedColumnPreferences('contracts', DEFAULT_CONTRACT_COLUMNS)
   );
-  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
 
   const toggleColumnVisibility = (id: string) => {
@@ -164,7 +162,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
       let valB: any = '';
 
       const getPartnerName = (c: Contract) => {
-        const partnerObj = partners.find((p) => p.partner_id === c.partner_id);
+        const partnerObj = partnersById.get(c.partner_id);
         return c.partner_nama || partnerObj?.nama_partner || '';
       };
 
@@ -211,7 +209,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
       });
       return sortOrder === 'asc' ? res : -res;
     });
-  }, [filteredContracts, sortField, sortOrder, partners]);
+  }, [filteredContracts, sortField, sortOrder, partnersById]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -283,7 +281,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
     ];
 
     const rows = currentContracts.map((c) => {
-      const partnerObj = partners.find((p) => p.partner_id === c.partner_id);
+      const partnerObj = partnersById.get(c.partner_id);
       const partnerName = c.partner_nama || partnerObj?.nama_partner || '-';
       return [
         c.jenis_dokumen || 'Master Agreement',
@@ -422,51 +420,36 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
           </AlphabeticalSelect>
 
           {/* Column Toggle */}
-          <div className="relative flex-initial">
-            <button
-              onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-              className="min-h-11 sm:min-h-9 h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
-              title={t('io.view_settings', 'Pengaturan Tampilan Kolom')}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span>{t('io.view', 'View')}</span>
-            </button>
-            {isViewMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)}></div>
-                <div className="absolute right-0 top-11 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 py-2 animate-in fade-in zoom-in-95">
-                <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
-                  {t('io.toggle_columns', 'Toggle Kolom')}
-                </div>
-                {Object.keys(visibleColumns).map((col) => {
-                  let label = col;
-                  if (col === 'jenis_dokumen') label = t('contracts.col_doc_type', 'Jenis Dokumen');
-                  else if (col === 'nomor_kontrak') label = t('contracts.col_no', 'Nomor Kontrak');
-                  else if (col === 'judul_kontrak') label = t('contracts.col_title', 'Judul Kontrak');
-                  else if (col === 'partner') label = t('contracts.col_partner', 'Partner');
-                  else if (col === 'kategori') label = t('contracts.col_category', 'Kategori');
-                  else if (col === 'nilai') label = t('contracts.col_value', 'Nilai Kontrak');
-                  else if (col === 'tanggal_mulai') label = t('contracts.col_start_date', 'Tanggal Mulai');
-                  else if (col === 'tanggal_selesai') label = t('contracts.col_end_date', 'Tanggal Selesai');
-                  else if (col === 'status') label = t('contracts.col_status', 'Status');
-                  else if (col === 'file') label = t('contracts.col_document', 'File Dokumen');
+          <TableViewMenu title={t('io.view_settings', 'Pengaturan Tampilan Kolom')} label={t('io.view', 'View')}>
+            <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
+              {t('io.toggle_columns', 'Toggle Kolom')}
+            </div>
+            {Object.keys(visibleColumns).map((col) => {
+              let label = col;
+              if (col === 'jenis_dokumen') label = t('contracts.col_doc_type', 'Jenis Dokumen');
+              else if (col === 'nomor_kontrak') label = t('contracts.col_no', 'Nomor Kontrak');
+              else if (col === 'judul_kontrak') label = t('contracts.col_title', 'Judul Kontrak');
+              else if (col === 'partner') label = t('contracts.col_partner', 'Partner');
+              else if (col === 'kategori') label = t('contracts.col_category', 'Kategori');
+              else if (col === 'nilai') label = t('contracts.col_value', 'Nilai Kontrak');
+              else if (col === 'tanggal_mulai') label = t('contracts.col_start_date', 'Tanggal Mulai');
+              else if (col === 'tanggal_selesai') label = t('contracts.col_end_date', 'Tanggal Selesai');
+              else if (col === 'status') label = t('contracts.col_status', 'Status');
+              else if (col === 'file') label = t('contracts.col_document', 'File Dokumen');
 
-                  return (
-                    <label key={col} className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300 select-none">
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns[col]}
-                        onChange={() => toggleColumnVisibility(col)}
-                        className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
-                      />
-                      <span className="capitalize">{label.replace(/_/g, ' ')}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
+              return (
+                <label key={col} className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300 select-none">
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns[col]}
+                    onChange={() => toggleColumnVisibility(col)}
+                    className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                  />
+                  <span className="capitalize">{label.replace(/_/g, ' ')}</span>
+                </label>
+              );
+            })}
+          </TableViewMenu>
       </div>
     </div>
 
@@ -729,7 +712,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block">{t('contracts.partner', 'Partner:')}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">
-                    {detailContract.partner_nama || partners.find((p) => p.partner_id === detailContract.partner_id)?.nama_partner || '-'}
+                    {detailContract.partner_nama || partnersById.get(detailContract.partner_id)?.nama_partner || '-'}
                   </span>
                 </div>
                 <div>

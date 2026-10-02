@@ -182,7 +182,6 @@ export const DateInput: React.FC<DateInputProps> = ({
         <PopoverTrigger asChild>
           <button
             type="button"
-            tabIndex={-1}
             disabled={disabled}
             title={t('common.buka_kalender', 'Buka Kalender')}
             aria-label={t('common.buka_kalender', 'Buka Kalender')}

@@ -1,3 +1,4 @@
+import { TableViewMenu } from './ui/table-view-menu';
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import { formatBusinessDate } from '../lib/displayDate';
@@ -23,7 +24,6 @@ import { XCircle, Clock, Filter, ClipboardCheck,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { ActionMenu } from './ui/action-menu';
 import { TablePagination } from './ui/TablePagination';
@@ -99,7 +99,6 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() =>
     getSavedColumnPreferences('evaluations', DEFAULT_EVAL_COLUMNS)
   );
-  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
 
   const toggleColumnVisibility = (id: string) => {
@@ -669,46 +668,31 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
           </AlphabeticalSelect>
 
           {/* View Toggle */}
-          <div className="relative flex-initial">
-            <button
-              onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-              className="min-h-11 sm:min-h-9 h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
-              title={t('eval.view_settings', 'Pengaturan Tampilan Kolom')}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span>{t('eval.view', 'View')}</span>
-            </button>
-            {isViewMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)}></div>
-                <div className="absolute right-0 top-11 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 py-2 animate-in fade-in zoom-in-95">
-                <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
-                  {t('eval.toggle_columns', 'Toggle Kolom')}
-                </div>
-                {Object.keys(visibleColumns).map((col) => {
-                  let label = col;
-                  if (col === 'vendor') label = t('eval.col_vendor', 'Partner');
-                  else if (col === 'target') label = t('eval.col_target', 'Target Kewajiban');
-                  else if (col === 'skor') label = t('eval.col_calculated_score', 'Skor');
-                  else if (col === 'hasil') label = t('eval.col_recommendation', 'Hasil Rekomendasi');
-                  else if (col === 'tanggal') label = t('eval.col_review_date', 'Tanggal Review');
+          <TableViewMenu title={t('eval.view_settings', 'Pengaturan Tampilan Kolom')} label={t('eval.view', 'View')}>
+            <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
+              {t('eval.toggle_columns', 'Toggle Kolom')}
+            </div>
+            {Object.keys(visibleColumns).map((col) => {
+              let label = col;
+              if (col === 'vendor') label = t('eval.col_vendor', 'Partner');
+              else if (col === 'target') label = t('eval.col_target', 'Target Kewajiban');
+              else if (col === 'skor') label = t('eval.col_calculated_score', 'Skor');
+              else if (col === 'hasil') label = t('eval.col_recommendation', 'Hasil Rekomendasi');
+              else if (col === 'tanggal') label = t('eval.col_review_date', 'Tanggal Review');
 
-                  return (
-                    <label key={col} className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300 select-none">
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns[col]}
-                        onChange={() => toggleColumnVisibility(col)}
-                        className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
-                      />
-                      <span className="capitalize">{label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
+              return (
+                <label key={col} className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300 select-none">
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns[col]}
+                    onChange={() => toggleColumnVisibility(col)}
+                    className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                  />
+                  <span className="capitalize">{label}</span>
+                </label>
+              );
+            })}
+          </TableViewMenu>
       </div>
     </div>
 

@@ -1,3 +1,57 @@
+import { getCachedAccessToken } from './googleAuthService';
+
+export const getAuthHeaders = () => {
+  const token = getCachedAccessToken();
+  const sessionToken = typeof window !== 'undefined' ? localStorage.getItem('auth_session_token') : null;
+  const activeOrgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrganizationId') : null;
+  const googleProfileStr = typeof window !== 'undefined' ? localStorage.getItem('google_user_profile') : null;
+  const authUserStr = typeof window !== 'undefined' ? localStorage.getItem('auth_user') : null;
+  let userEmail = '';
+  let userName = '';
+  let userRole = '';
+  if (authUserStr) {
+    try {
+      const u = JSON.parse(authUserStr);
+      userEmail = u.email || '';
+      userName = u.name || '';
+      userRole = u.role || '';
+    } catch {}
+  }
+  if (!userEmail && googleProfileStr) {
+    try {
+      const p = JSON.parse(googleProfileStr);
+      userEmail = p.email || '';
+      userName = p.name || '';
+    } catch {}
+  }
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['x-google-access-token'] = token;
+  }
+  if (userEmail) {
+    headers['x-user-email'] = userEmail;
+    headers['x-google-user-email'] = userEmail;
+  }
+  if (userName) {
+    headers['x-user-name'] = userName;
+  }
+  if (userRole) {
+    headers['x-user-role'] = userRole;
+    headers['x-role'] = userRole;
+  }
+  if (sessionToken) {
+    headers['Authorization'] = `Bearer ${sessionToken}`;
+    headers['x-session-token'] = sessionToken;
+  }
+  if (activeOrgId) {
+    headers['x-tenant-id'] = activeOrgId;
+    headers['x-organization-id'] = activeOrgId;
+  }
+  return headers;
+};
+
 /**
  * Adds the session token and active organization to every same-origin
  * `/api/*` and `/uploads/*` request that does not set them explicitly.

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Megaphone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import { getAuthHeaders } from '../App';
+import { getAuthHeaders } from '../lib/apiFetch';
 
 type TickerStatus = 'loading' | 'ready' | 'empty' | 'error';
 

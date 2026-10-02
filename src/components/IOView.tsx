@@ -1,3 +1,4 @@
+import { TableViewMenu } from './ui/table-view-menu';
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { formatBusinessDate } from '../lib/displayDate';
 import { FilterSummary } from './ui/filter-summary';
@@ -24,7 +25,6 @@ import { FileDown, FileSpreadsheet,
   X,
   Building2,
   Eye,
-  SlidersHorizontal,
   HelpCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -105,7 +105,6 @@ export const IOView: React.FC<IOViewProps> = ({
     getSavedColumnPreferences('io', DEFAULT_IO_COLUMNS)
   );
   
-  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
 
   const toggleColumnVisibility = (id: string) => {
     setVisibleColumns((prev) => {
@@ -442,54 +441,39 @@ export const IOView: React.FC<IOViewProps> = ({
           )}
         
           {/* Column Toggle */}
-          <div className="relative flex-initial">
-            <button
-              onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-              className="min-h-11 sm:min-h-9 h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
-              title={t('io.view_settings', 'Pengaturan Tampilan Kolom')}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span>{t('io.view', 'View')}</span>
-            </button>
-            {isViewMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)}></div>
-                <div className="absolute right-0 top-11 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 py-2 animate-in fade-in zoom-in-95">
-                  <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
-                    {t('io.toggle_columns', 'Toggle Kolom')}
-                  </div>
-                  {Object.keys(visibleColumns)
-                    .filter((col) => col !== 'detail_pembayaran')
-                    .map((col) => {
-                    let label = col;
-                    if (col === 'nomor') label = t('io.col_no', 'Nomor IO');
-                    else if (col === 'judul') label = t('io.col_title', 'Judul IO');
-                    else if (col === 'partner') label = t('io.col_partner', 'Partner');
-                    else if (col === 'kanal') label = t('io.col_channel', 'Kanal Media');
-                    else if (col === 'nilai') label = t('io.col_value', 'Nilai Order');
-                    else if (col === 'model_pembayaran') label = t('io.col_pricing_model', 'Model Pembayaran');
-                    else if (col === 'skema_pembayaran') label = t('io.col_charging_type', 'Skema Pembayaran');
-                    else if (col === 'tanggal_mulai') label = t('io.col_start_date', 'Tanggal Mulai');
-                    else if (col === 'tanggal_selesai') label = t('io.col_end_date', 'Tanggal Selesai');
-                    else if (col === 'status') label = t('io.col_status', 'Status');
-                    else if (col === 'file') label = t('io.col_document', 'File PDF');
+          <TableViewMenu title={t('io.view_settings', 'Pengaturan Tampilan Kolom')} label={t('io.view', 'View')}>
+            <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
+              {t('io.toggle_columns', 'Toggle Kolom')}
+            </div>
+            {Object.keys(visibleColumns)
+              .filter((col) => col !== 'detail_pembayaran')
+              .map((col) => {
+              let label = col;
+              if (col === 'nomor') label = t('io.col_no', 'Nomor IO');
+              else if (col === 'judul') label = t('io.col_title', 'Judul IO');
+              else if (col === 'partner') label = t('io.col_partner', 'Partner');
+              else if (col === 'kanal') label = t('io.col_channel', 'Kanal Media');
+              else if (col === 'nilai') label = t('io.col_value', 'Nilai Order');
+              else if (col === 'model_pembayaran') label = t('io.col_pricing_model', 'Model Pembayaran');
+              else if (col === 'skema_pembayaran') label = t('io.col_charging_type', 'Skema Pembayaran');
+              else if (col === 'tanggal_mulai') label = t('io.col_start_date', 'Tanggal Mulai');
+              else if (col === 'tanggal_selesai') label = t('io.col_end_date', 'Tanggal Selesai');
+              else if (col === 'status') label = t('io.col_status', 'Status');
+              else if (col === 'file') label = t('io.col_document', 'File PDF');
 
-                    return (
-                      <label key={col} className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300 select-none">
-                        <input
-                          type="checkbox"
-                          checked={visibleColumns[col]}
-                          onChange={() => toggleColumnVisibility(col)}
-                          className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
-                        />
-                        <span className="capitalize">{label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
+              return (
+                <label key={col} className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300 select-none">
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns[col]}
+                    onChange={() => toggleColumnVisibility(col)}
+                    className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                  />
+                  <span className="capitalize">{label}</span>
+                </label>
+              );
+            })}
+          </TableViewMenu>
         </div>
       </div>
 

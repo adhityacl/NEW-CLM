@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SignInForm } from './components/SignInForm';
 import InteractiveGridBackground from './components/lightswind/interactive-grid-background';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -29,14 +29,13 @@ const LazyAdminUsersView = lazy(() => import('./components/AdminUsersView').then
 const LazyBulkImportView = lazy(() => import('./components/BulkImportView').then((m) => ({ default: m.BulkImportView })));
 const LazyActivityLogsView = lazy(() => import('./components/ActivityLogsView').then((m) => ({ default: m.ActivityLogsView })));
 const LazySettingsView = lazy(() => import('./components/SettingsView').then((m) => ({ default: m.SettingsView })));
-const LazyAIChatWidget = lazy(() => import('./components/AIChatWidget').then((m) => ({ default: m.AIChatWidget })));
 const LazyPrivacyPolicyView = lazy(() => import('./components/PrivacyPolicyView').then((m) => ({ default: m.PrivacyPolicyView })));
 const LazyTermsOfServiceView = lazy(() => import('./components/TermsOfServiceView').then((m) => ({ default: m.TermsOfServiceView })));
 
-import { ContractModal } from './components/ContractModal';
-import { IOModal } from './components/IOModal';
-import { PartnerModal } from './components/PartnerModal';
-import { AmendmentModal } from './components/AmendmentModal';
+const ContractModal = lazy(() => import('./components/ContractModal').then(m => ({ default: m.ContractModal })));
+const IOModal = lazy(() => import('./components/IOModal').then(m => ({ default: m.IOModal })));
+const PartnerModal = lazy(() => import('./components/PartnerModal').then(m => ({ default: m.PartnerModal })));
+const AmendmentModal = lazy(() => import('./components/AmendmentModal').then(m => ({ default: m.AmendmentModal })));
 
 import {
   Contract,
@@ -48,60 +47,11 @@ import {
   PartnerSpending,
 } from './types';
 import { getCachedAccessToken, invalidateGoogleToken } from './lib/googleAuthService';
+import { getAuthHeaders } from './lib/apiFetch';
+import { useWorkspaceData } from './features/workspace/useWorkspaceData';
+import { AIChatLauncher } from './components/AIChatLauncher';
 import { PermissionProvider } from './lib/permissions';
 import { usePermissions } from './lib/permissions';
-
-export const getAuthHeaders = () => {
-  const token = getCachedAccessToken();
-  const sessionToken = typeof window !== 'undefined' ? localStorage.getItem('auth_session_token') : null;
-  const activeOrgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrganizationId') : null;
-  const googleProfileStr = typeof window !== 'undefined' ? localStorage.getItem('google_user_profile') : null;
-  const authUserStr = typeof window !== 'undefined' ? localStorage.getItem('auth_user') : null;
-  let userEmail = '';
-  let userName = '';
-  let userRole = '';
-  if (authUserStr) {
-    try {
-      const u = JSON.parse(authUserStr);
-      userEmail = u.email || '';
-      userName = u.name || '';
-      userRole = u.role || '';
-    } catch {}
-  }
-  if (!userEmail && googleProfileStr) {
-    try {
-      const p = JSON.parse(googleProfileStr);
-      userEmail = p.email || '';
-      userName = p.name || '';
-    } catch {}
-  }
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (token) {
-    headers['x-google-access-token'] = token;
-  }
-  if (userEmail) {
-    headers['x-user-email'] = userEmail;
-    headers['x-google-user-email'] = userEmail;
-  }
-  if (userName) {
-    headers['x-user-name'] = userName;
-  }
-  if (userRole) {
-    headers['x-user-role'] = userRole;
-    headers['x-role'] = userRole;
-  }
-  if (sessionToken) {
-    headers['Authorization'] = `Bearer ${sessionToken}`;
-    headers['x-session-token'] = sessionToken;
-  }
-  if (activeOrgId) {
-    headers['x-tenant-id'] = activeOrgId;
-    headers['x-organization-id'] = activeOrgId;
-  }
-  return headers;
-};
 
 const MainApp: React.FC = () => {
   const { user, logout } = useAuth();
@@ -117,7 +67,6 @@ const MainApp: React.FC = () => {
   const { policy } = useTenantSettings();
   const modules = policy.settings.modules;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const queryClient = useQueryClient();
   const confirmDialog = useConfirm();
 
   useEffect(() => {
@@ -156,20 +105,8 @@ const MainApp: React.FC = () => {
     }
   }, [activeTab, hasPermission, role, setActiveTab, modules.commercialDocuments, modules.spending, modules.evaluation]);
 
-  // Data States
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [ios, setIos] = useState<InsertionOrder[]>([]);
-  const [partners, setPartners] = useState<Partner[]>([]);
-  const [notifications, setNotifications] = useState<NotificationLog[]>([]);
-  const [evaluations, setEvaluations] = useState<PartnerEvaluation[]>([]);
-  const [spendings, setSpendings] = useState<PartnerSpending[]>([]);
-  const [googleConfig, setGoogleConfig] = useState<GoogleSheetsConfig>({
-    spreadsheetId: '178lap6p6jwuVlbrVp7jmrgvgpAPLYRgpPDkJvgc_EgM',
-    driveFolderId: '1xiFIvgWdDtYEzL7IoqVD9d-NaS7XcfYp',
-    isConnected: true,
-    autoSync: true,
-  });
-  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number>(Date.now());
+  const { contracts, ios, partners, notifications, evaluations, spendings, googleConfig,
+    timestamp: lastSyncTimestamp, updateData, cancelPendingLoad, loadAllData } = useWorkspaceData();
 
   // Modal States
   const [showContractModal, setShowContractModal] = useState(false);
@@ -208,46 +145,17 @@ const MainApp: React.FC = () => {
     }, 4500);
   };
 
-  // Unified Aggregated Data Query via React Query & /api/init-data
-  const { data: initData } = useQuery({
-    queryKey: ['init-data', activeTenantId],
-    queryFn: async () => {
-      const headers = getAuthHeaders();
-      const res = await fetch('/api/init-data', { headers, cache: 'no-store' });
-      if (!res.ok) throw new Error(t('app.failed_to_fetch_initial_data', 'Failed to fetch initial data'));
-      return await res.json();
-    },
-    enabled: Boolean(user?.email),
-    refetchOnWindowFocus: true,
-    staleTime: 10000,
-  });
-
-  // Sync query data to state
-  useEffect(() => {
-    if (!initData) return;
-    if (Array.isArray(initData.contracts)) setContracts(initData.contracts);
-    if (Array.isArray(initData.ios)) setIos(initData.ios);
-    if (Array.isArray(initData.partners)) setPartners(initData.partners);
-    if (Array.isArray(initData.notifications)) setNotifications(initData.notifications);
-    if (initData.googleConfig && typeof initData.googleConfig === 'object') setGoogleConfig(initData.googleConfig);
-    if (Array.isArray(initData.evaluations)) setEvaluations(initData.evaluations);
-    if (Array.isArray(initData.spendings)) setSpendings(initData.spendings);
-    setLastSyncTimestamp(initData.timestamp || Date.now());
-  }, [initData]);
-
-  const loadAllData = async (_shouldFetchFromSheet = false) => {
-    await queryClient.invalidateQueries({ queryKey: ['init-data'] });
-  };
-
   // Contract CRUD Handlers (Optimistic UI)
   const handleSaveContract = async (contractData: any) => {
+    await cancelPendingLoad();
+    let rollback = () => {};
     const isEditing = Boolean(contractToEdit && contractToEdit.contract_id);
     const url = isEditing ? `/api/contracts/${contractToEdit!.contract_id}` : '/api/contracts';
     const method = isEditing ? 'PUT' : 'POST';
 
     // 1. Optimistic UI Update (Client side instant update 0ms)
     if (isEditing && contractToEdit) {
-      setContracts((prev) =>
+      rollback = updateData('contracts', (prev) =>
         prev.map((c) =>
           c.contract_id === contractToEdit.contract_id
             ? { ...c, ...contractData, updated_at: new Date().toISOString() }
@@ -262,7 +170,7 @@ const MainApp: React.FC = () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      setContracts((prev) => [optimisticContract, ...prev]);
+      rollback = updateData('contracts', (prev) => [optimisticContract, ...prev]);
     }
 
     // 2. Dispatch background API call
@@ -279,6 +187,8 @@ const MainApp: React.FC = () => {
       });
 
       if (!res.ok) {
+
+        rollback();
         const errData = await res.json().catch(() => ({}));
         showToast({
           type: 'error',
@@ -288,6 +198,7 @@ const MainApp: React.FC = () => {
       }
       loadAllData();
     } catch (err: any) {
+      rollback();
       showToast({
         type: 'error',
         title: t('app.error_koneksi', 'Error Koneksi'),
@@ -306,7 +217,8 @@ const MainApp: React.FC = () => {
       })
     ) {
       // 1. Optimistic UI update
-      setContracts((prev) => prev.filter((c) => c.contract_id !== id));
+      await cancelPendingLoad();
+      const rollback = updateData('contracts', (prev) => prev.filter((c) => c.contract_id !== id));
 
       const headers = getAuthHeaders();
       try {
@@ -317,6 +229,7 @@ const MainApp: React.FC = () => {
           { method: 'DELETE', headers }
         );
         if (!res.ok) {
+          rollback();
           showToast({
             type: 'error',
             title: t('app.gagal_menghapus_kontrak', 'Gagal Menghapus Kontrak'),
@@ -325,6 +238,7 @@ const MainApp: React.FC = () => {
         }
         loadAllData();
       } catch (err: any) {
+        rollback();
         showToast({
           type: 'error',
           title: t('app.error', 'Error'),
@@ -337,13 +251,15 @@ const MainApp: React.FC = () => {
 
   // IO CRUD Handlers (Optimistic UI)
   const handleSaveIO = async (ioData: any) => {
+    await cancelPendingLoad();
+    let rollback = () => {};
     const isEditing = Boolean(ioToEdit && ioToEdit.io_id);
     const url = isEditing ? `/api/ios/${ioToEdit!.io_id}` : '/api/ios';
     const method = isEditing ? 'PUT' : 'POST';
 
     // 1. Optimistic UI update
     if (isEditing && ioToEdit) {
-      setIos((prev) =>
+      rollback = updateData('ios', (prev) =>
         prev.map((i) =>
           i.io_id === ioToEdit.io_id
             ? { ...i, ...ioData, updated_at: new Date().toISOString() }
@@ -358,7 +274,7 @@ const MainApp: React.FC = () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      setIos((prev) => [optimisticIO, ...prev]);
+      rollback = updateData('ios', (prev) => [optimisticIO, ...prev]);
     }
 
     try {
@@ -374,6 +290,8 @@ const MainApp: React.FC = () => {
       });
 
       if (!res.ok) {
+
+        rollback();
         const errData = await res.json().catch(() => ({}));
         showToast({
           type: 'error',
@@ -383,6 +301,7 @@ const MainApp: React.FC = () => {
       }
       loadAllData();
     } catch (err: any) {
+      rollback();
       showToast({
         type: 'error',
         title: t('app.error_koneksi', 'Error Koneksi'),
@@ -400,7 +319,8 @@ const MainApp: React.FC = () => {
         confirmLabel: t('io.action_delete', 'Hapus'),
       })
     ) {
-      setIos((prev) => prev.filter((i) => i.io_id !== id));
+      await cancelPendingLoad();
+      const rollback = updateData('ios', (prev) => prev.filter((i) => i.io_id !== id));
 
       const headers = getAuthHeaders();
       try {
@@ -411,6 +331,7 @@ const MainApp: React.FC = () => {
           { method: 'DELETE', headers }
         );
         if (!res.ok) {
+          rollback();
           showToast({
             type: 'error',
             title: t('app.gagal_menghapus_io', 'Gagal Menghapus IO'),
@@ -419,6 +340,7 @@ const MainApp: React.FC = () => {
         }
         loadAllData();
       } catch (e: any) {
+        rollback();
         showToast({
           type: 'error',
           title: t('app.error', 'Error'),
@@ -431,13 +353,15 @@ const MainApp: React.FC = () => {
 
   // Partner CRUD Handlers (Optimistic UI)
   const handleSavePartner = async (partnerData: any) => {
+    await cancelPendingLoad();
+    let rollback = () => {};
     const isEditing = Boolean(partnerToEdit && partnerToEdit.partner_id);
     const url = isEditing ? `/api/partners/${partnerToEdit!.partner_id}` : '/api/partners';
     const method = isEditing ? 'PUT' : 'POST';
 
     // Optimistic UI update
     if (isEditing && partnerToEdit) {
-      setPartners((prev) =>
+      rollback = updateData('partners', (prev) =>
         prev.map((p) =>
           p.partner_id === partnerToEdit.partner_id
             ? { ...p, ...partnerData, updated_at: new Date().toISOString() }
@@ -452,11 +376,11 @@ const MainApp: React.FC = () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      setPartners((prev) => [optimisticPartner, ...prev]);
+      rollback = updateData('partners', (prev) => [optimisticPartner, ...prev]);
     }
 
     try {
-      await fetch(url, {
+      const res = await fetch(url, {
         method,
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -466,8 +390,10 @@ const MainApp: React.FC = () => {
           userRole: user.role,
         }),
       });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
       loadAllData();
     } catch (err: any) {
+      rollback();
       showToast({
         type: 'error',
         title: t('app.error', 'Error'),
@@ -486,9 +412,12 @@ const MainApp: React.FC = () => {
       })
     ) {
       // Optimistic delete
-      setPartners((prev) => prev.filter((p) => p.partner_id !== id));
-      setContracts((prev) => prev.filter((c) => c.partner_id !== id));
-      setIos((prev) => prev.filter((i) => i.partner_id !== id));
+      await cancelPendingLoad();
+      const restorePartners = updateData('partners', (prev) => prev.filter((p) => p.partner_id !== id));
+      const restoreContracts = updateData('contracts', (prev) => prev.filter((c) => c.partner_id !== id));
+      const restoreOrders = updateData('ios', (prev) => prev.filter((i) => i.partner_id !== id));
+
+      const rollback = () => { restorePartners(); restoreContracts(); restoreOrders(); };
 
       const headers = getAuthHeaders();
       try {
@@ -499,6 +428,7 @@ const MainApp: React.FC = () => {
           { method: 'DELETE', headers }
         );
         if (!res.ok) {
+          rollback();
           showToast({
             type: 'error',
             title: t('app.gagal_menghapus_partner', 'Gagal Menghapus Partner'),
@@ -507,6 +437,7 @@ const MainApp: React.FC = () => {
         }
         loadAllData();
       } catch (e: any) {
+        rollback();
         showToast({
           type: 'error',
           title: t('app.error', 'Error'),
@@ -523,6 +454,8 @@ const MainApp: React.FC = () => {
 
   // Amendment CRUD Handler
   const handleSaveAmendment = async (amendmentData: any) => {
+    await cancelPendingLoad();
+    let rollback = () => {};
     const tempId = amendmentData.contract_id || `AMD-${Date.now()}`;
     const optimisticAmd: Contract = {
       contract_id: tempId,
@@ -530,10 +463,10 @@ const MainApp: React.FC = () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    setContracts((prev) => [optimisticAmd, ...prev]);
+    rollback = updateData('contracts', (prev) => [optimisticAmd, ...prev]);
 
     try {
-      await fetch('/api/contracts', {
+      const res = await fetch('/api/contracts', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -543,8 +476,10 @@ const MainApp: React.FC = () => {
           userRole: user.role,
         }),
       });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
       loadAllData();
     } catch (err: any) {
+      rollback();
       showToast({
         type: 'error',
         title: t('app.error', 'Error'),
@@ -606,7 +541,7 @@ const MainApp: React.FC = () => {
       throw new Error(data.error || t('app.gagal_menyimpan_konfigurasi', 'Gagal menyimpan konfigurasi.'));
     }
 
-    setGoogleConfig(data.config || { spreadsheetId, driveFolderId, autoSync, isLocked, ...extraConfig, isConnected: true });
+    updateData('googleConfig', data.config || { spreadsheetId, driveFolderId, autoSync, isLocked, ...extraConfig, isConnected: true });
     await loadAllData();
 
     if (data.syncWarning) {
@@ -793,7 +728,7 @@ const MainApp: React.FC = () => {
                     setShowAmendmentModal(true);
                   }}
                   onUpdateContractData={(updated) => {
-                    setContracts((prev) =>
+                    updateData('contracts', (prev) =>
                       prev.map((c) => (c.contract_id === updated.contract_id ? updated : c))
                     );
                   }}
@@ -802,6 +737,7 @@ const MainApp: React.FC = () => {
 
               {activeTab === 'create-contract' && (
                 <LazyContractCreatorView
+                  key={activeTenantId}
                   partners={partners}
                   contracts={contracts}
                   onSaveToSystem={async (data) => {
@@ -919,6 +855,7 @@ const MainApp: React.FC = () => {
       </div>
 
       {/* Modals */}
+      <Suspense fallback={null}>
       {showContractModal && (
         <ContractModal
           contractToEdit={contractToEdit}
@@ -956,6 +893,8 @@ const MainApp: React.FC = () => {
           onSave={handleSaveAmendment}
         />
       )}
+
+      </Suspense>
 
       {/* Floating Toast Notification Stack */}
       <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0">
@@ -1007,9 +946,7 @@ const MainApp: React.FC = () => {
         ))}
       </div>
       {modules.aiAssistant && (
-        <Suspense fallback={null}>
-          <LazyAIChatWidget />
-        </Suspense>
+        <AIChatLauncher />
       )}
     </div>
   );

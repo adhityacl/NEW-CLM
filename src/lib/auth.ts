@@ -1,3 +1,4 @@
+import { synchronizeCoreData, normalizeSqliteId, isValidAllowedUserRow } from '../server/coreDataStore';
 import { betterAuth } from "better-auth";
 import { admin, organization } from "better-auth/plugins";
 import { dash, sentinel } from "@better-auth/infra";
@@ -270,18 +271,6 @@ CREATE TABLE IF NOT EXISTS apikey (
 );
 `);
 
-function normalizeSqliteId(row: any, fallback: string) {
-  if (row?.id) return String(row.id);
-  if (row?.contract_id) return String(row.contract_id);
-  if (row?.partner_id) return String(row.partner_id);
-  if (row?.io_id) return String(row.io_id);
-  if (row?.email) return String(row.email);
-  if (row?.templateId) return String(row.templateId);
-  if (row?.tenantId) return String(row.tenantId);
-  if (row?.name) return String(row.name);
-  return fallback;
-}
-
 export function initializeCoreDataSchema() {
   sqliteDb.exec(`
     CREATE TABLE IF NOT EXISTS allowed_users (
@@ -420,12 +409,6 @@ export function initializeCoreDataSchema() {
     CREATE INDEX IF NOT EXISTS idx_contracts_contract_id ON contracts (contract_id);
     CREATE INDEX IF NOT EXISTS idx_ios_io_id ON insertion_orders (io_id);
   `);
-}
-
-function isValidAllowedUserRow(row: any) {
-  if (!row || typeof row !== 'object') return false;
-  const email = String(row.email || row.emailAddress || row.userEmail || '').trim();
-  return email.length > 0;
 }
 
 export function hydrateCoreDataFromJson(data: any) {
@@ -583,110 +566,7 @@ export function loadCoreDataFromSqlite() {
 }
 
 export function syncDbToSqlite(data: any) {
-  if (!data || typeof data !== 'object') return;
-
-  const syncTable = (table: string, rows: any[] = []) => {
-    sqliteDb.transaction(() => {
-      sqliteDb.prepare(`DELETE FROM ${table}`).run();
-      if (!Array.isArray(rows) || rows.length === 0) return;
-      for (const row of rows) {
-        if (table === 'allowed_users' && !isValidAllowedUserRow(row)) {
-          continue;
-        }
-        if (table === 'allowed_users') {
-          const email = String(row.email || row.emailAddress || row.userEmail || '').trim();
-          const rowId = normalizeSqliteId(row, `${table}-${Math.random().toString(36).slice(2, 10)}`);
-          sqliteDb.prepare(`
-            INSERT INTO allowed_users (id, email, name, role, status, organizationId, payload, createdAt, updatedAt)
-            VALUES (@id, @email, @name, @role, @status, @organizationId, @payload, @createdAt, @updatedAt)
-          `).run({
-            id: String(rowId),
-            email,
-            name: row.name ?? row.fullName ?? null,
-            role: row.role ?? null,
-            status: row.status ?? null,
-            organizationId: row.organizationId ?? null,
-            payload: JSON.stringify(row),
-            createdAt: row.createdAt ?? row.created_at ?? new Date().toISOString(),
-            updatedAt: row.updatedAt ?? row.updated_at ?? new Date().toISOString(),
-          });
-          continue;
-        }
-
-        const stmt = sqliteDb.prepare(`
-          INSERT INTO ${table} (id, organizationId, payload, createdAt, updatedAt)
-          VALUES (@id, @organizationId, @payload, @createdAt, @updatedAt)
-        `);
-        const rowId = normalizeSqliteId(row, `${table}-${Math.random().toString(36).slice(2, 10)}`);
-        stmt.run({
-          id: String(rowId),
-          organizationId: row?.organizationId ?? null,
-          payload: JSON.stringify(row),
-          createdAt: row?.createdAt ?? row?.created_at ?? new Date().toISOString(),
-          updatedAt: row?.updatedAt ?? row?.updated_at ?? new Date().toISOString(),
-        });
-      }
-    })();
-  };
-
-  syncTable('allowed_users', Array.isArray(data.allowedUsers) ? data.allowedUsers.filter(isValidAllowedUserRow) : []);
-  syncTable('partners', Array.isArray(data.partners) ? data.partners : []);
-  syncTable('contracts', Array.isArray(data.contracts) ? data.contracts : []);
-  syncTable('insertion_orders', Array.isArray(data.ios) ? data.ios : []);
-  syncTable('notifications', Array.isArray(data.notifications) ? data.notifications : []);
-  syncTable('activity_logs', Array.isArray(data.activityLogs) ? data.activityLogs : []);
-  syncTable('evaluations', Array.isArray(data.evaluations) ? data.evaluations : []);
-  syncTable('spendings', Array.isArray(data.spendings) ? data.spendings : []);
-  syncTable('tenants', Array.isArray(data.tenants) ? data.tenants : []);
-  syncTable('departments', Array.isArray(data.departments) ? data.departments : []);
-  syncTable('templates', Array.isArray(data.templates) ? data.templates : []);
-
-  if (data.branding) {
-    sqliteDb.prepare(`
-      INSERT INTO branding (id, organizationId, payload, updatedAt)
-      VALUES (@id, @organizationId, @payload, @updatedAt)
-      ON CONFLICT(id) DO UPDATE SET
-        organizationId = excluded.organizationId,
-        payload = excluded.payload,
-        updatedAt = excluded.updatedAt
-    `).run({
-      id: 'branding',
-      organizationId: data.branding.organizationId ?? null,
-      payload: JSON.stringify(data.branding),
-      updatedAt: new Date().toISOString(),
-    });
-  }
-
-  const googleConfigPayload = data.googleConfig ?? data.appSettings ?? null;
-  if (googleConfigPayload) {
-    sqliteDb.prepare(`
-      INSERT INTO app_settings (id, organizationId, payload, updatedAt)
-      VALUES (@id, @organizationId, @payload, @updatedAt)
-      ON CONFLICT(id) DO UPDATE SET
-        organizationId = excluded.organizationId,
-        payload = excluded.payload,
-        updatedAt = excluded.updatedAt
-    `).run({
-      id: 'google_config',
-      organizationId: googleConfigPayload.organizationId ?? null,
-      payload: JSON.stringify(googleConfigPayload),
-      updatedAt: new Date().toISOString(),
-    });
-  }
-
-  if (data.newsTicker) {
-    sqliteDb.prepare(`
-      INSERT INTO news_ticker (id, payload, updatedAt)
-      VALUES (@id, @payload, @updatedAt)
-      ON CONFLICT(id) DO UPDATE SET
-        payload = excluded.payload,
-        updatedAt = excluded.updatedAt
-    `).run({
-      id: 'default',
-      payload: JSON.stringify(data.newsTicker),
-      updatedAt: new Date().toISOString(),
-    });
-  }
+  synchronizeCoreData(sqliteDb, data);
 }
 
 // Ensure session table has activeOrganizationId and activeTeamId columns

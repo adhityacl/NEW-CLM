@@ -1,9 +1,13 @@
+import { TableViewMenu } from './ui/table-view-menu';
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import React, { useState, useEffect } from 'react';
 import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { ActivityLog } from '../types';
-import { Clock, Search, RefreshCw, Shield, Monitor, Filter, CheckCircle2, Eye, SlidersHorizontal } from 'lucide-react';
+import { Clock, Search, RefreshCw, Shield, Monitor, Filter, CheckCircle2, Eye } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTenant } from '../context/TenantContext';
+import { useQuery } from '@tanstack/react-query';
+import { getAuthHeaders } from '../lib/apiFetch';
 import { useLanguage } from '../context/LanguageContext';
 import { ActionMenu } from './ui/action-menu';
 import { TablePagination } from './ui/TablePagination';
@@ -11,10 +15,24 @@ import { getStatusBadgeClass } from './ui/badge';
 import { TableEmptyState } from './ui/table-empty-state';
 
 export const ActivityLogsView: React.FC = () => {
-  const { fetchActivityLogs } = useAuth();
+  const { user } = useAuth();
+  const { activeTenantId } = useTenant();
+  const logsQuery = useQuery<ActivityLog[]>({
+    queryKey: ['activity-logs', user?.email, activeTenantId],
+    enabled: Boolean(user?.email && activeTenantId),
+    queryFn: async ({ signal }) => {
+      const response = await fetch('/api/activity-logs', {
+        headers: { ...getAuthHeaders(), 'x-tenant-id': activeTenantId, 'x-organization-id': activeTenantId }, credentials: 'include', cache: 'no-store', signal,
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    },
+  });
+  const logs = logsQuery.data || [];
+  const loading = logsQuery.isFetching;
+  const loadLogs = () => { void logsQuery.refetch(); };
   const { t, language } = useLanguage();
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterModule, setFilterModule] = useState('ALL');
   const [selectedAction, setSelectedAction] = useState<string>('ALL');
@@ -26,21 +44,9 @@ export const ActivityLogsView: React.FC = () => {
     module: true,
     detail: true,
   });
-  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const toggleColumnVisibility = (col: string) => {
     setVisibleColumns((prev) => ({ ...prev, [col]: !prev[col] }));
   };
-
-  const loadLogs = async () => {
-    setLoading(true);
-    const data = await fetchActivityLogs();
-    setLogs(data);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadLogs();
-  }, []);
 
   const filteredLogs = logs.filter((log) => {
     const matchSearch =
@@ -205,46 +211,31 @@ export const ActivityLogsView: React.FC = () => {
         </div>
 
         {/* View Toggle */}
-        <div className="relative ml-auto">
-          <button
-            onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-            className="h-9 px-3.5 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 font-bold hover:bg-slate-50 hover:text-slate-900 transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-[0.98]"
-            title={t('io.view_settings', 'Pengaturan Tampilan Kolom')}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
-            <span>{t('io.view', 'View')}</span>
-          </button>
-          {isViewMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)}></div>
-              <div className="absolute right-0 top-11 w-52 bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 py-2 animate-in fade-in zoom-in-95">
-                <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
-                  {t('io.toggle_columns', 'Toggle Kolom')}
-                </div>
-                {Object.keys(visibleColumns).map((col) => {
-                  let label = col;
-                  if (col === 'time') label = 'Waktu';
-                  else if (col === 'user') label = 'Pengguna';
-                  else if (col === 'action') label = 'Jenis Aksi';
-                  else if (col === 'module') label = 'Modul';
-                  else if (col === 'detail') label = 'Rincian Deskripsi';
+        <TableViewMenu className="ml-auto" title={t('io.view_settings', 'Pengaturan Tampilan Kolom')} label={t('io.view', 'View')}>
+          <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
+            {t('io.toggle_columns', 'Toggle Kolom')}
+          </div>
+          {Object.keys(visibleColumns).map((col) => {
+            let label = col;
+            if (col === 'time') label = 'Waktu';
+            else if (col === 'user') label = 'Pengguna';
+            else if (col === 'action') label = 'Jenis Aksi';
+            else if (col === 'module') label = 'Modul';
+            else if (col === 'detail') label = 'Rincian Deskripsi';
 
-                  return (
-                    <label key={col} className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700 select-none">
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns[col]}
-                        onChange={() => toggleColumnVisibility(col)}
-                        className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
-                      />
-                      <span className="capitalize">{label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
+            return (
+              <label key={col} className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700 select-none">
+                <input
+                  type="checkbox"
+                  checked={visibleColumns[col]}
+                  onChange={() => toggleColumnVisibility(col)}
+                  className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                />
+                <span className="capitalize">{label}</span>
+              </label>
+            );
+          })}
+        </TableViewMenu>
       </div>
 
       {/* Table */}

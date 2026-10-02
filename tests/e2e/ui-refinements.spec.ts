@@ -106,7 +106,9 @@ test('mobile editor keeps a usable canvas and opens its panel as a dismissible o
 });
 
 test('table actions support keyboard dismissal; identity remains visible while scrolling', async ({ page }) => {
-  await page.getByRole('button', { name: 'Contracts', exact: true }).click();
+  await page.getByRole('button', { name: /^Contracts(?: \d+)?$/ }).click();
+  await expect(page.getByRole('button', { name: 'Add Contract', exact: true })).toBeVisible();
+  const originalRowCount = await page.locator('tbody tr').count();
   const trigger = page.getByRole('button', { name: 'Actions', exact: true }).first();
   await trigger.click();
   await expect(page.getByRole('menu')).toBeVisible();
@@ -116,7 +118,7 @@ test('table actions support keyboard dismissal; identity remains visible while s
   await expect(trigger).toBeFocused();
   await page.getByRole('textbox', { name: 'Search', exact: true }).fill('no matching result');
   await page.getByRole('button', { name: 'Reset filters' }).click();
-  await expect(page.locator('tbody tr')).toHaveCount(5);
+  await expect(page.locator('tbody tr')).toHaveCount(originalRowCount);
   await page.setViewportSize({ width: 390, height: 844 });
   const scroller = page.locator('.data-table-scroll');
   await scroller.evaluate(el => { el.scrollLeft = 500; });
@@ -130,8 +132,8 @@ test('table actions support keyboard dismissal; identity remains visible while s
 for (const [section, add] of [['Partners', 'Add Partner'], ['Order Forms', 'Add Order Form'], ['Partner Spending', 'Add Spending'], ['Partner Evaluation', 'Add Evaluation']]) {
   test(`${section} form uses a labelled dialog with focus restoration`, async ({ page }) => {
     if (section.startsWith('Partner ')) await page.getByRole('button', { name: 'Partners', exact: true }).click();
-    await page.getByRole('button', { name: section, exact: true }).click();
-    const trigger = page.getByRole('button', { name: add, exact: true });
+    await page.getByRole('button', { name: section === 'Order Forms' ? /^(Order Forms|Service Orders)(?: \d+)?$/ : section, exact: true }).click();
+    const trigger = page.getByRole('button', { name: add === 'Add Order Form' ? /^Add (Order Form|Service Order)$/ : add, exact: true });
     await trigger.click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();

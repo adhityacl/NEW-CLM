@@ -29,6 +29,9 @@ const json = (method: string, body?: unknown, extra: RequestInit = {}): RequestI
   ...extra,
 });
 
+// Keep outgoing saves and query results bound to the workspace that started them.
+const tenantHeaders = (tenantId?: string) => tenantId ? { 'x-organization-id': tenantId, 'x-tenant-id': tenantId } : {};
+
 export interface SaveDraftResult {
   document: DocumentDetail;
   version: number;
@@ -36,11 +39,11 @@ export interface SaveDraftResult {
 }
 
 export const documentsApi = {
-  list: (params: Record<string, string>, signal?: AbortSignal) =>
-    request<DocumentListResponse>(`/documents?${new URLSearchParams(params)}`, { signal }),
+  list: (params: Record<string, string>, signal?: AbortSignal, tenantId?: string) =>
+    request<DocumentListResponse>(`/documents?${new URLSearchParams(params)}`, { signal, headers: tenantHeaders(tenantId) }),
   get: (id: string) => request<DocumentDetail>(`/documents/${id}`),
-  create: (input: { name: string; content: string; type?: DocumentType }, keepalive = false) =>
-    request<DocumentDetail>('/documents', json('POST', input, { keepalive })),
+  create: (input: { name: string; content: string; type?: DocumentType }, keepalive = false, tenantId?: string) =>
+    request<DocumentDetail>('/documents', json('POST', input, { keepalive, headers: tenantHeaders(tenantId) })),
   update: (id: string, patch: { name?: string; status?: DocumentStatus; type?: DocumentType }) =>
     request<DocumentDetail>(`/documents/${id}`, json('PATCH', patch)),
   remove: (id: string) => request<{ success: true }>(`/documents/${id}`, json('DELETE')),
@@ -48,8 +51,8 @@ export const documentsApi = {
   listDrafts: (id: string) => request<DraftVersion[]>(`/documents/${id}/drafts`),
   getDraft: (id: string, version: number) =>
     request<DraftVersion & { content: string }>(`/documents/${id}/drafts/${version}`),
-  saveDraft: (id: string, input: { content: string; name: string; kind: 'auto' | 'manual' }, keepalive = false) =>
-    request<SaveDraftResult>(`/documents/${id}/drafts`, json('POST', input, { keepalive })),
+  saveDraft: (id: string, input: { content: string; name: string; kind: 'auto' | 'manual' }, keepalive = false, tenantId?: string) =>
+    request<SaveDraftResult>(`/documents/${id}/drafts`, json('POST', input, { keepalive, headers: tenantHeaders(tenantId) })),
   updateDraft: (id: string, version: number, input: { draft_name: string; labels: string[] }) =>
     request<{ success: true }>(`/documents/${id}/drafts/${version}`, json('PATCH', input)),
   restoreDraft: (id: string, version: number) =>

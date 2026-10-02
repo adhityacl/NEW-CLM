@@ -4,7 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useConfirm } from '../context/ConfirmDialogContext';
 import { useTenant } from '../context/TenantContext';
 import { useNavigation } from '../context/NavigationContext';
-import { getAuthHeaders } from '../App';
+import { getAuthHeaders } from '../lib/apiFetch';
 import {
   ConsoleSubmenu,
   ConsoleUser,

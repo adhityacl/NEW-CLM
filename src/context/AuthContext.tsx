@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authClient } from '../lib/auth-client';
-import { UserSession, ActivityLog } from '../types';
+import { UserSession } from '../types';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { normalizeRole, StandardRole } from '../lib/rbacScoping';
 
@@ -18,9 +19,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserName: (newName: string) => void;
-  fetchActivityLogs: () => Promise<ActivityLog[]>;
-  activityLogs: ActivityLog[];
-  refreshActivityLogs: () => void;
   refreshUser: () => Promise<void>;
 }
 
@@ -29,7 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserSession | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const queryClient = useQueryClient();
 
   const fetchUserRoleAndProfile = useCallback(async (tokenParam?: string): Promise<UserSession | null> => {
     try {
@@ -140,7 +138,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
 
-    fetchActivityLogs();
     window.dispatchEvent(new CustomEvent('auth-state-changed'));
     window.dispatchEvent(new CustomEvent('organization-updated'));
   };
@@ -150,40 +147,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('auth_user', JSON.stringify(user));
     } else {
       localStorage.removeItem('auth_user');
-    }
-  }, [user]);
-
-  const fetchActivityLogs = async (): Promise<ActivityLog[]> => {
-    try {
-      const storedToken = localStorage.getItem('auth_session_token') || '';
-      const headers: Record<string, string> = {};
-      if (storedToken) {
-        headers['Authorization'] = `Bearer ${storedToken}`;
-        headers['x-session-token'] = storedToken;
-      }
-      const res = await fetch('/api/activity-logs', {
-        headers,
-        credentials: 'include',
-        cache: 'no-store',
-      });
-      if (res.ok) {
-        const text = await res.text();
-        if (!text || text.trim().startsWith('<')) return [];
-        const data = JSON.parse(text);
-        if (Array.isArray(data)) {
-          setActivityLogs(data);
-          return data;
-        }
-      }
-    } catch (err) {
-      console.warn('Failed fetching activity logs', err);
-    }
-    return [];
-  };
-
-  useEffect(() => {
-    if (user) {
-      fetchActivityLogs();
     }
   }, [user]);
 
@@ -209,7 +172,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('auth_session_token');
     await (authClient.signOut as any)();
     setUser(null);
-    setActivityLogs([]);
+    await queryClient.cancelQueries();
+    queryClient.clear();
   };
 
   const updateUserName = (newName: string) => {
@@ -243,9 +207,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         updateUserName,
-        fetchActivityLogs,
-        activityLogs,
-        refreshActivityLogs: fetchActivityLogs,
         refreshUser,
       }}
     >

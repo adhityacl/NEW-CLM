@@ -5,7 +5,7 @@ import { GoogleCredentialsDialog } from './settings/GoogleCredentialsDialog';
 import { useLanguage } from '../context/LanguageContext';
 import { useConfirm } from '../context/ConfirmDialogContext';
 import { useTenant } from '../context/TenantContext';
-import { getAuthHeaders } from '../App';
+import { getAuthHeaders } from '../lib/apiFetch';
 import { UITextManagerModal } from './UITextManagerModal';
 import { SQLiteDatabaseCard } from './SQLiteDatabaseCard';
 import { AiIcon } from './icons/AiIcon';

@@ -23,6 +23,7 @@
     "test:documents": "tsx --test tests/documents.test.ts",
     "test:credentials": "tsx --test tests/googleCredentials.test.ts",
     "test:e2e": "playwright test",
+    "test:e2e:fixtures": "playwright test --config playwright.fixtures.config.ts",
     "auth:generate": "better-auth generate --config ./server/auth.ts",
     "auth:migrate": "better-auth migrate --config ./server/auth.ts"
   },

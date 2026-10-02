@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAuthHeaders } from '../App';
+import { getAuthHeaders } from '../lib/apiFetch';
 import { useTenant } from '../context/TenantContext';
 
 export function useDepartments() {

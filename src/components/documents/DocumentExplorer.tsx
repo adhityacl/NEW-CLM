@@ -1,3 +1,5 @@
+import { useDocumentList } from '../../features/documents/useDocumentList';
+import { TableViewMenu } from '../ui/table-view-menu';
 import { AlphabeticalSelect } from '../ui/alphabetical-select';
 import { TableEmptyState } from '../ui/table-empty-state';
 import React, { useEffect, useRef, useState } from 'react';
@@ -13,7 +15,6 @@ import {
   Pencil,
   RefreshCw,
   Search,
-  SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
@@ -63,7 +64,6 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState({
     type: true,
     status: true,
@@ -75,9 +75,6 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
   const [sort, setSort] = useState<{ key: DocumentSortKey; dir: 'asc' | 'desc' }>({ key: 'modified_at', dir: 'desc' });
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(PAGE_SIZES[0]);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
-  const [isFetching, setIsFetching] = useState(false);
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -93,25 +90,16 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
     return () => clearTimeout(id);
   }, [searchInput]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const params: Record<string, string> = { page: String(page), limit: String(limit), sort_by: sort.key, sort_dir: sort.dir };
-    if (search) params.search = search;
-    for (const [key, value] of Object.entries(filters)) if (value) params[key] = value;
-    setIsFetching(true);
-    documentsApi
-      .list(params, controller.signal)
-      .then((data) => setState({ status: 'ready', data }))
-      .catch((err) => {
-        if (!controller.signal.aborted) setState({ status: 'error', message: errorMessage(err) });
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setIsFetching(false);
-      });
-    return () => controller.abort();
-  }, [search, filters, sort, page, limit, reloadKey]);
+  const params: Record<string, string> = { page: String(page), limit: String(limit), sort_by: sort.key, sort_dir: sort.dir };
+  if (search) params.search = search;
+  for (const [key, value] of Object.entries(filters)) if (value) params[key] = value;
+  const query = useDocumentList(params);
+  const isFetching = query.isFetching;
+  const state: LoadState = query.isError
+    ? { status: 'error', message: errorMessage(query.error) }
+    : query.data ? { status: 'ready', data: query.data } : { status: 'loading' };
+  const reload = () => { void query.refetch(); };
 
-  const reload = () => setReloadKey((k) => k + 1);
   const updateFilter = (key: keyof Filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     setPage(1);
@@ -317,46 +305,29 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
               ))}
             </AlphabeticalSelect>
 
-            <div className="relative flex-initial">
-              <button
-                type="button"
-                onClick={() => setIsViewMenuOpen((open) => !open)}
-                aria-expanded={isViewMenuOpen}
-                aria-haspopup="menu"
-                className="min-h-11 sm:min-h-9 h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98]"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" aria-hidden />
-                <span>{t('documents.filter.view', 'View')}</span>
-              </button>
-              {isViewMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)} />
-                  <div className="absolute right-0 top-11 z-30 w-52 rounded-2xl border border-slate-200 bg-white py-2 shadow-xl dark:border-slate-800 dark:bg-slate-900" role="menu">
-                    <div className="mb-1 border-b border-slate-100 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">
-                      {t('documents.filter.toggle_columns', 'Toggle Columns')}
-                    </div>
-                    {([
-                      ['type', t('documents.field.type', 'Type')],
-                      ['status', t('documents.field.status', 'Status')],
-                      ['created', t('documents.field.created', 'Created')],
-                      ['modified', t('documents.field.modified', 'Modified')],
-                      ['createdBy', t('documents.field.created_by', 'Created by')],
-                      ['size', t('documents.field.size', 'Size')],
-                    ] as const).map(([column, label]) => (
-                      <label key={column} className="flex cursor-pointer items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
-                        <input
-                          type="checkbox"
-                          checked={visibleColumns[column]}
-                          onChange={() => toggleColumnVisibility(column)}
-                          className="rounded border-slate-300 text-[#06C755] focus:ring-[#06C755] dark:border-slate-700"
-                        />
-                        <span>{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+            <TableViewMenu label={t('documents.filter.view', 'View')}>
+              <div className="mb-1 border-b border-slate-100 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">
+                {t('documents.filter.toggle_columns', 'Toggle Columns')}
+              </div>
+              {([
+                ['type', t('documents.field.type', 'Type')],
+                ['status', t('documents.field.status', 'Status')],
+                ['created', t('documents.field.created', 'Created')],
+                ['modified', t('documents.field.modified', 'Modified')],
+                ['createdBy', t('documents.field.created_by', 'Created by')],
+                ['size', t('documents.field.size', 'Size')],
+              ] as const).map(([column, label]) => (
+                <label key={column} className="flex cursor-pointer items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns[column]}
+                    onChange={() => toggleColumnVisibility(column)}
+                    className="rounded border-slate-300 text-[#06C755] focus:ring-[#06C755] dark:border-slate-700"
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </TableViewMenu>
           </div>
         </div>
 

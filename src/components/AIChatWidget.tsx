@@ -26,9 +26,9 @@ const SUGGESTED_PROMPTS: Array<[string, string]> = [
 
 const STORAGE_KEY = 'silegal_ai_chat_session_v1';
 
-export const AIChatWidget: React.FC = () => {
+export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyOpen = false }) => {
   const { t } = useLanguage();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(initiallyOpen);
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);

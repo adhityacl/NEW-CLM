@@ -20,7 +20,7 @@ import { TableEmptyMessage, TableEmptyState } from './ui/table-empty-state';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { cn } from '../lib/utils';
-import { getAuthHeaders } from '../App';
+import { getAuthHeaders } from '../lib/apiFetch';
 import { useLanguage } from '../context/LanguageContext';
 
 interface SQLiteStatus {
