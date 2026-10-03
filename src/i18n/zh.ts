@@ -871,6 +871,7 @@ export const ZH_TRANSLATIONS: Record<string, string> = {
   'contract_creator.msg.docx_downloaded': 'Word（.doc）文档已成功下载！',
   'contract_creator.msg.partner_synced_prefix': '合作伙伴数据',
   'contract_creator.msg.partner_synced_suffix': '已成功同步到 15 条合作协议中！',
+  'contract_creator.msg.partner_synced_fields': '已填入文档字段。',
   'contract_creator.msg.reset_done': '15 条合作协议模板已重置为初始状态。',
   'contract_creator.msg.template_content_empty': '模板内容仍为空',
   'contract_creator.msg.template_delete_error': '删除模板时出错',

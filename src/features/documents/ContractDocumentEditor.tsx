@@ -1093,22 +1093,23 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
     const updated = { ...fieldValues, [key]: value };
     setFieldValues(updated);
 
-    // If partner name or first party name changed, also update document title
     if (key === 'partnerName' || key === 'firstPartyName') {
-      const p1 = (key === 'firstPartyName' ? value : fieldValues.firstPartyName) || tenantEntityName;
-      const p2 = (key === 'partnerName' ? value : fieldValues.partnerName) || 'Mitra';
-      setDocTitle(`${agreementTitle} - ${p1} & ${p2}`);
+      syncAutoTitle(
+        (key === 'firstPartyName' ? value : fieldValues.firstPartyName) || tenantEntityName,
+        (key === 'partnerName' ? value : fieldValues.partnerName) || 'Mitra',
+      );
     }
 
     if (!editor) return;
-    // Sync via a ProseMirror transaction (not direct DOM mutation) so editor state never desyncs
-    const didUpdateExistingSlots = setFillableSlotValue(editor, key, value);
-    if (didUpdateExistingSlots) {
-      updateStats();
-    } else {
-      // Fallback: re-render whole template
-      renderTemplateToEditor(updated, contractNumber);
-    }
+    // Only fill slots that already exist; a field missing from the document never rewrites its content.
+    if (setFillableSlotValue(editor, key, value)) updateStats();
+  };
+
+  /** Keeps the auto-generated "<agreement> - A & B" title current; a template name or a title the user typed is left alone. */
+  const syncAutoTitle = (p1: string, p2: string) => {
+    const current = docTitleRef.current.trim();
+    if (current && current !== defaultDocTitle && !current.startsWith(`${agreementTitle} - `)) return;
+    setDocTitle(`${agreementTitle} - ${p1} & ${p2}`);
   };
 
   // Focus directly on a slot inside the editor canvas
@@ -1143,13 +1144,18 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
     };
 
     setFieldValues(updated);
-    const p1 = fieldValues.firstPartyName || tenantEntityName;
-    setDocTitle(`${agreementTitle} - ${p1} & ${pName}`);
-    renderTemplateToEditor(updated, contractNumber);
+    syncAutoTitle(fieldValues.firstPartyName || tenantEntityName, pName);
+    // Fill only the partner slots the current document already has — never swap in the built-in template.
+    if (editor) {
+      for (const key of ['partnerName', 'partnerAddress', 'partnerPic', 'partnerPosition', 'partnerEmail'] as const) {
+        setFillableSlotValue(editor, key, updated[key]);
+      }
+      updateStats();
+    }
 
     setExportMessage({
       type: 'success',
-      text: `${t('contract_creator.msg.partner_synced_prefix', 'Data mitra')} "${pName}" ${t('contract_creator.msg.partner_synced_suffix', 'berhasil disinkronkan ke dalam 15 pasal Perjanjian Kerjasama!')}`,
+      text: `${t('contract_creator.msg.partner_synced_prefix', 'Data mitra')} "${pName}" ${t('contract_creator.msg.partner_synced_fields', 'berhasil diisikan ke kolom isian dokumen.')}`,
     });
   };
 
