@@ -1,3 +1,4 @@
+import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import React, { useState, useEffect, useCallback } from 'react';
 import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { Contract, RedlineAnalysisData } from '../types';
@@ -192,14 +193,14 @@ export const ContractRedliningModal: React.FC<ContractRedliningModalProps> = ({
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
       case 'LOW':
-        return <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 text-[10px]">{t('redline.low_risk', 'Low Risk')}</Badge>;
+        return <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 text-xs">{t('redline.low_risk', 'Low Risk')}</Badge>;
       case 'MEDIUM':
-        return <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 text-[10px]">{t('redline.medium_risk', 'Medium Risk')}</Badge>;
+        return <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 text-xs">{t('redline.medium_risk', 'Medium Risk')}</Badge>;
       case 'HIGH':
-        return <Badge className="bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 border-orange-200 text-[10px]">{t('redline.high_risk', 'High Risk')}</Badge>;
+        return <Badge className="bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 border-orange-200 text-xs">{t('redline.high_risk', 'High Risk')}</Badge>;
       case 'CRITICAL':
       default:
-        return <Badge className="bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 text-[10px]">{t('redline.filter_critical', 'Critical')}</Badge>;
+        return <Badge className="bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 text-xs">{t('redline.filter_critical', 'Critical')}</Badge>;
     }
   };
 
@@ -248,24 +249,24 @@ ${analysis.analyzedClauses
   }) || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <ModalFrame onClose={onClose} className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-5xl max-h-[92dvh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-emerald-50/60 via-transparent to-transparent dark:from-emerald-950/20">
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-2xl bg-[#06C755]/10 text-[#06C755] flex items-center justify-center border border-[#06C755]/20 shadow-xs">
+            <div className="size-10 rounded-2xl bg-accent/10 text-accent-text flex items-center justify-center border border-accent/20 shadow-xs">
               <Scale className="size-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                <ModalTitle className="font-bold text-slate-900 dark:text-white text-base">
                   {t('redline.modal_title', 'Analisis Risiko & Kepatuhan Klausul Kontrak (Redlining)')}
-                </h3>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 tracking-wide">
+                </ModalTitle>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 tracking-wide">
                   {t('redline.badge_audit', 'Audit Kepatuhan Klausul')}
                 </span>
                 {analysis && !loading && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  <span className="hidden sm:inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                     <CheckCircle2 className="size-3 text-emerald-500 shrink-0" />
                     {analyzedAt
                       ? `${t('redline.saved_indicator', 'Hasil Tersimpan')} • ${new Date(analyzedAt).toLocaleDateString(getActiveFormattingLocale(), {
@@ -282,7 +283,7 @@ ${analysis.analyzedClauses
               </p>
             </div>
           </div>
-          <button
+          <button aria-label={t('common.close', 'Tutup')}
             onClick={onClose}
             className="size-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
           >
@@ -295,8 +296,8 @@ ${analysis.analyzedClauses
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 space-y-4">
               <div className="relative">
-                <div className="size-16 rounded-full border-4 border-[#06C755]/20 border-t-[#06C755] animate-spin" />
-                <Scale className="size-6 text-[#06C755] absolute inset-0 m-auto" />
+                <div className="size-16 rounded-full border-4 border-accent/20 border-t-[#06C755] animate-spin" />
+                <Scale className="size-6 text-accent-text absolute inset-0 m-auto" />
               </div>
               <div className="text-center space-y-1">
                 <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">
@@ -353,7 +354,7 @@ ${analysis.analyzedClauses
                 <div className="md:col-span-8 p-5 rounded-2xl bg-[#F5F6F6] dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 flex flex-col justify-between">
                   <div>
                     <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                      <Info className="size-3.5 text-[#06C755]" />
+                      <Info className="size-3.5 text-accent-text" />
                       {t('redline.executive_summary', 'Ringkasan Eksekutif Legal')}
                     </span>
                     <p className="text-xs text-slate-700 dark:text-slate-300 mt-2 leading-relaxed line-clamp-4">
@@ -365,7 +366,7 @@ ${analysis.analyzedClauses
                       {analysis.keyFindings.slice(0, 3).map((finding, idx) => (
                         <span
                           key={idx}
-                          className="text-[11px] px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium"
+                          className="text-xs px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium"
                         >
                           ⚠️ {finding}
                         </span>
@@ -382,7 +383,7 @@ ${analysis.analyzedClauses
                     onClick={() => setActiveTab('clauses')}
                     className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                       activeTab === 'clauses'
-                        ? 'bg-[#04803D] text-white shadow-xs'
+                        ? 'bg-accent-strong text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
@@ -392,7 +393,7 @@ ${analysis.analyzedClauses
                     onClick={() => setActiveTab('summary')}
                     className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                       activeTab === 'summary'
-                        ? 'bg-[#04803D] text-white shadow-xs'
+                        ? 'bg-accent-strong text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
@@ -407,7 +408,7 @@ ${analysis.analyzedClauses
                       <button
                         key={lvl}
                         onClick={() => setSeverityFilter(lvl)}
-                        className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
+                        className={`px-2 py-0.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                           severityFilter === lvl
                             ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
                             : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -431,7 +432,7 @@ ${analysis.analyzedClauses
                     filteredClauses.map((clause, idx) => (
                       <Card
                         key={idx}
-                        className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs hover:border-[#06C755]/40 transition-colors"
+                        className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs hover:border-accent/40 transition-colors"
                       >
                         <div className="p-4 space-y-3">
                           {/* Clause Header */}
@@ -440,7 +441,7 @@ ${analysis.analyzedClauses
                               <span className="font-bold text-slate-900 dark:text-white text-xs">
                                 {idx + 1}. {clause.clauseTitle}
                               </span>
-                              <span className="text-[10px] text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-medium">
+                              <span className="text-xs text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-medium">
                                 {clause.riskCategory}
                               </span>
                             </div>
@@ -449,14 +450,14 @@ ${analysis.analyzedClauses
 
                           {/* Original / Issue Box */}
                           <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-900/40 text-xs">
-                            <p className="font-semibold text-rose-900 dark:text-rose-300 text-[11px] mb-1 flex items-center gap-1">
+                            <p className="font-semibold text-rose-900 dark:text-rose-300 text-xs mb-1 flex items-center gap-1">
                               <AlertTriangle className="size-3 text-rose-500" />
                               {t('redline.original_issue', 'Klausul Asal / Masalah Teridentifikasi')}
                             </p>
-                            <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-mono text-[11px]">
+                            <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-mono text-xs">
                               {clause.originalTextOrIssue}
                             </p>
-                            <p className="text-rose-800 dark:text-rose-400 text-[11px] mt-2 italic">
+                            <p className="text-rose-800 dark:text-rose-400 text-xs mt-2 italic">
                               <strong>{t('redline.dampak', 'Dampak:')}</strong> {clause.identifiedRisk}
                             </p>
                           </div>
@@ -464,7 +465,7 @@ ${analysis.analyzedClauses
                           {/* Recommended Redline Box */}
                           <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 text-xs relative group">
                             <div className="flex items-center justify-between mb-1">
-                              <p className="font-semibold text-emerald-900 dark:text-emerald-300 text-[11px] flex items-center gap-1">
+                              <p className="font-semibold text-emerald-900 dark:text-emerald-300 text-xs flex items-center gap-1">
                                 <AiIcon className="size-3 text-emerald-500" />
                                 {t('redline.recommended_redline', 'Rekomendasi Redlining (Revisi Lebih Adil & Patuh OJK)')}
                               </p>
@@ -472,7 +473,7 @@ ${analysis.analyzedClauses
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleCopyClause(clause.recommendedRedline, idx)}
-                                className="h-6 px-2 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900 cursor-pointer gap-1 rounded-md"
+                                className="h-6 px-2 text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900 cursor-pointer gap-1 rounded-md"
                               >
                                 {copiedClauseIdx === idx ? (
                                   <>
@@ -490,7 +491,7 @@ ${analysis.analyzedClauses
                             <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium text-xs bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-emerald-100 dark:border-emerald-900/50">
                               "{clause.recommendedRedline}"
                             </p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                               <strong>{t('redline.pertimbangan', 'Pertimbangan:')}</strong> {clause.legalRationale}
                             </p>
                           </div>
@@ -508,7 +509,7 @@ ${analysis.analyzedClauses
                     <Info className="size-4 text-blue-600 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-bold">{t('redline.standar_kepatuhan_ojk_regulasi_finansial_korpora', 'Standar Kepatuhan OJK & Regulasi Finansial / Korporasi')}</p>
-                      <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80 mt-0.5">
+                      <p className="text-xs text-blue-800/80 dark:text-blue-300/80 mt-0.5">
                         {t('redline.daftar_periksa_ini_mencakup_pojk_kerja', 'Daftar periksa ini mencakup POJK Kerja Sama Pihak Ketiga, POJK Tata Kelola TI, Hak Audit Regulator OJK, serta kepatuhan UU PDP & KUHPerdata.')}
                       </p>
                     </div>
@@ -539,23 +540,23 @@ ${analysis.analyzedClauses
                             <div className="flex items-center justify-between gap-2">
                               <p className="font-bold text-slate-900 dark:text-white text-xs">{item.item}</p>
                               {isOjkItem && (
-                                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800 text-[9px] font-bold shrink-0">
+                                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800 text-xs font-bold shrink-0">
                                   {t('redline.ojk_standard', 'OJK Standard')}
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">{item.notes}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{item.notes}</p>
                             <div>
                               {item.status === 'COMPLIANT' ? (
-                                <span className="inline-flex items-center text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                                <span className="inline-flex items-center text-xs font-bold text-emerald-700 dark:text-emerald-400">
                                   {t('redline.memenuhi_standar_kepatuhan', '✓ Memenuhi Standar Kepatuhan')}
                                 </span>
                               ) : item.status === 'NEEDS_REVIEW' ? (
-                                <span className="inline-flex items-center text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                                <span className="inline-flex items-center text-xs font-bold text-amber-700 dark:text-amber-400">
                                   {t('redline.perlu_penyesuaian_klausul', '⚠️ Perlu Penyesuaian Klausul')}
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center text-[10px] font-bold text-rose-700 dark:text-rose-400">
+                                <span className="inline-flex items-center text-xs font-bold text-rose-700 dark:text-rose-400">
                                   {t('redline.tidak_sesuai_berisiko_regulasi', '✗ Tidak Sesuai / Berisiko Regulasi')}
                                 </span>
                               )}
@@ -616,12 +617,12 @@ ${analysis.analyzedClauses
           <Button
             size="sm"
             onClick={onClose}
-            className="h-9 px-5 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer"
+            className="h-9 px-5 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer"
           >
             {t('redline.close', 'Tutup')}
           </Button>
         </div>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };

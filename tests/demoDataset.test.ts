@@ -2,27 +2,28 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDemoDataset } from '../src/data/demoDataset';
 
-test('demo dataset matches the requested organization structure', () => {
+test('demo dataset is one Indonesian banking organization with 5 unique partners', () => {
   const data = buildDemoDataset();
-  assert.deepEqual(data.tenants.map((tenant) => tenant.settings.countryCode), ['ID', 'MY', 'PH']);
-  assert.equal(new Set(data.tenants.map((tenant) => tenant.settings.industry)).size, 3);
+  assert.equal(data.tenants.length, 1);
+  assert.equal(data.tenants[0].settings.countryCode, 'ID');
+  assert.equal(data.tenants[0].settings.industry, 'banking_investment');
+  assert.equal(data.partners.length, 5);
+  assert.equal(data.contracts.length, 5);
+  assert.equal(data.ios.length, 5);
+  assert.equal(data.allowedUsers.length, 1);
+  assert.equal(data.allowedUsers[0].role, 'Admin');
 
-  const expected = [
-    ['org-demo-id', 10, 10, 10, ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06']],
-    ['org-demo-my', 5, 5, 5, ['2026-01', '2026-02', '2026-03']],
-    ['org-demo-ph', 0, 0, 0, []],
-  ] as const;
-
-  for (const [organizationId, partnerCount, contractCount, ioCount, months] of expected) {
-    assert.equal(data.partners.filter((row) => row.organizationId === organizationId).length, partnerCount);
-    assert.equal(data.contracts.filter((row) => row.organizationId === organizationId).length, contractCount);
-    assert.equal(data.ios.filter((row) => row.organizationId === organizationId).length, ioCount);
-    assert.deepEqual(
-      [...new Set(data.spendings.filter((row) => row.organizationId === organizationId).flatMap((row) => row.invoice_month.map((value: string) => value.slice(0, 7))))].sort(),
-      months,
-    );
-    const users = data.allowedUsers.filter((row) => row.organizationId === organizationId);
-    assert.equal(users.length, 1);
-    assert.equal(users[0].role, 'Admin');
+  const partnerIds = new Set(data.partners.map((p) => p.partner_id));
+  for (const partner of data.partners) {
+    assert.equal(data.contracts.filter((c) => c.partner_id === partner.partner_id).length, 1);
+    assert.equal(data.ios.filter((io) => io.partner_id === partner.partner_id).length, 1);
+    assert.ok(data.spendings.filter((s) => s.vendor_id === partner.partner_id).length >= 3);
   }
+  for (const s of data.spendings) {
+    assert.ok(partnerIds.has(s.vendor_id));
+    assert.equal(s.month_allocations.reduce((sum: number, a: any) => sum + a.amount, 0), s.total_amount);
+  }
+  for (const key of ['nomor_kontrak', 'judul_kontrak']) assert.equal(new Set(data.contracts.map((c) => c[key])).size, 5);
+  assert.equal(new Set(data.spendings.map((s) => s.invoice_number)).size, data.spendings.length);
+  assert.ok(!JSON.stringify(data).match(/demo partner|synthetic|contract ?\d|invoice ?\d/i));
 });

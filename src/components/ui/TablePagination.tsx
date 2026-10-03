@@ -4,7 +4,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  ChevronDown,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -33,15 +32,16 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
 
   return (
     <div
-      className={`p-4 sm:px-6 sm:py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs select-none ${className}`}
+      className={`mobile-pagination p-4 sm:px-6 sm:py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs select-none ${className}`}
     >
       {/* Left: Rows per page selector */}
       <div className="flex items-center gap-2.5">
         <div className="relative inline-flex items-center">
           <select
+            aria-label={t('pagination.rows_per_page', 'Rows per page')}
             value={rowsPerPage}
             onChange={(e) => onRowsPerPageChange(Number(e.target.value))}
-            className="h-8 pl-3 pr-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#06C755] cursor-pointer appearance-none transition-colors shadow-2xs"
+            className="h-8 pl-3 pr-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:border-accent cursor-pointer appearance-none transition-colors shadow-2xs"
           >
             {rowsPerPageOptions.map((opt) => (
               <option
@@ -53,7 +53,6 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
               </option>
             ))}
           </select>
-          <ChevronDown className="w-3.5 h-3.5 absolute right-2 text-slate-500 dark:text-slate-400 pointer-events-none" />
         </div>
         <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
           {t('pagination.rows_per_page', 'Rows per page')}

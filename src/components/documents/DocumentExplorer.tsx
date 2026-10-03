@@ -199,14 +199,14 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
         <button
           type="button"
           onClick={() => toggleSort(sortKey)}
-          className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
+          className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none rounded py-0.5"
         >
           <span>{label}</span>
           {active ? (
             sort.dir === 'asc' ? (
-              <ArrowUp className="w-3.5 h-3.5 text-[#06C755] shrink-0" aria-hidden />
+              <ArrowUp className="w-3.5 h-3.5 text-accent-text shrink-0" aria-hidden />
             ) : (
-              <ArrowDown className="w-3.5 h-3.5 text-[#06C755] shrink-0" aria-hidden />
+              <ArrowDown className="w-3.5 h-3.5 text-accent-text shrink-0" aria-hidden />
             )
           ) : (
             <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden />
@@ -221,24 +221,24 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
       <div className="w-full space-y-6">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 id="document-explorer-heading" ref={headingRef} tabIndex={-1} className="outline-none text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            <h2 id="document-explorer-heading" ref={headingRef} tabIndex={-1} className="outline-none text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               {t('documents.explorer.title', 'Dokumen Saya')}
-            </h1>
+            </h2>
           </div>
           {canEdit && (
             <button
               type="button"
               onClick={onCreate}
-              className="inline-flex w-fit shrink-0 items-center gap-1.5 px-4 min-h-11 sm:min-h-9 rounded-xl text-sm font-bold bg-[#04803D] hover:bg-[#036B33] text-white shadow-sm cursor-pointer"
+              className="mobile-page-action inline-flex w-fit shrink-0 items-center gap-1.5 px-4 h-9 min-h-11 sm:min-h-9 rounded-xl text-sm font-bold bg-accent-strong hover:bg-accent-strong-hover text-white shadow-sm cursor-pointer transition-all"
             >
               <FilePlus2 className="w-4 h-4" aria-hidden />
-              {t('documents.explorer.new', 'Dokumen Baru')}
+              <span>{t('documents.explorer.new', 'Dokumen Baru')}</span>
             </button>
           )}
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-5">
-          <div className="flex flex-wrap items-center gap-2.5 w-full">
+          <div className="mobile-filter-grid flex flex-wrap items-center gap-2.5 w-full">
             <div className="relative flex-1 min-w-[200px] sm:min-w-[240px]">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
               <label htmlFor="document-search" className="sr-only">
@@ -250,7 +250,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder={t('documents.explorer.search_placeholder', 'Search Documents…')}
-                className="h-11 sm:h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] font-medium transition-colors"
+                className="h-11 sm:h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-accent font-medium transition-colors"
               />
             </div>
             <label htmlFor="document-status-filter" className="sr-only">
@@ -260,7 +260,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
               id="document-status-filter"
               value={filters.status}
               onChange={(e) => updateFilter('status', e.target.value)}
-              className="min-h-11 sm:min-h-9 h-9 min-w-[130px] flex-1 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] cursor-pointer"
+              className="min-h-11 sm:min-h-9 h-9 min-w-[130px] flex-1 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent cursor-pointer"
             >
               <option value="">{t('documents.filter.status_active', 'Semua status aktif')}</option>
               {DOCUMENT_STATUSES.map((s) => (
@@ -278,7 +278,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
               id="document-type-filter"
               value={filters.type}
               onChange={(e) => updateFilter('type', e.target.value)}
-              className="min-h-11 sm:min-h-9 h-9 min-w-[130px] flex-1 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] cursor-pointer"
+              className="min-h-11 sm:min-h-9 h-9 min-w-[130px] flex-1 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent cursor-pointer"
             >
               <option value="">{t('documents.filter.type_all', 'All Document Types')}</option>
               {DOCUMENT_TYPES.map((type) => (
@@ -295,7 +295,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
               id="document-creator-filter"
               value={filters.created_by}
               onChange={(e) => updateFilter('created_by', e.target.value)}
-              className="min-h-11 sm:min-h-9 h-9 min-w-[130px] flex-1 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] cursor-pointer"
+              className="min-h-11 sm:min-h-9 h-9 min-w-[130px] flex-1 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent cursor-pointer"
             >
               <option value="">{t('documents.filter.created_by_all', 'All Creators')}</option>
               {(data?.creators ?? []).map((creator) => (
@@ -306,7 +306,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
             </AlphabeticalSelect>
 
             <TableViewMenu label={t('documents.filter.view', 'View')}>
-              <div className="mb-1 border-b border-slate-100 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">
+              <div className="mb-1 border-b border-slate-100 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">
                 {t('documents.filter.toggle_columns', 'Toggle Columns')}
               </div>
               {([
@@ -322,7 +322,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                     type="checkbox"
                     checked={visibleColumns[column]}
                     onChange={() => toggleColumnVisibility(column)}
-                    className="rounded border-slate-300 text-[#06C755] focus:ring-[#06C755] dark:border-slate-700"
+                    className="rounded border-slate-300 text-accent-text focus:ring-accent dark:border-slate-700"
                   />
                   <span>{label}</span>
                 </label>
@@ -385,8 +385,13 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
-                    {data.documents.length === 0 ? <TableEmptyState colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} /> : data.documents.map((doc) => (
+                  <tbody className="divide-y divide-hairline dark:divide-slate-800">
+                    {data.documents.length === 0 ? (
+                      <TableEmptyState
+                        colSpan={Object.values(visibleColumns).filter(Boolean).length + 2}
+                        message={t('documents.explorer.empty', 'Belum ada dokumen tersimpan.')}
+                      />
+                    ) : data.documents.map((doc) => (
                       <tr key={doc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="pl-6 pr-4 py-4 text-xs text-left align-middle max-w-[320px]">
                           {renaming?.id === doc.id ? (
@@ -406,13 +411,13 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                             <button
                               type="button"
                               onClick={() => onOpen(doc.id)}
-                              className="font-semibold text-left text-slate-900 dark:text-slate-100 hover:text-[#06C755] truncate block max-w-full cursor-pointer transition-colors"
+                              className="font-semibold text-left text-slate-900 dark:text-slate-100 hover:text-accent-text truncate block max-w-full cursor-pointer transition-colors"
                               title={doc.name}
                             >
                               {doc.name}
                             </button>
                           )}
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">v{doc.current_version}</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">v{doc.current_version}</span>
                         </td>
                         {visibleColumns.type && <td className="py-4 px-4 text-xs text-left align-middle hidden md:table-cell">
                           <span className={typeBadgeClass(doc.type)}>{typeLabel(t, doc.type)}</span>
@@ -443,7 +448,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                 </table>
               </div>
 
-              <TablePagination
+              {data.total > 0 && <TablePagination
                 currentPage={data.page}
                 totalPages={totalPages}
                 rowsPerPage={limit}
@@ -453,7 +458,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
                   setLimit(size);
                   setPage(1);
                 }}
-              />
+              />}
             </>
           )}
         </section>

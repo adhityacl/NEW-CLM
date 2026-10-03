@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         headers['x-session-token'] = storedToken;
       }
 
-      const res = await fetch('/api/user/my-role', {
+      const res = await fetch('/api/user/my-role?probe=1', {
         headers,
         credentials: 'include',
         cache: 'no-store',

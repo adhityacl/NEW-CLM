@@ -89,12 +89,13 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
     <div className="space-y-4">
       {/* Controls Bar: Search, Filters, Add Button */}
       <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+        <CardContent className="mobile-controls-bar p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="mobile-filter-grid flex flex-wrap items-center gap-2.5 flex-1">
             {/* Search Input */}
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input
+                aria-label={t('admin.users_search_ph', 'Cari nama, email, atau role pengguna...')}
                 type="text"
                 placeholder={t('admin.users_search_ph', 'Cari nama, email, atau role pengguna...')}
                 value={searchQuery}
@@ -219,7 +220,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                           {user.email}
                         </div>
                       </div>
@@ -230,7 +231,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                   <td className="py-4 px-4 text-left align-middle">
                     <Badge
                       variant={ROLE_BADGE_VARIANT[user.role] || 'secondary'}
-                      className="gap-1 px-2.5 py-0.5 text-[11px] font-semibold"
+                      className="gap-1 px-2.5 py-0.5 text-xs font-semibold"
                     >
                       <Shield className="w-3 h-3" />
                       {user.role.toUpperCase()}
@@ -238,7 +239,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                   </td>
 
                   {/* Department */}
-                  <td className="py-4 px-4 text-left align-middle text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                  <td className="py-4 px-4 text-left align-middle text-xs text-slate-600 dark:text-slate-400 font-medium">
                     {user.role === 'superuser' || user.role === 'admin'
                       ? t('admin.all_departments', 'Semua Departemen (Akses Global)')
                       : user.department || '-'}
@@ -247,12 +248,12 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                   {/* Organization / Tenant */}
                   <td className="py-4 px-4 text-left align-middle">
                     {user.role === 'superuser' || (user.role === 'admin' && !user.organizationId) ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                         <Building2 className="w-3 h-3 shrink-0" />
                         <span>{t('admin.global_access', 'Akses Global (Semua Tenant)')}</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                      <span className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400 font-medium">
                         <Building2 className="w-3 h-3 shrink-0" />
                         <span className="truncate max-w-40">
                           {user.organizationName ||
@@ -267,12 +268,12 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                   {/* Status */}
                   <td className="py-4 px-4 text-left align-middle">
                     {user.banned ? (
-                      <Badge variant="destructive" className="gap-1 px-2 py-0.5 text-[10px]">
+                      <Badge variant="destructive" className="gap-1 px-2 py-0.5 text-xs">
                         <Ban className="w-3 h-3" />
                         {t('admin.filter_banned', 'Dicekal')}
                       </Badge>
                     ) : (
-                      <Badge variant="success" className="gap-1 px-2 py-0.5 text-[10px]">
+                      <Badge variant="success" className="gap-1 px-2 py-0.5 text-xs">
                         <CheckCircle2 className="w-3 h-3" />
                         {t('admin.filter_active', 'Aktif')}
                       </Badge>
@@ -280,12 +281,12 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                   </td>
 
                   {/* Active Sessions */}
-                  <td className="py-4 px-4 text-left align-middle font-mono text-slate-600 dark:text-slate-400">
-                    {user.sessionCount ?? 0} {t('admin.sessions_2', 'sessions')}
+                  <td className="py-4 px-4 text-left align-middle tabular-nums text-slate-600 dark:text-slate-400">
+                    {user.sessionCount ?? 0} {(user.sessionCount ?? 0) === 1 ? t('admin.session_one', 'session') : t('admin.sessions_2', 'sessions')}
                   </td>
 
                   {/* Joined Date */}
-                  <td className="py-4 px-4 text-left align-middle text-slate-500 dark:text-slate-400 text-[11px]">
+                  <td className="py-4 px-4 text-left align-middle text-slate-500 dark:text-slate-400 text-xs">
                     {new Date(user.createdAt).toLocaleDateString(getActiveFormattingLocale(), {
                       day: 'numeric',
                       month: 'short',

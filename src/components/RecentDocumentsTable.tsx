@@ -53,7 +53,7 @@ export function RecentDocumentsTable({ contracts, ios, onNavigate }: {
               <input
                 type="checkbox"
                 aria-label={t('ui.select_all_recent')}
-                className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                 disabled
               />
             </th>
@@ -68,7 +68,7 @@ export function RecentDocumentsTable({ contracts, ios, onNavigate }: {
                 <input
                   type="checkbox"
                   aria-label={t('ui.select_recent', 'Select {name}').replace('{name}', record.title)}
-                  className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                  className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                   disabled
                 />
               </td>

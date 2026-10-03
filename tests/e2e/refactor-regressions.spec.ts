@@ -3,10 +3,12 @@ import { buildDemoDataset } from '../../src/data/demoDataset';
 import { getCountryPack, getIndustryPack } from '../../src/lib/policy';
 import type { DocumentDetail } from '../../src/lib/documentModel';
 
+const SECOND_TENANT_ID = 'org-fixture-second';
+
 // All APIs are intercepted. Neither these tests nor the preview server access auth.db.
 test.beforeEach(async ({ page }) => {
   const data = buildDemoDataset();
-  const tenants = data.tenants.slice(0, 2);
+  const tenants = [data.tenants[0], { ...data.tenants[0], id: SECOND_TENANT_ID, name: 'Second Workspace', isDefault: false }];
   let activeTenantId = tenants[0].id;
   const documents = new Map<string, DocumentDetail>(tenants.map((tenant, index) => [tenant.id, {
     id: `doc-${index}`, organization_id: tenant.id, name: `Draft Workspace ${index + 1}`,
@@ -68,10 +70,34 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByText('Refactor fixture ready')).toBeVisible();
 });
 
+test('New Document opens, edits a table, saves and reopens without selection registry errors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.getByRole('button', { name: 'My Documents', exact: true }).click();
+  await page.getByRole('button', { name: 'New Document', exact: true }).click();
+  await page.getByRole('button', { name: 'Blank document', exact: true }).click();
+  const editor = page.locator('.tiptap.ProseMirror:visible');
+  await expect(editor).toBeVisible();
+  await editor.fill('New document regression content.');
+  await page.getByTitle('Insert Pricing Table', { exact: true }).click();
+  await expect(editor.locator('table')).toBeVisible();
+  const saved = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/documents');
+  await page.keyboard.press('Control+s');
+  const response = await saved;
+  const document = await response.json();
+  expect(response.request().postDataJSON().content).toContain('<table');
+  await page.getByRole('button', { name: 'Back to document list', exact: true }).click();
+  await page.getByRole('button', { name: document.name, exact: true }).click();
+  await expect(editor).toContainText('New document regression content.');
+  await expect(editor.locator('table')).toBeVisible();
+  expect(errors).toEqual([]);
+  await expect(page.getByText('Duplicate use of selection JSON ID cell', { exact: true })).toHaveCount(0);
+});
+
 test('chat, modals and editor load only when opened; saved document still opens and saves', async ({ page }) => {
   const loaded = () => page.evaluate(() => performance.getEntriesByType('resource').map(item => item.name));
   expect((await loaded()).some(name => /AIChatWidget-|ContractModal-|IOModal-|PartnerModal-|ContractDocumentEditor-/.test(name))).toBe(false);
-  await page.getByRole('button', { name: 'Create Document', exact: true }).click();
+  await page.getByRole('button', { name: 'My Documents', exact: true }).click();
   await expect(page.getByRole('columnheader', { name: 'Name', exact: true })).toBeVisible();
   expect((await loaded()).some(name => /ContractDocumentEditor-/.test(name))).toBe(false);
   await page.getByRole('button', { name: 'Draft Workspace 1', exact: true }).click();
@@ -90,7 +116,7 @@ test('chat, modals and editor load only when opened; saved document still opens 
   expect((await loaded()).some(name => /AIChatWidget-/.test(name))).toBe(true);
 });
 
-for (const section of ['Contracts', 'Order Forms', 'Partners', 'Partner Spending', 'Partner Evaluation', 'Session Activity Logs', 'Create Document']) {
+for (const section of ['Contracts', 'Order Forms', 'Partners', 'Partner Spending', 'Partner Evaluation', 'Session Activity Logs', 'My Documents']) {
   test(`View preferences in ${section} support Tab, Escape and focus restoration`, async ({ page }) => {
     if (section.startsWith('Partner ')) await page.getByRole('button', { name: 'Partners', exact: true }).click();
     const name = section === 'Contracts' ? /^Contracts(?: \d+)?$/ : section === 'Order Forms' ? /^(Order Forms|Service Orders)(?: \d+)?$/ : section;
@@ -142,7 +168,7 @@ test('workspace switch refreshes review documents and document explorer; outgoin
   await switchWorkspace();
   await expect(pending).toContainText('Draft Workspace 2');
   await expect(pending).not.toContainText('Draft Workspace 1');
-  await page.getByRole('button', { name: 'Create Document', exact: true }).click();
+  await page.getByRole('button', { name: 'My Documents', exact: true }).click();
   await page.getByRole('button', { name: 'Draft Workspace 2', exact: true }).click();
   const editor = page.locator('.tiptap.ProseMirror:visible');
   await expect(editor).toContainText('Saved content 2');
@@ -151,7 +177,7 @@ test('workspace switch refreshes review documents and document explorer; outgoin
   await page.locator('aside button[aria-haspopup="listbox"]').click();
   await page.getByRole('listbox').getByRole('option').first().click();
   const request = await save;
-  expect(request.headers()['x-organization-id']).toBe(buildDemoDataset().tenants[1].id);
+  expect(request.headers()['x-organization-id']).toBe(SECOND_TENANT_ID);
   await expect(page.getByRole('button', { name: 'Draft Workspace 1', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Draft Workspace 2', exact: true })).toHaveCount(0);
 });

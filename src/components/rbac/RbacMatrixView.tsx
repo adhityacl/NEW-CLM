@@ -140,7 +140,7 @@ export default function RbacMatrixView() {
           <div key={r.code} className="rounded-[var(--radius-lg)] border border-hairline bg-surface p-3 shadow-sm transition-shadow hover:shadow-[var(--shadow-md)]">
             <div className="flex items-center justify-between gap-2">
               <strong className="text-sm text-ink">{r.name}</strong>
-              <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${roleBadgeClass(r.code)}`}>{t('rbac.level', 'level {level}', { level: r.level })}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${roleBadgeClass(r.code)}`}>{t('rbac.level', 'level {level}', { level: r.level })}</span>
             </div>
             <p className="mt-1 text-xs text-ink-soft">{r.scope}</p>
             <p className="mt-2 text-xs text-ink-soft">

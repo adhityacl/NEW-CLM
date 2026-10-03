@@ -1,6 +1,6 @@
 import { AlphabeticalDatalist, AlphabeticalSelect } from '../ui/alphabetical-select';
 import React, { useEffect, useId, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, Globe2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Globe2, Loader2, Save } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTenantSettings } from '../../context/TenantSettingsContext';
 import { usePermissions } from '../../lib/permissions';
@@ -26,7 +26,7 @@ function timezoneOptions(extra: string[]): string[] {
 }
 
 const fieldClass =
-  'block min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-5 text-slate-900 focus:border-[#06C755] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
+  'block min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-5 text-slate-900 focus:border-accent focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
 const labelClass = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300';
 const hintClass = 'mt-1.5 text-xs leading-relaxed text-slate-600 dark:text-slate-400';
 const sectionClass = 'min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900';
@@ -152,7 +152,7 @@ export const OrganizationRegionSettings: React.FC = () => {
     <form onSubmit={submit} noValidate aria-busy={save.kind === 'saving' || status === 'loading'} className="flex min-w-0 flex-col gap-6">
       <div className={sectionClass}>
         <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
-          <Globe2 className="h-5 w-5 text-[#06C755]" aria-hidden="true" />
+          <Globe2 className="h-5 w-5 text-accent-text" aria-hidden="true" />
           {t('settings.region.title', 'Organization & region')}
         </h3>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
@@ -294,8 +294,11 @@ export const OrganizationRegionSettings: React.FC = () => {
         <button
           type="submit"
           disabled={!canEdit || save.kind === 'saving'}
-          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#04803D] px-5 text-sm font-bold text-white hover:bg-[#036B33] disabled:opacity-60"
+          className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-accent-strong px-4 text-xs font-bold text-white transition-colors hover:bg-accent-strong-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
         >
+          {save.kind === 'saving'
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            : <Save className="h-3.5 w-3.5" aria-hidden="true" />}
           {save.kind === 'saving' ? t('common.saving', 'Saving…') : t('settings.region.save', 'Save organization settings')}
         </button>
         <div aria-live="polite">

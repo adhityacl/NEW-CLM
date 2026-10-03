@@ -9,7 +9,7 @@ export type Language = 'ID' | 'EN' | 'ZH';
 export const LANGUAGE_OPTIONS: ReadonlyArray<{ code: Language; label: string; nativeName: string; htmlLang: string }> = [
   { code: 'ID', label: 'ID', nativeName: 'Bahasa Indonesia', htmlLang: 'id' },
   { code: 'EN', label: 'EN', nativeName: 'English', htmlLang: 'en' },
-  { code: 'ZH', label: 'CN', nativeName: '简体中文', htmlLang: 'zh-CN' },
+  { code: 'ZH', label: 'ZH', nativeName: '简体中文', htmlLang: 'zh-CN' },
 ];
 
 const isLanguage = (value: unknown): value is Language => value === 'ID' || value === 'EN' || value === 'ZH';
@@ -80,13 +80,13 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'nav.doc_title': 'NAVIGASI DOKUMEN',
     'nav.admin_title': 'NAVIGASI ADMIN',
     'nav.dashboard': 'Dashboard Utama',
-    'nav.hierarchy': 'Jelajahi',
+    'nav.hierarchy': 'Struktur Dokumen',
     'nav.partners': 'Partner',
     'nav.partners_list': 'Daftar Partner & DD',
     'nav.partner_eval': 'Evaluasi Partner',
     'nav.partner_spending': 'Spending Partner',
     'nav.contracts': 'Kontrak',
-    'nav.create_contract': 'Buat Dokumen',
+    'nav.create_contract': 'Dokumen Saya',
     'nav.ios': 'Insertion Order',
     'nav.notifications': 'Notifikasi',
     'nav.admin_users': 'Kelola Akses Admin',
@@ -197,7 +197,7 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'redline.close': 'Tutup',
 
     // Hierarchy / Legal Document Structure View
-    'hierarchy.title': 'Struktur Dokumen Legal',
+    'hierarchy.title': 'Struktur Dokumen',
     'hierarchy.new_partner': 'Partner Baru',
     'hierarchy.new_contract': 'Kontrak Baru',
     'hierarchy.new_io': 'Insertion Order Baru',
@@ -808,7 +808,7 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'form.io.kanal_media': 'Kanal Media / Placement *',
     'form.io.kanal_ph': 'contoh: Homepage Masthead & Instagram Live Sesi',
     'form.io.pricing_model': 'Model Harga *',
-    'form.io.pricing_model_custom_ph': 'Ketik nama pricing model baru (misal: CPA, CPV, Hybrid)...',
+    'form.io.pricing_model_custom_ph': 'Ketik nama pricing model baru (misal: CPV, Hybrid)...',
     'form.io.charging_type': 'Skema Penagihan (Charging Type) *',
     'form.io.currency': 'Mata Uang',
     'form.io.tanggal_mulai': 'Tanggal Mulai *',
@@ -982,8 +982,8 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'contract_creator.delete_custom_field_title': 'Hapus kolom isian kustom',
 
     'contract_creator.partners.select_label_title': 'Mengisi otomatis nama badan hukum, domisili kantor, direktur penandatangan, dan email resmi ke seluruh pasal perjanjian',
-    'contract_creator.partners.select_label': 'Pilih Mitra Terdaftar (Auto-Fill)',
-    'contract_creator.partners.select_placeholder': '-- Pilih dari Mitra Terdaftar --',
+    'contract_creator.partners.select_label': 'Pilih Partner yang Ada',
+    'contract_creator.partners.select_placeholder': 'Pilih Partner',
     'contract_creator.partners.default_address': 'Alamat Terdaftar',
     'contract_creator.partners.default_position': 'Direktur',
     'contract_creator.partners.resync_button': 'Sinkronkan Ulang ke Dokumen',
@@ -1127,13 +1127,13 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'nav.doc_title': 'DOCUMENT NAVIGATION',
     'nav.admin_title': 'ADMIN NAVIGATION',
     'nav.dashboard': 'Main Dashboard',
-    'nav.hierarchy': 'Explore',
+    'nav.hierarchy': 'Document Structure',
     'nav.partners': 'Partners',
     'nav.partners_list': 'Partner List & DD',
     'nav.partner_eval': 'Partner Evaluation',
     'nav.partner_spending': 'Partner Spending',
     'nav.contracts': 'Contracts',
-    'nav.create_contract': 'Create Document',
+    'nav.create_contract': 'My Documents',
     'nav.ios': 'Insertion Orders',
     'nav.notifications': 'Notifications',
     'nav.admin_users': 'Manage Admin Access',
@@ -1244,7 +1244,7 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'redline.close': 'Close',
 
     // Hierarchy / Legal Document Structure View
-    'hierarchy.title': 'Legal Document Structure',
+    'hierarchy.title': 'Document Structure',
     'hierarchy.new_partner': 'New Partner',
     'hierarchy.new_contract': 'New Contract',
     'hierarchy.new_io': 'New IO',
@@ -1856,7 +1856,7 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'form.io.kanal_media': 'Media Channel / Placement *',
     'form.io.kanal_ph': 'e.g., Homepage Masthead & Instagram Live Session',
     'form.io.pricing_model': 'Pricing Model *',
-    'form.io.pricing_model_custom_ph': 'Enter new pricing model name (e.g. CPA, CPV, Hybrid)...',
+    'form.io.pricing_model_custom_ph': 'Enter new pricing model name (e.g. CPV, Hybrid)...',
     'form.io.charging_type': 'Charging Type *',
     'form.io.currency': 'Currency',
     'form.io.tanggal_mulai': 'Start Date *',
@@ -2030,8 +2030,8 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'contract_creator.delete_custom_field_title': 'Delete custom field',
 
     'contract_creator.partners.select_label_title': 'Automatically fills in the legal entity name, office domicile, signing director, and official email across all agreement articles',
-    'contract_creator.partners.select_label': 'Select Registered Partner (Auto-Fill)',
-    'contract_creator.partners.select_placeholder': '-- Select from Registered Partners --',
+    'contract_creator.partners.select_label': 'Select Existing Partner',
+    'contract_creator.partners.select_placeholder': 'Select Partner',
     'contract_creator.partners.default_address': 'Registered Address',
     'contract_creator.partners.default_position': 'Director',
     'contract_creator.partners.resync_button': 'Re-sync to Document',

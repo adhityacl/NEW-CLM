@@ -22,7 +22,7 @@ interface DraftHistoryPanelProps {
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; drafts: DraftVersion[] };
 
 const ACTION_BUTTON =
-  'inline-flex items-center gap-1 px-2 min-h-11 sm:min-h-7 rounded-lg text-[10px] font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer';
+  'inline-flex items-center gap-1 px-2 min-h-11 sm:min-h-7 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer';
 
 export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
   documentId,
@@ -83,7 +83,7 @@ export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
 
   return (
     <section className="space-y-2" aria-labelledby="draft-history-heading" aria-busy={state.status === 'loading'}>
-      <h3 id="draft-history-heading" className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+      <h3 id="draft-history-heading" className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
         <History className="w-3.5 h-3.5 text-slate-400" aria-hidden />
         {t('documents.history.title', 'Riwayat Draf')}
       </h3>
@@ -114,7 +114,7 @@ export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
             return (
               <li
                 key={draft.version_number}
-                className={`p-2.5 rounded-lg border text-xs space-y-1.5 ${
+                className={`editor-panel-card p-4 rounded-xl border text-xs space-y-1.5 ${
                   isViewing
                     ? 'border-blue-400 bg-blue-50/60 dark:border-blue-600 dark:bg-blue-950/30'
                     : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
@@ -126,7 +126,7 @@ export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
                     {draft.draft_name && <span className="font-semibold text-emerald-700 dark:text-emerald-400"> · {draft.draft_name}</span>}
                   </span>
                   {isCurrent && (
-                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                    <span className="text-xs font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                       {t('documents.history.current', 'Terkini')}
                     </span>
                   )}
@@ -134,13 +134,13 @@ export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
                 {draft.labels.length > 0 && (
                   <ul className="flex flex-wrap gap-1" aria-label={t('documents.history.labels', 'Label')}>
                     {draft.labels.map((label) => (
-                      <li key={label} className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full border border-emerald-300 text-emerald-800 dark:border-emerald-700 dark:text-emerald-300">
+                      <li key={label} className="text-xs font-semibold px-1.5 py-0.5 rounded-full border border-emerald-300 text-emerald-800 dark:border-emerald-700 dark:text-emerald-300">
                         {label}
                       </li>
                     ))}
                   </ul>
                 )}
-                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {kindLabel(draft)} · {draft.saved_by_name || '—'} · <RelativeTime iso={draft.saved_at} /> · {formatBytes(draft.file_size)}
                 </p>
 
@@ -152,7 +152,7 @@ export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
                       saveLabel();
                     }}
                   >
-                    <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
                       {t('documents.history.name_label', 'Nama versi')}
                       <input
                         autoFocus
@@ -162,7 +162,7 @@ export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
                         className={INPUT_CLASS}
                       />
                     </label>
-                    <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
                       {t('documents.history.labels_label', 'Label (pisahkan dengan koma)')}
                       <input
                         value={editing.labels}

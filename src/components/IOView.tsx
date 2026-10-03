@@ -1,3 +1,4 @@
+import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import { TableViewMenu } from './ui/table-view-menu';
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { formatBusinessDate } from '../lib/displayDate';
@@ -5,7 +6,7 @@ import { FilterSummary } from './ui/filter-summary';
 import { TableEmptyState } from './ui/table-empty-state';
 import React, { useState, useMemo } from 'react';
 import { CONTRACT_STATUS_LABEL_KEY, DD_STATUS_LABEL_KEY, DOC_STATUS_LABEL_KEY } from '../lib/domainStatus';
-import { InsertionOrder, Contract, Partner } from '../types';
+import { InsertionOrder, Contract, Partner, PRICING_MODELS } from '../types';
 import { formatMoney } from '../lib/currencyUtils';
 import { FileDown, FileSpreadsheet,
   Search,
@@ -104,7 +105,7 @@ export const IOView: React.FC<IOViewProps> = ({
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() =>
     getSavedColumnPreferences('io', DEFAULT_IO_COLUMNS)
   );
-  
+
 
   const toggleColumnVisibility = (id: string) => {
     setVisibleColumns((prev) => {
@@ -113,6 +114,12 @@ export const IOView: React.FC<IOViewProps> = ({
       return next;
     });
   };
+
+  // Standard models plus any legacy/custom value still stored on existing orders.
+  const pricingFilterOptions = useMemo(
+    () => [...new Set([...PRICING_MODELS, ...ios.map((i) => i.pricing_model).filter(Boolean)])],
+    [ios],
+  );
 
   // Filtering Logic
   const filteredIOs = useMemo(() => {
@@ -218,15 +225,15 @@ export const IOView: React.FC<IOViewProps> = ({
         <button
           type="button"
           onClick={() => handleSort(field)}
-          className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
+          className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none rounded py-0.5"
           title={t('io.urutkan_berdasarkan', 'Urutkan berdasarkan {label}', { label })}
         >
           <span>{label}</span>
           {isSorted ? (
             sortOrder === 'asc' ? (
-              <ArrowUp className="w-3.5 h-3.5 text-[#06C755] shrink-0" />
+              <ArrowUp className="w-3.5 h-3.5 text-accent-text shrink-0" />
             ) : (
-              <ArrowDown className="w-3.5 h-3.5 text-[#06C755] shrink-0" />
+              <ArrowDown className="w-3.5 h-3.5 text-accent-text shrink-0" />
             )
           ) : (
             <ArrowUpDown className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" />
@@ -342,7 +349,7 @@ export const IOView: React.FC<IOViewProps> = ({
           </h2>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+        <div className="mobile-page-actions flex flex-wrap items-center gap-2.5 shrink-0">
           {hasPermission('export.csv') && (
             <button
               onClick={handleExportCSV}
@@ -358,7 +365,7 @@ export const IOView: React.FC<IOViewProps> = ({
           {canCreateIO(user) && (
             <button
               onClick={onAddIO}
-              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0"
+              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0"
             >
               <Plus className="w-4 h-4 text-white" />
               <span>{t('ui.add_io')}</span>
@@ -369,7 +376,7 @@ export const IOView: React.FC<IOViewProps> = ({
 
       {/* DataTable Toolbar - Justified Responsive Grid/Flex */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-5 mb-6">
-        <div className="flex flex-wrap items-center gap-2.5 w-full">
+        <div className="mobile-filter-grid flex flex-wrap items-center gap-2.5 w-full">
           {/* Search Input */}
           <div className="relative flex-1 min-w-[200px] sm:min-w-[240px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -382,7 +389,7 @@ export const IOView: React.FC<IOViewProps> = ({
                 setSearchTerm(e.target.value);
                 setPageIndex(0);
               }}
-              className="h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] font-medium transition-colors"
+              className="h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-accent font-medium transition-colors"
             />
           </div>
 
@@ -391,7 +398,7 @@ export const IOView: React.FC<IOViewProps> = ({
             aria-label={t('ui.filter_status')}
               value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('io.all_status', 'Semua Status')}</option>
             <option value="Berjalan">{t('io.status_berjalan', 'Berjalan')}</option>
@@ -405,14 +412,10 @@ export const IOView: React.FC<IOViewProps> = ({
             aria-label={t('ui.filter_pricing')}
               value={selectedPricingModel}
             onChange={(e) => setSelectedPricingModel(e.target.value)}
-            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('io.all_pricing_models', 'Semua Model Pricing')}</option>
-            <option value="CPM">{t('io.cpm', 'CPM')}</option>
-            <option value="CPC">{t('io.cpc', 'CPC')}</option>
-            <option value="Flat Fee">{t('io.flat_fee', 'Flat Fee')}</option>
-            <option value="Revenue Share">{t('io.revenue_share', 'Revenue Share')}</option>
-            <option value="Fixed Package">{t('io.fixed_package', 'Fixed Package')}</option>
+            {pricingFilterOptions.map((model) => <option key={model} value={model}>{model}</option>)}
           </AlphabeticalSelect>
 
           {/* Simple Select Filter: Charging Scheme */}
@@ -420,7 +423,7 @@ export const IOView: React.FC<IOViewProps> = ({
             aria-label={t('ui.filter_charging')}
               value={selectedChargingType}
             onChange={(e) => setSelectedChargingType(e.target.value)}
-            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('io.all_charging_types', 'Semua Skema Pembayaran')}</option>
             <option value="Prepaid">{t('io.prepaid', 'Prepaid')}</option>
@@ -439,10 +442,10 @@ export const IOView: React.FC<IOViewProps> = ({
               <X className="ml-1.5 h-3.5 w-3.5" />
             </Button>
           )}
-        
+
           {/* Column Toggle */}
           <TableViewMenu title={t('io.view_settings', 'Pengaturan Tampilan Kolom')} label={t('io.view', 'View')}>
-            <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
+            <div className="px-3.5 py-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
               {t('io.toggle_columns', 'Toggle Kolom')}
             </div>
             {Object.keys(visibleColumns)
@@ -467,7 +470,7 @@ export const IOView: React.FC<IOViewProps> = ({
                     type="checkbox"
                     checked={visibleColumns[col]}
                     onChange={() => toggleColumnVisibility(col)}
-                    className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                    className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                   />
                   <span className="capitalize">{label}</span>
                 </label>
@@ -480,7 +483,7 @@ export const IOView: React.FC<IOViewProps> = ({
       {/* DataTable Container */}
       <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <FilterSummary filters={[{ label: t('ui.search'), value: searchTerm, active: Boolean(searchTerm) }, { label: t('ui.filter_status'), value: selectedStatus, active: selectedStatus !== 'ALL' }, { label: t('ui.filter_pricing'), value: selectedPricingModel, active: selectedPricingModel !== 'ALL' }, { label: t('ui.filter_charging'), value: selectedChargingType, active: selectedChargingType !== 'ALL' }]} onReset={() => { setSearchTerm(''); setSelectedStatus('ALL'); setSelectedPricingModel('ALL'); setSelectedChargingType('ALL'); }} />
-        <p className="px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
+        <p className="mobile-table-hint px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
         <div className="data-table-scroll overflow-x-auto bg-white dark:bg-slate-900" tabIndex={0} role="region" aria-label={t('ui.scroll_table')}>
           <table className="app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
@@ -492,7 +495,7 @@ export const IOView: React.FC<IOViewProps> = ({
                       onChange={handleSelectAll}
                       checked={isAllSelected}
                       aria-label={t('io.select_all', 'Pilih semua IO')}
-                      className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                      className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                     />
                   </div>
                 </th>
@@ -531,7 +534,7 @@ export const IOView: React.FC<IOViewProps> = ({
                     <span>{t('io.col_document', 'File')}</span>
                   </th>
                 )}
-                <th scope="col" className="pl-2 pr-6 py-4 text-right w-20 text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">
+                <th data-actions="true" scope="col" className="pl-2 pr-6 py-4 text-right w-20 text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">
                   <div className="flex items-center justify-end">{t('io.col_action', 'Aksi')}</div>
                 </th>
               </tr>
@@ -547,7 +550,7 @@ export const IOView: React.FC<IOViewProps> = ({
                       key={io.io_id}
                       className={cn(
                         'hover:bg-slate-50 transition-colors text-xs',
-                        isSelected && 'bg-[#EBFBF0]/50'
+                        isSelected && 'bg-accent-soft/50'
                       )}
                     >
                       {/* Checkbox */}
@@ -558,7 +561,7 @@ export const IOView: React.FC<IOViewProps> = ({
                             checked={isSelected}
                             onChange={() => handleSelectRow(io.io_id)}
                             aria-label={t('io.pilih_io', 'Pilih IO {nomor_io}', { nomor_io: io.nomor_io })}
-                            className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                            className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                           />
                         </div>
                       </td>
@@ -573,7 +576,7 @@ export const IOView: React.FC<IOViewProps> = ({
                         <td className="py-4 px-4 text-left text-xs font-normal text-slate-700">
                           <span
                             onClick={() => setDetailIO(io)}
-                            className="hover:text-[#06C755] cursor-pointer"
+                            className="hover:text-accent-text cursor-pointer"
                           >
                             {io.judul_io}
                           </span>
@@ -643,7 +646,7 @@ export const IOView: React.FC<IOViewProps> = ({
                               href={io.link_file_io}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-[#06C755] hover:text-[#048C3B] font-normal hover:underline"
+                              className="inline-flex items-center gap-1 text-xs text-accent-text hover:text-accent-text font-normal hover:underline"
                             >
                               <FileDown className="w-3.5 h-3.5" /> {t('io.pdf', 'PDF')}
                             </a>
@@ -653,7 +656,7 @@ export const IOView: React.FC<IOViewProps> = ({
                         </td>
                       )}
                       {/* Actions Menu */}
-                      <td className="pl-2 pr-6 py-4 text-right align-middle w-20">
+                      <td data-actions="true" className="pl-2 pr-6 py-4 text-right align-middle w-20">
                         <div className="flex items-center justify-end">
                           <ActionMenu
                             items={[
@@ -693,7 +696,7 @@ export const IOView: React.FC<IOViewProps> = ({
             </tbody>
           </table>
         </div>
-        
+
         <TablePagination
           currentPage={pageIndex + 1}
           totalPages={pageCount}
@@ -709,17 +712,17 @@ export const IOView: React.FC<IOViewProps> = ({
 
       {/* Detail IO Modal Dialog */}
       {detailIO && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <ModalFrame onClose={() => setDetailIO(null)} className="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full max-h-[92dvh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+
             <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900">
               <div>
-                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                  <FileSpreadsheet className="w-5 h-5 text-[#06C755]" />
+                <ModalTitle className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-accent-text" />
                   <span>{detailIO.nomor_io}</span>
-                </h3>
+                </ModalTitle>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{detailIO.judul_io}</p>
               </div>
-              <button
+              <button aria-label={t('common.close', 'Tutup')}
                 type="button"
                 onClick={() => setDetailIO(null)}
                 className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
@@ -731,21 +734,21 @@ export const IOView: React.FC<IOViewProps> = ({
             <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs flex-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-[#F7F8FA] dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-800">
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-medium">{t('io.detail_partner_label', 'Partner / Vendor:')}</span>
+                  <span className="text-slate-500 dark:text-slate-400 block text-xs font-medium">{t('io.detail_partner_label', 'Partner / Vendor:')}</span>
                   <span className="font-bold text-slate-900 dark:text-white text-xs">{detailIO.partner_nama || '-'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-medium">{t('io.detail_channel_label', 'Kanal Media Placement:')}</span>
+                  <span className="text-slate-500 dark:text-slate-400 block text-xs font-medium">{t('io.detail_channel_label', 'Kanal Media Placement:')}</span>
                   <span className="font-bold text-slate-900 dark:text-white text-xs">{detailIO.kanal_media || '-'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-medium">{t('io.detail_total_value_label', 'Nilai Total IO:')}</span>
-                  <span className="font-bold text-[#048C3B] dark:text-emerald-400 font-mono text-xs">
+                  <span className="text-slate-500 dark:text-slate-400 block text-xs font-medium">{t('io.detail_total_value_label', 'Nilai Total IO:')}</span>
+                  <span className="font-bold text-accent-text dark:text-emerald-400 font-mono text-xs">
                     {formatMoney(detailIO.nilai_io, detailIO.mata_uang)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-medium">{t('io.detail_pricing_scheme_label', 'Model Pembayaran & Skema:')}</span>
+                  <span className="text-slate-500 dark:text-slate-400 block text-xs font-medium">{t('io.detail_pricing_scheme_label', 'Model Pembayaran & Skema:')}</span>
                   <span className="font-bold text-slate-900 dark:text-white text-xs">
                     {detailIO.pricing_model || detailIO.model_pembayaran || '-'} • {detailIO.charging_type || detailIO.skema_pembayaran || '-'}
                   </span>
@@ -766,7 +769,7 @@ export const IOView: React.FC<IOViewProps> = ({
                   <button
                     type="button"
                     onClick={() => window.open(detailIO.link_file_io, '_blank')}
-                    className="w-full py-2.5 px-4 bg-[#EBFBF0] dark:bg-emerald-950/50 text-[#048C3B] dark:text-emerald-400 hover:bg-[#06C755]/20 border border-[#06C755]/30 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 bg-accent-soft dark:bg-emerald-950/50 text-accent-text dark:text-emerald-400 hover:bg-accent/20 border border-accent/30 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
                     <ExternalLink className="w-4 h-4" />
                     <span>{t('io.detail_open_drive', 'Buka Berkas IO di Google Drive')}</span>
@@ -784,8 +787,8 @@ export const IOView: React.FC<IOViewProps> = ({
                 {t('io.detail_close', 'Tutup Detail')}
               </button>
             </div>
-          </div>
-        </div>
+
+        </ModalFrame>
       )}
     </div>
   );

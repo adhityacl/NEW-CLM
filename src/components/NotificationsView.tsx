@@ -1,6 +1,7 @@
 import { AlphabeticalSelect } from './ui/alphabetical-select';
+import { formatDateTime } from '../lib/displayDate';
+import { notificationMessage } from '../lib/notificationText';
 import React, { useState, useMemo } from 'react';
-import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { NotificationLog } from '../types';
 import {
   RefreshCw,
@@ -158,7 +159,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
       const q = searchTerm.toLowerCase();
       list = list.filter(
         (n) =>
-          (n.pesan && n.pesan.toLowerCase().includes(q)) ||
+          (n.pesan && notificationMessage(n, t).toLowerCase().includes(q)) ||
           (n.parent_nomor && n.parent_nomor.toLowerCase().includes(q)) ||
           (n.parent_judul && n.parent_judul.toLowerCase().includes(q)) ||
           (n.jenis_notifikasi && n.jenis_notifikasi.toLowerCase().includes(q)) ||
@@ -174,7 +175,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
     });
 
     return list;
-  }, [notifications, filterStatus, filterType, filterTimeRange, searchTerm, sortOrder]);
+  }, [notifications, filterStatus, filterType, filterTimeRange, searchTerm, sortOrder, t]);
 
   // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(filteredNotifications.length / rowsPerPage));
@@ -218,7 +219,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           </h2>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+        <div className="mobile-page-actions flex flex-wrap items-center gap-2.5 shrink-0">
           {unreadCount > 0 && onMarkRead && (
             <button
               onClick={handleMarkAllRead}
@@ -232,7 +233,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           <button
             onClick={handleManualTrigger}
             disabled={runningCron}
-            className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
+            className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 text-white ${runningCron ? 'animate-spin' : ''}`} />
             <span>{runningCron ? t('notifications.processing', 'Memproses...') : t('notifications.refresh_logs', 'Refresh Logs')}</span>
@@ -242,11 +243,11 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
 
       {/* 2. Standard Filter Bar with 3 Dropdowns and View Column Toggle - Justified Responsive Grid/Flex */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 mb-6">
-        <div className="flex flex-wrap items-center gap-2.5 w-full">
+        <div className="mobile-filter-grid flex flex-wrap items-center gap-2.5 w-full">
           {/* 1. Search Box */}
           <div className="relative flex-1 min-w-[200px] sm:min-w-[240px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
+            <input aria-label={t('notifications.search_ph', 'Cari nomor kontrak, partner, atau IO...')}
               type="text"
               placeholder={t('notifications.search_ph', 'Cari nomor kontrak, partner, atau IO...')}
               value={searchTerm}
@@ -254,18 +255,18 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] font-medium transition-colors"
+              className="h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-accent font-medium transition-colors"
             />
           </div>
 
           {/* 2. Filter 1: Status Notifikasi (Semua / Belum Dibaca / Sudah Dibaca) */}
-          <AlphabeticalSelect
+          <AlphabeticalSelect aria-label={t('notifications.all_status', 'Semua Status')}
             value={filterStatus}
             onChange={(e) => {
               setFilterStatus(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('notifications.all_status', 'Semua Status')} ({notifications.length})</option>
             <option value="UNREAD">{t('notifications.status_unread', 'Belum Dibaca')} ({unreadCount})</option>
@@ -273,13 +274,13 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           </AlphabeticalSelect>
 
           {/* 3. Filter 2: Jenis Notifikasi */}
-          <AlphabeticalSelect
+          <AlphabeticalSelect aria-label={t('notifications.all_types', 'Semua Jenis Notifikasi')}
             value={filterType}
             onChange={(e) => {
               setFilterType(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('notifications.all_types', 'Semua Jenis Notifikasi')}</option>
             {typeOptions.map((opt) => (
@@ -288,13 +289,13 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           </AlphabeticalSelect>
 
           {/* 4. Filter 3: Periode Waktu */}
-          <select
+          <select aria-label={t('notifications.all_time_periods', 'Semua Periode Waktu')}
             value={filterTimeRange}
             onChange={(e) => {
               setFilterTimeRange(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('notifications.all_time_periods', 'Semua Periode Waktu')}</option>
             <option value="TODAY">{t('notifications.time_today', 'Hari Ini (24 Jam Terakhir)')}</option>
@@ -316,7 +317,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setIsViewMenuOpen(false)}></div>
                 <div className="absolute right-0 top-11 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 py-2 animate-in fade-in zoom-in-95">
-                <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
+                <div className="px-3.5 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
                   {t('notifications.toggle_columns', 'Toggle Kolom')}
                 </div>
                 {Object.keys(visibleColumns).map((col) => {
@@ -336,7 +337,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                         type="checkbox"
                         checked={visibleColumns[col]}
                         onChange={() => toggleColumnVisibility(col)}
-                        className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755] w-3.5 h-3.5"
+                        className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent w-3.5 h-3.5"
                       />
                       <span>{label}</span>
                     </label>
@@ -353,7 +354,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
       {selectedIds.length > 0 && (
         <div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
-            <span className="font-bold text-[#06C755]">{selectedIds.length}</span>
+            <span className="font-bold text-accent-text">{selectedIds.length}</span>
             <span>{t('notifications.selected_count', 'notifikasi dipilih')}</span>
           </div>
 
@@ -362,9 +363,9 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
               <button
                 type="button"
                 onClick={handleMarkSelectedRead}
-                className="min-h-11 sm:min-h-9 h-9 px-3 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-700 dark:text-slate-200 hover:text-[#06C755] font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                className="min-h-11 sm:min-h-9 h-9 px-3 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-700 dark:text-slate-200 hover:text-accent-text font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
               >
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#06C755]" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-accent-text" />
                 <span>{t('notifications.mark_read_btn', 'Tandai Dibaca')}</span>
               </button>
             )}
@@ -393,11 +394,11 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                 {/* 0. Checkbox */}
                 <th className="pl-6 pr-2 py-4 w-12 text-left align-middle">
                   <div className="flex items-center justify-start">
-                    <input
+                    <input aria-label={t('table.select_all', 'Pilih semua baris')}
                       type="checkbox"
                       checked={isAllCurrentSelected}
                       onChange={toggleSelectAll}
-                      className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755] cursor-pointer"
+                      className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent cursor-pointer"
                     />
                   </div>
                 </th>
@@ -469,11 +470,11 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                       {/* Checkbox */}
                       <td className="pl-6 pr-2 py-4 w-12 text-left align-middle">
                         <div className="flex items-center justify-start">
-                          <input
+                          <input aria-label={t('table.select_row', 'Pilih baris {id}', { id: notif.notif_id })}
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelectRow(notif.notif_id)}
-                            className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755] cursor-pointer"
+                            className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent cursor-pointer"
                           />
                         </div>
                       </td>
@@ -481,17 +482,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                       {/* Created Time */}
                       {visibleColumns.time && (
                         <td className="py-4 px-4 text-xs font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap align-middle">
-                          {new Date(notif.tanggal_terkirim).toLocaleString(
-                            getActiveFormattingLocale(),
-                            {
-                              year: 'numeric',
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              second: '2-digit',
-                            }
-                          )}
+                          {formatDateTime(notif.tanggal_terkirim)}
                         </td>
                       )}
 
@@ -525,8 +516,8 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                       {/* Message */}
                       {visibleColumns.message && (
                         <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 max-w-[400px] align-middle">
-                          <span className="line-clamp-2" title={notif.pesan}>
-                            {notif.pesan}
+                          <span className="line-clamp-2" title={notificationMessage(notif, t)}>
+                            {notificationMessage(notif, t)}
                           </span>
                         </td>
                       )}
@@ -546,7 +537,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                             <button
                               type="button"
                               onClick={(e) => handleMarkSingleRead(notif.notif_id, e)}
-                              className="inline-flex size-9 items-center justify-center rounded-lg text-slate-400 hover:text-[#06C755] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                              className="inline-flex size-9 items-center justify-center rounded-lg text-slate-400 hover:text-accent-text hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                               title={t('notifications.mark_read', 'Tandai Dibaca')}
                             >
                               <CheckCircle2 className="w-4 h-4" />

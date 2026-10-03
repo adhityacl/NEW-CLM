@@ -17,7 +17,8 @@ export type StatusDD = DueDiligenceStatus;
 
 export type NoticeType = 'Termination' | 'Extension' | 'Both' | 'None';
 
-export type PricingModel = 'CPM' | 'CPC' | 'Flat Fee' | 'Revenue Share' | 'Fixed Package' | string;
+export const PRICING_MODELS = ['CPM', 'CPC', 'CPA', 'Fixed', 'Retainer', 'Hourly', 'Milestone', 'Commission', 'Subscription'] as const;
+export type PricingModel = (typeof PRICING_MODELS)[number] | string;
 
 export type ChargingType = 'Prepaid' | 'Postpaid' | 'Milestone-based';
 
@@ -190,6 +191,13 @@ export interface NotificationLog {
   status_terkirim: boolean;
   penerima: string;
   pesan: string;
+  /** Structured reminder data so the UI can localize `pesan` (absent on older rows). */
+  pesan_params?: {
+    kind: 'contract' | 'commercial';
+    daysRemaining: number;
+    noticeType?: string;
+    noticeDays?: number;
+  };
   is_read?: boolean;
 }
 
@@ -241,6 +249,11 @@ export interface PartnerEvaluation {
   updated_at: string;
 }
 
+export interface SpendingMonthAllocation {
+  month: string; // YYYY-MM; separate from the legacy reporting month dates.
+  amount: number; // Amount in the invoice currency, not USD.
+}
+
 export interface PartnerSpending {
   id: string;
   organizationId?: string;
@@ -249,6 +262,8 @@ export interface PartnerSpending {
   invoice_number: string;
   invoice_date: string; // ISO 8601 date (legacy rows may be DDMMYYYY)
   invoice_month: string[]; // end-of-month ISO dates, e.g. ["2026-08-31"] (legacy: MMYYYY)
+  invoice_title?: string;
+  month_allocations?: SpendingMonthAllocation[]; // Authoritative monthly breakdown; absent on legacy invoices.
   invoice_description?: string;
   currency: string;
   total_amount: number;
@@ -371,5 +386,4 @@ export interface RedlineAnalysisData {
   complianceChecklist: ComplianceItem[];
   analyzed_at?: string;
 }
-
 

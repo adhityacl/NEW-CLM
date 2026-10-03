@@ -6,8 +6,11 @@ import viteCompression from 'vite-plugin-compression';
 
 export default defineConfig(() => {
   return {
+    // Audit workspaces may symlink node_modules. Keep optimizer output local so
+    // another Vite server cannot replace an active editor's dependency chunks.
+    cacheDir: path.resolve(__dirname, '.vite'),
     plugins: [
-      react(),
+      react({ exclude: /(?:^|[/\\])(?:node_modules|\.vite)(?:[/\\]|$)/ }),
       tailwindcss(),
       viteCompression({ algorithm: 'gzip', ext: '.gz' }),
       viteCompression({ algorithm: 'brotliCompress', ext: '.br' })
@@ -16,6 +19,10 @@ export default defineConfig(() => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+    },
+    optimizeDeps: {
+      // These lazy editor entries must share the same CellSelection registry.
+      include: ['@tiptap/extension-table', '@tiptap/pm/tables', '@tiptap/react/menus'],
     },
     // No manualChunks: splitting vendors by substring ("react" in the path →
     // react-vendor, everything else → vendor) put react-dom's `scheduler` dependency

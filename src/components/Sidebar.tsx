@@ -145,7 +145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'hierarchy',
-      label: t('nav.hierarchy', 'Struktur & Hirarki'),
+      label: t('nav.hierarchy', 'Struktur Dokumen'),
       icon: GitFork,
     },
     {
@@ -179,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const docNavItems: SidebarNavItem[] = [
     {
       id: 'create-contract',
-      label: t('nav.create_contract', 'Buat Dokumen'),
+      label: t('nav.create_contract', 'Dokumen Saya'),
       icon: FileSignature,
       permission: 'document.create',
     },
@@ -301,7 +301,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {navSections.map((section, sectionIdx) => (
           <div key={section.id} className="space-y-1">
             {!isCollapsed || isMobile ? (
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 pt-1 pb-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 pt-1 pb-1">
                 {section.title}
               </p>
             ) : (
@@ -354,15 +354,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       title={item.label}
                       aria-label={item.label}
                       aria-current={collapsedActive ? 'page' : undefined}
-                      className={`relative w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
+                      className={`relative w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none ${
                         collapsedActive
-                          ? 'bg-[#04803D] text-white shadow-2xs font-semibold'
+                          ? 'bg-accent-strong text-white shadow-2xs font-semibold'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       <Icon className="w-4 h-4" />
                       {item.badge && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
                           {item.badge}
                         </span>
                       )}
@@ -379,7 +379,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           isMobile ? 'min-h-11' : 'min-h-9.5'
                         } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                           isPartnerActive
-                            ? 'bg-[#04803D] text-white shadow-2xs'
+                            ? 'bg-accent-strong text-white shadow-2xs'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                         }`}
                       >
@@ -396,7 +396,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             e.stopPropagation();
                             setIsPartnerExpanded((prev) => !prev);
                           }}
-                          className={`${isMobile ? 'size-11' : 'size-9'} shrink-0 inline-flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none`}
+                          className={`${isMobile ? 'size-11' : 'size-9'} shrink-0 inline-flex items-center justify-center bg-transparent focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none`}
                           aria-label={isPartnerExpanded ? t('nav.tutup_submenu', 'Tutup Submenu') : t('nav.buka_submenu', 'Buka Submenu')}
                           aria-expanded={isPartnerExpanded}
                         >
@@ -419,7 +419,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 aria-current={isSubActive ? 'page' : undefined}
                                 className={`w-full flex items-center gap-2 px-2.5 py-1.5 ${
                                   isMobile ? 'min-h-10' : 'min-h-8'
-                                } rounded-lg text-xs font-medium transition-colors cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
+                                } rounded-lg text-xs font-medium transition-colors cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none ${
                                   isSubActive
                                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold'
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
@@ -448,7 +448,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           isMobile ? 'min-h-11' : 'min-h-9.5'
                         } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                           isAdminActive
-                            ? 'bg-[#04803D] text-white shadow-2xs'
+                            ? 'bg-accent-strong text-white shadow-2xs'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                         }`}
                       >
@@ -464,7 +464,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             e.stopPropagation();
                             setIsAdminExpanded((prev) => !prev);
                           }}
-                          className={`${isMobile ? 'size-11' : 'size-9'} shrink-0 inline-flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none`}
+                          className={`${isMobile ? 'size-11' : 'size-9'} shrink-0 inline-flex items-center justify-center bg-transparent focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none`}
                           aria-label={isAdminExpanded ? t('nav.tutup_submenu', 'Tutup Submenu') : t('nav.buka_submenu', 'Buka Submenu')}
                           aria-expanded={isAdminExpanded}
                         >
@@ -488,7 +488,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 aria-current={isSubActive ? 'page' : undefined}
                                 className={`w-full flex items-center gap-2 px-2.5 py-1.5 ${
                                   isMobile ? 'min-h-10' : 'min-h-8'
-                                } rounded-lg text-xs font-medium transition-colors cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
+                                } rounded-lg text-xs font-medium transition-colors cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none ${
                                   isSubActive
                                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold'
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
@@ -514,7 +514,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           isMobile ? 'min-h-11' : 'min-h-9.5'
                         } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                           isSettingsActive
-                            ? 'bg-[#04803D] text-white shadow-2xs'
+                            ? 'bg-accent-strong text-white shadow-2xs'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                         }`}
                       >
@@ -530,7 +530,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             e.stopPropagation();
                             setIsSettingsExpanded((prev) => !prev);
                           }}
-                          className={`${isMobile ? 'size-11' : 'size-9'} shrink-0 inline-flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus-visible:outline-none`}
+                          className={`${isMobile ? 'size-11' : 'size-9'} shrink-0 inline-flex items-center justify-center bg-transparent focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none`}
                           aria-label={isSettingsExpanded ? t('nav.tutup_submenu', 'Tutup Submenu') : t('nav.buka_submenu', 'Buka Submenu')}
                           aria-expanded={isSettingsExpanded}
                         >
@@ -555,7 +555,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 aria-current={isSubActive ? 'page' : undefined}
                                 className={`w-full flex items-center gap-2 px-2.5 py-1.5 ${
                                   isMobile ? 'min-h-10' : 'min-h-8'
-                                } rounded-lg text-xs font-medium transition-colors cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
+                                } rounded-lg text-xs font-medium transition-colors cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none ${
                                   isSubActive
                                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold'
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
@@ -581,9 +581,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     aria-current={isActive ? 'page' : undefined}
                     className={`w-full flex items-center justify-between px-3 py-2 ${
                       isMobile ? 'min-h-11' : 'min-h-9.5'
-                    } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
+                    } rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none ${
                       isActive
-                        ? 'bg-[#04803D] text-white shadow-2xs'
+                        ? 'bg-accent-strong text-white shadow-2xs'
                         : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
@@ -594,7 +594,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                     {item.badge && (
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                           item.badgeColor ||
                           'bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400 border border-red-200 dark:border-red-900/50'
                         }`}
@@ -630,7 +630,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={toggleCollapse}
-              className="min-w-11 min-h-11 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#06C755] dark:hover:text-[#06C755] flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+              className="min-w-11 min-h-11 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-accent-text dark:hover:text-[#06C755] flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
               title={t('nav.expand_menu', 'Perluas Menu')}
               aria-label={t('nav.expand_menu', 'Perluas Menu')}
             >
@@ -648,7 +648,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={toggleCollapse}
-                className="min-w-11 min-h-11 flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+                className="min-w-11 min-h-11 flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
                 title={t('nav.collapse_menu', 'Kecilkan Menu')}
                 aria-label={t('nav.collapse_menu', 'Kecilkan Menu')}
               >
@@ -664,7 +664,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Footer: System Status Indicators & Version */}
-        <div className="p-3 border-t border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 select-none">
+        <div className="p-3 border-t border-slate-200/80 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 select-none">
           {isCollapsed ? (
             <div className="flex flex-col items-center gap-1.5 py-1">
               <div
@@ -681,7 +681,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 />
               </div>
 
-              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 {t('nav.version', 'v2.5.0 • ACL')}
               </span>
             </div>
@@ -714,7 +714,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onCloseMobile}
-            className="min-w-11 min-h-11 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+            className="min-w-11 min-h-11 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
             aria-label={t('nav.tutup_menu', 'Tutup Menu')}
           >
             <X className="w-5 h-5" />
@@ -735,7 +735,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
           </div>
 
-          <span className="text-[10px] font-medium">
+          <span className="text-xs font-medium">
             {t('nav.version', 'v2.5.0 • ACL')}
           </span>
         </div>

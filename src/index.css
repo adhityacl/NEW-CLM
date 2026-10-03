@@ -5,6 +5,7 @@
 
   --color-canvas: var(--line-neutral-bg);
   --color-surface: var(--line-surface-card);
+  --color-surface-2: var(--line-surface-2);
   --color-hairline: var(--line-neutral-border);
   --color-ink: var(--line-neutral-dark);
   --color-ink-soft: var(--line-neutral-sub);
@@ -14,6 +15,11 @@
   --color-accent-hover: var(--line-brand-green-hover);
   --color-accent-soft: var(--line-brand-green-light);
   --color-accent-dark: var(--line-brand-green-dark);
+  /* Brand green #06C755 is 2.2:1 as text on white and 2.26:1 under white text,
+     so text and filled actions use these darker steps instead. */
+  --color-accent-text: var(--line-brand-green-text);
+  --color-accent-strong: var(--line-brand-green-strong);
+  --color-accent-strong-hover: #036B33;
 
   --color-blue: var(--line-blue);
   --color-blue-light: var(--line-blue-light);
@@ -35,7 +41,9 @@
     --line-brand-green-hover: #05B34C;
     --line-brand-green-light: #EBFBF0;
     --line-brand-green-dark: #037436;
-    
+    --line-brand-green-text: #037436;   /* text/icons on white: 5.6:1 */
+    --line-brand-green-strong: #04803D; /* filled actions under white text: 5.05:1 */
+
     --line-neutral-dark: #111111;
     --line-neutral-body: #1E1E1E;
     --line-neutral-sub: #666666;
@@ -43,6 +51,7 @@
     --line-neutral-border: #E5E8EB;
     --line-neutral-bg: #F7F8FA;
     --line-surface-card: #FFFFFF;
+    --line-surface-2: #F2F3F5;
 
     --line-blue: #0066FF;
     --line-blue-light: #EBF3FF;
@@ -76,7 +85,9 @@
     --line-brand-green-hover: #05B34C;
     --line-brand-green-light: #0d2e1b;
     --line-brand-green-dark: #34D399;
-    
+    --line-brand-green-text: #34D399;   /* text/icons on #111827: 7.5:1 */
+    --line-brand-green-strong: #04803D;
+
     --line-neutral-dark: #F9FAFB;
     --line-neutral-body: #E5E7EB;
     --line-neutral-sub: #9CA3AF;
@@ -84,6 +95,7 @@
     --line-neutral-border: #1F2937;
     --line-neutral-bg: #0B0F19;
     --line-surface-card: #111827;
+    --line-surface-2: #161F30;
 
     --line-blue: #3B82F6;
     --line-blue-light: #1E3A5F;
@@ -175,13 +187,6 @@
   .dark input::placeholder,
   .dark textarea::placeholder {
     color: #9CA3AF !important;
-  }
-
-  .dark input:not(.bg-transparent):not(.borderless-title):focus,
-  .dark select:not(.bg-transparent):not(.borderless-title):focus,
-  .dark textarea:not(.bg-transparent):not(.borderless-title):focus {
-    background-color: #1E293B !important;
-    border-color: #06C755 !important;
   }
 
   .dark input.bg-transparent:focus,
@@ -398,8 +403,30 @@
   color: #e2e8f0 !important; /* slate-200 */
 }
 
+/* Long-form legal documents: readable prose, clear anchors, and touch-safe navigation. */
+.legal-toc-link {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  border-radius: 10px;
+  padding: 8px 10px;
+  line-height: 1.35;
+  text-decoration: none;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.legal-toc-link:hover { background: rgb(255 255 255 / 0.75); }
+.dark .legal-toc-link:hover { background: rgb(15 23 42 / 0.72); }
+.legal-document-body { font-size: 1rem; line-height: 1.75; overflow-wrap: anywhere; }
+.legal-document-body section { scroll-margin-top: 7rem; }
+.legal-document-body h2 { font-size: 1.25rem; line-height: 1.4; text-wrap: balance; }
+.legal-document-body :is(p, li, blockquote) { font-size: 1rem; line-height: 1.75; }
+.legal-document-body a { min-height: 44px; }
+
 /* Print mode styles: clean appearance without editor boxes */
 @media print {
+  .legal-page { height: auto !important; overflow: visible !important; padding: 0 !important; background: white !important; }
+  .legal-page nav { display: none !important; }
+  .legal-page article { max-width: none !important; }
   .fillable-slot {
     border: none !important;
     background: transparent !important;
@@ -715,22 +742,128 @@ div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-
 .form-dialog input:not([type="checkbox"]):not([type="radio"]),
 .form-dialog select, .form-dialog textarea { min-width: 0; max-width: 100%; }
 .form-dialog button:not([role="combobox"]) { flex-shrink: 0; }
-@media (max-width: 767px) {
-  .app-data-table, .dashboard-data-table { min-width: 850px; }
-  .app-data-table :is(th, td):nth-child(2),
-  .dashboard-data-table :is(th, td):nth-child(2),
-  .document-data-table :is(th, td):first-child {
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    min-width: 9rem;
-    max-width: 11rem;
-    background: var(--card);
-    box-shadow: 2px 0 0 var(--border);
-    overflow-wrap: anywhere;
+/* Keep interactive controls usable without changing the size of decorative icons. */
+button { min-width: 24px; min-height: 24px; }
+a:has(> svg) { min-height: 24px; }
+input[type="checkbox"]:not(.sr-only) { min-width: 24px; min-height: 24px; }
+.admin-dialog form > div:last-child { position: sticky; bottom: 0; background: var(--card); padding-top: 1rem; }
+.admin-dialog button[type="submit"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: var(--radius);
+}
+.admin-dialog button[type="submit"]:hover { filter: brightness(.95); }
+.admin-dialog button[type="submit"].bg-red-600,
+.admin-dialog button[type="submit"].bg-rose-600 { background: var(--destructive); color: var(--destructive-foreground); }
+.app-header { gap: 1rem; }
+.app-header-control { width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; }
+.app-header-control > svg { width: 18px; height: 18px; }
+.app-header-languages { height: 44px; min-height: 44px; box-sizing: border-box; }
+.app-header-languages > button { height: 38px; min-height: 38px; min-width: 38px; padding-block: 0; }
+/* One field height across pages. Native selects, text-like inputs, and custom
+   combobox triggers share the same 44px control box on desktop and mobile. */
+:root {
+  --form-control-height: 44px;
+  --form-control-font-size: 0.875rem;
+}
+:is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  select:not([multiple]):not([size]),
+  select[size="1"],
+  button[role="combobox"]
+):not(.bg-transparent):not(.borderless-title):not(.sr-only) {
+  height: var(--form-control-height);
+  min-height: var(--form-control-height);
+  font-size: var(--form-control-font-size);
+  box-sizing: border-box;
+}
+
+/* One native dropdown appearance, matching the Contracts table filters. */
+select:not([multiple]):not([size]), select[size="1"] {
+  appearance: none;
+  height: var(--form-control-height);
+  min-height: var(--form-control-height);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background-color: #ffffff;
+  color: #1e293b;
+  padding: 0 32px 0 12px;
+  font-size: var(--form-control-font-size);
+  font-weight: 500;
+  line-height: 1.5;
+  box-shadow: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath fill='%23888888' d='M0 3h10L5 8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 10px 10px;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+.dark select:not([multiple]):not([size]), .dark select[size="1"] {
+  background-color: #161f30 !important;
+  border-color: #374151 !important;
+  color: #f9fafb !important;
+}
+select:disabled { opacity: .5; cursor: not-allowed; }
+.app-header select { height: var(--form-control-height); min-height: var(--form-control-height); }
+@media (min-width: 768px) {
+  input[type="checkbox"]:not(.sr-only) {
+    width: 14px; height: 14px;
+    min-width: 14px; min-height: 14px;
+    max-width: 14px; max-height: 14px;
+    flex-shrink: 0;
   }
-  .document-data-table :is(th, td):nth-child(2) { position: static; box-shadow: none; }
+}
+.app-page-title { overflow-wrap: anywhere; }
+@media (max-width: 767px) {
+  :root { --form-control-font-size: 1rem; }
+  select:not([multiple]):not([size]), select[size="1"] { height: var(--form-control-height); min-height: var(--form-control-height); }
+  button, select, input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]) { min-height: 44px; }
+  button:has(> svg):not(:has(span)) { min-width: 44px; }
+  label:has(input[type="checkbox"]), label:has(input[type="radio"]) { min-height: 44px; }
+  .app-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding-block: .5rem; gap: .5rem; }
+  .app-header > div:first-child { display: contents; }
+  .app-header > div:first-child > button { grid-column: 1; grid-row: 1; justify-self: start; }
+  .app-header > div:last-child { grid-column: 2; grid-row: 1; }
+  /* Hide the breadcrumb visually while preserving the page heading for AT. */
+  .app-header > div:first-child > div { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .app-header select { width: 72px; min-width: 72px; padding-left: 10px; padding-right: 26px; background-position: right 10px center; }
+  :is(.contracts-mobile-actions, .mobile-page-actions) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  :is(.contracts-mobile-actions, .mobile-page-actions) > button { width: 100%; min-width: 0; justify-content: center; padding-inline: 8px; white-space: normal; }
+  :is(.contracts-mobile-actions, .mobile-page-actions) > :not(input):not(.sr-only) { width: 100%; min-width: 0; }
+  :is(.contracts-mobile-actions, .mobile-page-actions) > :nth-last-child(1 of :not(input)):nth-child(odd of :not(input)) { grid-column: 1 / -1; }
+  .mobile-page-actions > div > button { width: 100%; min-width: 0; justify-content: center; white-space: normal; }
+  :is(.contracts-mobile-filters, .mobile-filter-grid) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  :is(.contracts-mobile-filters, .mobile-filter-grid) > :not(.sr-only) { width: 100%; min-width: 0; max-width: none; }
+  :is(.contracts-mobile-filters, .mobile-filter-grid) > div:has(input:not([type="checkbox"]):not([type="radio"])) { grid-column: 1 / -1; }
+  .mobile-filter-grid:has(> div input) > :nth-last-child(1 of :not(.sr-only)):nth-child(even of :not(.sr-only)) { grid-column: 1 / -1; }
+  :is(.contracts-mobile-filters, .mobile-filter-grid) > div:has(input) > svg { top: 50%; transform: translateY(-50%); }
+  .mobile-filter-grid > div > select { width: 100%; min-width: 0; }
+  .mobile-filter-grid > [role="group"] { grid-column: 1 / -1; height: auto; }
+  .mobile-filter-grid > [role="group"] > button { flex: 1; }
+  .mobile-controls-bar { flex-direction: column; align-items: stretch; }
+  .mobile-controls-bar > * { width: 100%; min-width: 0; max-width: none; }
+  .mobile-page-action { width: 100%; min-width: 0; justify-content: center; }
+  .mobile-search-form { width: 100%; min-width: 0; }
+  .mobile-search-form > div { flex: 1; min-width: 0; }
+  .mobile-search-form input { width: 100%; min-width: 0; }
+  .mobile-pagination > div { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  :where(main, [role="dialog"]) :not(.ProseMirror):not(.ProseMirror *):has(> table) { max-width: 100%; min-width: 0; overflow-x: auto; }
+  :where(main, [role="dialog"]) table:not(.ProseMirror table) :is(th, td):is(:first-child, :nth-child(2)):not([data-actions="true"]) { position: static; }
+  .mobile-table-hint { display: none; }
+  .app-page-title { white-space: normal; line-height: 1.5; }
+  .admin-tab-list button { flex: 1 0 auto; justify-content: center; }
+  .app-data-table, .dashboard-data-table { min-width: 850px; }
   .app-data-table input[type="checkbox"] { width: 1.25rem; height: 1.25rem; }
+  .app-data-table :is(th, td)[data-actions="true"] {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    width: 3.5rem;
+    min-width: 3.5rem;
+    padding-inline: .375rem;
+    background: var(--card);
+    box-shadow: -1px 0 0 var(--border);
+  }
   .form-dialog button { min-height: 2.75rem; }
 }
 @media (max-width: 1023px) {
@@ -754,7 +887,7 @@ div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-
 .dashboard-metric { --metric-accent: #047857; --metric-bg: #e7f6ef; --metric-ink: #163f32; min-width: 0; display: flex; flex-direction: column; text-align: left; padding: 19px 20px; border: 1px solid transparent; border-radius: 18px; background: var(--metric-bg); color: var(--metric-ink); cursor: pointer; transition: border-color 150ms ease; }
 .dashboard-metric-blue { --metric-accent: #0369a1; --metric-bg: #e5f3fa; --metric-ink: #173c51; }
 .dashboard-metric-violet { --metric-accent: #7e22ce; --metric-bg: #f2eafa; --metric-ink: #492365; }
-.dashboard-metric-amber { --metric-accent: #a16207; --metric-bg: #fff3db; --metric-ink: #624319; }
+.dashboard-metric-amber { --metric-accent: #9c5e07; /* 4.75:1 on --metric-bg (was #a16207, 4.48:1) */ --metric-bg: #fff3db; --metric-ink: #624319; }
 .dashboard-metric:hover { border-color: var(--metric-accent); }
 .dashboard-metric:focus-visible, .dashboard-welcome button:focus-visible { outline: 3px solid #818cf8; outline-offset: 3px; }
 .dashboard-metric-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; line-height: 1.4; font-weight: 600; }
@@ -771,3 +904,153 @@ div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-
 .dark .dashboard-metric-icon, .dark .dashboard-metric-track { background: #ffffff0d; }
 @media (min-width: 480px) { .dashboard-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dashboard-welcome { grid-column: 1 / -1; } }
 @media (min-width: 1280px) { .dashboard-overview { grid-template-columns: minmax(0, 1.45fr) repeat(2, minmax(0, 1fr)); } .dashboard-welcome { grid-column: 1; grid-row: span 2; } }
+
+/* Keyboard users can jump past the sidebar; visible only while focused. */
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 100;
+  padding: 0.625rem 1rem;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+.skip-link:focus { transform: none; outline: 3px solid var(--line-brand-green-text); outline-offset: 2px; }
+
+/* Native controls (checkbox, radio, scrollbars, date pickers) follow the theme.
+   Without this, dark mode draws light-theme checkboxes that read as already ticked. */
+:root { color-scheme: light; accent-color: var(--line-brand-green-strong); }
+.dark { color-scheme: dark; accent-color: var(--line-brand-green); }
+
+/* One focus style for every text field: accent border plus a soft halo of the
+   same color. Drawn with box-shadow so the field never changes size, and it
+   replaces the mix of focus:ring-*, focus:border-* and offset outlines used by
+   individual components. */
+:root { --field-focus: #04803D; --field-focus-halo: rgb(4 128 61 / 0.18); --field-error: #B3261E; --field-error-halo: rgb(179 38 30 / 0.18); }
+.dark { --field-focus: #06C755; --field-focus-halo: rgb(6 199 85 / 0.25); --field-error: #EF4444; --field-error-halo: rgb(239 68 68 / 0.25); }
+@layer base {
+  /* In @layer base so these !important rules outrank the .dark field overrides, which also live there. */
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), select, textarea, button[role="combobox"]):not(.bg-transparent):not(.borderless-title):not(.sr-only):focus {
+  outline: none !important;
+  border-color: var(--field-focus) !important;
+  box-shadow: 0 0 0 1px var(--field-focus), 0 0 0 4px var(--field-focus-halo) !important;
+}
+:is(input, select, textarea, button[role="combobox"])[aria-invalid="true"]:not(.bg-transparent):not(.borderless-title):focus {
+  border-color: var(--field-error) !important;
+  box-shadow: 0 0 0 1px var(--field-error), 0 0 0 4px var(--field-error-halo) !important;
+}
+}
+/* Borderless inline fields (e.g. the document title) keep their own minimal focus. */
+:is(input, textarea):is(.bg-transparent, .borderless-title):focus { outline: none; }
+
+/* Recharts makes the chart surface focusable (keyboard tooltip navigation), so a
+   mouse click drew the browser's focus ring around the whole plot. The moving
+   tooltip/cursor already shows keyboard position, so the ring is dropped. */
+.recharts-wrapper:focus, .recharts-surface:focus,
+.recharts-wrapper :focus, .recharts-wrapper :focus-visible { outline: none; }
+
+/* Shared document editor panels: consistent density and readable controls. */
+.editor-side-panel {
+  background: var(--line-surface-card);
+  color: var(--line-neutral-dark);
+}
+.editor-panel-nav {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.editor-panel-header { background: var(--line-surface-card); }
+.editor-panel-content {
+  background: var(--line-neutral-bg);
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  overflow-wrap: anywhere;
+}
+.editor-panel-content > *,
+.editor-panel-content details,
+.editor-panel-content summary { min-width: 0; max-width: 100%; }
+.editor-panel-content .text-xs { font-size: 0.8125rem; line-height: 1.5; }
+.editor-panel-content :is(.text-slate-400, .text-slate-500) { color: var(--line-neutral-sub); }
+.editor-panel-content :is(h3, label) { line-height: 1.5; }
+.editor-panel-content h3 { font-size: 0.875rem; }
+.editor-panel-content :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.editor-panel-content textarea { resize: vertical; }
+.editor-panel-content button {
+  min-height: 36px;
+  gap: 6px;
+  line-height: 1.4;
+  white-space: normal;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.editor-panel-content button:has(> svg:only-child) {
+  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+.editor-panel-content button:disabled { cursor: not-allowed; opacity: 0.5; }
+.editor-panel-content button svg { flex-shrink: 0; }
+.editor-panel-content :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--line-brand-green-text);
+  outline-offset: 2px;
+}
+.editor-panel-card {
+  padding: 16px;
+  border-radius: 12px;
+}
+.editor-panel-content .editor-panel-card > .flex.items-center.justify-between {
+  gap: 8px;
+  align-items: flex-start;
+}
+.editor-panel-content .editor-panel-card label { flex: 1; min-width: 0; }
+/* Fields tab: denser cards so more fields fit; touch devices keep 44px targets (media query below). */
+.editor-panel-card.editor-field-card { padding: 10px 12px; }
+.editor-panel-content .editor-field-card > .flex.items-center.justify-between { align-items: center; }
+.editor-panel-content .editor-field-card :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+.editor-panel-content .editor-field-card button:has(> svg:only-child) { min-width: 28px; min-height: 28px; }
+.editor-comment-actions button { min-height: 44px; padding: 8px 10px; }
+.editor-panel-empty {
+  padding: 32px 16px;
+  background: var(--line-surface-card);
+  border-radius: 12px;
+}
+.editor-comments dl dd { font-variant-numeric: tabular-nums; }
+@media (max-width: 1023px), (pointer: coarse) {
+  .editor-panel-content button { min-height: 44px; }
+  .editor-panel-content button:has(> svg:only-child) { min-width: 44px; }
+  .editor-panel-content .editor-field-card :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { min-height: 44px; }
+  .editor-panel-content .editor-field-card button:has(> svg:only-child) { min-width: 44px; min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .editor-side-panel *, .editor-side-panel *::before, .editor-side-panel *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Dashboard regulatory ticker: right-to-left marquee over two identical copies. */
+@keyframes news-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.news-ticker-track { animation: news-ticker-scroll 60s linear infinite; }
+.news-ticker:hover .news-ticker-track { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .news-ticker { overflow-x: auto; }
+  .news-ticker-track { animation: none; }
+}

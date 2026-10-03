@@ -1,3 +1,4 @@
+import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import { TableViewMenu } from './ui/table-view-menu';
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { formatBusinessDate } from '../lib/displayDate';
@@ -74,7 +75,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-  
+
   const [selectedJenisDokumen, setSelectedJenisDokumen] = useState<string>('ALL');
   const [detailContract, setDetailContract] = useState<Contract | null>(null);
   const [redliningContract, setRedliningContract] = useState<Contract | null>(null);
@@ -241,15 +242,15 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
         <button
           type="button"
           onClick={() => handleSort(field)}
-          className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
+          className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none rounded py-0.5"
           title={t('contracts.urutkan_berdasarkan', 'Urutkan berdasarkan {label}', { label })}
         >
           <span>{label}</span>
           {isSorted ? (
             sortOrder === 'asc' ? (
-              <ArrowUp className="w-3.5 h-3.5 text-[#06C755] shrink-0" />
+              <ArrowUp className="w-3.5 h-3.5 text-accent-text shrink-0" />
             ) : (
-              <ArrowDown className="w-3.5 h-3.5 text-[#06C755] shrink-0" />
+              <ArrowDown className="w-3.5 h-3.5 text-accent-text shrink-0" />
             )
           ) : (
             <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -336,7 +337,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
           </h2>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+        <div className="contracts-mobile-actions flex flex-wrap items-center gap-2.5 shrink-0">
           {hasPermission('export.csv') && (
             <button
               onClick={handleExportCSV}
@@ -352,7 +353,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
           {canCreateContract(user) && (
             <button
               onClick={onAddContract}
-              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0"
+              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0"
             >
               <Plus className="w-4 h-4 text-white" />
               <span>{t('ui.add_contract')}</span>
@@ -364,7 +365,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
       {/* Search and Filters */}
       {/* Search & Filters Bar - Justified Responsive Grid/Flex */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-5 mb-6">
-        <div className="flex flex-wrap items-center gap-2.5 w-full">
+        <div className="contracts-mobile-filters flex flex-wrap items-center gap-2.5 w-full">
           {/* Search Input */}
           <div className="relative flex-1 min-w-[200px] sm:min-w-[240px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -377,7 +378,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] font-medium transition-colors"
+              className="h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-accent font-medium transition-colors"
             />
           </div>
           {/* Jenis Dokumen Filter */}
@@ -385,7 +386,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
             aria-label={t('ui.filter_type')}
               value={selectedJenisDokumen}
             onChange={(e) => setSelectedJenisDokumen(e.target.value)}
-            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('contracts.all_types')}</option>
             <option value="Master Agreement">{t('contracts.master_agreement', 'Master Agreement')}</option>
@@ -396,7 +397,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
             aria-label={t('ui.filter_category')}
               value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('contracts.all_categories')}</option>
             {allCategories.map((cat) => (
@@ -410,7 +411,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
             aria-label={t('ui.filter_status')}
               value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('contracts.all_status')}</option>
             <option value="Active">{t('contracts.active')}</option>
@@ -421,7 +422,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
 
           {/* Column Toggle */}
           <TableViewMenu title={t('io.view_settings', 'Pengaturan Tampilan Kolom')} label={t('io.view', 'View')}>
-            <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
+            <div className="px-3.5 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
               {t('io.toggle_columns', 'Toggle Kolom')}
             </div>
             {Object.keys(visibleColumns).map((col) => {
@@ -443,7 +444,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                     type="checkbox"
                     checked={visibleColumns[col]}
                     onChange={() => toggleColumnVisibility(col)}
-                    className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                    className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                   />
                   <span className="capitalize">{label.replace(/_/g, ' ')}</span>
                 </label>
@@ -456,7 +457,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
       {/* Contracts Data Table */}
       <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <FilterSummary filters={[{ label: t('ui.search'), value: searchTerm, active: Boolean(searchTerm) }, { label: t('ui.filter_type'), value: selectedJenisDokumen, active: selectedJenisDokumen !== 'ALL' }, { label: t('ui.filter_category'), value: selectedCategory, active: selectedCategory !== 'ALL' }, { label: t('ui.filter_status'), value: selectedStatus, active: selectedStatus !== 'ALL' }]} onReset={() => { setSearchTerm(''); setSelectedJenisDokumen('ALL'); setSelectedCategory('ALL'); setSelectedStatus('ALL'); }} />
-        <p className="px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
+        <p className="mobile-table-hint px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
         <div className="data-table-scroll overflow-x-auto bg-white dark:bg-slate-900" tabIndex={0} role="region" aria-label={t('ui.scroll_table')}>
           <table className="app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
@@ -468,7 +469,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                       onChange={handleSelectAll}
                       checked={selectedRows.length > 0 && selectedRows.length === currentContracts.length}
                       aria-label={t('contracts.select_all', 'Pilih semua kontrak')}
-                      className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                      className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                     />
                   </div>
                 </th>
@@ -492,12 +493,12 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                 {visibleColumns.file && (
                   <th scope="col" className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">{t('contracts.col_document', 'File')}</th>
                 )}
-                <th scope="col" className="pl-2 pr-6 py-4 text-right w-20 text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">
+                <th data-actions="true" scope="col" className="pl-2 pr-6 py-4 text-right w-20 text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">
                   <div className="flex items-center justify-end">{t('contracts.col_action', 'Aksi')}</div>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
+            <tbody className="divide-y divide-hairline dark:divide-slate-800">
               {currentContracts.length === 0 ? (
                 <TableEmptyState colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} />
               ) : (
@@ -517,7 +518,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                             checked={selectedRows.includes(ctr.contract_id)}
                             onChange={() => handleSelectRow(ctr.contract_id)}
                             aria-label={t('contracts.pilih_kontrak', 'Pilih kontrak {nomor_kontrak}', { nomor_kontrak: ctr.nomor_kontrak })}
-                            className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                            className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                           />
                         </div>
                       </td>
@@ -609,7 +610,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                               href={ctr.link_file_kontrak}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-[#06C755] hover:text-[#048C3B] font-normal hover:underline"
+                              className="inline-flex items-center gap-1 text-xs text-accent-text hover:text-accent-text font-normal hover:underline"
                             >
                               <FileDown className="w-3.5 h-3.5" /> {t('contracts.pdf', 'PDF')}
                             </a>
@@ -620,7 +621,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                       )}
 
                       {/* 6. Aksi */}
-                      <td className="pl-2 pr-6 py-4 text-right align-middle w-20">
+                      <td data-actions="true" className="pl-2 pr-6 py-4 text-right align-middle w-20">
                         <div className="flex items-center justify-end">
                           <ActionMenu
                             items={[
@@ -665,7 +666,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
             </tbody>
           </table>
         </div>
-        
+
         <TablePagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -680,19 +681,19 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
 
       {/* Contract Timeline Detail Modal */}
       {detailContract && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
+        <ModalFrame onClose={() => setDetailContract(null)} className="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full max-h-[92dvh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
+
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between shrink-0 bg-white dark:bg-slate-900">
               <div>
-                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-[#06C755]" />
+                <ModalTitle className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-accent-text" />
                   <span>{detailContract.nomor_kontrak}</span>
-                </h3>
+                </ModalTitle>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{detailContract.judul_kontrak}</p>
               </div>
 
-              <button
+              <button aria-label={t('common.close', 'Tutup')}
                 type="button"
                 onClick={() => setDetailContract(null)}
                 className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
@@ -717,7 +718,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block">{t('hierarchy.commercial_value', 'Nilai Komersial:')}</span>
-                  <span className="font-bold text-[#048C3B] dark:text-emerald-400">
+                  <span className="font-bold text-accent-text dark:text-emerald-400">
                     {formatMoney(detailContract.nilai_kontrak, detailContract.currency)}
                     {(detailContract.currency || 'USD') !== 'USD' && (
                       <span className="text-slate-500 dark:text-slate-400 text-xs font-mono ml-1.5 font-normal">
@@ -749,7 +750,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                 {detailContract.internal_notes && (
                   <div className="col-span-1 md:col-span-2 bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
                     <span className="text-slate-600 dark:text-slate-300 font-bold text-xs block mb-1.5 flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-[#06C755]" />
+                      <FileText className="w-3.5 h-3.5 text-accent-text" />
                       {t('contracts.rangkuman_internal_notes_kontrak', 'Rangkuman / Internal Notes Kontrak:')}
                     </span>
                     <p className="text-slate-800 dark:text-slate-200 text-xs leading-relaxed whitespace-pre-line font-normal">
@@ -787,13 +788,13 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-bold text-purple-950 dark:text-purple-200 block font-mono text-xs tracking-tight">{add.nomor_kontrak}</span>
                                 {add.status && (
-                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-700/50">
+                                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-700/50">
                                     {add.status}
                                   </span>
                                 )}
                               </div>
-                              <span className="text-slate-700 dark:text-slate-300 text-[11px] block mt-0.5 truncate">{add.judul_kontrak}</span>
-                              <span className="text-slate-500 dark:text-slate-400 text-[10px] block mt-0.5">
+                              <span className="text-slate-700 dark:text-slate-300 text-xs block mt-0.5 truncate">{add.judul_kontrak}</span>
+                              <span className="text-slate-500 dark:text-slate-400 text-xs block mt-0.5">
                                 {t('contracts.validity', 'Validity:')}{' '}
                                 {formatBusinessDate(add.tanggal_mulai)}{' '}
                                 -{' '}
@@ -847,21 +848,21 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                             <span className="absolute -left-[23px] top-4 w-3 h-3 bg-indigo-600 dark:bg-indigo-500 rounded-full border-2 border-white dark:border-slate-900" />
                             <div className="flex items-center justify-between mb-1.5">
                               <span className="font-bold text-indigo-900 dark:text-indigo-300 text-xs font-mono">{add.nomor_kontrak}</span>
-                              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                              <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                                 {formatBusinessDate(add.tanggal_mulai)}
                               </span>
                             </div>
                             {fieldsChanged.length > 0 && (
                               <div className="flex flex-wrap gap-1 mb-2">
                                 {fieldsChanged.map((f) => (
-                                  <span key={f} className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                                  <span key={f} className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 text-xs font-semibold px-2 py-0.5 rounded-md">
                                     {f}
                                   </span>
                                 ))}
                               </div>
                             )}
                             {add.ringkasan_perubahan && (
-                              <p className="text-slate-700 dark:text-slate-200 text-xs leading-relaxed bg-white dark:bg-slate-900/90 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700/80 font-mono text-[11px] whitespace-pre-wrap">
+                              <p className="text-slate-700 dark:text-slate-200 text-xs leading-relaxed bg-white dark:bg-slate-900/90 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700/80 font-mono text-xs whitespace-pre-wrap">
                                 {add.ringkasan_perubahan}
                               </p>
                             )}
@@ -891,11 +892,11 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                         <div key={io.io_id} className="p-3 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-between gap-3">
                           <div>
                             <div className="font-bold text-slate-900 dark:text-slate-100 text-xs font-mono">{io.nomor_io}</div>
-                            <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">{io.judul_io}</div>
+                            <div className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">{io.judul_io}</div>
                           </div>
                           <div className="text-right shrink-0">
                             <div className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">{formatMoney(Number(io.nilai_io) || 0, io.currency || io.mata_uang)}</div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{io.pricing_model || t('contracts.flat_fee', 'Flat Fee')} • {io.charging_type || '-'}</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{io.pricing_model || 'Fixed'} • {io.charging_type || '-'}</div>
                           </div>
                         </div>
                       ))}
@@ -912,8 +913,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                 {t('io.detail_close', 'Tutup Detail')}
               </button>
             </div>
-          </div>
-        </div>
+
+        </ModalFrame>
       )}
 
       {/* AI Contract Risk & Compliance Analyzer (AI Redlining Modal) */}

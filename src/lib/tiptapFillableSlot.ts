@@ -9,15 +9,34 @@ export type FillableSlotType =
   | 'location'
   | 'number';
 
-const SLOT_ICONS: Record<string, string> = {
-  text: 'T',
-  date: '📅',
-  currency: '💰',
-  entity: '🏢',
-  person: '👤',
-  location: '📍',
-  number: '#️⃣',
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/**
+ * Lucide icon geometry (calendar, banknote, building-2, user, map-pin, hash,
+ * type) rendered as inline SVG in the slot badge — emoji render differently
+ * per OS and are not announced consistently by screen readers.
+ */
+const SLOT_ICON_SHAPES: Record<string, Array<[string, Record<string, string>]>> = {
+  text: [['path', { d: 'M4 7V4h16v3' }], ['path', { d: 'M9 20h6' }], ['path', { d: 'M12 4v16' }]],
+  date: [['rect', { x: '3', y: '4', width: '18', height: '18', rx: '2' }], ['path', { d: 'M16 2v4M8 2v4M3 10h18' }]],
+  currency: [['rect', { x: '2', y: '6', width: '20', height: '12', rx: '2' }], ['circle', { cx: '12', cy: '12', r: '2' }], ['path', { d: 'M6 12h.01M18 12h.01' }]],
+  entity: [['path', { d: 'M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z' }], ['path', { d: 'M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4' }]],
+  person: [['path', { d: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2' }], ['circle', { cx: '12', cy: '7', r: '4' }]],
+  location: [['path', { d: 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z' }], ['circle', { cx: '12', cy: '10', r: '3' }]],
+  number: [['path', { d: 'M4 9h16M4 15h16M10 3 8 21M16 3l-2 18' }]],
 };
+
+function slotIconSpec(slotType: string): any {
+  const shapes = SLOT_ICON_SHAPES[slotType] || SLOT_ICON_SHAPES.text;
+  return [
+    `${SVG_NS} svg`,
+    {
+      width: '12', height: '12', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+      'stroke-width': '2.25', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true',
+    },
+    ...shapes.map(([tag, attrs]) => [`${SVG_NS} ${tag}`, attrs]),
+  ];
+}
 
 const EMPTY_VALUE = '...';
 
@@ -84,7 +103,6 @@ export const FillableSlot = Node.create({
   renderHTML({ node, HTMLAttributes }) {
     const text = node.textContent || '';
     const filled = isSlotFilled(text);
-    const icon = SLOT_ICONS[node.attrs.slotType] || 'T';
 
     return [
       'span',
@@ -92,7 +110,7 @@ export const FillableSlot = Node.create({
         class: `fillable-slot ${filled ? 'slot-filled' : 'slot-empty'}`,
         draggable: 'true',
       }),
-      ['span', { class: 'slot-icon-badge', contenteditable: 'false' }, icon],
+      ['span', { class: 'slot-icon-badge', contenteditable: 'false' }, slotIconSpec(node.attrs.slotType)],
       ['span', { class: 'slot-text' }, 0],
     ];
   },

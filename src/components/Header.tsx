@@ -1,4 +1,5 @@
-import { AlphabeticalSelect } from './ui/alphabetical-select';
+import { Dialog } from 'radix-ui';
+import { notificationMessage } from '../lib/notificationText';
 import React, { useState, useRef, useEffect } from 'react';
 import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +20,7 @@ import {
   AlertCircle,
   Clock,
   Building2,
+  X,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -42,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { activeTab } = useNavigation();
   const { activeTenant, loading: tenantLoading } = useTenant();
 
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
@@ -83,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'dashboard':
         return t('nav.dashboard', 'Dashboard');
       case 'hierarchy':
-        return t('nav.hierarchy', 'Struktur & Hirarki');
+        return t('nav.hierarchy', 'Struktur Dokumen');
       case 'partners':
       case 'partners-list':
         return t('nav.partners', 'Mitra Kerja');
@@ -94,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'contracts':
         return t('nav.contracts', 'Kontrak');
       case 'create-contract':
-        return t('nav.create_contract', 'Buat Dokumen');
+        return t('nav.create_contract', 'Dokumen Saya');
       case 'ios':
         return t('nav.ios', 'Insertion Order (IO)');
       case 'notifikasi':
@@ -112,9 +115,9 @@ export const Header: React.FC<HeaderProps> = ({
       case 'settings-security':
         return t('nav.settings', 'Pengaturan Sistem');
       default:
-        if (tab.startsWith('admin-system-') || tab.startsWith('admin-organization-')) {
-          return t('nav.admin_users', 'Manajemen Akses & Admin');
-        }
+        // Same labels as the sidebar entries that open these areas.
+        if (tab.startsWith('admin-system-')) return t('nav.system_admin', 'System Admin');
+        if (tab.startsWith('admin-organization-')) return t('nav.organization_admin', 'Organization Admin');
         return t('nav.dashboard', 'Dashboard');
     }
   };
@@ -123,14 +126,14 @@ export const Header: React.FC<HeaderProps> = ({
   const unreadCount = unreadNotifications.length;
 
   return (
-    <header className="sticky top-0 z-20 h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 transition-colors">
+    <header className="app-header sticky top-0 z-20 min-h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 transition-colors">
       {/* Left Section: Mobile Menu Trigger + Section Breadcrumb */}
       <div className="flex items-center gap-3 min-w-0">
         {/* Mobile Hamburger Button with 44px touch target */}
         <button
           type="button"
           onClick={onOpenMobileMenu}
-          className="md:hidden min-w-11 min-h-11 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+          className="app-header-control md:hidden rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
           title={t('header.buka_navigasi', 'Buka Navigasi')}
           aria-label={t('header.buka_menu_navigasi', 'Buka Menu Navigasi')}
         >
@@ -146,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
             <span className="text-slate-400 dark:text-slate-500 select-none font-medium">/</span>
           </div>
-          <h1 className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight truncate">
+          <h1 className="app-page-title text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight sm:truncate">
             {getTabLabel(activeTab)}
           </h1>
         </div>
@@ -158,7 +161,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={toggleTheme}
-          className="min-w-11 min-h-11 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+          className="app-header-control rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
           title={theme === 'dark' ? t('header.beralih_ke_mode_terang', 'Beralih ke Mode Terang') : t('header.beralih_ke_mode_gelap', 'Beralih ke Mode Gelap')}
           aria-label={theme === 'dark' ? t('header.beralih_ke_mode_terang', 'Beralih ke Mode Terang') : t('header.beralih_ke_mode_gelap', 'Beralih ke Mode Gelap')}
         >
@@ -169,41 +172,69 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
 
-        <AlphabeticalSelect
-          aria-label={t('header.switch_language', 'Pilih bahasa')}
-          value={language}
-          onChange={(event) => setLanguage(event.target.value as typeof language)}
-          className="sm:hidden h-11 w-16 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-1 text-base"
-        >
-          {LANGUAGE_OPTIONS.map((option) => (
-            <option key={option.code} value={option.code}>{option.label}</option>
-          ))}
-        </AlphabeticalSelect>
-        {/* Language Switcher Pill with accessible tap targets */}
-        <div
-          role="group"
-          aria-label={t('header.switch_language', 'Pilih bahasa')}
-          className="hidden sm:flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold min-h-12"
-        >
-          {LANGUAGE_OPTIONS.map((option) => (
+        <Dialog.Root open={showLanguageModal} onOpenChange={setShowLanguageModal}>
+          <Dialog.Trigger asChild>
             <button
-              key={option.code}
               type="button"
-              lang={option.htmlLang}
-              onClick={() => setLanguage(option.code)}
-              className={`min-w-11 min-h-11 px-2.5 py-1.5 rounded-full transition-all cursor-pointer text-xs font-bold flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
-                language === option.code
-                  ? 'bg-[#04803D] text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-              title={option.nativeName}
-              aria-label={option.nativeName}
-              aria-pressed={language === option.code}
+              className="app-header-control rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
+              title={t('header.switch_language', 'Pilih bahasa')}
+              aria-label={t('header.switch_language', 'Pilih bahasa')}
             >
-              {option.label}
+              {language}
             </button>
-          ))}
-        </div>
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs" />
+            <Dialog.Content
+              aria-describedby={undefined}
+              className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-1.5rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+            >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <Dialog.Title className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  {t('header.switch_language', 'Pilih bahasa')}
+                </Dialog.Title>
+                <Dialog.Close asChild>
+                  <button
+                    type="button"
+                    aria-label={t('common.close', 'Tutup')}
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Dialog.Close>
+              </div>
+              <div className="space-y-2">
+                {LANGUAGE_OPTIONS.map((option) => (
+                  <button
+                    key={option.code}
+                    type="button"
+                    lang={option.htmlLang}
+                    aria-pressed={language === option.code}
+                    onClick={() => {
+                      setLanguage(option.code);
+                      setShowLanguageModal(false);
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none ${
+                      language === option.code
+                        ? 'border-accent/30 bg-accent/10 text-accent-strong dark:text-accent'
+                        : 'border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                      language === option.code
+                        ? 'bg-accent-strong text-white'
+                        : 'bg-slate-100 dark:bg-slate-800'
+                    }`}>
+                      {option.label}
+                    </span>
+                    <span className="flex-1 text-sm font-medium">{option.nativeName}</span>
+                    {language === option.code && <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
 
         {/* Notifications Dropdown with 44px tap target */}
         <div className="relative" ref={notifRef}>
@@ -212,7 +243,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setShowNotifDropdown((prev) => !prev)}
             aria-expanded={showNotifDropdown}
             aria-haspopup="dialog"
-            className="min-w-11 min-h-11 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 relative transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+            className="app-header-control rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 relative transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
             title={t('header.notifikasi', 'Notifikasi')}
             aria-label={t('header.notifikasi_belum_dibaca', 'Notifikasi: {unreadCount} belum dibaca', { unreadCount })}
           >
@@ -230,17 +261,17 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Header */}
               <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-[#06C755]" />
+                  <Bell className="w-4 h-4 text-accent-text" />
                   <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
                     {t('header.notice_notifications', 'Notifikasi')}
                   </span>
                 </div>
                 {unreadCount > 0 ? (
-                  <span className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  <span className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                     {t('header.baru', '{unreadCount} baru', { unreadCount })}
                   </span>
                 ) : (
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     {t('header.semua_sudah_dibaca', 'Semua sudah dibaca')}
                   </span>
                 )}
@@ -267,10 +298,10 @@ export const Header: React.FC<HeaderProps> = ({
                       className="w-full p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer text-left block focus-visible:outline-none focus-visible:bg-slate-100 dark:focus-visible:bg-slate-800"
                     >
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900/50">
+                        <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900/50">
                           {notif.jenis_notifikasi}
                         </span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
                           {new Date(notif.tanggal_terkirim).toLocaleDateString(
                             getActiveFormattingLocale(),
                             { day: 'numeric', month: 'short' }
@@ -280,8 +311,8 @@ export const Header: React.FC<HeaderProps> = ({
                       <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">
                         {notif.parent_nomor ? `${notif.parent_nomor} : ` : ''}{notif.parent_judul}
                       </p>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
-                        {notif.pesan}
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
+                        {notificationMessage(notif, t)}
                       </p>
                     </button>
                   ))
@@ -312,7 +343,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setShowUserDropdown((prev) => !prev)}
             aria-expanded={showUserDropdown}
             aria-haspopup="menu"
-            className="flex items-center justify-center min-w-11 min-h-11 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800 focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none cursor-pointer transition-colors hover:bg-emerald-200/70 dark:hover:bg-emerald-900"
+            className="app-header-control flex items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800 focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none cursor-pointer transition-colors hover:bg-emerald-200/70 dark:hover:bg-emerald-900"
             title={user?.name || t('header.profil_pengguna', 'Profil Pengguna')}
             aria-label={t('header.menu_pengguna', 'Menu Pengguna')}
           >
@@ -328,11 +359,11 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="font-semibold text-xs text-slate-900 dark:text-slate-100 truncate">
                   {user?.name || t('admin.generic_user', 'Pengguna')}
                 </div>
-                <div className="text-[11px] truncate text-slate-500 dark:text-slate-400 mt-0.5">
+                <div className="text-xs truncate text-slate-500 dark:text-slate-400 mt-0.5">
                   {user?.email}
                 </div>
                 {isAdmin && (
-                  <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  <div className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                     <Shield className="w-3 h-3" />
                     {t('header.administrator', 'Administrator')}
                   </div>

@@ -1,3 +1,4 @@
+import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import React, { useState, useRef } from 'react';
 import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { Upload, FileText, X, AlertCircle, Calendar, ExternalLink, Loader2, Trash2 } from 'lucide-react';
@@ -35,7 +36,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const existingDoc: DDDokumenItem | undefined = (partner.daftar_dokumen_dd || []).find((d) => d.nama === docName);
-  
+
   // Normalize existing files
   const existingFiles: DDFileItem[] = existingDoc?.files && existingDoc.files.length > 0
     ? existingDoc.files
@@ -189,34 +190,30 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
-      <div
-        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]"
-        role="dialog"
-        aria-modal="true"
-      >
+    <ModalFrame onClose={onClose} className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92dvh]">
+
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#EBFBF0] dark:bg-emerald-950/60 border border-[#06C755]/30 flex items-center justify-center shrink-0 text-[#048C3B] dark:text-emerald-300">
+            <div className="w-10 h-10 rounded-xl bg-accent-soft dark:bg-emerald-950/60 border border-accent/30 flex items-center justify-center shrink-0 text-accent-text dark:text-emerald-300">
               <Upload className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate">
+              <ModalTitle className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate">
                 {t('partners.upload_dd_modal_title', 'Upload Dokumen Due Diligence')}
-              </h3>
+              </ModalTitle>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[11px] font-bold text-[#048C3B] dark:text-emerald-400 truncate">
+                <span className="text-xs font-bold text-accent-text dark:text-emerald-400 truncate">
                   {docName}
                 </span>
-                <span className="text-[11px] text-slate-400">•</span>
-                <span className="text-[11px] text-slate-600 dark:text-slate-300 truncate font-medium">
+                <span className="text-xs text-slate-400">•</span>
+                <span className="text-xs text-slate-600 dark:text-slate-300 truncate font-medium">
                   {partner.nama_partner}
                 </span>
               </div>
             </div>
           </div>
-          <button
+          <button aria-label={t('common.close', 'Tutup')}
             type="button"
             onClick={onClose}
             disabled={isUploading}
@@ -235,7 +232,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   {t('dd_upload.file_dokumen_terunggah', 'File Dokumen Terunggah ({existingFiles})', { existingFiles: existingFiles.length })}
                 </span>
-                <span className="text-[11px] text-slate-500">{t('dd_upload.mendukung_multi_file_tahunan', 'Mendukung multi-file tahunan')}</span>
+                <span className="text-xs text-slate-500">{t('dd_upload.mendukung_multi_file_tahunan', 'Mendukung multi-file tahunan')}</span>
               </div>
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {existingFiles.map((f, idx) => (
@@ -244,12 +241,12 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                     className="p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="w-4 h-4 text-[#06C755] shrink-0" />
+                      <FileText className="w-4 h-4 text-accent-text shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                           {f.fileName || `${docName}.pdf`}
                         </p>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-xs text-slate-500">
                           {f.year ? t('dd_upload.tahun', 'Tahun {year} • ', { year: f.year }) : ''}
                           {t('dd_upload.diunggah', 'Diunggah:')} {f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString(getActiveFormattingLocale()) : '-'}
                           {f.tanggalKadaluarsa ? t('dd_upload.exp', ' • Exp: {tanggalKadaluarsa}', { tanggalKadaluarsa: f.tanggalKadaluarsa }) : ''}
@@ -262,7 +259,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                           href={f.linkDrive}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-[#048C3B] dark:text-emerald-300 rounded-lg text-[11px] font-medium flex items-center gap-1 border border-emerald-500/30 transition-colors"
+                          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-accent-text dark:text-emerald-300 rounded-lg text-xs font-medium flex items-center gap-1 border border-emerald-500/30 transition-colors"
                         >
                           <ExternalLink className="w-3 h-3" />
                           <span>{t('settings.org_open_folder', 'Buka')}</span>
@@ -300,10 +297,10 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-4 text-center transition-all cursor-pointer ${
                 isDragOver
-                  ? 'border-[#06C755] bg-emerald-50/60 dark:bg-emerald-950/40'
+                  ? 'border-accent bg-emerald-50/60 dark:bg-emerald-950/40'
                   : selectedFile
-                  ? 'border-[#06C755]/50 bg-[#EBFBF0]/40 dark:bg-emerald-950/20'
-                  : 'border-slate-300 dark:border-slate-700 hover:border-[#06C755] bg-slate-50 dark:bg-slate-800/40'
+                  ? 'border-accent/50 bg-accent-soft/40 dark:bg-emerald-950/20'
+                  : 'border-slate-300 dark:border-slate-700 hover:border-accent bg-slate-50 dark:bg-slate-800/40'
               }`}
             >
               <input
@@ -317,19 +314,19 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
               {selectedFile ? (
                 <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60 shadow-2xs">
                   <div className="flex items-center gap-2.5 min-w-0 text-left">
-                    <div className="w-8 h-8 rounded-lg bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-400 flex items-center justify-center shrink-0">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                         {selectedFile.name}
                       </p>
-                      <p className="text-[10px] text-slate-500">
+                      <p className="text-xs text-slate-500">
                         {t('dd_upload.kb', '{value} KB', { value: (selectedFile.size / 1024).toFixed(1) })}
                       </p>
                     </div>
                   </div>
-                  <button
+                  <button aria-label={t('common.close', 'Tutup')}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -344,7 +341,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <Upload className="w-6 h-6 text-[#06C755] mx-auto mb-1" />
+                  <Upload className="w-6 h-6 text-accent-text mx-auto mb-1" />
                   <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                     {t('partners.drag_file', 'Pilih atau drag file dokumen ke sini')}
                   </p>
@@ -367,7 +364,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                 value={tahunDokumen}
                 onChange={(e) => setTahunDokumen(e.target.value)}
                 placeholder={t('dd_upload.contoh_2026', 'contoh: 2026')}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06C755]/30 focus:border-[#06C755]"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
               />
             </div>
             <div>
@@ -406,7 +403,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
             <button
               type="submit"
               disabled={!selectedFile || isUploading}
-              className="px-4 py-2 bg-[#04803D] hover:bg-[#036B33] text-white font-bold rounded-xl text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold rounded-xl text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isUploading ? (
                 <>
@@ -422,7 +419,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };

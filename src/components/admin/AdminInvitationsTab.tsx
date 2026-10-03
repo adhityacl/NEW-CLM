@@ -45,10 +45,10 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
   return (
     <div className="space-y-4">
       {/* Controls Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="mobile-controls-bar flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
+          <input aria-label={t('admin.inv_search_ph', 'Cari email undangan...')}
             type="text"
             placeholder={t('admin.inv_search_ph', 'Cari email undangan...')}
             value={searchQuery}
@@ -73,7 +73,7 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-xs">
                 <th className="py-3 px-4">{t('admin.col_target_email', 'Email Tujuan')}</th>
                 <th className="py-3 px-4">{t('admin.col_role_requested', 'Peran Diminta')}</th>
                 <th className="py-3 px-4">{t('admin.col_status', 'Status')}</th>
@@ -102,40 +102,40 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 uppercase">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 uppercase">
                           {inv.role}
                         </span>
                       </td>
                       <td className="py-3 px-4">
                         {inv.status === 'pending' && !isExpired && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
                             <Clock className="w-3 h-3" />
                             {t('admin.status_pending', 'Menunggu Konfirmasi')}
                           </span>
                         )}
                         {inv.status === 'accepted' && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
                             <CheckCircle2 className="w-3 h-3" />
                             {t('admin.status_accepted', 'Diterima')}
                           </span>
                         )}
                         {(inv.status === 'expired' || (inv.status === 'pending' && isExpired)) && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300">
                             <XCircle className="w-3 h-3" />
                             {t('admin.status_expired', 'Kadaluarsa')}
                           </span>
                         )}
                         {inv.status === 'canceled' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                             <XCircle className="h-3 w-3" />
                             {t('admin.status_canceled', 'Dibatalkan')}
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-500 text-[11px]">
+                      <td className="py-3 px-4 text-slate-500 text-xs">
                         {new Date(inv.expiresAt).toLocaleDateString(getActiveFormattingLocale())}
                       </td>
-                      <td className="py-3 px-4 text-slate-500 text-[11px]">
+                      <td className="py-3 px-4 text-slate-500 text-xs">
                         {inv.inviterName || t('admin.admin', 'Admin')}
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -143,7 +143,7 @@ export const AdminInvitationsTab: React.FC<AdminInvitationsTabProps> = ({
                           {canUseLink && <button
                             type="button"
                             onClick={() => handleCopyInviteLink(inv)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
                             title={t('admin.salin_tautan_undangan_langsung', 'Salin Tautan Undangan Langsung')}
                             aria-label={t('admin.salin_tautan_undangan_langsung', 'Salin Tautan Undangan Langsung')}
                           >

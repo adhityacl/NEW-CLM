@@ -39,11 +39,13 @@
 **📄 Contracts, partners and IOs**
 - Full CRUD for contracts, partners, Insertion Orders, spendings and partner evaluations, scoped per organization (tenant) and department.
 - Notice-period tracking, expiry/renewal status, notifications and an activity log.
-- Bulk import, Due Diligence checklists driven by per-country policy packs, and a dashboard with charts.
+- Bulk CSV import, Due Diligence checklists driven by per-country policy packs, and a dashboard with charts.
+- CSV exports open cleanly in Excel (every cell quoted, UTF-8 BOM, `sep=,` for semicolon locales) and can be re-imported as-is.
 
 **✍️ Contract Creator** (sidebar → *Create Contract*)
 - **Document explorer**: the page opens on *My Documents*. You can search by name or metadata value, filter by status, type, creator, created date or a metadata field, sort by any column, and page through results 25/50/100 at a time. Each row has quick actions for open, rename, archive and delete.
-- **Editor**: a [TipTap](https://tiptap.dev/) editor with fillable-slot fields, partner auto-fill, a template library, a preview and Word (`.doc`) export.
+- **New document**: *New Document* opens a picker with a *Blank document* card and every available template — the built-in *Master Service Agreement* plus any template your organization saved — with a search box.
+- **Editor**: a [TipTap](https://tiptap.dev/) editor with fillable-slot fields (listed in the *Fields* panel in the order they appear in the document), partner auto-fill, a template library, a preview and Word (`.doc`) export.
 - **Drafts and versions**: documents autosave every 30 seconds. They also save on Ctrl/Cmd+S, when you go back to the explorer, when you navigate elsewhere in the app, and when you close the tab. The header shows *Draft vN · Last saved X ago by Y* and an unsaved-changes marker. The *History* tab lists every version, and you can view, compare (paragraph diff), restore, or name and label any of them.
 - **Metadata**: the creator, last modifier and their timestamps are recorded automatically. Organization admins define custom fields (text, select, date, multi-select), which you fill in from the *Info* tab and can search and filter in the explorer.
 - **Redlining**: select text, then add a comment or suggest a change. A suggested change shows the original text struck through and the proposed text underlined. You can reply in threads, accept, reject or resolve items one at a time or in bulk, and see a change summary and redline history. *Download with Redlines* exports a `.doc` file with the markup and a comments appendix.
@@ -61,6 +63,15 @@
 ---
 
 ## What's new
+
+**Early October 2026**
+- **New document picker** (Contract Creator): *New Document* now asks how to start — *Blank document* or a template. Ships a built-in **Master Service Agreement** (`src/data/masterServiceAgreementTemplate.ts`) whose blanks are real fillable slots mapped to the editor's party/date/scope fields (organization = Customer, partner = Supplier), plus custom fields for agreement number, registration numbers, term, survival period and place of signing; governing law and court come from the organization's jurisdiction pack. Templates saved by users appear in the picker automatically.
+- **Fields panel**: built-in and custom fields are listed together in document order; the "Optional" badge and the footer "template active" label were removed, and field cards are more compact (touch devices keep 44px targets).
+- **Demo dataset**: one organization, *Bank Mindiri* (jurisdiction pack Indonesia, industry pack Banking & Investment), with five fictional partners — cloud/colocation, credit bureau, e-KYC, corporate travel and a media agency — each with its own contract, service order and invoices (amounts incl. 11% VAT). Reload it from *Settings → Reset → Reload the demo data*.
+- **Pricing models** standardized to CPM, CPC, CPA, Fixed, Retainer, Hourly, Milestone, Commission and Subscription (`PRICING_MODELS` in `src/types.ts`); custom values are still allowed and stay filterable.
+- **CSV import/export** (`src/lib/csv.ts`): one shared exporter for Partner Spending, Partner Evaluation and the Complete Audit View fixes columns splitting on commas (e.g. `Apr 1, 2025`), broken encoding and truncated files, and neutralises formula-looking cells. The importer now reads BOM/`sep=` files, `;`-delimited Excel files and multi-line cells.
+- **Bulk import**: templates follow the organization's country and industry (e.g. PT, IDR, NPWP/NIB for Indonesia) and list allowed values; new columns for partner identifiers, contract `auto_renewal`/`status_approval`/`parent_contract_nomor` and spending `invoice_title`/`payment_status`; enum values are validated per row. Fixes: non-USD invoices were imported with a USD amount of 0, evaluations had no organization and no score, and IO/evaluation duplicate checks crossed organizations.
+- **UI**: the regulatory news ticker is a continuous marquee (pauses on hover, static under reduced motion); AI chat answers have a *Copy* button; Privacy Policy and Terms of Service were rewritten as numbered legal documents in EN/ID/ZH (`src/components/legal/`).
 
 **Late September 2026**
 - **Persistent, cross-feature OCR/AI cache**: the document-parsing pipeline (`src/lib/cheapOcrPipeline.ts`, used by the Partner/Spending/Contract/IO "Parse with AI" actions) now caches results in SQLite (table `ai_ocr_cache`) instead of an in-memory map, so cached results survive a server restart. A scanned document's plain-text transcript is also cached independently of which feature first read it — for a scanned file, that costs one Gemini vision call for its lifetime instead of one per feature per call; a digital-text PDF's local extraction is cached the same way at no extra cost.
@@ -206,6 +217,7 @@ npm test                  # all node:test suites below, plus demo-account cleanu
 npm run test:rbac         # RBAC permission matrix
 npm run test:documents    # Contract Creator API: drafts, explorer, metadata, comments (in-memory SQLite)
 npm run test:credentials  # Google credential upload and priority over .env
+npx tsx --test tests/csv.test.ts tests/masterServiceAgreementTemplate.test.ts tests/demoDataset.test.ts  # CSV round-trip, built-in template, demo data
 npm run test:e2e          # Playwright browser tests (run `npx playwright install` once first)
 ```
 

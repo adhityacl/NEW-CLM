@@ -1572,7 +1572,7 @@ async function dispatchInvitationEmail(
             <p style="margin: 6px 0 0 0; font-size: 13px; color: #475569;"><strong>Valid until:</strong> ${esc(new Date(inv.expiresAt).toISOString().slice(0, 10))}</p>
           </div>
           <div style="text-align: center; margin: 28px 0;">
-            <a href="${esc(inviteUrl)}" style="background-color: #06C755; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">
+            <a href="${esc(inviteUrl)}" style="background-color: #04803D; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">
               Accept invitation
             </a>
           </div>

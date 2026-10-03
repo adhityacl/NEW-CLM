@@ -360,7 +360,7 @@ export const ContractEditorToolbar: React.FC<ContractEditorToolbarProps> = ({
                   <SplitSquareHorizontal className="w-3.5 h-3.5" /> {t('editor.pisah_sel_split', 'Pisah Sel (Split)')}
                 </button>
                 <div className="px-2.5 py-1.5">
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 mb-1.5">
+                  <div className="flex items-center gap-1 text-xs font-bold text-slate-400 mb-1.5">
                     <PaintBucket className="w-3 h-3" /> {t('editor.warna_sel', 'Warna Sel')}
                   </div>
                   <div className="flex items-center gap-1.5">

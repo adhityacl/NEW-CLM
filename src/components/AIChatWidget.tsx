@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, User, Loader2, RotateCcw } from 'lucide-react';
+import { MessageSquare, X, Send, User, Loader2, RotateCcw, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { AiIcon } from './icons/AiIcon';
 import { useLanguage } from '../context/LanguageContext';
@@ -29,6 +29,24 @@ const STORAGE_KEY = 'silegal_ai_chat_session_v1';
 export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyOpen = false }) => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(initiallyOpen);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const displayText = (msg: Message) =>
+    msg.id === 'welcome'
+      ? t('ai_chat.welcome', INITIAL_MESSAGE.text)
+      : msg.id.startsWith('welcome-')
+        ? t('ai_chat.sesi_percakapan_telah_direset_silakan_tanyakan', 'Sesi percakapan telah direset. Silakan tanyakan hal baru seputar partner, kontrak, atau IO!')
+        : msg.text;
+
+  const handleCopy = async (msg: Message) => {
+    try {
+      await navigator.clipboard.writeText(displayText(msg));
+      setCopiedId(msg.id);
+      window.setTimeout(() => setCopiedId((id) => (id === msg.id ? null : id)), 2000);
+    } catch {
+      // Clipboard blocked (insecure context or denied permission): nothing to copy to.
+    }
+  };
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
@@ -78,16 +96,16 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
 
   const handleSend = async (customText?: string, e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
+
     const queryText = (customText || input).trim();
     if (!queryText || isLoading) return;
-    
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       text: queryText
     };
-    
+
     // Prepare history from existing messages (exclude initial greeting to keep context clean)
     const historyPayload = messages
       .filter((m) => m.id !== 'welcome' && !m.id.startsWith('welcome-'))
@@ -170,7 +188,7 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
           style={{ height: '520px', maxHeight: 'calc(100dvh - 6rem)' }}
         >
           {/* Header */}
-          <div className="bg-[#04803D] px-4 py-3 text-white flex justify-between items-center shadow-md z-10 select-none">
+          <div className="bg-accent-strong px-4 py-3 text-white flex justify-between items-center shadow-md z-10 select-none">
             <div className="flex items-center gap-2.5">
               <div className="p-1.5 bg-white/20 rounded-lg flex items-center justify-center">
                 <AiIcon size={18} className="text-white" />
@@ -213,8 +231,8 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
                 <div
                   className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs ${
                     msg.role === 'user'
-                      ? 'bg-[#04803D] text-white'
-                      : 'bg-white dark:bg-slate-800 shadow-xs text-[#06C755] border border-slate-200 dark:border-slate-700'
+                      ? 'bg-accent-strong text-white'
+                      : 'bg-white dark:bg-slate-800 shadow-xs text-accent-text border border-slate-200 dark:border-slate-700'
                   }`}
                 >
                   {msg.role === 'user' ? <User size={14} /> : <AiIcon size={14} />}
@@ -222,7 +240,7 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
                 <div
                   className={`p-3 rounded-2xl text-xs leading-relaxed ${
                     msg.role === 'user'
-                      ? 'bg-[#04803D] text-white rounded-tr-xs shadow-xs'
+                      ? 'bg-accent-strong text-white rounded-tr-xs shadow-xs'
                       : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-tl-xs shadow-xs'
                   }`}
                 >
@@ -250,19 +268,25 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
                           h3: ({ node, ...props }) => <h3 className="text-xs font-bold mb-1 mt-1.5 text-slate-900 dark:text-white" {...props} />,
                           table: ({ node, ...props }) => (
                             <div className="overflow-x-auto my-2 border border-slate-200 dark:border-slate-700 rounded-lg">
-                              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-[11px]" {...props} />
+                              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-xs" {...props} />
                             </div>
                           ),
                           th: ({ node, ...props }) => <th className="px-2 py-1 bg-slate-100 dark:bg-slate-900 font-bold text-left" {...props} />,
                           td: ({ node, ...props }) => <td className="px-2 py-1 border-t border-slate-200 dark:border-slate-700" {...props} />
                         }}
                       >
-                        {msg.id === 'welcome'
-                          ? t('ai_chat.welcome', INITIAL_MESSAGE.text)
-                          : msg.id.startsWith('welcome-')
-                            ? t('ai_chat.sesi_percakapan_telah_direset_silakan_tanyakan', 'Sesi percakapan telah direset. Silakan tanyakan hal baru seputar partner, kontrak, atau IO!')
-                            : msg.text}
+                        {displayText(msg)}
                       </ReactMarkdown>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(msg)}
+                        aria-label={copiedId === msg.id ? t('ai_chat.copied', 'Tersalin') : t('ai_chat.copy', 'Salin jawaban')}
+                        title={copiedId === msg.id ? t('ai_chat.copied', 'Tersalin') : t('ai_chat.copy', 'Salin jawaban')}
+                        className="mt-1.5 inline-flex min-h-7 items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100 cursor-pointer transition-colors"
+                      >
+                        {copiedId === msg.id ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
+                        <span aria-live="polite">{copiedId === msg.id ? t('ai_chat.copied', 'Tersalin') : t('ai_chat.copy', 'Salin')}</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -276,7 +300,7 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
                   <AiIcon size={16} />
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col gap-2">
-                  <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center h-7">
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center h-7">
                     {t('ai_chat.saran_pertanyaan', 'Saran Pertanyaan:')}
                   </p>
                   <div className="flex flex-col gap-1.5">
@@ -285,7 +309,7 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
                         key={prompt}
                         type="button"
                         onClick={() => handleSend(prompt)}
-                        className="text-left text-[11px] text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200 dark:border-slate-700 hover:border-emerald-400 p-2.5 rounded-xl transition-all cursor-pointer shadow-2xs"
+                        className="text-left text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200 dark:border-slate-700 hover:border-emerald-400 p-2.5 rounded-xl transition-all cursor-pointer shadow-2xs"
                       >
                         {prompt}
                       </button>
@@ -297,7 +321,7 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
 
             {isLoading && (
               <div className="flex gap-2.5 self-start max-w-[85%]">
-                <div className="shrink-0 w-7 h-7 rounded-full bg-white dark:bg-slate-800 shadow-xs border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[#06C755]">
+                <div className="shrink-0 w-7 h-7 rounded-full bg-white dark:bg-slate-800 shadow-xs border border-slate-200 dark:border-slate-700 flex items-center justify-center text-accent-text">
                   <Loader2 size={14} className="animate-spin" />
                 </div>
                 <div className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-xs shadow-xs text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -311,18 +335,18 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
           {/* Input Area */}
           <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
             <form onSubmit={(e) => handleSend(undefined, e)} className="flex items-center gap-2">
-              <input
+              <input aria-label={t('ai_chat.tanya_seputar_data_atau_lanjutkan_konteks', 'Tanya seputar data atau lanjutkan konteks...')}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={t('ai_chat.tanya_seputar_data_atau_lanjutkan_konteks', 'Tanya seputar data atau lanjutkan konteks...')}
-                className="flex-1 px-3.5 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#06C755] focus:border-[#06C755] placeholder-slate-400 dark:placeholder-slate-500"
+                className="flex-1 px-3.5 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent placeholder-slate-400 dark:placeholder-slate-500"
                 disabled={isLoading}
               />
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className="p-2.5 bg-[#04803D] text-white rounded-xl hover:bg-[#036B33] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                className="p-2.5 bg-accent-strong text-white rounded-xl hover:bg-accent-strong-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
                 title={t('ai_chat.kirim_pesan', 'Kirim Pesan')}
               >
                 <Send size={15} />
@@ -337,7 +361,7 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
         aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
         className={`w-13 h-13 rounded-full shadow-xl flex items-center justify-center transition-colors duration-150 cursor-pointer ${
-          isOpen ? 'bg-[#036B33]' : 'bg-[#04803D] hover:bg-[#036B33]'
+          isOpen ? 'bg-accent-strong-hover' : 'bg-accent-strong hover:bg-accent-strong-hover'
         }`}
         title={isOpen ? t('ai_chat.tutup_ai_assistant', 'Tutup AI Assistant') : t('ai_chat.buka_asisten_ai_silegal', 'Buka Asisten AI Legalio')}
       >

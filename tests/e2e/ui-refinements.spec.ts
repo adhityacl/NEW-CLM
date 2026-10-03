@@ -72,7 +72,7 @@ test('latest records combine contracts and order forms in creation order', async
 });
 
 test('create document toolbar exposes the four standard filters', async ({ page }) => {
-  await page.getByRole('button', { name: 'Create Document', exact: true }).click();
+  await page.getByRole('button', { name: 'My Documents', exact: true }).click();
   await expect(page.getByRole('searchbox', { name: 'Search Document', exact: true })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Document Status', exact: true })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Document Type', exact: true })).toBeVisible();
@@ -89,9 +89,122 @@ test('create document toolbar exposes the four standard filters', async ({ page 
   await expect(page.getByRole('columnheader', { name: 'Created', exact: true })).toBeVisible();
 });
 
+test('header controls align, desktop checkboxes stay 14px and dropdowns share Contracts styling', async ({ page }) => {
+  // Selects use transition-colors; without this the dark-mode comparison can
+  // sample a color mid-transition and compare unequal intermediate values.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const controls = page.locator('.app-header-control:visible');
+  for (const control of await controls.all()) {
+    const bounds = await control.boundingBox();
+    expect(bounds!.width).toBe(44);
+    expect(bounds!.height).toBe(44);
+  }
+  expect((await page.locator('.app-header-languages').boundingBox())!.height).toBe(44);
+  for (const icon of await page.locator('.app-header-control > svg:visible').all()) {
+    expect((await icon.boundingBox())!.height).toBe(18);
+  }
+  await page.getByRole('button', { name: /^Contracts(?: \d+)?$/ }).click();
+  for (const checkbox of await page.locator('input[type="checkbox"]:visible').all()) {
+    expect((await checkbox.boundingBox())!.width).toBe(14);
+    expect((await checkbox.boundingBox())!.height).toBe(14);
+  }
+  const dropdownStyle = (select: ReturnType<typeof page.getByRole>) => select.evaluate(element => {
+    const css = getComputedStyle(element);
+    return { height: element.getBoundingClientRect().height, radius: css.borderRadius, border: css.borderColor, background: css.backgroundColor, color: css.color, fontSize: css.fontSize, fontWeight: css.fontWeight, arrow: css.backgroundImage, arrowSize: css.backgroundSize, padding: css.padding };
+  });
+  for (const dark of [false, true]) {
+    await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
+    await page.getByRole('button', { name: /^Contracts(?: \d+)?$/ }).click();
+    const reference = await dropdownStyle(page.getByRole('combobox').first());
+    expect(reference.height).toBe(44);
+    for (const select of await page.locator('select:visible').all()) expect(await dropdownStyle(select)).toEqual(reference);
+    await page.getByRole('button', { name: 'My Documents', exact: true }).click();
+    for (const select of await page.locator('select:visible').all()) expect(await dropdownStyle(select)).toEqual(reference);
+    await page.getByRole('button', { name: /^Contracts(?: \d+)?$/ }).click();
+    await page.getByRole('button', { name: 'Add Contract', exact: true }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    for (const select of await page.getByRole('dialog').locator('select:visible').all()) expect(await dropdownStyle(select)).toEqual(reference);
+    await page.getByRole('dialog').getByRole('button', { name: /close/i }).first().focus();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toBeHidden();
+    for (const submenu of await page.getByRole('button', { name: /^(Open|Close) Submenu$/ }).all()) {
+      await submenu.hover();
+      await expect(submenu).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    }
+  }
+  await page.screenshot({ path: test.info().outputPath('controls-desktop-dark.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const control of await controls.all()) expect((await control.boundingBox())!.height).toBe(44);
+  for (const select of await page.locator('select:visible').all()) expect((await select.boundingBox())!.height).toBe(44);
+  await page.screenshot({ path: test.info().outputPath('controls-mobile-dark.png'), fullPage: true });
+});
+
+test('single-line inputs and selects share one height and font size across core forms', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const fieldSelector = [
+    'input:visible:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"])',
+    'select:visible:not([multiple])',
+    'button[role="combobox"]:visible',
+  ].join(', ');
+
+  const checkDialog = async () => {
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    const fields = dialog.locator(fieldSelector);
+    expect(await fields.count()).toBeGreaterThan(1);
+    const fontSizes = new Set<string>();
+    for (const field of await fields.all()) {
+      expect((await field.boundingBox())!.height).toBe(44);
+      fontSizes.add(await field.evaluate(element => getComputedStyle(element).fontSize));
+    }
+    expect([...fontSizes]).toEqual(['14px']);
+    await dialog.getByRole('button', { name: /close/i }).first().click();
+    await expect(dialog).toBeHidden();
+  };
+
+  await page.getByRole('button', { name: /^Contracts(?: \d+)?$/ }).click();
+  await page.getByRole('button', { name: 'Add Contract', exact: true }).click();
+  await checkDialog();
+
+  await page.getByRole('button', { name: 'Partners', exact: true }).click();
+  await page.getByRole('button', { name: 'Add Partner', exact: true }).click();
+  await checkDialog();
+
+  await page.getByRole('button', { name: 'Partner Spending', exact: true }).click();
+  await page.getByRole('button', { name: 'Add Spending', exact: true }).click();
+  await checkDialog();
+});
+
+test('New Document matches primary action styling on desktop and mobile in both themes', async ({ page }) => {
+  const style = (button: ReturnType<typeof page.getByRole>) => button.evaluate(element => {
+    const css = getComputedStyle(element);
+    return { height: element.getBoundingClientRect().height, radius: css.borderRadius, fontSize: css.fontSize, fontWeight: css.fontWeight, background: css.backgroundColor, color: css.color };
+  });
+  const navigate = async (name: string | RegExp) => {
+    const link = page.getByRole('button', { name, exact: true }).first();
+    if (!await link.isVisible()) await page.getByRole('button', { name: 'Open Navigation Menu', exact: true }).click();
+    await link.click();
+  };
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
+      await navigate(/^Contracts(?: \d+)?$/);
+      const reference = await style(page.getByRole('button', { name: 'Add Contract', exact: true }));
+      await navigate('My Documents');
+      const newDocument = page.getByRole('button', { name: 'New Document', exact: true });
+      await expect(newDocument).toBeVisible();
+      expect(await style(newDocument)).toEqual(reference);
+      expect((await newDocument.boundingBox())!.height).toBeGreaterThanOrEqual(width < 768 ? 44 : 36);
+    }
+  }
+});
+
 test('mobile editor keeps a usable canvas and opens its panel as a dismissible overlay', async ({ page }) => {
-  await page.getByRole('button', { name: 'Create Document', exact: true }).click();
+  await page.getByRole('button', { name: 'My Documents', exact: true }).click();
   await page.getByRole('button', { name: 'New Document', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Blank document', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   const editor = page.locator('.tiptap.ProseMirror:visible');
   await expect.poll(async () => (await editor.boundingBox())!.width).toBeGreaterThan(200);
@@ -105,7 +218,7 @@ test('mobile editor keeps a usable canvas and opens its panel as a dismissible o
   await expect(editor).toContainText('A draft that remains editable on mobile.');
 });
 
-test('table actions support keyboard dismissal; identity remains visible while scrolling', async ({ page }) => {
+test('table actions support keyboard dismissal; mobile identity scrolls without freezing', async ({ page }) => {
   await page.getByRole('button', { name: /^Contracts(?: \d+)?$/ }).click();
   await expect(page.getByRole('button', { name: 'Add Contract', exact: true })).toBeVisible();
   const originalRowCount = await page.locator('tbody tr').count();
@@ -124,9 +237,180 @@ test('table actions support keyboard dismissal; identity remains visible while s
   await scroller.evaluate(el => { el.scrollLeft = 500; });
   const identity = page.locator('tbody tr').first().locator('td').nth(1);
   const rect = await identity.boundingBox();
-  expect(rect!.x).toBeGreaterThanOrEqual(0);
-  expect(rect!.x + rect!.width).toBeLessThanOrEqual(390);
+  expect(rect!.x).toBeLessThan(0);
+  await expect(identity).toHaveCSS('position', 'static');
   await expect(page.getByRole('combobox', { name: 'Document type' })).toBeVisible();
+});
+
+test('Contracts mobile layout is justified without a visible breadcrumb, scroll hint or frozen identity', async ({ page }) => {
+  await page.getByRole('button', { name: /^Contracts(?: \d+)?$/ }).click();
+  await page.getByRole('button', { name: 'Add Contract', exact: true }).waitFor();
+  await page.evaluate(() => document.fonts.ready.then(() => true));
+  const actions = page.locator('.contracts-mobile-actions');
+  const filters = page.locator('.contracts-mobile-filters');
+  const desktop = await actions.evaluate(element => {
+    const css = getComputedStyle(element);
+    return { display: css.display, width: element.getBoundingClientRect().width, gap: css.gap };
+  });
+  for (const width of [320, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
+      const language = page.locator('header select:visible');
+      await expect(language).toHaveValue('EN');
+      expect(await language.evaluate(element => {
+        const css = getComputedStyle(element);
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d')!;
+        context.font = `${css.fontWeight} ${css.fontSize} ${css.fontFamily}`;
+        return element.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight) > context.measureText('EN').width;
+      })).toBe(true);
+      await expect(page.locator('.app-header > div:first-child > div')).toHaveCSS('clip-path', 'inset(50%)');
+      const buttons = await actions.locator('button').all();
+      const first = (await buttons[0].boundingBox())!;
+      const second = (await buttons[1].boundingBox())!;
+      expect(first.y).toBe(second.y);
+      expect(first.width).toBeCloseTo(second.width, 0);
+      const fields = await filters.locator(':scope > *').all();
+      const search = (await fields[0].boundingBox())!;
+      expect(search.width).toBeCloseTo((await filters.boundingBox())!.width, 0);
+      for (const [left, right] of [[1, 2], [3, 4]]) {
+        const a = (await fields[left].boundingBox())!;
+        const b = (await fields[right].boundingBox())!;
+        expect(a.y).toBe(b.y);
+        expect(a.width).toBeCloseTo(b.width, 0);
+      }
+      await expect(page.locator('.mobile-table-hint')).toBeHidden();
+      await expect(page.locator('tbody tr').first().locator('td').nth(1)).toHaveCSS('position', 'static');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+      if (width === 390 && dark) await page.screenshot({ path: test.info().outputPath('contracts-mobile-justified.png'), fullPage: true });
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expect.poll(() => actions.evaluate(element => {
+    const css = getComputedStyle(element);
+    return { display: css.display, width: element.getBoundingClientRect().width, gap: css.gap };
+  })).toEqual(desktop);
+  await expect(page.locator('.app-header h1')).toBeVisible();
+  await expect(filters).toHaveCSS('display', 'flex');
+});
+
+for (const section of ['Main Dashboard', 'Partners', 'Order Forms', 'Partner Spending', 'Partner Evaluation', 'Notifications', 'My Documents', 'Activity Logs', 'Import Data', 'Explorer']) {
+  test(`${section} shares justified mobile controls and scrollable tables`, async ({ page }) => {
+    if (section.startsWith('Partner ')) await page.getByRole('button', { name: 'Partners', exact: true }).click();
+    const navigation = section === 'Order Forms' ? /^(Order Forms|Service Orders)(?: \d+)?$/
+      : section === 'Notifications' ? /^Notifications(?: \d+)?$/
+      : section === 'Activity Logs' ? /^(Session )?Activity Logs$/
+      : section === 'Explorer' ? /^(Explorer|Explore|Document Structure)$/ : section;
+    await page.getByRole('button', { name: navigation, exact: true }).click();
+    await expect(page.locator('main')).toBeVisible();
+    if (section === 'Explorer') await page.getByRole('button', { name: 'Structure Audit', exact: true }).click();
+    if (section === 'Import Data') {
+      await page.locator('main input[type="file"]').setInputFiles({ name: 'mobile-preview.csv', mimeType: 'text/csv', buffer: Buffer.from('nama_partner,partner_channel,country\nFixture Partner,Procurement,ID\n') });
+      await expect(page.locator('main table')).toContainText('Fixture Partner');
+    }
+    const controls = page.locator('main .mobile-page-actions, main .mobile-filter-grid');
+    await expect(controls.first()).toBeVisible();
+    const desktop = await controls.evaluateAll(elements => elements.map(element => getComputedStyle(element).display));
+    for (const width of [320, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const dark of [false, true]) {
+        await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
+        for (const control of await controls.all()) {
+          await expect(control).toHaveCSS('display', 'grid');
+          const box = (await control.boundingBox())!;
+          for (const field of await control.locator(':scope > :visible:not(.sr-only)').all()) {
+            const bounds = (await field.boundingBox())!;
+            expect(bounds.x).toBeGreaterThanOrEqual(box.x - 1);
+            expect(bounds.x + bounds.width).toBeLessThanOrEqual(box.x + box.width + 1);
+          }
+        }
+        for (const table of await page.locator('main table:visible').all()) {
+          expect(await table.evaluate(element => getComputedStyle(element.parentElement!).overflowX)).toMatch(/auto|scroll/);
+          for (const cell of await table.locator('tbody tr:first-child > td:nth-child(-n+2)').all()) {
+            await expect(cell).not.toHaveCSS('position', 'sticky');
+          }
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+      }
+    }
+    await page.screenshot({ path: test.info().outputPath(`${section.replaceAll(' ', '-')}-mobile.png`), fullPage: true });
+    await page.setViewportSize({ width: 1280, height: 720 });
+    expect(await controls.evaluateAll(elements => elements.map(element => getComputedStyle(element).display))).toEqual(desktop);
+  });
+}
+
+test('all admin tabs keep mobile controls contained and tables scrollable', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.route('**/api/user/my-role*', route => route.fulfill({ json: { email: 'audit@example.com', name: 'UI Audit', role: 'Superuser' } }));
+  await page.route('**/api/rbac/me', route => route.fulfill({ json: { actor: { role: 'superuser' }, permissions: ['*'] } }));
+  await page.reload();
+  await page.getByRole('button', { name: 'System Admin', exact: true }).click();
+  await expect(page.getByRole('tablist', { name: 'System Admin' })).toBeVisible();
+  for (const tab of ['Dashboard', 'Users', 'Sessions', 'Organizations', 'Departments', 'Invitations', 'API Keys', 'RBAC Matrix']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.getByRole('tab', { name: new RegExp(`^${tab}(?: \\d+)?$`) }).click();
+    const panel = page.getByRole('tabpanel');
+    await expect(panel).toBeVisible();
+    for (const width of [320, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const control of await panel.locator('.mobile-controls-bar').all()) {
+        const box = (await control.boundingBox())!;
+        for (const field of await control.locator(':scope > :visible').all()) {
+          const bounds = (await field.boundingBox())!;
+          expect(bounds.x + bounds.width).toBeLessThanOrEqual(box.x + box.width + 1);
+        }
+      }
+      for (const table of await panel.locator('table:visible').all()) {
+        expect(await table.evaluate(element => getComputedStyle(element.parentElement!).overflowX)).toMatch(/auto|scroll/);
+        await expect(table.locator('th').first()).not.toHaveCSS('position', 'sticky');
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+    }
+    await page.screenshot({ path: test.info().outputPath(`admin-${tab.replaceAll(' ', '-')}-mobile.png`), fullPage: true });
+  }
+});
+
+test('all settings pages and UI text modal keep mobile controls contained', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.route('**/api/auth-console/sqlite/**', route => {
+    const path = new URL(route.request().url()).pathname;
+    const fixtures: Record<string, unknown> = {
+      '/api/auth-console/sqlite/status': { success: true, status: 'healthy', journalMode: 'wal', version: '3.50.0', fileSizeBytes: 4096, pageCount: 1, pageSize: 4096, modifiedAt: null, tablesCount: 1, totalRecords: 1, tableSummaries: { contracts: 1 } },
+      '/api/auth-console/sqlite/tables': { success: true, tables: [{ name: 'contracts', count: 1, columnsCount: 2 }] },
+      '/api/auth-console/sqlite/table-data': { success: true, table: 'contracts', columns: [{ cid: 0, name: 'id', type: 'TEXT', pk: 1 }, { cid: 1, name: 'title', type: 'TEXT', pk: 0 }], rows: [{ id: 'fixture-1', title: 'Fixture contract' }], total: 1, limit: 15, offset: 0 },
+    };
+    return route.fulfill({ json: fixtures[path] ?? {} });
+  });
+  await page.getByRole('button', { name: 'Settings', exact: true }).locator('..').getByRole('button', { name: 'Open Submenu', exact: true }).click();
+  for (const label of ['Organization & region', 'Google & Database', 'AI Model & Parser', 'Notification Recipients', 'UI Text & Localization', 'Security & Maintenance']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const link = page.getByRole('button', { name: label, exact: true });
+    await link.click();
+    await expect(page.locator('main')).toContainText(label);
+    if (label === 'Google & Database') await expect(page.locator('main table')).toContainText('Fixture contract');
+    for (const width of [320, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+      if (label === 'Google & Database') {
+        const search = page.locator('.mobile-search-form');
+        await expect(search.getByRole('textbox')).toBeVisible();
+        expect((await search.getByRole('textbox').boundingBox())!.width).toBeGreaterThan(80);
+        expect(await page.locator('main table').evaluate(element => getComputedStyle(element.parentElement!).overflowX)).toBe('auto');
+      }
+    }
+    if (label === 'UI Text & Localization') {
+      await page.getByRole('button', { name: 'Open UI Text Editor', exact: true }).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.locator('.mobile-page-actions')).toHaveCSS('display', 'grid');
+      expect(await dialog.locator('table').evaluate(element => getComputedStyle(element.parentElement!).overflowX)).toBe('auto');
+      await page.setViewportSize({ width: 320, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+      await page.screenshot({ path: test.info().outputPath('ui-text-mobile.png'), fullPage: true });
+      await page.keyboard.press('Escape');
+    }
+  }
 });
 
 for (const [section, add] of [['Partners', 'Add Partner'], ['Order Forms', 'Add Order Form'], ['Partner Spending', 'Add Spending'], ['Partner Evaluation', 'Add Evaluation']]) {
@@ -163,11 +447,103 @@ test('chart exposes every month, has theme colors and keeps dashboard checkboxes
     page.getByRole('group', { name: 'Reporting currency', exact: true }),
   ];
   const controlBoxes = await Promise.all(chartControls.map(control => control.boundingBox()));
-  expect(Math.max(...controlBoxes.map(box => box!.y)) - Math.min(...controlBoxes.map(box => box!.y))).toBeLessThan(2);
-  expect(Math.max(...controlBoxes.map(box => box!.height)) - Math.min(...controlBoxes.map(box => box!.height))).toBeLessThan(2);
+  expect(Math.abs(controlBoxes[0]!.y - controlBoxes[1]!.y)).toBeLessThan(2);
+  expect(controlBoxes[0]!.width).toBeCloseTo(controlBoxes[1]!.width, 0);
+  expect(controlBoxes[2]!.y).toBeGreaterThan(controlBoxes[0]!.y + controlBoxes[0]!.height);
+  expect(controlBoxes[2]!.width).toBeCloseTo((await page.locator('main .mobile-filter-grid').boundingBox())!.width, 0);
   const chart = page.locator('.recharts-responsive-container');
   const chartBox = await chart.boundingBox();
   expect(chartBox!.width).toBeLessThanOrEqual(358);
   expect(chartBox!.width).toBeGreaterThan(280);
   expect(chartBox!.height).toBeGreaterThanOrEqual(220);
+});
+
+for (const width of [1440, 390]) {
+  test(`document editor panels stay usable at ${width}px in both themes`, async ({ page }) => {
+    await page.route('**/api/metadata-fields', route => route.fulfill({ json: [] }));
+    await page.route('**/api/templates*', route => route.fulfill({ json: [] }));
+    await page.getByRole('button', { name: 'My Documents', exact: true }).click();
+    await page.getByRole('button', { name: 'New Document', exact: true }).first().click();
+    await page.getByRole('button', { name: 'Blank document', exact: true }).click();
+    await page.setViewportSize({ width, height: 900 });
+    if (width < 1024) {
+      await page.getByTitle(/Toggle.*Panel|Open.*Panel|Form.*Clause|Buka.*Panel/i).click();
+    }
+    const tabs = page.locator('.editor-panel-nav [role="tab"]');
+    await expect(tabs).toHaveCount(7);
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
+      for (const tab of await tabs.all()) {
+        await tab.click();
+        await expect(tab).toHaveAttribute('aria-selected', 'true');
+        const panel = page.locator('.editor-panel-content');
+        await expect(panel).toBeVisible();
+        expect(await panel.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+        for (const button of await panel.locator('button:visible').all()) {
+          expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(width < 1024 ? 44 : 36);
+        }
+      }
+      await expect(page.getByText('Select text in the document, then choose Comment or Suggest Change.', { exact: false })).toHaveCount(0);
+      await expect(page.getByText('AI reviews the whole document against', { exact: false })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'AI Redlining', exact: true })).toBeVisible();
+    }
+    await tabs.first().focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(tabs.nth(1)).toBeFocused();
+    await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+    await tabs.nth(3).click();
+    const slots = page.locator('.tiptap.ProseMirror [data-slot-key]');
+    const previousSlots = await slots.count();
+    const insert = page.getByRole('button', { name: /^Insert field:/ }).first();
+    await insert.focus();
+    await page.keyboard.press('Enter');
+    await expect(slots).toHaveCount(previousSlots + 1);
+    await tabs.last().click();
+    await page.screenshot({ path: `/tmp/editor-panels-${width}.png` });
+  });
+}
+
+test('Parties panel selects a registered partner and edits both agreement parties', async ({ page }) => {
+  await page.route('**/api/templates*', route => route.fulfill({ json: [] }));
+  await page.getByRole('button', { name: 'My Documents', exact: true }).click();
+  await page.getByRole('button', { name: 'New Document', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Blank document', exact: true }).click();
+  await page.getByRole('tab', { name: 'Parties', exact: true }).click();
+
+  await expect(page.getByRole('heading', { name: 'Parties', exact: true })).toBeVisible();
+  const partnerSelect = page.getByRole('combobox', { name: 'Select Existing Partner', exact: true });
+  expect(await partnerSelect.evaluate(element => element.closest('details')?.textContent?.includes('Second Party'))).toBe(true);
+  await partnerSelect.selectOption({ index: 1 });
+
+  const secondPartyName = page.getByRole('textbox', { name: 'Second Party Company Name', exact: true });
+  const firstPartyName = page.getByRole('textbox', { name: 'First Party Company Name', exact: true });
+  await expect(secondPartyName).toHaveValue(/PT Mitra Nusantara/);
+  await expect(firstPartyName).not.toHaveValue('');
+
+  await secondPartyName.fill('Edited Second Party Ltd.');
+  await firstPartyName.fill('Edited First Party Ltd.');
+  const editor = page.locator('.tiptap.ProseMirror:visible');
+  await expect(editor).toContainText('Edited Second Party Ltd.');
+  await expect(editor).toContainText('Edited First Party Ltd.');
+
+  const secondPartySection = page.locator('details').filter({ hasText: 'Second Party' }).first();
+  await secondPartySection.locator('summary').click();
+  await expect(secondPartyName).toBeHidden();
+  await secondPartySection.locator('summary').click();
+  await expect(secondPartyName).toBeVisible();
+  await page.locator('.editor-panel-content').evaluate(element => element.scrollTo({ top: 0 }));
+  await page.screenshot({ path: '/tmp/document-editor-parties-1440.png' });
+
+  for (const width of [768, 375]) {
+    await page.setViewportSize({ width, height: 900 });
+    const dialog = page.getByRole('dialog');
+    if (!(await dialog.isVisible())) {
+      await page.getByTitle(/Toggle.*Panel|Open.*Panel|Form.*Clause|Buka.*Panel/i).click();
+    }
+    await expect(dialog.getByRole('heading', { name: 'Parties', exact: true })).toBeVisible();
+    const panel = dialog.locator('.editor-panel-content');
+    expect(await panel.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await panel.evaluate(element => element.scrollTo({ top: 0 }));
+    await page.screenshot({ path: `/tmp/document-editor-parties-${width}.png` });
+  }
 });

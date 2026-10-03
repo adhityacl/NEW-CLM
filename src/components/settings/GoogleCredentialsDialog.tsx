@@ -179,12 +179,12 @@ export const GoogleCredentialsDialog: React.FC<GoogleCredentialsDialogProps> = (
         </p>
 
         {isSa && info.source && (
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('google_setup.sa_share_hint', 'Bagikan folder Drive dan spreadsheet ke email service account di atas sebagai Editor.')}
           </p>
         )}
         {originMissing && (
-          <p role="status" className="text-[11px] rounded-lg bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200 p-2">
+          <p role="status" className="text-xs rounded-lg bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200 p-2">
             {t(
               'google_setup.origin_missing',
               'Origin aplikasi ini ({origin}) belum ada di "Authorized JavaScript origins" OAuth client (terdaftar: {list}). Tambahkan di Google Cloud Console, lalu unduh & unggah ulang file ini.',
@@ -208,7 +208,7 @@ export const GoogleCredentialsDialog: React.FC<GoogleCredentialsDialogProps> = (
           />
           <label
             htmlFor={inputId}
-            className="inline-flex items-center gap-1.5 px-3 min-h-11 rounded-lg bg-[#04803D] hover:bg-[#05a847] text-white text-xs font-bold cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-2 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-3 min-h-11 rounded-lg bg-accent-strong hover:bg-[#05a847] text-white text-xs font-bold cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-2 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
           >
             <Upload className="w-3.5 h-3.5" aria-hidden />
             {busy === kind
@@ -217,7 +217,7 @@ export const GoogleCredentialsDialog: React.FC<GoogleCredentialsDialogProps> = (
                 ? t('google_setup.replace', 'Ganti file')
                 : t('google_setup.choose', 'Pilih file JSON')}
           </label>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">{t('google_setup.drop_hint', 'atau seret file ke kotak ini')}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{t('google_setup.drop_hint', 'atau seret file ke kotak ini')}</span>
           {info.source === 'upload' && (
             <button
               type="button"

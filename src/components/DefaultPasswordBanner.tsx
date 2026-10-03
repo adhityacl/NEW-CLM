@@ -10,6 +10,13 @@ import { GoogleCredentialsDialog } from './settings/GoogleCredentialsDialog';
 interface DefaultPasswordBannerProps {
   /** Opens the user administration screen, for changing other accounts. */
   onOpenSecurity: () => void;
+  /**
+   * Whether the Google setup reminder belongs on the current page. It is a
+   * one-time setup task, so it only shows where it is acted on (dashboard and
+   * settings) instead of costing vertical space on every list. The default
+   * password warning ignores this and always shows.
+   */
+  showGoogleSetup?: boolean;
 }
 
 type SaveState =
@@ -25,7 +32,7 @@ const MIN_PASSWORD_LENGTH = 8;
  * aren't uploaded yet, or while an install upgraded from an older release still
  * uses the old shipped admin password. Hidden for everyone else.
  */
-export const DefaultPasswordBanner: React.FC<DefaultPasswordBannerProps> = ({ onOpenSecurity }) => {
+export const DefaultPasswordBanner: React.FC<DefaultPasswordBannerProps> = ({ onOpenSecurity, showGoogleSetup = true }) => {
   const { t } = useLanguage();
   const [passwordActive, setPasswordActive] = useState(false);
   const [googleIncomplete, setGoogleIncomplete] = useState(false);
@@ -52,7 +59,7 @@ export const DefaultPasswordBanner: React.FC<DefaultPasswordBannerProps> = ({ on
     refresh();
   }, []);
 
-  if (!passwordActive && !googleIncomplete) return null;
+  if (!passwordActive && !(googleIncomplete && showGoogleSetup)) return null;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -87,21 +94,28 @@ export const DefaultPasswordBanner: React.FC<DefaultPasswordBannerProps> = ({ on
 
   return (
     <div
-      role="alert"
-      className="mb-5 flex flex-col gap-3 rounded-2xl border border-amber-400/60 bg-amber-50 p-4 text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/40 dark:text-amber-200 sm:flex-row sm:items-center"
+      role={passwordActive ? 'alert' : 'status'}
+      className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-400/60 bg-amber-50 p-3 text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/40 dark:text-amber-200"
     >
       <ShieldAlert className="h-5 w-5 shrink-0" aria-hidden="true" />
-      <p className="flex-1 text-sm">
-        {passwordActive
-          ? t(
+      {passwordActive ? (
+        <p className="min-w-48 flex-1 text-sm">
+          {t(
               'security.default_password_warning',
               'You are signed in with the default administrator password. Change it before using this workspace with real data.',
-            )
-          : t(
+            )}
+        </p>
+      ) : (
+        <details className="min-w-28 flex-1 text-sm">
+          <summary className="min-h-11 cursor-pointer content-center font-semibold">
+            {t('google_setup.summary', 'Penyiapan Google')}
+          </summary>
+          <p className="mt-2 leading-relaxed">{t(
               'google_setup.finish_setup',
               'Finish setup: upload your Google Service Account and OAuth Client JSON files to enable Drive, Sheets and Google sign-in.',
-            )}
-      </p>
+            )}</p>
+        </details>
+      )}
       <div className="flex flex-wrap gap-2">
         {passwordActive && (
           <Dialog.Root open={open} onOpenChange={(value) => { setOpen(value); if (!value) setState({ kind: 'idle' }); }}>
@@ -170,17 +184,19 @@ export const DefaultPasswordBanner: React.FC<DefaultPasswordBannerProps> = ({ on
             </Dialog.Portal>
           </Dialog.Root>
         )}
-        <Button type="button" size="sm" className="min-h-11" onClick={onOpenSecurity}>
+        {passwordActive && <Button type="button" size="sm" className="min-h-11" onClick={onOpenSecurity}>
           {t('security.manage_users', 'Manage users')}
-        </Button>
-        <GoogleCredentialsDialog
-          onClose={refresh}
-          trigger={
-            <Button type="button" size="sm" className="min-h-11">
-              {t('google_setup.button', 'Hubungkan Google')}
-            </Button>
-          }
-        />
+        </Button>}
+        {googleIncomplete && showGoogleSetup && (
+          <GoogleCredentialsDialog
+            onClose={refresh}
+            trigger={
+              <Button type="button" size="sm" className="min-h-11">
+                {t('google_setup.button', 'Hubungkan Google')}
+              </Button>
+            }
+          />
+        )}
       </div>
     </div>
   );

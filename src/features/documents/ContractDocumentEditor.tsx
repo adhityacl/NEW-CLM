@@ -28,7 +28,6 @@ import {
   ZoomOut,
   Shield,
   FileText,
-  UserCheck,
   Edit3,
   Download,
   Building2,
@@ -39,9 +38,6 @@ import {
   Check,
   ExternalLink,
   Trash2,
-  MapPin,
-  User,
-  Briefcase,
   FolderOpen,
   ListChecks,
   ArrowLeft,
@@ -50,6 +46,7 @@ import {
   MessageSquare,
   Maximize2,
   Minimize2,
+  X,
 } from 'lucide-react';
 import { ContentIcon } from '../../components/icons/ContentIcon';
 import { GridDotsIcon } from '../../components/icons/GridDotsIcon';
@@ -67,6 +64,7 @@ import { documentsApi, errorMessage } from '../../lib/documentsApi';
 import { formatDateTime, type DocumentComment, type DocumentDetail, type DocumentStatus, type DocumentType } from '../../lib/documentModel';
 import { diffParagraphs, htmlToParagraphs, type DiffPart } from '../../lib/paragraphDiff';
 import { DocumentExplorer } from '../../components/documents/DocumentExplorer';
+import { NewDocumentDialog, type NewDocumentChoice } from '../../components/documents/NewDocumentDialog';
 import { DraftHistoryPanel } from '../../components/documents/DraftHistoryPanel';
 import { DocumentInfoPanel } from '../../components/documents/DocumentInfoPanel';
 import { CommentsPanel } from '../../components/documents/CommentsPanel';
@@ -85,6 +83,8 @@ import { TableSelectionOverlay } from '../../components/editor/TableSelectionOve
 
 export interface ContractCreatorViewProps {
   initialDocumentId?: string | null;
+  /** Starting point picked in the New document dialog; null/undefined = blank document. */
+  initialTemplate?: NewDocumentChoice;
   partners: Partner[];
   contracts: Contract[];
   onSaveToSystem: (contractData: Partial<Contract>) => Promise<void>;
@@ -270,6 +270,41 @@ const INITIAL_FIELD_VALUES: Record<string, string> = {
   partnerEmail: '',
 };
 
+const FIRST_PARTY_FIELD_KEYS = [
+  'firstPartyName',
+  'firstPartyAlias',
+  'firstPartyAddress',
+  'firstPartyPic',
+  'firstPartyPosition',
+  'firstPartyEmail',
+  'firstPartyBusinessDesc',
+] as const;
+
+const SECOND_PARTY_FIELD_KEYS = [
+  'partnerName',
+  'partnerAlias',
+  'partnerAddress',
+  'partnerPic',
+  'partnerPosition',
+  'partnerEmail',
+  'partnerBusinessDesc',
+] as const;
+
+type PartyFieldKey = (typeof FIRST_PARTY_FIELD_KEYS)[number] | (typeof SECOND_PARTY_FIELD_KEYS)[number];
+
+function getFillableSlotValues(editor: Editor | null): Record<string, string> {
+  if (!editor) return {};
+  const values: Record<string, string> = {};
+  editor.state.doc.descendants((node) => {
+    if (node.type.name !== 'fillableSlot') return true;
+    const key = node.attrs.slotKey as string;
+    const value = node.textContent.trim();
+    if (key && values[key] === undefined && value && value !== '...' && !value.startsWith('[')) values[key] = value;
+    return true;
+  });
+  return values;
+}
+
 const AUTOSAVE_INTERVAL_MS = 30_000;
 
 type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
@@ -288,6 +323,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
   onSaveToSystem,
   onNavigateToContracts,
   initialDocumentId,
+  initialTemplate,
 }) => {
   const queryClient = useQueryClient();
   const { t, language } = useLanguage();
@@ -357,7 +393,12 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
   const [charCount, setCharCount] = useState(0);
 
   // Fillable slot field values state - dynamically initialized with activeTenant
-  const [fieldValues, setFieldValues] = useState<Record<string, string>>(INITIAL_FIELD_VALUES);
+  const defaultPartyFieldValues = () => ({
+    ...INITIAL_FIELD_VALUES,
+    firstPartyName: tenantEntityName,
+    firstPartyAlias: tenantBrand,
+  });
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>(defaultPartyFieldValues);
 
   // Kept in sync with fieldValues via effect below; lets the editor's drop handler
   // (created once by useEditor) always read the latest values without forcing a
@@ -475,7 +516,6 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
   const [aiTemplatePrompt, setAiTemplatePrompt] = useState('');
   const [isGeneratingAiTemplate, setIsGeneratingAiTemplate] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
-  const [isCustomTemplateActive, setIsCustomTemplateActive] = useState(false);
   // True once the initial template-library fetch has settled (success,
   // empty, or error) — distinct from `savedTemplates.length === 0`, which
   // is also true for the split second before the fetch has even started.
@@ -600,7 +640,6 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
 
       const html = assembleAiTemplateHtml(data.title, data.sections, data.fields);
       editor?.commands.setContent(html);
-      setIsCustomTemplateActive(true);
       setCustomFields((prev) =>
         mergeTemplateCustomFields(
           prev,
@@ -813,28 +852,24 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
     setCurrentDoc(doc);
   };
 
-  /**
-   * New documents start from the first entry of the template library (not the built-in
-   * 15-article agreement, which stays behind "Reset Template"); blank if the library is empty.
-   */
-  const resetToNewDocument = () => {
+  /** Starts a new document from the template picked in the New document dialog, or blank. */
+  const resetToNewDocument = (template: NewDocumentChoice = null) => {
     if (!editor) return;
-    const template = savedTemplates[0];
     editor.commands.setContent(template?.contentId ?? '');
-    setIsCustomTemplateActive(Boolean(template));
     if (template) {
       setCustomFields((prev) =>
         mergeTemplateCustomFields(prev, template.customFields, template.contentId, BUILT_IN_FIELD_KEYS, recoveredFieldDescription),
       );
     }
+    const title = template?.name || defaultDocTitle;
     setDocument(null);
-    setDocTitle(defaultDocTitle);
+    setDocTitle(title);
     setContractNumber('');
-    setFieldValues(INITIAL_FIELD_VALUES);
+    setFieldValues({ ...defaultPartyFieldValues(), ...getFillableSlotValues(editor) });
     setPreviewOverride(null);
     setViewMode('editor');
     setSaveState({ status: 'idle' });
-    markClean(defaultDocTitle);
+    markClean(title);
     updateStats();
   };
 
@@ -842,11 +877,10 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
     if (!editor) return;
     editor.commands.setContent(doc.content || '');
     setCustomFields((prev) => mergeTemplateCustomFields(prev, undefined, doc.content, BUILT_IN_FIELD_KEYS, recoveredFieldDescription));
-    setIsCustomTemplateActive(true);
     setDocument(doc);
     setDocTitle(doc.name);
     setContractNumber('');
-    setFieldValues(INITIAL_FIELD_VALUES);
+    setFieldValues({ ...defaultPartyFieldValues(), ...getFillableSlotValues(editor) });
     setPreviewOverride(null);
     setViewMode('editor');
     setSaveState({ status: 'idle' });
@@ -860,7 +894,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
     if (!editor || !templatesReady || baselineRef.current) return;
     if (initialDocumentId) void openDocument(initialDocumentId);
     else {
-      resetToNewDocument();
+      resetToNewDocument(initialTemplate ?? null);
       setScreen('editor');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -952,8 +986,10 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
     if (screen === 'editor') titleInputRef.current?.focus({ preventScroll: true });
   }, [screen]);
 
-  const startNewDocument = () => {
-    resetToNewDocument();
+  const [showNewDocumentDialog, setShowNewDocumentDialog] = useState(false);
+  const startNewDocument = (template: NewDocumentChoice) => {
+    setShowNewDocumentDialog(false);
+    resetToNewDocument(template);
     setScreen('editor');
   };
 
@@ -1037,7 +1073,6 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
     if (await confirmDialog(confirmMsg)) {
       if (editor) {
         editor.commands.setContent(tpl.contentId);
-        setIsCustomTemplateActive(true);
         // Bring this template's own custom field definitions along (and, for
         // templates saved before this existed, recover a generic definition
         // for any fillable-slot the content has that isn't otherwise known) —
@@ -1130,7 +1165,6 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
       })
     ) {
       renderTemplateToEditor(fieldValues, contractNumber);
-      setIsCustomTemplateActive(false);
       setExportMessage({
         type: 'info',
         text: t('contract_creator.msg.reset_done', 'Template 15 Pasal Perjanjian Kerjasama berhasil direset ke kondisi awal.'),
@@ -1296,10 +1330,9 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
 
   // Fields panel: only built-in/custom fields whose slot is actually in the document, ordered
   // the way they appear there (not the fixed definition order).
-  const orderedBuiltInKeys = orderedSlotKeys.filter((key) => key === 'contractNo' || BUILT_IN_FIELD_KEYS.has(key));
-  const orderedCustomFields = orderedSlotKeys
-    .map((key) => customFields.find((f) => f.key === key))
-    .filter((f): f is (typeof customFields)[number] => Boolean(f));
+  const panelFieldKeys = orderedSlotKeys.filter(
+    (key) => key === 'contractNo' || BUILT_IN_FIELD_KEYS.has(key) || customFields.some((f) => f.key === key),
+  );
 
   const saveStatus =
     saveState.status === 'saving' ? (
@@ -1329,7 +1362,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
 
   const sidebarTabs = [
     { id: 'fields', label: t('contract_creator.tab.fields', 'Kolom Isian'), icon: ListChecks },
-    { id: 'partners', label: t('contract_creator.tab.partners', 'Mitra'), icon: Building2 },
+    { id: 'partners', label: t('contract_creator.tab.partners', 'Parties'), icon: Building2 },
     { id: 'templates', label: t('contract_creator.tab.templates', 'Template'), icon: FolderOpen },
     { id: 'contents', label: t('contract_creator.tab.contents', 'Konten'), icon: ContentIcon },
     { id: 'history', label: t('documents.tab.history', 'Riwayat'), icon: History },
@@ -1337,6 +1370,42 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
     { id: 'comments', label: t('documents.tab.comments', 'Komentar'), icon: MessageSquare },
   ] as const;
   const activeSidebarTab = sidebarTabs.find((tab) => tab.id === sidebarTab) ?? sidebarTabs[0];
+
+  const renderPartyFields = (keys: readonly PartyFieldKey[]) => (
+    <div className="grid gap-3">
+      {keys.map((key) => {
+        const field = COOPERATION_AGREEMENT_FIELDS.find((item) => item.key === key);
+        if (!field) return null;
+        const inputId = `${panelIdPrefix}-party-${key}`;
+        const value = fieldValues[key] || '';
+        const label = t(`contract_creator.field.${key}.label`, field.label);
+        const placeholder = t(`contract_creator.field.${key}.placeholder`, field.placeholder);
+        const sharedProps = {
+          id: inputId,
+          value,
+          disabled: !canEdit,
+          placeholder,
+          onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+            handleFieldValueChange(key, event.target.value),
+          className:
+            'w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-400',
+        };
+
+        return (
+          <div key={key} className="space-y-1.5">
+            <label htmlFor={inputId} className="block text-xs font-semibold text-slate-700 dark:text-slate-200">
+              {label}
+            </label>
+            {field.type === 'textarea' ? (
+              <textarea {...sharedProps} rows={3} />
+            ) : (
+              <input {...sharedProps} type={key.endsWith('Email') ? 'email' : 'text'} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   // Vertical tabs per the WAI-ARIA tabs pattern: arrows/Home/End move and activate, one tab stop.
   const handleSidebarTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -1361,7 +1430,10 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
       }`}
     >
       {screen === 'explorer' && (
-        <DocumentExplorer canEdit={canEdit} canDelete={canEdit} onOpen={openDocument} onCreate={startNewDocument} />
+        <DocumentExplorer canEdit={canEdit} canDelete={canEdit} onOpen={openDocument} onCreate={() => setShowNewDocumentDialog(true)} />
+      )}
+      {showNewDocumentDialog && (
+        <NewDocumentDialog onSelect={startNewDocument} onClose={() => setShowNewDocumentDialog(false)} />
       )}
 
       {/* The editor stays mounted (hidden) while the explorer is shown so TipTap keeps its state. */}
@@ -1382,7 +1454,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
           >
             <ArrowLeft className="w-4 h-4" aria-hidden />
           </button>
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-[#06C755] flex items-center justify-center shrink-0 border border-emerald-500/20">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-accent-text flex items-center justify-center shrink-0 border border-emerald-500/20">
             <FileSignature className="w-4 h-4" />
           </div>
           <div className="min-w-0 flex-1 flex flex-col">
@@ -1402,7 +1474,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
               title={t('contract_creator.title_input_title', 'Klik untuk mengubah judul dokumen')}
               placeholder={t('contract_creator.title_input_placeholder', 'Judul Dokumen Perjanjian')}
             />
-            <p className="px-1 text-[10px] text-slate-500 dark:text-slate-400 inline-flex items-center gap-1 flex-wrap" aria-live="polite">
+            <p className="px-1 text-xs text-slate-500 dark:text-slate-400 inline-flex items-center gap-1 flex-wrap" aria-live="polite">
               {saveStatus}
             </p>
           </div>
@@ -1459,7 +1531,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
             type="button"
             onClick={handleDownloadIndonesianDocx}
             disabled={isDownloadingDocx}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#04803D] hover:bg-[#036B33] text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-accent-strong hover:bg-accent-strong-hover text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
             title={t('contract_creator.download_title', 'Download file Word (.doc)')}
           >
             {isDownloadingDocx ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
@@ -1484,7 +1556,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={`p-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer ml-1 ${
               sidebarOpen
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-[#06C755] border-emerald-300 dark:border-emerald-800'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-accent-text border-emerald-300 dark:border-emerald-800'
                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
             }`}
             title={t('contract_creator.sidebar_toggle_title', 'Buka / Tutup Panel Pintasan Form & Klausul')}
@@ -1659,7 +1731,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
               role="tablist"
               aria-orientation="vertical"
               aria-label={t('contract_creator.panel_title', 'Panel Asisten Kontrak')}
-              className="w-14 sm:w-12 shrink-0 flex flex-col items-center gap-1.5 py-3 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              className="editor-panel-nav w-14 shrink-0 flex flex-col items-center gap-1.5 py-3 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
             >
               {sidebarTabs.map((tab, index) => {
                 const Icon = tab.icon;
@@ -1677,9 +1749,9 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                     tabIndex={isActive ? 0 : -1}
                     onClick={() => setSidebarTab(tab.id)}
                     onKeyDown={(e) => handleSidebarTabKeyDown(e, index)}
-                    className={`inline-flex items-center justify-center h-11 w-11 sm:h-9 sm:w-9 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06C755]/60 ${
+                    className={`inline-flex items-center justify-center h-11 w-11 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
                       isActive
-                        ? 'bg-emerald-50 text-[#06C755] dark:bg-emerald-950/50 dark:text-emerald-400'
+                        ? 'bg-emerald-50 text-accent-text dark:bg-emerald-950/50 dark:text-emerald-400'
                         : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800'
                     }`}
                   >
@@ -1689,11 +1761,16 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
               })}
             </div>
 
-            <div className="flex-1 min-w-0 flex flex-col">
-            <div className="h-12 shrink-0 px-4 flex items-center border-b border-slate-200 dark:border-slate-800">
-              <h2 id={`${panelIdPrefix}-title`} className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+            <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+            <div className="editor-panel-header min-h-16 shrink-0 px-4 gap-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+              <h2 id={`${panelIdPrefix}-title`} className="text-base font-semibold text-slate-900 dark:text-slate-100">
                 {activeSidebarTab.label}
               </h2>
+              <button type="button" onClick={() => setSidebarOpen(false)}
+                className="hidden lg:inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 cursor-pointer"
+                aria-label={t('common.close', 'Close')}>
+                <X className="h-4 w-4" aria-hidden />
+              </button>
             </div>
 
             <div
@@ -1701,7 +1778,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
               role="tabpanel"
               aria-labelledby={`${panelIdPrefix}-tab-${activeSidebarTab.id}`}
               tabIndex={0}
-              className="flex-1 overflow-y-auto p-3 space-y-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#06C755]/40"
+              className="editor-panel-content flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
             >
 
               {sidebarTab === 'history' && (
@@ -1740,20 +1817,29 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
 
               {/* TAB 1: QUICK FILL FORM (Baris yang harus diisi) */}
               {sidebarTab === 'fields' && (
-                <div className="space-y-2.5">
-                  {/* Contract Number Field — only shown while its slot is actually in the document */}
-                  {orderedBuiltInKeys.includes('contractNo') && (
+                <div className="space-y-2">
+                  {panelFieldKeys.length === 0 && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-4">
+                      {t('contract_creator.fields_empty', 'Belum ada kolom isian yang dimasukkan ke dokumen ini.')}
+                    </p>
+                  )}
+
+                  {/* Every fillable slot in the document — built-in and custom alike — in the order it appears there */}
+                  {panelFieldKeys.map((key) => {
+                    if (key === 'contractNo') {
+                      return (
+                    <React.Fragment key="contractNo">
                     <div
-                      className="space-y-1 p-2 rounded-lg border border-slate-200/80 dark:border-slate-800 hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-colors bg-white dark:bg-slate-900"
+                      className="editor-panel-card editor-field-card space-y-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-colors bg-white dark:bg-slate-900"
                       title={t('contract_creator.field.contract_no.title', 'Nomor referensi atau nomor surat resmi perjanjian kerjasama')}
                     >
                       <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        <label htmlFor={`${panelIdPrefix}-contract-number`} className="text-xs font-bold text-slate-700 dark:text-slate-300">
                           {t('contract_creator.field.contract_no.label', 'Nomor Perjanjian Kerjasama')}
                         </label>
                         <div className="flex items-center gap-1">
                           {contractNumber && contractNumber.trim() && !contractNumber.startsWith('[') && (
-                            <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                            <span className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
                               <Check className="w-3 h-3" /> {t('contract_creator.filled_badge', 'Terisi')}
                             </span>
                           )}
@@ -1770,6 +1856,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                       </div>
                       <input
                         type="text"
+                        id={`${panelIdPrefix}-contract-number`}
                         value={contractNumber}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -1780,20 +1867,12 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                         placeholder={defaultContractNo}
                       />
                     </div>
-                  )}
-
-                  {orderedBuiltInKeys.length === 0 && orderedCustomFields.length === 0 && (
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center py-4">
-                      {t('contract_creator.fields_empty', 'Belum ada kolom isian yang dimasukkan ke dokumen ini.')}
-                    </p>
-                  )}
-
-                  {/* Fillable slots present in the document, in document order */}
-                  {orderedBuiltInKeys
-                    .filter((key) => key !== 'contractNo')
-                    .map((key) => {
-                    const field = COOPERATION_AGREEMENT_FIELDS.find((f) => f.key === key);
-                    if (!field) return null;
+                    </React.Fragment>
+                      );
+                    }
+                    const builtInField = COOPERATION_AGREEMENT_FIELDS.find((f) => f.key === key);
+                    if (builtInField) {
+                    const field = builtInField;
                     const currentVal = fieldValues[field.key] || '';
                     const isFilled = currentVal && currentVal.trim() && !currentVal.startsWith('[');
                     const fieldLabel = t(`contract_creator.field.${field.key}.label`, field.label);
@@ -1803,16 +1882,16 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                     return (
                       <div
                         key={field.key}
-                        className="space-y-1 p-2 rounded-lg border border-slate-200/80 dark:border-slate-800 hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-colors bg-white dark:bg-slate-900"
+                        className="editor-panel-card editor-field-card space-y-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-colors bg-white dark:bg-slate-900"
                         title={fieldDescription}
                       >
                         <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                          <label htmlFor={`${panelIdPrefix}-field-${field.key}`} className="text-xs font-bold text-slate-700 dark:text-slate-300">
                             {fieldLabel}
                           </label>
                           <div className="flex items-center gap-1">
                             {isFilled && (
-                              <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                              <span className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
                                 <Check className="w-3 h-3" /> {t('contract_creator.filled_badge', 'Terisi')}
                               </span>
                             )}
@@ -1831,6 +1910,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                         {field.type === 'textarea' ? (
                           <textarea
                             rows={2}
+                            id={`${panelIdPrefix}-field-${field.key}`}
                             value={currentVal}
                             onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
                             placeholder={fieldPlaceholder}
@@ -1839,6 +1919,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                         ) : (
                           <input
                             type="text"
+                            id={`${panelIdPrefix}-field-${field.key}`}
                             value={currentVal}
                             onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
                             placeholder={fieldPlaceholder}
@@ -1847,40 +1928,26 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                         )}
                       </div>
                     );
-                  })}
-
-                  {/* Render Custom Fields in Fields tab — only ones actually present in the document, in document order */}
-                  {orderedCustomFields.length > 0 && (
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
-                      <div className="flex items-center justify-between px-1">
-                        <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">{t('contract_creator.custom_fields_section_title', 'Kolom Isian Kustom Anda')}</span>
-                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded uppercase">
-                          {t('contract_creator.custom_badge', 'Kustom')} ({orderedCustomFields.length})
-                        </span>
-                      </div>
-
-                      {orderedCustomFields.map((field) => {
+                    }
+                    const field = customFields.find((f) => f.key === key);
+                    if (!field) return null;
                         const currentVal = fieldValues[field.key] || '';
                         const isFilled = currentVal && currentVal.trim() && !currentVal.startsWith('[');
 
                         return (
                           <div
                             key={field.key}
-                            className="space-y-1 p-2 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-800 hover:border-emerald-500 transition-colors bg-emerald-50/5 dark:bg-emerald-950/5"
+                            className="editor-panel-card editor-field-card space-y-1.5 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-800 hover:border-emerald-500 transition-colors bg-emerald-50/5 dark:bg-emerald-950/5"
                             title={field.description}
                           >
                             <div className="flex items-center justify-between">
-                              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate max-w-[150px]">
+                              <label htmlFor={`${panelIdPrefix}-field-${field.key}`} className="text-xs font-bold text-slate-700 dark:text-slate-300 min-w-0 flex-1">
                                 {field.label}
                               </label>
                               <div className="flex items-center gap-1">
-                                {isFilled ? (
-                                  <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                                {isFilled && (
+                                  <span className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
                                     <Check className="w-3 h-3" /> {t('contract_creator.filled_badge', 'Terisi')}
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.5 rounded">
-                                    {t('contract_creator.optional_badge', 'Opsional')}
                                   </span>
                                 )}
                                 <button
@@ -1921,14 +1988,16 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                             {field.type === 'textarea' ? (
                               <textarea
                                 rows={2}
-                                value={currentVal}
+                                id={`${panelIdPrefix}-field-${field.key}`}
+                            value={currentVal}
                                 onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
                                 placeholder={field.placeholder}
                                 className="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                               />
                             ) : field.type === 'select' ? (
                               <AlphabeticalSelect
-                                value={currentVal}
+                                id={`${panelIdPrefix}-field-${field.key}`}
+                            value={currentVal}
                                 onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
                                 className="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                               >
@@ -1938,12 +2007,13 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                                 ))}
                               </AlphabeticalSelect>
                             ) : field.type === 'boolean' ? (
-                              <div className="flex gap-1.5">
+                              <div role="group" id={`${panelIdPrefix}-field-${field.key}`} aria-label={field.label} className="flex gap-1.5">
                                 {[t('contract_creator.field.boolean_yes', 'Yes'), t('contract_creator.field.boolean_no', 'No')].map((opt) => (
                                   <button
                                     key={opt}
                                     type="button"
                                     onClick={() => handleFieldValueChange(field.key, opt)}
+                                    aria-pressed={currentVal === opt}
                                     className={`flex-1 text-xs font-semibold rounded-lg py-1.5 transition-colors cursor-pointer ${
                                       currentVal === opt
                                         ? 'bg-emerald-600 text-white'
@@ -1957,7 +2027,8 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                             ) : (
                               <input
                                 type={field.type === 'email' ? 'email' : 'text'}
-                                value={currentVal}
+                                id={`${panelIdPrefix}-field-${field.key}`}
+                            value={currentVal}
                                 onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
                                 placeholder={field.placeholder}
                                 className="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -1965,69 +2036,100 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                             )}
                           </div>
                         );
-                      })}
-                    </div>
-                  )}
+                  })}
                 </div>
               )}
 
-              {/* TAB 2: PARTNERS AUTO-FILL */}
+              {/* TAB 2: AGREEMENT PARTIES */}
               {sidebarTab === 'partners' && (
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <label
-                      className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5"
-                      title={t('contract_creator.partners.select_label_title', 'Mengisi otomatis nama badan hukum, domisili kantor, direktur penandatangan, dan email resmi ke seluruh pasal perjanjian')}
-                    >
-                      <UserCheck className="w-3.5 h-3.5 text-[#06C755]" />
-                      {t('contract_creator.partners.select_label', 'Pilih Mitra Terdaftar (Auto-Fill)')}
-                    </label>
-
-                    <AlphabeticalSelect
-                      value={selectedPartnerId}
-                      onChange={(e) => {
-                        const id = e.target.value;
-                        setSelectedPartnerId(id);
-                        const p = partners.find((item) => item.partner_id === id);
-                        if (p) handleApplyPartner(p);
-                      }}
-                      className="w-full text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    >
-                      <option value="">{t('contract_creator.partners.select_placeholder', '-- Pilih dari Mitra Terdaftar --')}</option>
-                      {partners.map((p) => (
-                        <option key={p.partner_id} value={p.partner_id}>
-                          {p.nama_partner} ({p.partner_id})
-                        </option>
-                      ))}
-                    </AlphabeticalSelect>
-                  </div>
-
-                  {selectedPartner && (
-                    <div className="p-3 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-300 space-y-1.5">
-                      <div className="font-bold text-sm">{selectedPartner.nama_partner}</div>
-                      <div className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                        <MapPin className="w-3 h-3 mt-0.5 shrink-0 text-slate-400" />
-                        <span>{selectedPartner.alamat_pic || (selectedPartner as any).alamat || t('contract_creator.partners.default_address', 'Alamat Terdaftar')}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                        <User className="w-3 h-3 shrink-0 text-slate-400" />
-                        <span><strong>{selectedPartner.nama_pic || selectedPartner.pic_partner}</strong></span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                        <Briefcase className="w-3 h-3 shrink-0 text-slate-400" />
-                        <span><strong>{(selectedPartner as any).pic_position || t('contract_creator.partners.default_position', 'Direktur')}</strong></span>
-                      </div>
-                      <div className="pt-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleApplyPartner(selectedPartner)}
-                          className="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                <div className="space-y-4">
+                  <details open className="editor-panel-card group border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                    <summary className="flex min-w-0 cursor-pointer list-none items-center justify-between gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-text">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Building2 className="h-4 w-4 shrink-0 text-accent-text" aria-hidden />
+                        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {t('contract_creator.parties.second_party', 'Second Party')}
+                        </span>
+                      </span>
+                      <span className="text-xs font-semibold text-accent-text group-open:hidden">{t('contract_creator.parties.edit', 'Edit')}</span>
+                      <span className="hidden text-xs font-semibold text-slate-500 group-open:inline dark:text-slate-400">{t('contract_creator.parties.collapse', 'Collapse')}</span>
+                    </summary>
+                    <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+                      <div className="mb-4 space-y-3">
+                        <label
+                          htmlFor={`${panelIdPrefix}-partner`}
+                          className="block text-xs font-semibold text-slate-700 dark:text-slate-200"
+                          title={t('contract_creator.partners.select_label_title', 'Mengisi otomatis nama badan hukum, domisili kantor, direktur penandatangan, dan email resmi ke seluruh pasal perjanjian')}
                         >
-                          {t('contract_creator.partners.resync_button', 'Sinkronkan Ulang ke Dokumen')}
-                        </button>
+                          {t('contract_creator.partners.select_label', 'Select Existing Partner')}
+                        </label>
+                        <AlphabeticalSelect
+                          id={`${panelIdPrefix}-partner`}
+                          value={selectedPartnerId}
+                          disabled={!canEdit}
+                          onChange={(e) => {
+                            const id = e.target.value;
+                            setSelectedPartnerId(id);
+                            const p = partners.find((item) => item.partner_id === id);
+                            if (p) handleApplyPartner(p);
+                          }}
+                          className="w-full bg-slate-50 font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                        >
+                          <option value="">{t('contract_creator.partners.select_placeholder', 'Select Partner')}</option>
+                          {partners.map((p) => (
+                            <option key={p.partner_id} value={p.partner_id}>
+                              {p.nama_partner} ({p.partner_id})
+                            </option>
+                          ))}
+                        </AlphabeticalSelect>
+
+                        {selectedPartner && (
+                          <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 text-slate-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-slate-200">
+                            <div className="font-semibold text-slate-900 dark:text-white">{selectedPartner.nama_partner}</div>
+                            <div className="mt-2 flex flex-wrap gap-1.5" aria-label={t('contract_creator.parties.registered_record', 'Registered partner record')}>
+                              <span className="rounded-md bg-white px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                                {selectedPartner.partner_id}
+                              </span>
+                              {selectedPartner.entity_type && (
+                                <span className="rounded-md bg-white px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                                  {selectedPartner.entity_type}
+                                </span>
+                              )}
+                              {selectedPartner.country && (
+                                <span className="rounded-md bg-white px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                                  {selectedPartner.country}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyPartner(selectedPartner)}
+                              className="mt-3 w-full rounded-lg border border-emerald-300 bg-white px-3 font-semibold text-accent-text hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-900 dark:hover:bg-emerald-950"
+                            >
+                              {t('contract_creator.partners.resync_button', 'Sinkronkan Ulang ke Dokumen')}
+                            </button>
+                          </div>
+                        )}
                       </div>
+                      {renderPartyFields(SECOND_PARTY_FIELD_KEYS)}
                     </div>
-                  )}
+                  </details>
+
+                  <details open className="editor-panel-card group border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                    <summary className="flex min-w-0 cursor-pointer list-none items-center justify-between gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-text">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Building2 className="h-4 w-4 shrink-0 text-accent-text" aria-hidden />
+                        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {t('contract_creator.parties.first_party', 'First Party')}
+                        </span>
+                      </span>
+                      <span className="text-xs font-semibold text-accent-text group-open:hidden">{t('contract_creator.parties.edit', 'Edit')}</span>
+                      <span className="hidden text-xs font-semibold text-slate-500 group-open:inline dark:text-slate-400">{t('contract_creator.parties.collapse', 'Collapse')}</span>
+                    </summary>
+                    <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+                      {renderPartyFields(FIRST_PARTY_FIELD_KEYS)}
+                    </div>
+                  </details>
                 </div>
               )}
 
@@ -2035,17 +2137,18 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
               {sidebarTab === 'contents' && (
                 <div className="space-y-4">
                   {/* Custom field builder */}
-                  <div className="space-y-2 p-3 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/10 dark:bg-emerald-950/5">
+                  <div className="editor-panel-card space-y-3 p-4 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/10 dark:bg-emerald-950/5">
                     <button
                       type="button"
                       onClick={() => setShowAddCustomField(!showAddCustomField)}
-                      className="w-full flex items-center justify-between text-[11px] font-bold text-emerald-800 dark:text-emerald-400 focus:outline-none cursor-pointer"
+                      aria-expanded={showAddCustomField}
+                      className="w-full flex items-center justify-between text-xs font-bold text-emerald-800 dark:text-emerald-400 focus:outline-none cursor-pointer"
                     >
                       <span className="flex items-center gap-1.5">
-                        <PlusCircle className="w-4 h-4 text-[#06C755]" />
+                        <PlusCircle className="w-4 h-4 text-accent-text" />
                         <span>{t('contract_creator.custom_field_builder.create_button', 'Buat Kolom Isian Kustom Baru')}</span>
                       </span>
-                      <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-lg">
+                      <span className="text-xs bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-lg">
                         {showAddCustomField ? t('contract_creator.custom_field_builder.close', 'Tutup') : t('contract_creator.custom_field_builder.add', 'Tambah')}
                       </span>
                     </button>
@@ -2053,9 +2156,10 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                     {showAddCustomField && (
                       <div className="space-y-3 pt-2 border-t border-emerald-100 dark:border-emerald-900/60 transition-all">
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.name_label', 'Nama Kolom Isian')}</label>
+                          <label htmlFor={`${panelIdPrefix}-custom-name`} className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.name_label', 'Nama Kolom Isian')}</label>
                           <input
                             type="text"
+                            id={`${panelIdPrefix}-custom-name`}
                             value={newFieldLabel}
                             onChange={(e) => setNewFieldLabel(e.target.value)}
                             placeholder={t('contract_creator.custom_field_builder.name_placeholder', 'Contoh: Kompensasi Tambahan')}
@@ -2064,8 +2168,9 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.type_label', 'Tipe Isian')}</label>
+                          <label htmlFor={`${panelIdPrefix}-custom-type`} className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.type_label', 'Tipe Isian')}</label>
                           <AlphabeticalSelect
+                            id={`${panelIdPrefix}-custom-type`}
                             value={newFieldType}
                             onChange={(e: any) => setNewFieldType(e.target.value)}
                             className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -2082,10 +2187,11 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
 
                         {newFieldType === 'select' && (
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.options_label', 'Daftar Opsi (pisahkan dengan koma)')}</label>
+                            <label htmlFor={`${panelIdPrefix}-custom-options`} className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.options_label', 'Daftar Opsi (pisahkan dengan koma)')}</label>
                             <input
                               type="text"
-                              value={newFieldOptions}
+                              id={`${panelIdPrefix}-custom-options`}
+                            value={newFieldOptions}
                               onChange={(e) => setNewFieldOptions(e.target.value)}
                               placeholder={t('contract_creator.custom_field_builder.options_placeholder', 'Contoh: LLC, PT, CV')}
                               className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -2094,9 +2200,10 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                         )}
 
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.placeholder_label', 'Placeholder Default')}</label>
+                          <label htmlFor={`${panelIdPrefix}-custom-placeholder`} className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.placeholder_label', 'Placeholder Default')}</label>
                           <input
                             type="text"
+                            id={`${panelIdPrefix}-custom-placeholder`}
                             value={newFieldPlaceholder}
                             onChange={(e) => setNewFieldPlaceholder(e.target.value)}
                             placeholder={t('contract_creator.custom_field_builder.placeholder_placeholder', 'Contoh: Rp 50.000.000 (Lima Puluh Juta)')}
@@ -2105,9 +2212,10 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.description_label', 'Keterangan / Deskripsi')}</label>
+                          <label htmlFor={`${panelIdPrefix}-custom-description`} className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('contract_creator.custom_field_builder.description_label', 'Keterangan / Deskripsi')}</label>
                           <input
                             type="text"
+                            id={`${panelIdPrefix}-custom-description`}
                             value={newFieldDescription}
                             onChange={(e) => setNewFieldDescription(e.target.value)}
                             placeholder={t('contract_creator.custom_field_builder.description_placeholder', 'Deskripsi singkat fungsi kolom isian ini')}
@@ -2130,7 +2238,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                   {/* Drag & drop field palette */}
                   <div className="space-y-2.5">
                     <h3
-                      className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"
+                      className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"
                       title={t('contract_creator.dragdrop.section_title_attr', 'Seret elemen ke posisi kursor di dokumen untuk menempatkan kolom isian dinamis')}
                     >
                       <GridDotsIcon className="w-3.5 h-3.5 text-slate-400" />
@@ -2150,7 +2258,8 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                           key={tab.id}
                           type="button"
                           onClick={() => setActiveDragCategory(tab.id as any)}
-                          className={`text-[10px] font-bold px-2 py-1 rounded-lg transition-all cursor-pointer ${
+                          aria-pressed={activeDragCategory === tab.id}
+                          className={`text-xs font-bold px-2 py-1 rounded-lg transition-all cursor-pointer ${
                             activeDragCategory === tab.id
                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400'
                               : 'bg-slate-50 text-slate-500 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-400'
@@ -2177,7 +2286,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
 
                         if (filteredDragFields.length === 0) {
                           return (
-                            <div className="text-center py-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-[10px] text-slate-400">
+                            <div className="text-center py-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-400">
                               {t('contract_creator.dragdrop.empty_category', 'Tidak ada kolom isian di kategori ini.')}
                             </div>
                           );
@@ -2208,17 +2317,29 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                             }`}
                             title={t('contract_creator.dragdrop.item_title_attr', 'Seret elemen ini ke editor')}
                           >
-                            <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 truncate max-w-[200px]">
-                              <span className="truncate">{itemLabel}</span>
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 min-w-0 flex-1">
+                              <span>{itemLabel}</span>
                               {item.isCustom && (
-                                <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.2 rounded uppercase">
+                                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.2 rounded uppercase">
                                   {t('contract_creator.custom_badge', 'Kustom')}
                                 </span>
                               )}
                             </span>
-                            <span className="text-[9px] text-slate-400 bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-700 font-mono group-hover:text-emerald-600 group-hover:border-emerald-200 dark:group-hover:text-emerald-400">
-                              {t('contract_creator.drag', 'DRAG')}
-                            </span>
+                            <button type="button"
+                              aria-label={t('contract_creator.insert_field', 'Masukkan kolom: {name}', { name: itemLabel })}
+                              onClick={() => {
+                                if (!editor || !canEdit) return;
+                                const value = fieldValues[item.key]?.trim() || '...';
+                                editor.chain().focus().insertContent({
+                                  type: 'fillableSlot',
+                                  attrs: { slotKey: item.key, slotType: item.type },
+                                  content: [{ type: 'text', text: value }],
+                                }).run();
+                              }}
+                              disabled={!canEdit}
+                              className="shrink-0 px-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-accent-text font-semibold text-xs hover:bg-accent-soft">
+                              <PlusCircle className="w-3.5 h-3.5" aria-hidden />
+                            </button>
                           </div>
                           );
                         });
@@ -2234,15 +2355,17 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                   {/* 0. GENERATE TEMPLATE WITH AI (Superuser/Admin/Manager only) */}
                   {canManageFields && (
                     <div
-                      className="space-y-2 p-3 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20"
+                      className="editor-panel-card space-y-3 p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20"
                       title={t('contract_creator.ai_template.section_title_attr', 'Buat draf template baru dari deskripsi singkat')}
                     >
-                      <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                         <AiIcon className="w-3.5 h-3.5 text-emerald-500" />
                         <span>{t('contract_creator.ai_template.section_title', 'Buat Template dengan AI')}</span>
                       </h3>
                       <div className="space-y-2">
+                        <label htmlFor={`${panelIdPrefix}-template-type`} className="block text-xs font-semibold text-slate-700 dark:text-slate-300">{t('documents.field.type', 'Tipe Dokumen')}</label>
                         <AlphabeticalSelect
+                          id={`${panelIdPrefix}-template-type`}
                           value={aiTemplateDocType}
                           onChange={(e) => setAiTemplateDocType(e.target.value as 'contract' | 'agreement' | 'so')}
                           className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -2251,7 +2374,9 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                           <option value="agreement">{t('contract_creator.ai_template.type_agreement', 'Perjanjian (Agreement)')}</option>
                           <option value="so">{t('contract_creator.ai_template.type_so', 'Surat Pesanan (SO)')}</option>
                         </AlphabeticalSelect>
+                        <label htmlFor={`${panelIdPrefix}-template-prompt`} className="block text-xs font-semibold text-slate-700 dark:text-slate-300">{t('contract_creator.custom_field_builder.description_label', 'Keterangan / Deskripsi')}</label>
                         <textarea
+                          id={`${panelIdPrefix}-template-prompt`}
                           value={aiTemplatePrompt}
                           onChange={(e) => setAiTemplatePrompt(e.target.value)}
                           rows={3}
@@ -2262,7 +2387,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                           type="button"
                           onClick={handleGenerateAiTemplate}
                           disabled={isGeneratingAiTemplate}
-                          className="w-full py-2 px-3 text-xs font-bold text-white bg-[#04803D] hover:bg-[#05b54c] rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                          className="w-full py-2 px-3 text-xs font-bold text-white bg-accent-strong hover:bg-accent-strong-hover rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                         >
                           {isGeneratingAiTemplate ? (
                             <>
@@ -2282,16 +2407,18 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
 
                   {/* 1. SAVE DRAFT AS TEMPLATE */}
                   <div
-                    className="space-y-2 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20"
+                    className="editor-panel-card space-y-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20"
                     title={t('contract_creator.templates.save_section_title_attr', 'Simpan seluruh teks kontrak kustom saat ini sebagai master template yang siap dipakai ulang')}
                   >
-                    <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                       <Save className="w-3.5 h-3.5 text-slate-400" />
                       <span>{t('contract_creator.templates.save_section_title', 'Simpan Draf Sebagai Template')}</span>
                     </h3>
                     <div className="space-y-2">
+                      <label htmlFor={`${panelIdPrefix}-template-name`} className="block text-xs font-semibold text-slate-700 dark:text-slate-300">{t('contract_creator.templates.name_label', 'Nama Template')}</label>
                       <input
                         type="text"
+                        id={`${panelIdPrefix}-template-name`}
                         value={newTemplateName}
                         onChange={(e) => setNewTemplateName(e.target.value)}
                         placeholder={t('contract_creator.templates.name_placeholder', 'Nama template (misal: Template Sewa Server)')}
@@ -2301,7 +2428,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                         type="button"
                         onClick={handleSaveTemplate}
                         disabled={isSavingTemplate}
-                        className="w-full py-2 px-3 text-xs font-bold text-white bg-[#04803D] hover:bg-[#05b54c] rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        className="w-full py-2 px-3 text-xs font-bold text-white bg-accent-strong hover:bg-accent-strong-hover rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                       >
                         {isSavingTemplate ? (
                           <>
@@ -2320,14 +2447,14 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
 
                   {/* Saved templates library */}
                   <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                    <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                       <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
                       <span>{t('contract_creator.templates.library_title', 'Pustaka Template Terdaftar')}</span>
                     </h3>
 
                     {isLoadingTemplates ? (
                       <div className="text-center py-4 text-xs text-slate-400 flex items-center justify-center gap-1.5">
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#06C755]" />
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-accent-text" />
                         <span>{t('contract_creator.templates.loading', 'Memuat pustaka...')}</span>
                       </div>
                     ) : savedTemplates.length === 0 ? (
@@ -2345,7 +2472,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                               <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                                 {tpl.name}
                               </div>
-                              <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                              <div className="text-xs text-slate-400 mt-0.5 font-mono">
                                 {t('contract_creator.id', 'ID: {value}', { value: tpl.id.substring(0, 8) })}
                               </div>
                             </div>
@@ -2353,7 +2480,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleLoadTemplate(tpl)}
-                                className="px-2.5 py-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-lg transition-colors cursor-pointer"
+                                className="px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-lg transition-colors cursor-pointer"
                               >
                                 {t('contract_creator.templates.use_button', 'Gunakan')}
                               </button>
@@ -2361,6 +2488,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
                                 type="button"
                                 onClick={() => handleDeleteTemplate(tpl.id)}
                                 className="p-1 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors cursor-pointer"
+                                aria-label={t('contract_creator.templates.delete_title', 'Hapus Template')}
                                 title={t('contract_creator.templates.delete_title', 'Hapus Template')}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -2389,10 +2517,6 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
           <span className="hidden sm:inline">{charCount} {t('contract_creator.footer.chars', 'karakter')}</span>
           <span className="hidden md:inline">{t('contract_creator.text_2', '•')}</span>
           <span className="hidden md:inline">{t('contract_creator.footer.read_estimate', 'Estimasi baca')} ~{Math.max(1, Math.round(wordCount / 200))} {t('contract_creator.footer.minutes', 'menit')}</span>
-          <span className="hidden lg:inline">{t('contract_creator.text_2', '•')}</span>
-          <span className="hidden lg:inline text-emerald-600 dark:text-emerald-400 font-medium">
-            {isCustomTemplateActive ? t('contract_creator.footer.custom_template_active', 'Template Kerjasama Kustom Aktif') : t('contract_creator.footer.default_template_active', '15 Pasal Perjanjian Kerjasama')}
-          </span>
         </div>
 
         {/* Zoom Controls */}
@@ -2405,7 +2529,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[11px] font-mono w-10 text-center">{zoomLevel}%</span>
+          <span className="text-xs font-mono w-10 text-center">{zoomLevel}%</span>
           <button
             type="button"
             onClick={() => setZoomLevel(Math.min(150, zoomLevel + 10))}
@@ -2417,7 +2541,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
           <button
             type="button"
             onClick={() => setZoomLevel(100)}
-            className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 ml-1 cursor-pointer"
+            className="text-xs font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 ml-1 cursor-pointer"
             title={t('contract_creator.footer.zoom_reset', 'Reset Zoom 100%')}
           >
             100%

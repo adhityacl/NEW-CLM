@@ -26,8 +26,8 @@ interface AccordionItemProps {
 /** Native <details> keeps keyboard and screen-reader behaviour for free. Module-level so open state survives re-renders. */
 const AccordionItem: React.FC<AccordionItemProps> = ({ icon: Icon, title, summary, children }) => (
   <details className="group border-b border-slate-200 last:border-b-0 dark:border-slate-700">
-    <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#06C755] dark:hover:bg-slate-800/60 [&::-webkit-details-marker]:hidden">
-      <Icon className="h-4 w-4 shrink-0 text-[#06C755]" aria-hidden="true" />
+    <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent dark:hover:bg-slate-800/60 [&::-webkit-details-marker]:hidden">
+      <Icon className="h-4 w-4 shrink-0 text-accent-text" aria-hidden="true" />
       <span className="min-w-0 flex-1 text-sm font-semibold text-slate-900 dark:text-white">{title}</span>
       <span className="hidden text-xs text-slate-600 sm:inline dark:text-slate-400">{summary}</span>
       <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />

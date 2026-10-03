@@ -59,10 +59,10 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
   return (
     <div className="space-y-4">
       {/* Controls Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="mobile-controls-bar flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
+          <input aria-label={t('admin.team_search_ph', 'Cari tim atau departemen...')}
             type="text"
             placeholder={t('admin.team_search_ph', 'Cari tim atau departemen...')}
             value={searchQuery}
@@ -71,7 +71,7 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="mobile-page-actions flex items-center gap-2">
           <button
             type="button"
             onClick={onOpenCreateTeam}
@@ -112,10 +112,10 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
                       <Layers className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
+                      <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
                         {team.name}
-                      </h4>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      </h3>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                         <Building2 className="w-3 h-3" />
                         <span>{team.organizationName || (t('admin.active_organization', 'Active Organization'))}</span>
                       </div>
@@ -133,7 +133,7 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
                     <button
                       type="button"
                       onClick={() => onOpenAddTeamMember(team)}
-                      className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 text-[11px] font-medium cursor-pointer"
+                      className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 text-xs font-medium cursor-pointer"
                     >
                       <UserPlus className="w-3 h-3" />
                       {t('admin.team_add_member', 'Tambah')}
@@ -141,7 +141,7 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
                   </div>
 
                   {team.members.length === 0 ? (
-                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-[11px] text-slate-400 text-center">
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-400 text-center">
                       {t('admin.no_team_members', 'Belum ada anggota di tim ini.')}
                     </div>
                   ) : (
@@ -155,14 +155,14 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
                             <div className="font-medium text-slate-800 dark:text-slate-200 truncate">
                               {member.name}
                             </div>
-                            <div className="text-[10px] text-slate-400 font-mono truncate">
+                            <div className="text-xs text-slate-400 font-mono truncate">
                               {member.email}
                             </div>
                           </div>
                           <button
                             type="button"
                             onClick={() => onRemoveTeamMember(team.id, member.userId)}
-                            className="text-slate-400 hover:text-red-600 text-[11px] p-1 shrink-0 cursor-pointer"
+                            className="text-slate-400 hover:text-red-600 text-xs p-1 shrink-0 cursor-pointer"
                             title={t('admin.remove_member_title', 'Keluarkan dari tim')}
                           >
                             {t('admin.text_2', '×')}
@@ -196,7 +196,7 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
                   </button>
                 </div>
 
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   {t('admin.team_created_prefix', 'Dibuat')}: {new Date(team.createdAt).toLocaleDateString(getActiveFormattingLocale())}
                 </span>
               </div>

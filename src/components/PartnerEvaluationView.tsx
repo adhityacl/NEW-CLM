@@ -1,4 +1,5 @@
 import { TableViewMenu } from './ui/table-view-menu';
+import { downloadCsv } from '../lib/csv';
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import { formatBusinessDate } from '../lib/displayDate';
@@ -87,7 +88,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
   const { t } = useLanguage();
   const confirmDialog = useConfirm();
   const showAlert = useAlertToast();
-  
+
   const DEFAULT_EVAL_COLUMNS = {
     vendor: true,
     target: true,
@@ -493,7 +494,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
     }
   };
 
-  
+
   const handleExportCSV = () => {
     const headers = ['Tahun', 'Partner', 'Skor Akhir', 'Status Rekomendasi', 'Tanggal Review', 'Obligation Target', 'Incident Frequency', 'Comm & Price'];
     const rows = sortedEvaluations.map(c => [
@@ -506,14 +507,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
       c.incident_frequency,
       c.communication
     ]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'partner_evaluation_export.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadCsv('partner_evaluation_export.csv', headers, rows);
   };
 
   const handleAddNew = () => {
@@ -548,15 +542,15 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
         <button
           type="button"
           onClick={() => handleSort(field)}
-          className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5"
+          className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none rounded py-0.5"
           title={t('eval.urutkan_berdasarkan', 'Urutkan berdasarkan {label}', { label })}
         >
           <span>{label}</span>
           {isSorted ? (
             sortOrder === 'asc' ? (
-              <ArrowUp className="w-3.5 h-3.5 text-[#06C755] shrink-0" />
+              <ArrowUp className="w-3.5 h-3.5 text-accent-text shrink-0" />
             ) : (
-              <ArrowDown className="w-3.5 h-3.5 text-[#06C755] shrink-0" />
+              <ArrowDown className="w-3.5 h-3.5 text-accent-text shrink-0" />
             )
           ) : (
             <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -574,23 +568,24 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
             <span>{t('eval.annual_title', 'Evaluasi Vendor Tahunan')}</span>
           </h2>
         </div>
-        
-        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+
+        <div className="mobile-page-actions flex items-center gap-2.5 shrink-0 flex-wrap">
           {hasPermission('export.csv') && (
             <button
               onClick={handleExportCSV}
-              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0"
+              disabled={sortedEvaluations.length === 0}
+              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
               title={t('eval.export_csv', 'Ekspor CSV')}
             >
               <Download className="w-4 h-4" />
               <span>{t('eval.export_csv', 'Ekspor CSV')}</span>
             </button>
           )}
-          
+
           {canCreateEvaluation && (
             <button
               onClick={handleAddNew}
-              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0"
+              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0"
             >
               <Plus className="w-4 h-4 text-white" />
               <span>{t('ui.add_evaluation')}</span>
@@ -598,10 +593,10 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
           )}
         </div>
       </div>
-      
+
       {/* Filter Bar & View Toggle - Justified Responsive Grid/Flex */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-5 mb-6">
-        <div className="flex flex-wrap items-center gap-2.5 w-full">
+        <div className="mobile-filter-grid flex flex-wrap items-center gap-2.5 w-full">
           {/* 1 Box Search */}
           <div className="relative flex-1 min-w-[200px] sm:min-w-[240px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -614,7 +609,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] font-medium transition-colors"
+              className="h-9 w-full pl-9 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-accent font-medium transition-colors"
             />
           </div>
 
@@ -626,7 +621,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               setSelectedYear(e.target.value);
               setCurrentPage(1);
             }}
-            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="2026">{t('eval.year_prefix', 'Tahun')} 2026</option>
             <option value="2025">{t('eval.year_prefix', 'Tahun')} 2025</option>
@@ -642,7 +637,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               setSelectedEvaluationFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('eval.all_decisions', 'Semua Keputusan')}</option>
             <option value="Recommended">{t('eval.decision_recommended', 'Lanjutkan Kerjasama')}</option>
@@ -659,7 +654,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               setSelectedObligationTarget(e.target.value);
               setCurrentPage(1);
             }}
-            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="min-h-11 sm:min-h-9 h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[130px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('eval.all_obligation_targets', 'Semua Target Kewajiban')}</option>
             <option value="Sangat baik">{t('eval.opt_sangat_baik', 'Sangat baik')}</option>
@@ -669,7 +664,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
 
           {/* View Toggle */}
           <TableViewMenu title={t('eval.view_settings', 'Pengaturan Tampilan Kolom')} label={t('eval.view', 'View')}>
-            <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
+            <div className="px-3.5 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
               {t('eval.toggle_columns', 'Toggle Kolom')}
             </div>
             {Object.keys(visibleColumns).map((col) => {
@@ -686,7 +681,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                     type="checkbox"
                     checked={visibleColumns[col]}
                     onChange={() => toggleColumnVisibility(col)}
-                    className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                    className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                   />
                   <span className="capitalize">{label}</span>
                 </label>
@@ -698,7 +693,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
 
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <FilterSummary filters={[{ label: t('ui.search'), value: searchTerm, active: Boolean(searchTerm) }, { label: t('ui.filter_year'), value: selectedYear, active: selectedYear !== String(new Date().getFullYear()) }, { label: t('ui.filter_decision'), value: selectedEvaluationFilter, active: selectedEvaluationFilter !== 'ALL' }, { label: t('ui.filter_target'), value: selectedObligationTarget, active: selectedObligationTarget !== 'ALL' }]} onReset={() => { setSearchTerm(''); setSelectedYear(String(new Date().getFullYear())); setSelectedEvaluationFilter('ALL'); setSelectedObligationTarget('ALL'); }} />
-        <p className="px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
+        <p className="mobile-table-hint px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
         <div className="data-table-scroll overflow-x-auto bg-white dark:bg-slate-900" tabIndex={0} role="region" aria-label={t('ui.scroll_table')}>
           <table className="app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
@@ -710,13 +705,13 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                       aria-label={t('eval.pilih_semua_evaluasi', 'Pilih semua evaluasi')}
                       onChange={handleSelectAll}
                       checked={selectedRows.length > 0 && selectedRows.length === currentEvaluations.length}
-                      className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                      className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                     />
                   </div>
                 </th>
                 {visibleColumns.vendor && (
                   <th scope="col" aria-sort={sortField === 'vendor' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'} className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">
-                    <button type="button" onClick={() => handleSort('vendor')} className="flex items-center gap-1 cursor-pointer hover:text-slate-900 dark:hover:text-white select-none focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5">
+                    <button type="button" onClick={() => handleSort('vendor')} className="flex items-center gap-1 cursor-pointer hover:text-slate-900 dark:hover:text-white select-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none rounded py-0.5">
                       <span>{t('eval.col_vendor', 'Partner')}</span>
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                     </button>
@@ -725,7 +720,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                 {visibleColumns.target && <th scope="col" className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">{t('eval.col_target', 'Target Kewajiban')}</th>}
                 {visibleColumns.skor && (
                   <th scope="col" aria-sort={sortField === 'calculated_score' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'} className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">
-                    <button type="button" onClick={() => handleSort('calculated_score')} className="flex items-center gap-1 cursor-pointer hover:text-slate-900 dark:hover:text-white select-none focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5">
+                    <button type="button" onClick={() => handleSort('calculated_score')} className="flex items-center gap-1 cursor-pointer hover:text-slate-900 dark:hover:text-white select-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none rounded py-0.5">
                       <span>{t('eval.col_calculated_score', 'Skor')}</span>
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                     </button>
@@ -733,7 +728,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                 )}
                 {visibleColumns.hasil && (
                   <th scope="col" aria-sort={sortField === 'final_eval' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'} className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">
-                    <button type="button" onClick={() => handleSort('final_eval')} className="flex items-center gap-1 cursor-pointer hover:text-slate-900 dark:hover:text-white select-none focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5">
+                    <button type="button" onClick={() => handleSort('final_eval')} className="flex items-center gap-1 cursor-pointer hover:text-slate-900 dark:hover:text-white select-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none rounded py-0.5">
                       <span>{t('eval.col_recommendation', 'Hasil Rekomendasi')}</span>
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                     </button>
@@ -741,7 +736,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                 )}
                 {visibleColumns.tanggal && (
                   <th scope="col" aria-sort={sortField === 'review_date' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'} className="p-4 text-xs font-bold text-slate-700 dark:text-slate-300 text-left align-middle">
-                    <button type="button" onClick={() => handleSort('review_date')} className="flex items-center gap-1 cursor-pointer hover:text-slate-900 dark:hover:text-white select-none focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none rounded py-0.5">
+                    <button type="button" onClick={() => handleSort('review_date')} className="flex items-center gap-1 cursor-pointer hover:text-slate-900 dark:hover:text-white select-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none rounded py-0.5">
                       <span>{t('eval.col_review_date', 'Tanggal Review')}</span>
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                     </button>
@@ -752,7 +747,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
+            <tbody className="divide-y divide-hairline dark:divide-slate-800">
               {currentEvaluations.length === 0 ? (
                 <TableEmptyState colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} />
               ) : (
@@ -780,7 +775,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                             aria-label={t('eval.pilih_evaluasi', 'Pilih evaluasi {supplier_name}', { supplier_name: item.supplier_name })}
                             checked={selectedRows.includes(item.id)}
                             onChange={() => handleSelectRow(item.id)}
-                            className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                            className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                           />
                         </div>
                       </td>
@@ -795,7 +790,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                       {/* 2. Target Kewajiban */}
                       {visibleColumns.target && (
                         <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left">
-                          {isNotReviewed ? '-' : item.obligation_target}
+                          {isNotReviewed ? '—' : item.obligation_target}
                         </td>
                       )}
 
@@ -803,7 +798,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                       {visibleColumns.skor && (
                         <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left">
                           {isNotReviewed ? (
-                            <span className="text-slate-400 dark:text-slate-500">-</span>
+                            <span className="text-slate-400 dark:text-slate-500">—</span>
                           ) : (
                             <span className="font-semibold text-slate-800 dark:text-slate-200">{score} / 100</span>
                           )}
@@ -815,7 +810,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         <td className="py-4 px-4 text-xs font-normal text-slate-700 dark:text-slate-300 text-left whitespace-nowrap">
                           {item.final_evaluation === 'Recommended' && (
                             <span className={`text-xs font-normal px-3 py-0.5 rounded-full border inline-flex items-center gap-1.5 shadow-2xs whitespace-nowrap ${getStatusBadgeClass('Recommended')}`}>
-                              <CheckCircle2 className="w-3.5 h-3.5 text-[#06C755]" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-accent-text" />
                               <span>{t('eval.status_rec', 'Recommended')}</span>
                             </span>
                           )}
@@ -854,10 +849,10 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                             canCreateEvaluation && (
                               <button
                                 onClick={() => handleInputNotReviewed(item)}
-                                className="px-3 py-1.5 bg-[#04803D] hover:bg-[#036B33] text-white rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer shadow-xs whitespace-nowrap"
+                                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-accent-text hover:bg-accent-soft rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
                                 title={`${t('eval.input_eval')} - ${item.supplier_name}`}
                               >
-                                <Plus className="w-3.5 h-3.5 text-white" />
+                                <Plus className="w-3.5 h-3.5" />
                                 <span>{t('eval.input_eval')}</span>
                               </button>
                             )
@@ -893,7 +888,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
             </tbody>
           </table>
         </div>
-        
+
         <TablePagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -913,7 +908,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
             {/* Modal Header */}
             <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <ClipboardCheck className="w-5 h-5 text-[#06C755]" />
+                <ClipboardCheck className="w-5 h-5 text-accent-text" />
                 <div>
                   <ModalTitle className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
                     {editingItem?.id && !editingItem.id.startsWith('NOT_REVIEWED')
@@ -921,7 +916,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                       : t('eval.modal_title_add', 'Form Evaluasi Partner')}
                   </ModalTitle>
                   {editingItem?.supplier_name && (
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{editingItem.supplier_name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{editingItem.supplier_name}</p>
                   )}
                 </div>
               </div>
@@ -947,7 +942,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               {/* BAGIAN 1: Informasi Dasar */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
-                  <span className="w-6 h-6 rounded-full bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 dark:border-emerald-500/40 font-black text-xs flex items-center justify-center shrink-0">
+                  <span className="w-6 h-6 rounded-full bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 dark:border-emerald-500/40 font-black text-xs flex items-center justify-center shrink-0">
                     1
                   </span>
                   <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">{t('eval.section1')}</h3>
@@ -956,10 +951,10 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Tanggal Review */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label htmlFor="partnerevaluationview-field-1" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                       {t('eval.review_date')} <span className="text-rose-500">*</span>
                     </label>
-                    <DateInput
+                    <DateInput id="partnerevaluationview-field-1"
                       required
                       value={formData.review_date}
                       onChange={(val) => setFormData({ ...formData, review_date: val })}
@@ -968,11 +963,11 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
 
                   {/* Supplier Name (Dropdown Tersinkron) */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label htmlFor="partnerevaluationview-field-2" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                       {t('eval.supplier_name')} <span className="text-rose-500">*</span>
                     </label>
                     {partners.length > 0 ? (
-                      <AlphabeticalSelect
+                      <AlphabeticalSelect id="partnerevaluationview-field-2"
                         required
                         value={formData.supplier_name}
                         onChange={(e) => {
@@ -984,7 +979,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                             partner_id: found ? found.partner_id : '',
                           });
                         }}
-                        className="w-full py-2.5 px-3 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-[#06C755]"
+                        className="w-full py-2.5 px-3 bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-accent"
                       >
                         <option value="" disabled>
                           {t('eval.select_partner_ph')}
@@ -1008,7 +1003,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
                   <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 dark:border-emerald-500/40 font-black text-xs flex items-center justify-center shrink-0">
+                    <span className="w-6 h-6 rounded-full bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 dark:border-emerald-500/40 font-black text-xs flex items-center justify-center shrink-0">
                       2
                     </span>
                     <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">{t('eval.section2')}</h3>
@@ -1030,8 +1025,8 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         key={opt.value}
                         className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                           formData.obligation_target === opt.value
-                            ? 'bg-[#EBFBF0] dark:bg-emerald-950/50 border-[#06C755] dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
-                            : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-[#E5E8EB] dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ? 'bg-accent-soft dark:bg-emerald-950/50 border-accent dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
+                            : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-hairline dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -1050,7 +1045,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                           />
                           <span className="text-xs">{opt.label}</span>
                         </div>
-                        <span className="text-[10px] font-bold text-[#048C3B] dark:text-emerald-300 bg-[#EBFBF0] dark:bg-emerald-950/60 border border-[#06C755]/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-bold text-accent-text dark:text-emerald-300 bg-accent-soft dark:bg-emerald-950/60 border border-accent/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
                           {opt.points}
                         </span>
                       </label>
@@ -1073,8 +1068,8 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         key={opt.value}
                         className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                           formData.incident_frequency === opt.value
-                            ? 'bg-[#EBFBF0] dark:bg-emerald-950/50 border-[#06C755] dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
-                            : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-[#E5E8EB] dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ? 'bg-accent-soft dark:bg-emerald-950/50 border-accent dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
+                            : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-hairline dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
                         <div className="flex items-center gap-1.5">
@@ -1093,7 +1088,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                           />
                           <span className="text-xs">{opt.label}</span>
                         </div>
-                        <span className="text-[10px] font-bold text-[#048C3B] dark:text-emerald-300 bg-[#EBFBF0] dark:bg-emerald-950/60 border border-[#06C755]/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-bold text-accent-text dark:text-emerald-300 bg-accent-soft dark:bg-emerald-950/60 border border-accent/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
                           {opt.points}
                         </span>
                       </label>
@@ -1116,8 +1111,8 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         key={opt.value}
                         className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                           formData.communication === opt.value
-                            ? 'bg-[#EBFBF0] dark:bg-emerald-950/50 border-[#06C755] dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
-                            : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-[#E5E8EB] dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ? 'bg-accent-soft dark:bg-emerald-950/50 border-accent dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
+                            : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-hairline dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -1136,7 +1131,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                           />
                           <span className="text-xs">{opt.label}</span>
                         </div>
-                        <span className="text-[10px] font-bold text-[#048C3B] dark:text-emerald-300 bg-[#EBFBF0] dark:bg-emerald-950/60 border border-[#06C755]/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-bold text-accent-text dark:text-emerald-300 bg-accent-soft dark:bg-emerald-950/60 border border-accent/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
                           {opt.points}
                         </span>
                       </label>
@@ -1159,8 +1154,8 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         key={opt.value}
                         className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                           formData.pricing === opt.value
-                            ? 'bg-[#EBFBF0] dark:bg-emerald-950/50 border-[#06C755] dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
-                            : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-[#E5E8EB] dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ? 'bg-accent-soft dark:bg-emerald-950/50 border-accent dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
+                            : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-hairline dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
                         <div className="flex items-center gap-1.5">
@@ -1179,7 +1174,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                           />
                           <span className="text-xs">{opt.label}</span>
                         </div>
-                        <span className="text-[10px] font-bold text-[#048C3B] dark:text-emerald-300 bg-[#EBFBF0] dark:bg-emerald-950/60 border border-[#06C755]/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-bold text-accent-text dark:text-emerald-300 bg-accent-soft dark:bg-emerald-950/60 border border-accent/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
                           {opt.points}
                         </span>
                       </label>
@@ -1191,7 +1186,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               {/* BAGIAN 3: Evaluasi Akhir & Catatan */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
-                  <span className="w-6 h-6 rounded-full bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 dark:border-emerald-500/40 font-black text-xs flex items-center justify-center shrink-0">
+                  <span className="w-6 h-6 rounded-full bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 dark:border-emerald-500/40 font-black text-xs flex items-center justify-center shrink-0">
                     3
                   </span>
                   <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
@@ -1200,43 +1195,43 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                 </div>
 
                 {/* Live Score Calculation Display */}
-                <div className="p-4 bg-[#EBFBF0] dark:bg-emerald-950/30 border border-[#06C755]/30 dark:border-emerald-500/30 rounded-2xl space-y-3">
+                <div className="p-4 bg-accent-soft dark:bg-emerald-950/30 border border-accent/30 dark:border-emerald-500/30 rounded-2xl space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Calculator className="w-4 h-4 text-[#06C755] dark:text-emerald-400" />
-                      <span className="text-xs font-extrabold text-[#048C3B] dark:text-emerald-300 uppercase tracking-wider">
+                      <Calculator className="w-4 h-4 text-accent-text dark:text-emerald-400" />
+                      <span className="text-xs font-extrabold text-accent-text dark:text-emerald-300 uppercase tracking-wider">
                         {t('eval.calc_score_breakdown')}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 bg-[#04803D] text-white px-3 py-1 rounded-xl shadow-2xs">
+                    <div className="flex items-center gap-1 bg-accent-strong text-white px-3 py-1 rounded-xl shadow-2xs">
                       <span className="text-xs font-semibold">{t('eval.total', 'Total:')}</span>
                       <span className="text-base font-black">{liveBreakdown.total}</span>
-                      <span className="text-[10px] opacity-80">/ 100 {t('eval.points')}</span>
+                      <span className="text-xs opacity-80">/ 100 {t('eval.points')}</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] pt-1 border-t border-[#06C755]/20 dark:border-emerald-500/20">
-                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-[#06C755]/20 dark:border-emerald-500/20">
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">{t('eval.obligation_target_2', 'Obligation / Target')}</span>
-                      <span className="font-extrabold text-[#048C3B] dark:text-emerald-400">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 dark:border-emerald-500/20">
+                      <span className="text-slate-500 dark:text-slate-400 text-xs block font-medium">{t('eval.obligation_target_2', 'Obligation / Target')}</span>
+                      <span className="font-extrabold text-accent-text dark:text-emerald-400">
                         {liveBreakdown.tScore} {t('eval.points')}
                       </span>
                     </div>
-                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-[#06C755]/20 dark:border-emerald-500/20">
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">{t('eval.incident_freq_2', 'Incident Freq')}</span>
-                      <span className="font-extrabold text-[#048C3B] dark:text-emerald-400">
+                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 dark:border-emerald-500/20">
+                      <span className="text-slate-500 dark:text-slate-400 text-xs block font-medium">{t('eval.incident_freq_2', 'Incident Freq')}</span>
+                      <span className="font-extrabold text-accent-text dark:text-emerald-400">
                         {liveBreakdown.fScore} {t('eval.points')}
                       </span>
                     </div>
-                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-[#06C755]/20 dark:border-emerald-500/20">
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">{t('audit_col_evalCommunication', 'Communication')}</span>
-                      <span className="font-extrabold text-[#048C3B] dark:text-emerald-400">
+                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 dark:border-emerald-500/20">
+                      <span className="text-slate-500 dark:text-slate-400 text-xs block font-medium">{t('audit_col_evalCommunication', 'Communication')}</span>
+                      <span className="font-extrabold text-accent-text dark:text-emerald-400">
                         {liveBreakdown.cScore} {t('eval.points')}
                       </span>
                     </div>
-                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-[#06C755]/20 dark:border-emerald-500/20">
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-medium">{t('eval.pricing_2', 'Pricing')}</span>
-                      <span className="font-extrabold text-[#048C3B] dark:text-emerald-400">
+                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 dark:border-emerald-500/20">
+                      <span className="text-slate-500 dark:text-slate-400 text-xs block font-medium">{t('eval.pricing_2', 'Pricing')}</span>
+                      <span className="font-extrabold text-accent-text dark:text-emerald-400">
                         {liveBreakdown.pScore} {t('eval.points')}
                       </span>
                     </div>
@@ -1254,7 +1249,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         value: 'Recommended',
                         label: t('eval.status_rec'),
                         desc: t('eval.opt_rec_desc'),
-                        activeClass: 'bg-[#EBFBF0] dark:bg-emerald-950/50 border-[#06C755] dark:border-emerald-500 text-slate-900 dark:text-slate-100',
+                        activeClass: 'bg-accent-soft dark:bg-emerald-950/50 border-accent dark:border-emerald-500 text-slate-900 dark:text-slate-100',
                       },
                       {
                         value: 'Recommended with notes',
@@ -1274,7 +1269,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         className={`p-3 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${
                           formData.final_evaluation === opt.value
                             ? `${opt.activeClass} font-bold shadow-2xs`
-                            : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-[#E5E8EB] dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-hairline dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
                         <div className="flex items-center gap-2 mb-1">
@@ -1293,7 +1288,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                           />
                           <span className="text-xs">{opt.label}</span>
                         </div>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400">{opt.desc}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">{opt.desc}</span>
                       </label>
                     ))}
                   </div>
@@ -1301,15 +1296,15 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
 
                 {/* Notes / Alasan Evaluasi */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="partnerevaluationview-field-3" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t('eval.notes_label')}
                   </label>
-                  <textarea
+                  <textarea id="partnerevaluationview-field-3"
                     rows={4}
                     placeholder={t('eval.notes_ph')}
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full p-3 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-[#06C755]"
+                    className="w-full p-3 bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-accent"
                   />
                 </div>
               </div>
@@ -1317,7 +1312,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
 
               {/* Modal Footer */}
               <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
-                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium hidden sm:inline">
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-medium hidden sm:inline">
                   {t('form.common.required_hint', 'Lengkapi semua kolom wajib (*) untuk menyimpan')}
                 </span>
                 <div className="flex items-center gap-2 ml-auto">
@@ -1331,7 +1326,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-5 py-2.5 bg-[#04803D] hover:bg-[#036B33] text-white font-bold rounded-xl text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-5 py-2.5 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold rounded-xl text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isSubmitting
                       ? t('eval.btn_saving')
@@ -1351,12 +1346,12 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
 
             <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <Building2 className="w-5 h-5 text-[#06C755]" />
+                <Building2 className="w-5 h-5 text-accent-text" />
                 <div>
                   <ModalTitle className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
                     {t('eval.detail_modal_title', 'Laporan Evaluasi Partner')}
                   </ModalTitle>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{viewingDetailItem.supplier_name}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{viewingDetailItem.supplier_name}</p>
                 </div>
               </div>
               <button
@@ -1371,28 +1366,28 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
             <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-800 dark:text-slate-200 flex-1">
               <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
                 <div>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase block">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase block">
                     {t('eval.col_id_date')} {t('eval.id', 'ID')}
                   </span>
                   <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{viewingDetailItem.id}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase block">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase block">
                     {t('eval.review_date')}
                   </span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">{formatBusinessDate(viewingDetailItem.review_date)}</span>
                 </div>
               </div>
 
-              <div className="p-3 bg-[#EBFBF0] dark:bg-emerald-950/40 rounded-xl border border-[#06C755]/30 dark:border-emerald-500/40 flex items-center justify-between">
+              <div className="p-3 bg-accent-soft dark:bg-emerald-950/40 rounded-xl border border-accent/30 dark:border-emerald-500/40 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-[#048C3B] dark:text-emerald-300 font-bold uppercase block">
+                  <span className="text-xs text-accent-text dark:text-emerald-300 font-bold uppercase block">
                     {t('eval.col_calculated_score')}
                   </span>
-                  <span className="text-xs text-[#048C3B] dark:text-emerald-300 font-semibold">{t('eval.auto_score_text')}</span>
+                  <span className="text-xs text-accent-text dark:text-emerald-300 font-semibold">{t('eval.auto_score_text')}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xl font-black text-[#048C3B] dark:text-emerald-300">
+                  <span className="text-xl font-black text-accent-text dark:text-emerald-300">
                     {viewingDetailItem.calculated_score !== undefined
                       ? viewingDetailItem.calculated_score
                       : computeScoreFromFields(
@@ -1402,7 +1397,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                           viewingDetailItem.pricing
                         )}
                   </span>
-                  <span className="text-xs font-semibold text-[#048C3B] dark:text-emerald-300"> / 100 {t('eval.points')}</span>
+                  <span className="text-xs font-semibold text-accent-text dark:text-emerald-300"> / 100 {t('eval.points')}</span>
                 </div>
               </div>
 
@@ -1432,13 +1427,13 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               </div>
 
               <div className="pt-2">
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase block mb-1">
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase block mb-1">
                   {t('eval.rec_result')}
                 </span>
                 <div className="font-bold">
                   {viewingDetailItem.final_evaluation === 'Recommended' && (
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 dark:border-emerald-500/40 inline-flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-[#06C755]" />
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 dark:border-emerald-500/40 inline-flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-accent-text" />
                       <span>{t('eval.status_rec')}</span>
                     </span>
                   )}
@@ -1458,8 +1453,8 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               </div>
 
               {viewingDetailItem.notes && (
-                <div className="p-3 bg-[#F7F8FA] rounded-xl border border-[#E5E8EB]">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">
+                <div className="p-3 bg-[#F7F8FA] rounded-xl border border-hairline">
+                  <span className="text-xs text-slate-400 font-bold uppercase block mb-1">
                     {t('eval.notes_title')}
                   </span>
                   <p className="text-xs text-slate-700 whitespace-pre-wrap">

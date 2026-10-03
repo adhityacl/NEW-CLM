@@ -63,7 +63,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
             {this.state.error && (
               <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/60 text-left overflow-hidden">
-                <p className="font-mono text-[11px] text-rose-600 dark:text-rose-400 wrap-break-word font-semibold">
+                <p className="font-mono text-xs text-rose-600 dark:text-rose-400 wrap-break-word font-semibold">
                   {this.state.error.message || t('error_boundary.unknown_error', 'Galat tampilan yang tidak diketahui')}
                 </p>
               </div>
@@ -73,7 +73,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <button
                 type="button"
                 onClick={this.handleReload}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-[#04803D] hover:bg-[#036B33] text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-accent-strong hover:bg-accent-strong-hover text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>{t('error_boundary.reload', 'Muat Ulang Halaman')}</span>

@@ -320,7 +320,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
         <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900">
           <div>
             <ModalTitle className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-[#06C755]" />
+              <Building2 className="w-5 h-5 text-accent-text" />
               <span>
                 {partnerToEdit
                   ? t('form.partner.title_edit', 'Edit Data Partner')
@@ -351,7 +351,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                   placeholder={t('form.partner.nama_legal_placeholder', 'contoh: PT Telekomunikasi Selular')}
                   value={namaPartner}
                   onChange={(e) => setNamaPartner(e.target.value)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                 />
               </div>
 
@@ -364,7 +364,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                   placeholder={t('form.partner.nama_channel_placeholder', 'mis. TSEL, XL, INDOSAT')}
                   value={codename}
                   onChange={(e) => setCodename(e.target.value)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                 />
               </div>
             </div>
@@ -403,7 +403,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                           setPicInternal(val);
                         }
                       }}
-                      className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
+                      className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all cursor-pointer"
                     >
                       <option value="" disabled>{t('partners.pilih_department', '-- Pilih Department --')}</option>
                       {ENTERPRISE_DEPARTMENTS.map((dept) => (
@@ -434,7 +434,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                       placeholder={t('form.partner.department_placeholder', 'contoh: Marketing')}
                       value={picInternal}
                       onChange={(e) => setPicInternal(e.target.value)}
-                      className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                      className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                     />
                     <AlphabeticalDatalist id="departments-list">
                       {ENTERPRISE_DEPARTMENTS.map((dept) => (
@@ -448,8 +448,8 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
 
             {/* Separated PIC Contact Person Section */}
             <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-3">
-              <div className="text-[11px] font-extrabold text-[#048C3B] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                <User className="w-4 h-4 text-[#06C755]" />
+              <div className="text-xs font-extrabold text-accent-text dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <User className="w-4 h-4 text-accent-text" />
                 <span>{t('form.partner.contact_section_title', 'Informasi Kontak PIC (Person In Charge)')}</span>
               </div>
 
@@ -463,7 +463,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                   placeholder={t('form.partner.nama_pic_placeholder', 'contoh: Andi Hermawan')}
                   value={namaPic}
                   onChange={(e) => setNamaPic(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                 />
               </div>
 
@@ -479,7 +479,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                     placeholder={t('form.partner.email_pic_placeholder', 'contoh: andi@telkomsel.co.id')}
                     value={emailPic}
                     onChange={(e) => setEmailPic(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                   />
                 </div>
 
@@ -494,7 +494,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                     placeholder={t('form.partner.telepon_pic_placeholder', 'contoh: 0811-2233-4455')}
                     value={teleponPic}
                     onChange={(e) => setTeleponPic(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                   />
                 </div>
 
@@ -509,7 +509,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                     value={alamatPic}
                     onChange={(e) => setAlamatPic(e.target.value)}
                     rows={2}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all resize-none"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all resize-none"
                   />
                 </div>
               </div>
@@ -532,7 +532,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                       handleAddTag();
                     }
                   }}
-                  className="min-w-0 flex-1 bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="min-w-0 flex-1 bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                 />
                 <AlphabeticalDatalist id="partner-category-templates-list">
                   {savedTemplates.map((cat) => (
@@ -553,13 +553,13 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                 {tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#EBFBF0] dark:bg-emerald-950/50 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 dark:border-emerald-500/40 rounded-lg text-sm font-semibold shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft dark:bg-emerald-950/50 text-accent-text dark:text-emerald-300 border border-accent/30 dark:border-emerald-500/40 rounded-lg text-sm font-semibold shadow-2xs"
                   >
                     <span>{tag}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
-                      className="text-[#06C755] hover:text-[#048C3B] dark:hover:text-emerald-200 font-extrabold leading-none cursor-pointer"
+                      className="text-accent-text hover:text-accent-text dark:hover:text-emerald-200 font-extrabold leading-none cursor-pointer"
                       title={t('partners.hapus_tag', 'Hapus tag')}
                     >
                       ×
@@ -579,17 +579,17 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                     type="button"
                     onClick={handleGenerateNotes}
                     disabled={isGeneratingNotes || !namaPartner.trim()}
-                    className="px-3 py-1 text-[11px] font-bold bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 border border-[#06C755]/30 hover:bg-[#06C755]/20 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1 text-xs font-bold bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 hover:bg-accent/20 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     title={t('partners.generate_analisis_due_diligence_ai_senior', 'Generate Analisis Due Diligence (AI Senior Analyst)')}
                   >
                     {isGeneratingNotes ? (
                       <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#06C755]" />
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-text" />
                         <span>{t('partners.menganalisis', 'Menganalisis...')}</span>
                       </>
                     ) : (
                       <>
-                        <AiIcon className="w-3.5 h-3.5 text-[#06C755]" />
+                        <AiIcon className="w-3.5 h-3.5 text-accent-text" />
                         <span>{t('partners.generate_ai_notes', 'Generate AI Notes')}</span>
                       </>
                     )}
@@ -602,7 +602,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                 placeholder={t('partners.format_1_paragraf_narrative_analyst_nama', 'Format 1 Paragraf Narrative Analyst: [Nama Entitas] merupakan vendor digital/ad-tech berbadan hukum... (Mencakup: 1. Core Business, 2. Media Network, 3. Proprietary Tech/AI, 4. Strategic Function/Location)')}
                 value={catatan}
                 onChange={(e) => setCatatan(e.target.value)}
-                className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl p-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all leading-relaxed"
+                className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl p-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all leading-relaxed"
               />
             </div>
 
@@ -612,8 +612,8 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
               <label htmlFor="PartnerModal-field-10" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm">
                 {t('form.partner.upload_label', 'Auto-fill dari Dokumen Kontrak (AI Parse)')}
               </label>
-              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-[#06C755] dark:hover:border-[#06C755] rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all">
-                <Upload className="w-6 h-6 text-[#06C755] mx-auto mb-1.5" />
+              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all">
+                <Upload className="w-6 h-6 text-accent-text mx-auto mb-1.5" />
                 <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
                   {fileName
                     ? `${t('form.contract.file_selected', 'File terpilih:')} ${fileName}`
@@ -625,7 +625,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                       type="button"
                       onClick={handleParsePartner}
                       disabled={isParsing}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 hover:bg-[#06C755]/20 font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 hover:bg-accent/20 font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
                       {isParsing ? t('partners.parsing', 'Parsing...') : t('partners.parse_file', 'Parse File')}
                     </button>
@@ -634,7 +634,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                     type="file"
                     accept=".pdf,.doc,.docx"
                     onChange={handleFileChange}
-                    className="w-[220px] text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-[#EBFBF0] dark:file:bg-emerald-950/60 file:text-[#048C3B] dark:file:text-emerald-400 hover:file:bg-[#06C755]/20 cursor-pointer"
+                    className="w-[220px] text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-accent-soft dark:file:bg-emerald-950/60 file:text-accent-text dark:file:text-emerald-400 hover:file:bg-accent/20 cursor-pointer"
                   />
                 </div>
               </div>
@@ -648,7 +648,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
           </div>
 
           <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
-            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium hidden sm:inline">
+            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium hidden sm:inline">
               {t('form.common.required_hint', 'Lengkapi semua kolom wajib (*) untuk menyimpan')}
             </span>
             <div className="flex items-center gap-2 ml-auto">
@@ -663,7 +663,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                 type="submit"
                 disabled={submitting || !isFormValid}
                 title={!isFormValid ? t('form.common.required_hint', 'Lengkapi semua kolom wajib (*) untuk menyimpan') : ''}
-                className="px-5 py-2.5 bg-[#04803D] hover:bg-[#036B33] text-white font-bold rounded-xl text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold rounded-xl text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {submitting
                   ? t('form.partner.saving_btn', 'Menyimpan Partner...')

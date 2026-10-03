@@ -101,11 +101,11 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
             {isSystemArea ? <Shield className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
           </div>
           <div className="min-w-0">
-            <h1 className="truncate text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            <h2 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
               {isSystemArea ? t('admin.system_admin', 'System Admin') : t('admin.organization_admin', 'Organization Admin')}
-            </h1>
+            </h2>
             {!isSystemArea && (
-              <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                 {t('admin.active_organization_controls', 'Active organization controls')}
               </p>
             )}
@@ -130,7 +130,7 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
       <div
         role="tablist"
         aria-label={isSystemArea ? t('admin.system_admin', 'System Admin') : t('admin.organization_admin', 'Organization Admin')}
-        className="flex items-center gap-1 overflow-x-auto bg-slate-50/70 px-3 py-2 dark:bg-slate-950/30 sm:px-4"
+        className="admin-tab-list flex flex-wrap items-center gap-1 bg-slate-50/70 px-3 py-2 dark:bg-slate-950/30 sm:px-4"
       >
         {visibleNavItems.map((item, index) => {
           const Icon = item.icon;

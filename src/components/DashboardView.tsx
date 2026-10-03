@@ -1,7 +1,7 @@
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { DashboardOverview } from './DashboardOverview';
 import { RecentDocumentsTable } from './RecentDocumentsTable';
-import { TableEmptyState } from './ui/table-empty-state';
+import { TableEmptyMessage, TableEmptyState } from './ui/table-empty-state';
 import { buildSpendingSeries, contractTotalInCurrency } from '../lib/dashboardMetrics';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import React, { useState, useMemo } from 'react';
@@ -18,7 +18,7 @@ import {
 } from '../lib/rbacScoping';
 import { getSavedCategories } from '../lib/categoryUtils';
 import { getStatusBadgeClass } from './ui/badge';
-import { parseMonthStr, parseAllMonths, formatMonthTagDisplay } from '../lib/monthUtils';
+import { spendingReportingAllocations } from '../lib/spendingAllocations';
 import { NewsTicker } from './NewsTicker';
 import { useDocumentList } from '../features/documents/useDocumentList';
 import { formatDateTime } from '../lib/documentModel';
@@ -37,6 +37,7 @@ import {
   TrendingUp,
   GitFork,
   FileClock,
+  BarChart3,
 } from 'lucide-react';
 import {
   BarChart,
@@ -148,35 +149,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return Array.from(catSet).sort((a, b) => a.localeCompare(b));
   }, [scopedContracts]);
 
-  // Helper to parse usage month & year from invoice_month tag
-  const parseUsageMonth = (mStr: string) => {
-    const parsed = parseMonthStr(mStr);
-    if (!parsed) return null;
-    return {
-      monthIndex: parsed.monthIndex,
-      monthKey: parsed.monthShort,
-      year: parsed.year,
-    };
-  };
-
-  // Available Years from Spendings Data (Prioritizing Invoice Month)
+  // Use the same reporting periods for the year filter and chart amounts.
   const availableSpendingYears = useMemo(() => {
     const yearsSet = new Set<string>();
     (scopedSpendings || []).forEach((s) => {
-      let hasMonthYear = false;
-      (s.invoice_month || []).forEach((m) => {
-        const parsedList = parseAllMonths(m);
-        parsedList.forEach((parsed) => {
-          yearsSet.add(parsed.year);
-          hasMonthYear = true;
-        });
-      });
-      // Fallback to invoice_date if no invoice_month tag
-      const invDate = String(s.invoice_date || '');
-      if (!hasMonthYear && invDate.length >= 4) {
-        const y = invDate.startsWith('20') ? invDate.slice(0, 4) : invDate.slice(-4);
-        if (/^\d{4}$/.test(y)) yearsSet.add(y);
-      }
+      spendingReportingAllocations(s).forEach(({ month }) => yearsSet.add(month.slice(0, 4)));
     });
     if (yearsSet.size === 0) yearsSet.add(new Date().getFullYear().toString());
     return Array.from(yearsSet).sort().reverse();
@@ -272,7 +249,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <input
                       type="checkbox"
                       aria-label={t('dashboard.select_all_requiring_action', 'Select all documents requiring action')}
-                      className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                      className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                       disabled
                     />
                   </div>
@@ -287,7 +264,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
+            <tbody className="divide-y divide-hairline dark:divide-slate-800">
               {requiringActionDocuments.length === 0 ? (
                 <TableEmptyState colSpan={7} />
               ) : (
@@ -298,7 +275,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <input
                           type="checkbox"
                           aria-label={t('dashboard.select_requiring_action', 'Select {name}', { name: document.name })}
-                          className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                          className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                           disabled
                         />
                       </div>
@@ -381,7 +358,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <input
                       type="checkbox"
                       aria-label={t('dashboard.pilih_semua_dokumen_pending_review', 'Pilih semua dokumen pending review')}
-                      className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                      className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                       disabled
                     />
                   </div>
@@ -396,7 +373,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
+            <tbody className="divide-y divide-hairline dark:divide-slate-800">
               {pendingReviewState === 'loading' ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-6 text-center text-slate-500 dark:text-slate-400">
@@ -413,7 +390,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <input
                           type="checkbox"
                           aria-label={t('dashboard.pilih_dokumen', 'Pilih dokumen {nama}', { nama: doc.name })}
-                          className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                          className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                           disabled
                         />
                       </div>
@@ -467,8 +444,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="min-w-0 bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 rounded-xl border border-[#06C755]/30 shrink-0">
-              <DollarSign className="w-5 h-5 text-[#06C755]" />
+            <div className="p-2.5 bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 rounded-xl border border-accent/30 shrink-0">
+              <DollarSign className="w-5 h-5 text-accent-text" />
             </div>
             <div>
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
@@ -478,13 +455,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Chart Filters */}
-          <div className="flex w-full min-w-0 flex-nowrap items-center gap-2 sm:w-auto">
+          <div className="mobile-filter-grid flex w-full min-w-0 flex-nowrap items-center gap-2 sm:w-auto">
             {/* 1. Year Filter */}
             <select
               aria-label={t('ui.filter_year')}
               value={spendingFilterYear}
               onChange={(e) => setSpendingFilterYear(e.target.value)}
-              className="h-11 w-[92px] shrink-0 px-2 sm:h-9 sm:w-auto sm:px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#06C755] cursor-pointer"
+              className="h-11 w-[92px] shrink-0 px-2 sm:h-9 sm:w-auto sm:px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-accent cursor-pointer"
             >
               <option value="ALL">{t('dashboard.all_years', 'Semua Tahun')}</option>
               {availableSpendingYears.map((y) => (
@@ -499,7 +476,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               aria-label={t('ui.filter_category')}
               value={spendingCategoryFilter}
               onChange={(e) => setSpendingCategoryFilter(e.target.value)}
-              className="h-11 min-w-0 flex-1 px-2 sm:h-9 sm:w-48 sm:flex-none sm:px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#06C755] cursor-pointer truncate"
+              className="h-11 min-w-0 flex-1 px-2 sm:h-9 sm:w-48 sm:flex-none sm:px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-accent cursor-pointer truncate"
             >
               <option value="ALL">{t('dashboard.all_categories', 'Semua Kategori')}</option>
               {categoryOptions.map((cat) => (
@@ -519,7 +496,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   onClick={() => setSpendingCurrencyView(code)}
                   className={`h-full px-2.5 text-sm font-extrabold rounded-lg transition-all cursor-pointer ${
                     viewCurrency === code
-                      ? 'bg-[#04803D] text-white shadow-2xs'
+                      ? 'bg-accent-strong text-white shadow-2xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
@@ -534,14 +511,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <p className="text-sm text-slate-700 dark:text-slate-200">{t('ui.period_total')}: <strong className="tabular-nums">{formatView(spendingChart.total)}</strong> · {spendingFilterYear === 'ALL' ? t('dashboard.all_years') : spendingFilterYear} · {spendingCategoryFilter === 'ALL' ? t('dashboard.all_categories') : spendingCategoryFilter}</p>
         {spendingChart.skipped > 0 && <p className="text-sm text-amber-800 dark:text-amber-300">{t('ui.skipped_dates', undefined, { count: spendingChart.skipped })}</p>}
         <div className="min-w-0 w-full" role="region" aria-label={t('dashboard.spending_title')}>
-        <div className="w-full pt-2 h-24 sm:h-28" style={stackKeys.length ? { height: 'clamp(240px, 28vw, 360px)' } : undefined}>
+        <div className="w-full pt-2" style={stackKeys.length ? { height: 'clamp(240px, 28vw, 360px)' } : undefined}>
           {stackKeys.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400 font-medium">
-              {t('dashboard.no_spending_data', 'Belum ada data spending untuk ditampilkan pada filter ini.')}
-            </div>
+            <TableEmptyMessage icon={BarChart3} />
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stackedData} margin={{ top: 10, right: isCompactChart ? 2 : 8, left: 0, bottom: 0 }}>
+              <BarChart data={stackedData} title={t('dashboard.spending_title')} desc={t('dashboard.spending_title')} margin={{ top: 10, right: isCompactChart ? 2 : 8, left: 0, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="month"
@@ -577,10 +552,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       const formattedTotal = formatView(total);
 
                       return (
-                        <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 shadow-xl text-xs text-slate-100 min-w-[170px]">
-                          <div className="font-extrabold pb-2 mb-2 border-b border-slate-700/70 text-slate-200 flex justify-between items-center gap-2">
+                        <div className="bg-surface border border-hairline rounded-xl p-3 shadow-xl text-xs text-ink min-w-[170px]">
+                          <div className="font-extrabold pb-2 mb-2 border-b border-hairline text-ink flex justify-between items-center gap-2">
                             <span>{formatChartMonth(String(label))}</span>
-                            <span className="text-[#06C755] font-black">({formattedTotal})</span>
+                            <span className="text-accent-text font-black">({formattedTotal})</span>
                           </div>
                           <div className="space-y-1.5">
                             {payload.map((entry: any, index: number) => {
@@ -592,9 +567,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                 <div key={`item-${index}`} className="flex items-center justify-between gap-3 text-[11px]">
                                   <div className="flex items-center gap-1.5 min-w-0">
                                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color || entry.fill }} />
-                                    <span className="text-slate-300 font-medium truncate">{entry.name}</span>
+                                    <span className="text-ink-soft font-medium truncate">{entry.name}</span>
                                   </div>
-                                  <span className="font-bold text-white shrink-0">{formattedVal}</span>
+                                  <span className="font-bold text-ink shrink-0">{formattedVal}</span>
                                 </div>
                               );
                             })}

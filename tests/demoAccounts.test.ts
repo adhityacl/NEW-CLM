@@ -29,8 +29,8 @@ function authDb() {
 
 const count = (db: Database.Database, table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM "${table}"`).get() as { n: number }).n;
 
-test('the three demo dataset accounts are the ones targeted', () => {
-  assert.equal(DEMO_ACCOUNT_EMAILS.size, 3);
+test('the demo dataset account is the ones targeted', () => {
+  assert.equal(DEMO_ACCOUNT_EMAILS.size, 1);
   for (const email of DEMO_ACCOUNT_EMAILS) assert.ok(email.endsWith('@example.com'), email);
 });
 

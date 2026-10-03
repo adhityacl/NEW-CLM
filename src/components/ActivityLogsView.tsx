@@ -1,3 +1,4 @@
+import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import { TableViewMenu } from './ui/table-view-menu';
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import React, { useState, useEffect } from 'react';
@@ -131,7 +132,7 @@ export const ActivityLogsView: React.FC = () => {
         <button
           onClick={loadLogs}
           disabled={loading}
-          className="h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-[#04803D] hover:bg-[#036B33] text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
+          className="mobile-page-action h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 text-white ${loading ? 'animate-spin' : ''}`} />
           <span>{t('logs.refresh_btn', 'Refresh Log')}</span>
@@ -140,11 +141,11 @@ export const ActivityLogsView: React.FC = () => {
 
       {/* Filter Bar with 3 Dropdowns */}
       <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-2.5">
-        <div className="flex flex-1 flex-wrap items-center gap-2 w-full">
+        <div className="mobile-filter-grid flex flex-1 flex-wrap items-center gap-2 w-full">
           {/* 1 Box Search */}
           <div className="relative flex-1 min-w-[200px] md:max-w-xs">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
+            <input aria-label={t('logs.search_placeholder', 'Cari aktivitas, email, atau deskripsi...')}
               type="text"
               placeholder={t('logs.search_placeholder', 'Cari aktivitas, email, atau deskripsi...')}
               value={searchTerm}
@@ -152,18 +153,18 @@ export const ActivityLogsView: React.FC = () => {
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="h-9 w-full pl-9 pr-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 placeholder:text-slate-500 focus:outline-none focus:border-[#06C755] font-medium transition-colors"
+              className="h-9 w-full pl-9 pr-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 placeholder:text-slate-500 focus:outline-none focus:border-accent font-medium transition-colors"
             />
           </div>
 
           {/* Filter 1: Modul */}
-          <AlphabeticalSelect
+          <AlphabeticalSelect aria-label={t('logs.all_modules', 'Semua Modul')}
             value={filterModule}
             onChange={(e) => {
               setFilterModule(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[140px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2313192B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="h-9 px-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[140px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2313192B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('logs.all_modules', 'Semua Modul')}</option>
             {moduleOptions.map((mod) => (
@@ -174,13 +175,13 @@ export const ActivityLogsView: React.FC = () => {
           </AlphabeticalSelect>
 
           {/* Filter 2: Jenis Aksi */}
-          <AlphabeticalSelect
+          <AlphabeticalSelect aria-label={t('logs.all_actions', 'Semua Jenis Aksi')}
             value={selectedAction}
             onChange={(e) => {
               setSelectedAction(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[140px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2313192B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="h-9 px-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[140px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2313192B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('logs.all_actions', 'Semua Jenis Aksi')}</option>
             <option value="LOGIN">{t('logs.login', 'LOGIN')}</option>
@@ -195,13 +196,13 @@ export const ActivityLogsView: React.FC = () => {
           </AlphabeticalSelect>
 
           {/* Filter 3: Periode Waktu */}
-          <select
+          <select aria-label={t('notifications.all_time_periods', 'Semua Periode Waktu')}
             value={selectedTimeRange}
             onChange={(e) => {
               setSelectedTimeRange(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:border-[#06C755] transition-colors flex-1 min-w-[140px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2313192B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
+            className="h-9 px-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:border-accent transition-colors flex-1 min-w-[140px] appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2313192B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:10px_10px] bg-[right_12px_center]"
           >
             <option value="ALL">{t('notifications.all_time_periods', 'Semua Periode Waktu')}</option>
             <option value="TODAY">{t('notifications.time_today', 'Hari Ini (24 Jam Terakhir)')}</option>
@@ -212,7 +213,7 @@ export const ActivityLogsView: React.FC = () => {
 
         {/* View Toggle */}
         <TableViewMenu className="ml-auto" title={t('io.view_settings', 'Pengaturan Tampilan Kolom')} label={t('io.view', 'View')}>
-          <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
+          <div className="px-3.5 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 border-b border-slate-100 dark:border-slate-800">
             {t('io.toggle_columns', 'Toggle Kolom')}
           </div>
           {Object.keys(visibleColumns).map((col) => {
@@ -229,7 +230,7 @@ export const ActivityLogsView: React.FC = () => {
                   type="checkbox"
                   checked={visibleColumns[col]}
                   onChange={() => toggleColumnVisibility(col)}
-                  className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                  className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                 />
                 <span className="capitalize">{label}</span>
               </label>
@@ -251,7 +252,7 @@ export const ActivityLogsView: React.FC = () => {
                       aria-label={t('logs.pilih_semua_log_aktivitas', 'Pilih semua log aktivitas')}
                       onChange={handleSelectAll}
                       checked={selectedRows.length > 0 && selectedRows.length === currentLogs.length}
-                      className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                      className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                     />
                   </div>
                 </th>
@@ -265,7 +266,7 @@ export const ActivityLogsView: React.FC = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E8EB] dark:divide-slate-800">
+            <tbody className="divide-y divide-hairline dark:divide-slate-800">
               {loading ? (
                 <tr>
                   <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} className="py-12 text-center text-slate-400">
@@ -284,7 +285,7 @@ export const ActivityLogsView: React.FC = () => {
                           aria-label={t('logs.pilih_log_oleh', 'Pilih log {actionType} oleh {userEmail}', { actionType: log.actionType, userEmail: log.userName || log.userEmail })}
                           checked={selectedRows.includes(log.id || '')}
                           onChange={() => handleSelectRow(log.id || '')}
-                          className="rounded border-slate-300 dark:border-slate-700 text-[#06C755] focus:ring-[#06C755]"
+                          className="rounded border-slate-300 dark:border-slate-700 text-accent-text focus:ring-accent"
                         />
                       </div>
                     </td>
@@ -355,7 +356,7 @@ export const ActivityLogsView: React.FC = () => {
             </tbody>
           </table>
         </div>
-        
+
         <TablePagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -370,14 +371,14 @@ export const ActivityLogsView: React.FC = () => {
 
       {/* Detail Modal */}
       {selectedLogForDetail && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden">
+        <ModalFrame onClose={() => setSelectedLogForDetail(null)} className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden">
+
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">{t('logs.rincian_log_aktivitas', 'Rincian Log Aktivitas')}</h3>
+                <ModalTitle className="text-base font-bold text-slate-900 dark:text-white">{t('logs.rincian_log_aktivitas', 'Rincian Log Aktivitas')}</ModalTitle>
                 <p className="text-xs text-slate-500 mt-0.5">{t('logs.id', 'ID: {id}', { id: selectedLogForDetail.id })}</p>
               </div>
-              <button
+              <button aria-label={t('common.close', 'Tutup')}
                 onClick={() => setSelectedLogForDetail(null)}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors"
               >
@@ -418,13 +419,13 @@ export const ActivityLogsView: React.FC = () => {
 
               <div>
                 <span className="text-slate-500 font-semibold block mb-1.5">{t('logs.deskripsi_detail_teknis', 'Deskripsi / Detail Teknis:')}</span>
-                <div className="p-3.5 bg-slate-900 text-slate-100 rounded-xl font-mono text-[11px] leading-relaxed wrap-break-word whitespace-pre-wrap max-h-48 overflow-y-auto">
+                <div className="p-3.5 bg-slate-900 text-slate-100 rounded-xl font-mono text-xs leading-relaxed wrap-break-word whitespace-pre-wrap max-h-48 overflow-y-auto">
                   {selectedLogForDetail.description}
                 </div>
               </div>
 
               {(selectedLogForDetail.ipAddress || selectedLogForDetail.userAgent) && (
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-[11px] text-slate-500">
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-xs text-slate-500">
                   {selectedLogForDetail.ipAddress && <div><span className="font-semibold">{t('logs.ip_address', 'IP Address:')}</span> {selectedLogForDetail.ipAddress}</div>}
                   {selectedLogForDetail.userAgent && <div className="truncate"><span className="font-semibold">{t('logs.user_agent', 'User Agent:')}</span> {selectedLogForDetail.userAgent}</div>}
                 </div>
@@ -439,8 +440,8 @@ export const ActivityLogsView: React.FC = () => {
                 {t('redline.close', 'Tutup')}
               </button>
             </div>
-          </div>
-        </div>
+
+        </ModalFrame>
       )}
     </div>
   );

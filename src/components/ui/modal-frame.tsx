@@ -13,7 +13,7 @@ export function ModalFrame({ children, onClose, className }: {
     <Dialog.Portal>
       <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs animate-in" />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 pointer-events-none">
-        <Dialog.Content aria-describedby={undefined}
+        <Dialog.Content aria-describedby={undefined} aria-modal="true"
           onOpenAutoFocus={() => { returnFocus.current = document.activeElement as HTMLElement; }}
           onCloseAutoFocus={event => { event.preventDefault(); returnFocus.current?.focus(); }}
           onPointerDownOutside={event => event.preventDefault()}

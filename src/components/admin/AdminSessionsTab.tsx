@@ -60,7 +60,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
     <div className="space-y-4">
       {/* Controls Bar */}
       <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <CardContent className="mobile-controls-bar p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="relative flex-1 min-w-[220px] max-w-md">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
@@ -129,7 +129,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
                             <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">
                               {displayName}
                             </div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                               {s.userEmail}
                             </div>
                           </div>
@@ -139,7 +139,7 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
                       {/* Token Preview */}
                       <td className="py-4 px-4 text-left align-middle font-mono">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[11px] text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                          <span className="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
                             {s.token ? `${s.token.slice(0, 12)}...` : `${(s.id || '').slice(0, 12)}...`}
                           </span>
                           <button
@@ -156,16 +156,16 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
 
                       {/* IP & User Agent */}
                       <td className="py-4 px-4 text-left align-middle">
-                        <div className="font-mono text-[11px] text-slate-700 dark:text-slate-300">
+                        <div className="font-mono text-xs text-slate-700 dark:text-slate-300">
                           {s.ipAddress || t('admin.not_available', 'Tidak tersedia')}
                         </div>
-                        <div className="text-[10px] text-slate-400 truncate max-w-[200px]" title={s.userAgent}>
+                        <div className="text-xs text-slate-400 truncate max-w-[200px]" title={s.userAgent}>
                           {s.userAgent || t('admin.standard_browser', 'Standard Browser')}
                         </div>
                       </td>
 
                       {/* Created At */}
-                      <td className="py-4 px-4 text-left align-middle text-slate-500 dark:text-slate-400 text-[11px]">
+                      <td className="py-4 px-4 text-left align-middle text-slate-500 dark:text-slate-400 text-xs">
                         {new Date(s.createdAt).toLocaleString(getActiveFormattingLocale(), {
                           day: 'numeric',
                           month: 'short',
@@ -177,11 +177,11 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
                       {/* Expires At */}
                       <td className="py-4 px-4 text-left align-middle">
                         {isExpired ? (
-                          <Badge variant="destructive" className="gap-1 px-2 py-0.5 text-[10px]">
+                          <Badge variant="destructive" className="gap-1 px-2 py-0.5 text-xs">
                             {t('status.expired', 'Expired')}
                           </Badge>
                         ) : (
-                          <span className="text-slate-600 dark:text-slate-400 text-[11px]">
+                          <span className="text-slate-600 dark:text-slate-400 text-xs">
                             {new Date(s.expiresAt).toLocaleDateString(getActiveFormattingLocale(), {
                               day: 'numeric',
                               month: 'short',

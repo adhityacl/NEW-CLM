@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
   Upload,
   Download,
@@ -15,6 +15,9 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useTenantSettings, type TenantPolicyView } from '../context/TenantSettingsContext';
+import { downloadCsv, parseCSV } from '../lib/csv';
+import { PRICING_MODELS } from '../types';
 import { Partner, Contract, InsertionOrder } from '../types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -45,112 +48,109 @@ interface BulkImportViewProps {
 
 // ─── CSV Templates ─────────────────────────────────────────────────────────────
 
-// Neutral, fictional examples (example.com, RFC 2606). `country` is an
-// ISO 3166-1 alpha-2 code; currency is an ISO 4217 code; dates are ISO 8601.
-const TEMPLATES: Record<ImportType, { headers: string[]; example: string[] }> = {
-  partners: {
-    headers: [
-      'nama_partner', 'partner_channel', 'internal_pic', 'jenis_partner', 'pic_partner', 'nama_pic', 'email_pic',
-      'telepon_pic', 'alamat_pic', 'country', 'entity_type', 'catatan', 'tags',
-    ],
-    example: [
-      'Acme Supplies Pte. Ltd.', 'Office supplies', 'Procurement', 'Vendor', 'Jane Tan', 'Jane Tan', 'jane@acme.example.com',
-      '+6560000000', '1 Example Road, Singapore 000001', 'SG', 'Private Limited (Pte. Ltd.)', 'Preferred supplier', 'Supplier',
-    ],
-  },
-  contracts: {
-    headers: [
-      'nomor_kontrak', 'judul_kontrak', 'partner_nama', 'jenis_dokumen', 'kategori_kerjasama',
-      'tanggal_mulai', 'tanggal_berakhir', 'currency', 'nilai_kontrak',
-      'notice_period_hari', 'notice_type_required', 'pic_internal', 'internal_notes',
-    ],
-    example: [
-      'MSA-2026-001', 'Master Supply Agreement', 'Acme Supplies Pte. Ltd.', 'Master Agreement',
-      'Supplier', '2026-01-01', '2026-12-31', 'SGD', '120000', '30', 'Both', 'Procurement', 'Annual agreement',
-    ],
-  },
-  ios: {
-    headers: [
-      'nomor_io', 'judul_io', 'partner_nama', 'contract_nomor', 'kanal_media',
-      'tanggal_mulai', 'tanggal_berakhir', 'pricing_model', 'charging_type', 'currency',
-      'nilai_io', 'deliverables', 'notice_period_hari', 'notice_type_required', 'internal_notes',
-    ],
-    example: [
-      'PO-2026-001', 'Q1 stationery order', 'Acme Supplies Pte. Ltd.', 'MSA-2026-001', 'Stationery',
-      '2026-01-01', '2026-03-31', 'Unit Price', 'Postpaid', 'SGD', '15000',
-      'Monthly delivery', '14', 'Termination', '',
-    ],
-  },
-  evaluations: {
-    headers: [
-      'supplier_name', 'review_date', 'type_of_work', 'sla_score',
-      'obligation_target', 'incident_frequency', 'communication', 'pricing', 'final_evaluation', 'notes',
-    ],
-    example: [
-      'Acme Supplies Pte. Ltd.', '2026-06-30', 'Office supplies', '85',
-      'Met', 'Rare', 'Good', 'Moderate', 'Recommended', 'Good overall performance',
-    ],
-  },
-  spendings: {
-    headers: [
-      'vendor_name', 'invoice_number', 'invoice_date', 'invoice_month', 'invoice_description',
-      'currency', 'total_amount', 'bank_name', 'bank_account_number', 'bank_account_holder_name',
-    ],
-    example: [
-      'Acme Supplies Pte. Ltd.', 'INV-2026-001', '2026-01-31', '2026-01',
-      'Stationery — January 2026', 'SGD', '5000', 'Example Bank', '000-000000-0', 'Acme Supplies Pte. Ltd.',
-    ],
-  },
-};
+interface ImportTemplate { headers: string[]; example: string[]; notes: string[] }
+
+// Examples follow the active organization's country and industry. All names are fictional
+// (example.com, RFC 2606); dates are ISO 8601 and multi-value cells are separated by ";".
+function buildTemplates(policy: TenantPolicyView): Record<ImportType, ImportTemplate> {
+  const country = policy.country.code;
+  const currency = policy.settings.defaultCurrency;
+  const indonesia = country === 'ID';
+  const partnerName = indonesia ? 'PT Contoh Layanan Digital' : 'Example Services Ltd.';
+  const contactName = indonesia ? 'Budi Santoso' : 'Jane Tan';
+  const category = policy.industry.partnerCategories[0] || 'Vendor Services';
+  const schemes = policy.country.identifierSchemes
+    .filter((scheme) => scheme.appliesTo.includes('organization') && scheme.example)
+    .slice(0, 2);
+  const identifiers = schemes.map((scheme) => `${scheme.key}:${scheme.example}`).join(';');
+  const phone = `+${policy.country.callingCode.replace(/^\+/, '')}2150000000`;
+  const legalForm = policy.country.legalForms[0] || '';
+  const orderLabel = policy.industry.commercialDocument.label;
+
+  return {
+    partners: {
+      headers: [
+        'nama_partner', 'partner_channel', 'internal_pic', 'jenis_partner', 'pic_partner', 'nama_pic', 'email_pic',
+        'telepon_pic', 'alamat_pic', 'country', 'entity_type', 'identifiers', 'catatan', 'tags',
+      ],
+      example: [
+        partnerName, category, 'Procurement', 'Vendor', contactName, contactName, 'contact@contoh.example.com',
+        phone, 'Jl. Contoh No. 1, Jakarta 10110', country, legalForm, identifiers, 'Preferred vendor', category,
+      ],
+      notes: [
+        'identifiers: "scheme:value" pairs separated by ";", e.g. ' + (identifiers || 'id_npwp:01.234.567.8-012.000') + '.',
+        'tags: separated by ";". country: ISO 3166-1 alpha-2 code.',
+        'Partners with the same name that already exist are skipped.',
+      ],
+    },
+    contracts: {
+      headers: [
+        'nomor_kontrak', 'judul_kontrak', 'partner_nama', 'jenis_dokumen', 'parent_contract_nomor', 'kategori_kerjasama',
+        'tanggal_mulai', 'tanggal_berakhir', 'currency', 'nilai_kontrak', 'auto_renewal', 'status_approval',
+        'notice_period_hari', 'notice_type_required', 'pic_internal', 'internal_notes',
+      ],
+      example: [
+        'MSA/2026/001', 'Master Services Agreement', partnerName, 'Master Agreement', '', category,
+        '2026-01-01', '2026-12-31', currency, '1200000000', 'Ya', 'Signed', '30', 'Both', 'Legal', 'Annual agreement',
+      ],
+      notes: [
+        'jenis_dokumen: Master Agreement or Agreement Addendum. An addendum needs parent_contract_nomor of an existing contract.',
+        'status_approval: Draft, Review, Signed or Active. notice_type_required: Termination, Extension, Both or None.',
+        'auto_renewal: Ya/Yes/True or Tidak/No. kategori_kerjasama: separated by ";". partner_nama must match an existing partner.',
+      ],
+    },
+    ios: {
+      headers: [
+        'nomor_io', 'judul_io', 'partner_nama', 'contract_nomor', 'kanal_media',
+        'tanggal_mulai', 'tanggal_berakhir', 'pricing_model', 'charging_type', 'currency',
+        'nilai_io', 'deliverables', 'notice_period_hari', 'notice_type_required', 'internal_notes',
+      ],
+      example: [
+        'BMD/IO/2026/001', `${orderLabel} 2026`, partnerName, 'MSA/2026/001', 'Managed service',
+        '2026-01-01', '2026-12-31', 'Fixed', 'Postpaid', currency, '300000000',
+        'Monthly service delivery', '14', 'Termination', '',
+      ],
+      notes: [
+        `pricing_model: ${PRICING_MODELS.join(', ')} (other values are kept as a custom model).`,
+        'charging_type: Prepaid, Postpaid or Milestone-based. contract_nomor must match an existing contract.',
+      ],
+    },
+    evaluations: {
+      headers: [
+        'supplier_name', 'review_date', 'type_of_work', 'sla_score',
+        'obligation_target', 'incident_frequency', 'communication', 'pricing', 'final_evaluation', 'notes',
+      ],
+      example: [
+        partnerName, '2026-06-30', category, '85',
+        'Met', 'Rare', 'Good', 'Moderate', 'Recommended', 'Good overall performance',
+      ],
+      notes: [
+        'All five rating columns are required. obligation_target: Met, Not met, Sangat baik, Baik, Kurang baik.',
+        'incident_frequency: Never, Rare, Frequent. communication: Good, Poor/Needs Improvement, Sangat baik, Baik, Kurang baik.',
+        'pricing: Cheap, Moderate, Expensive. final_evaluation: Recommended, Recommended with notes, Not recommended, Not reviewed.',
+      ],
+    },
+    spendings: {
+      headers: [
+        'vendor_name', 'invoice_number', 'invoice_date', 'invoice_month', 'invoice_title', 'invoice_description',
+        'currency', 'total_amount', 'payment_status', 'bank_name', 'bank_account_number', 'bank_account_holder_name',
+      ],
+      example: [
+        partnerName, 'INV/2026/01/0001', '2026-02-03', '2026-01', 'Layanan Januari 2026',
+        'Monthly managed service January 2026 incl. VAT', currency, '333000000', 'Unpaid', 'Bank Contoh', '000-000-0000', partnerName,
+      ],
+      notes: [
+        'invoice_month: YYYY-MM, several months separated by ";". The USD amount is calculated from currency.',
+        'vendor_name must match an existing partner to be linked to it.',
+      ],
+    },
+  };
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function parseCSV(text: string): { headers: string[]; rows: Record<string, string>[] } | null {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return null;
-
-  const parseRow = (line: string): string[] => {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
-        else { inQuotes = !inQuotes; }
-      } else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
-      else { current += ch; }
-    }
-    result.push(current.trim());
-    return result;
-  };
-
-  const headers = parseRow(lines[0]);
-  const rows: Record<string, string>[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    const values = parseRow(line);
-    const row: Record<string, string> = {};
-    headers.forEach((h, idx) => { row[h] = values[idx] ?? ''; });
-    rows.push(row);
-  }
-  return { headers, rows };
-}
-
-function downloadTemplate(type: ImportType) {
-  const { headers, example } = TEMPLATES[type];
-  const escape = (v: string) => (v.includes(',') || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v);
-  const csvContent = [headers.join(','), example.map(escape).join(',')].join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `template_import_${type}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+function downloadTemplate(type: ImportType, template: ImportTemplate) {
+  downloadCsv(`template_import_${type}.csv`, template.headers, [template.example]);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -165,6 +165,8 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
   userRole,
 }) => {
   const { t, language } = useLanguage();
+  const { policy } = useTenantSettings();
+  const templates = useMemo(() => buildTemplates(policy), [policy]);
 
   const [activeType, setActiveType] = useState<ImportType>('partners');
   const [parsedRows, setParsedRows] = useState<Record<string, string>[] | null>(null);
@@ -176,7 +178,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const IMPORT_TYPES: { id: ImportType; label: string; icon: React.FC<{ className?: string }>; color: string }[] = [
-    { id: 'partners',    label: t('import.type_partner',    'Partner'),           icon: Building2,     color: 'text-[#06C755]' },
+    { id: 'partners',    label: t('import.type_partner',    'Partner'),           icon: Building2,     color: 'text-accent-text' },
     { id: 'contracts',   label: t('import.type_contract',   'Contract'),          icon: FileText,      color: 'text-blue-500'  },
     { id: 'ios',         label: t('import.type_io',         'IO'),                icon: FileSpreadsheet, color: 'text-purple-500' },
     { id: 'evaluations', label: t('import.type_evaluation', 'Evaluation'),        icon: ClipboardCheck, color: 'text-amber-600 dark:text-amber-400' },
@@ -257,11 +259,11 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
       label: t('import.succeeded', 'Berhasil Dibuat'),
       items: report?.succeeded ?? [],
       count: report?.succeeded.length ?? 0,
-      rowClass: 'text-[#048C3B] dark:text-emerald-400',
-      headerBg: 'bg-[#EBFBF0] dark:bg-emerald-950/40',
-      pillBg: 'bg-[#EBFBF0] dark:bg-emerald-950/40 border-[#06C755]/30',
-      icon: <CheckCircle2 className="w-4 h-4 text-[#06C755]" />,
-      pillIcon: <CheckCircle2 className="w-6 h-6 text-[#06C755] mb-1" />,
+      rowClass: 'text-accent-text dark:text-emerald-400',
+      headerBg: 'bg-accent-soft dark:bg-emerald-950/40',
+      pillBg: 'bg-accent-soft dark:bg-emerald-950/40 border-accent/30',
+      icon: <CheckCircle2 className="w-4 h-4 text-accent-text" />,
+      pillIcon: <CheckCircle2 className="w-6 h-6 text-accent-text mb-1" />,
     },
     {
       key: 'skipped' as const,
@@ -299,7 +301,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
 
       {/* ── Type Selector ────────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6">
-        <div className="flex flex-wrap gap-2">
+        <div className="mobile-page-actions flex flex-wrap gap-2">
           {IMPORT_TYPES.map((item) => {
             const Icon = item.icon;
             const isActive = activeType === item.id;
@@ -310,8 +312,8 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
                 onClick={() => handleTypeChange(item.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-[#04803D] text-white border-[#06C755] shadow-sm'
-                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-[#06C755]/50 hover:text-[#06C755]'
+                    ? 'bg-accent-strong text-white border-accent shadow-sm'
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-accent/50 hover:text-accent-text'
                 }`}
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'text-white' : item.color}`} />
@@ -341,24 +343,28 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700/50">
-              <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-2">{t('bulk_import.kolom_template', 'Kolom Template:')}</p>
+              <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-2">{t('bulk_import.kolom_template', 'Kolom Template:')}</p>
               <div className="flex flex-wrap gap-1.5">
-                {TEMPLATES[activeType].headers.map((h) => (
+                {templates[activeType].headers.map((h) => (
                   <span
                     key={h}
-                    className="text-[10px] font-semibold bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 px-2 py-0.5 rounded-md"
+                    className="text-xs font-semibold bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 px-2 py-0.5 rounded-md"
                   >
                     {h}
                   </span>
                 ))}
               </div>
             </div>
+
+            <ul className="list-disc space-y-1 pl-5 text-xs text-slate-600 dark:text-slate-400">
+              {templates[activeType].notes.map((note) => <li key={note}>{note}</li>)}
+            </ul>
           </div>
 
           <div className="pt-4 mt-auto">
             <button
               type="button"
-              onClick={() => downloadTemplate(activeType)}
+              onClick={() => downloadTemplate(activeType, templates[activeType])}
               className="w-full flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
             >
               <Download className="w-4 h-4" />
@@ -371,10 +377,10 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
 
         {/* Upload */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex flex-col justify-between">
-          <div className="space-y-4">
+          <div className="flex flex-1 flex-col gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-[#EBFBF0] dark:bg-emerald-950/60 rounded-xl border border-[#06C755]/30 shrink-0">
-                <Upload className="w-5 h-5 text-[#06C755]" />
+              <div className="p-2.5 bg-accent-soft dark:bg-emerald-950/60 rounded-xl border border-accent/30 shrink-0">
+                <Upload className="w-5 h-5 text-accent-text" />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
@@ -383,11 +389,11 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
               </div>
             </div>
 
-            <label className="block w-full border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#06C755]/60 rounded-xl p-6 text-center cursor-pointer transition-colors group">
+            <label className="flex w-full min-h-32 flex-1 flex-col items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-accent/60 rounded-xl p-6 text-center cursor-pointer transition-colors group">
               <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileChange} />
-              <FileSpreadsheet className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto mb-2 group-hover:text-[#06C755]/60 transition-colors" />
+              <FileSpreadsheet className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto mb-2 group-hover:text-accent-text/60 transition-colors" />
               {fileName
-                ? <p className="text-xs font-bold text-[#048C3B] dark:text-emerald-400 truncate px-2">{fileName}</p>
+                ? <p className="text-xs font-bold text-accent-text dark:text-emerald-400 truncate px-2">{fileName}</p>
                 : <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{t('import.choose_file', 'Pilih File CSV')} {t('bulk_import.csv', '(.csv)')}</p>
               }
             </label>
@@ -400,7 +406,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
             )}
 
             {parsedRows && parsedRows.length > 0 && !parseError && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-[#EBFBF0] dark:bg-emerald-950/40 border border-[#06C755]/30 text-xs text-[#048C3B] dark:text-emerald-400 font-bold">
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-accent-soft dark:bg-emerald-950/40 border border-accent/30 text-xs text-accent-text dark:text-emerald-400 font-bold">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{parsedRows.length} {t('import.preview_rows', 'baris data ditemukan')}</span>
               </div>
@@ -408,12 +414,12 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
           </div>
 
           <div className="pt-4 mt-auto">
-            <div className="flex items-center gap-2">
+            <div className="mobile-page-actions flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleImport}
                 disabled={!parsedRows || parsedRows.length === 0 || isImporting}
-                className="flex-1 flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-xs font-bold bg-[#04803D] hover:bg-[#036B33] text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-xs font-bold bg-accent-strong hover:bg-accent-strong-hover text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isImporting
                   ? <><RefreshCw className="w-4 h-4 animate-spin" /><span>{t('import.importing', 'Mengimpor...')}</span></>
@@ -446,7 +452,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                 {t('import.preview_title', 'Pratinjau Data CSV')}
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {parsedRows.length} {t('import.preview_rows', 'baris data ditemukan')} | {fileName}
               </p>
             </div>
@@ -489,8 +495,8 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
       {report && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-            <div className="p-2.5 bg-[#EBFBF0] dark:bg-emerald-950/60 rounded-xl border border-[#06C755]/30 shrink-0">
-              <FileSpreadsheet className="w-5 h-5 text-[#06C755]" />
+            <div className="p-2.5 bg-accent-soft dark:bg-emerald-950/60 rounded-xl border border-accent/30 shrink-0">
+              <FileSpreadsheet className="w-5 h-5 text-accent-text" />
             </div>
             <div>
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
@@ -505,7 +511,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
               <div key={s.key} className={`flex flex-col items-center justify-center p-4 rounded-2xl border gap-1 ${s.pillBg}`}>
                 {s.pillIcon}
                 <span className={`text-2xl font-extrabold ${s.rowClass}`}>{s.count}</span>
-                <span className={`text-[11px] font-bold text-center ${s.rowClass}`}>{s.label}</span>
+                <span className={`text-xs font-bold text-center ${s.rowClass}`}>{s.label}</span>
               </div>
             ))}
           </div>

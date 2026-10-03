@@ -1,4 +1,4 @@
-import { parseAllMonths, parseMonthStr } from './monthUtils';
+import { spendingReportingAllocations } from './spendingAllocations';
 import { convertToUsdWithFallback, getDefaultUsdRate } from './currencyUtils';
 import type { Contract, PartnerSpending } from '../types';
 
@@ -25,13 +25,16 @@ export function buildSpendingSeries(rows: PartnerSpending[], year: string, categ
   let skipped = 0;
   for (const row of rows) {
     if (category !== 'ALL' && !categories(row).some(c => c.toLowerCase() === category.toLowerCase())) continue;
-    let months = (row.invoice_month || []).flatMap(parseAllMonths);
-    if (!months.length) { const month = parseMonthStr(row.invoice_date || ''); if (month) months = [month]; }
-    const periods = [...new Set(months.map(m => `${m.year}-${m.month}`))];
-    if (!periods.length) { skipped++; continue; }
-    const value = amount(row) / periods.length;
-    for (const period of periods.filter(p => year === 'ALL' || p.startsWith(year + '-'))) {
-      values.push({ period, id: row.vendor_id || row.vendor_name || 'unknown', name: row.vendor_name || otherLabel, value });
+    const allocations = spendingReportingAllocations(row);
+    if (!allocations.length) { skipped++; continue; }
+    const convertedTotal = amount(row);
+    if (!Number.isFinite(convertedTotal) || convertedTotal < 0) { skipped++; continue; }
+    const sourceTotal = Number(row.total_amount);
+    // Preserve the invoice's stored exchange rate for every allocated month.
+    const rate = sourceTotal > 0 ? convertedTotal / sourceTotal : 0;
+    for (const allocation of allocations) {
+      if (year !== 'ALL' && !allocation.month.startsWith(year + '-')) continue;
+      values.push({ period: allocation.month, id: row.vendor_id || row.vendor_name || 'unknown', name: row.vendor_name || otherLabel, value: allocation.amount * rate });
     }
   }
   const totals = new Map<string, { name: string; total: number }>();

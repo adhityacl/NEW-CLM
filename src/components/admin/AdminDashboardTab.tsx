@@ -120,11 +120,11 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                 </div>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 font-mono">
+                <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">
                   {card.value}
                 </span>
                 {card.pulse && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                     {t('admin.online_status', 'Online')}
                   </span>
@@ -146,9 +146,9 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-emerald-600" />
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {t('admin.recent_users_title', 'Pengguna Terbaru')}
-              </h4>
+              </h3>
             </div>
             <button
               type="button"
@@ -179,7 +179,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                       <div className="font-medium text-xs text-slate-900 dark:text-slate-100 truncate">
                         {user.name}
                       </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                      <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                         {user.email}
                       </div>
                     </div>
@@ -187,7 +187,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
 
                   <div className="flex items-center gap-2">
                     <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         user.role === 'superuser'
                           ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300'
                           : user.role === 'admin'
@@ -202,11 +202,11 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                       {user.role.toUpperCase()}
                     </span>
                     {user.banned ? (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 font-medium">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 font-medium">
                         {t('admin.status_banned', 'Dicekal')}
                       </span>
                     ) : (
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-xs text-slate-400">
                         {new Date(user.createdAt).toLocaleDateString(getActiveFormattingLocale(), {
                           day: 'numeric',
                           month: 'short',
@@ -225,9 +225,9 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Radio className="w-4 h-4 text-blue-600" />
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {t('admin.active_login_sessions_title', 'Sesi Login Aktif')}
-              </h4>
+              </h3>
             </div>
             <button
               type="button"
@@ -255,23 +255,23 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                       <span className="font-medium text-xs text-slate-900 dark:text-slate-100">
                         {session.userName || t('admin.generic_user', 'Pengguna')}
                       </span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      <span className="text-xs font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                         {session.ipAddress || t('admin.not_available', 'Tidak tersedia')}
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-400 truncate mt-0.5 font-mono">
+                    <div className="text-xs text-slate-400 truncate mt-0.5 font-mono">
                       {t('admin.token', 'Token:')} {session.token ? `${session.token.slice(0, 10)}...` : (session.id || '').slice(0, 10)}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] text-slate-400 hidden sm:inline">
+                    <span className="text-xs text-slate-400 hidden sm:inline">
                       {t('admin.expires_prefix', 'Kadaluarsa:')} {new Date(session.expiresAt).toLocaleDateString(getActiveFormattingLocale())}
                     </span>
                     <button
                       type="button"
                       onClick={() => onRevokeSession(session.id)}
-                      className="px-2 py-1 rounded text-[10px] font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
+                      className="px-2 py-1 rounded text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
                       title={t('admin.btn_revoke_session', 'Cabut sesi login ini')}
                     >
                       {t('admin.btn_revoke', 'Cabut')}

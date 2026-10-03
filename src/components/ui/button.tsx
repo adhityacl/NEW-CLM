@@ -25,7 +25,7 @@ export function buttonVariants(variant: ButtonVariant = "default", size: ButtonS
       "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--muted)] shadow-xs": variant === "outline",
       "bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:brightness-95": variant === "secondary",
       "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]": variant === "ghost",
-      "text-[var(--primary)] underline-offset-4 hover:underline": variant === "link",
+      "text-accent-text underline-offset-4 hover:underline": variant === "link",
       "h-9 px-4 text-xs rounded-[var(--radius)]": size === "default",
       "h-8 px-3 text-xs rounded-[var(--radius)]": size === "sm",
       "h-10 px-5 text-sm rounded-[var(--radius)]": size === "lg",

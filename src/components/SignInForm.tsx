@@ -317,9 +317,9 @@ const LanguageSwitcher: React.FC<{ language: Language; setLanguage: (lang: Langu
         type="button"
         lang={option.htmlLang}
         onClick={() => setLanguage(option.code)}
-        className={`min-w-11 min-h-11 px-2.5 py-1.5 rounded-full transition-all cursor-pointer text-xs font-bold flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
+        className={`min-w-11 min-h-11 px-2.5 py-1.5 rounded-full transition-all cursor-pointer text-xs font-bold flex items-center justify-center focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none ${
           language === option.code
-            ? 'bg-[#04803D] text-white shadow-2xs'
+            ? 'bg-accent-strong text-white shadow-2xs'
             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
         }`}
         title={option.nativeName}
@@ -334,7 +334,7 @@ const LanguageSwitcher: React.FC<{ language: Language; setLanguage: (lang: Langu
 
 const LegalFooter: React.FC<{ onOpenPrivacy: (e: React.MouseEvent) => void; onOpenTerms: (e: React.MouseEvent) => void; t: (k: string, d?: string) => string }> = ({ onOpenPrivacy, onOpenTerms, t }) => (
   <div className="mt-6 text-center">
-    <p className="flex flex-wrap items-center justify-center gap-x-1 text-[11px] text-[var(--muted-foreground)]">
+    <p className="flex flex-wrap items-center justify-center gap-x-1 text-xs text-[var(--muted-foreground)]">
       <button type="button" onClick={onOpenPrivacy} className="hover:text-[var(--foreground)] hover:underline transition-colors cursor-pointer">
         {t('footer.privacy_policy', 'Privacy Policy')}
       </button>

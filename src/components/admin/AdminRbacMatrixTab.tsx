@@ -341,7 +341,7 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
                     </div>
                   </div>
                   <div className="mb-2">
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                       {role.scope || t('admin.system', 'System')}
                     </span>
                   </div>
@@ -369,7 +369,7 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-xs">
                 <th className="py-3 px-4 w-[240px]">{t('admin.capability_action', 'Capability / Action')}</th>
                 <th className="py-3 px-3 text-center">{t('admin.superuser', 'Superuser')}</th>
                 <th className="py-3 px-3 text-center">{t('admin.admin', 'Admin')}</th>
@@ -386,7 +386,7 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
                 >
                   <td className="py-3.5 px-4 font-medium text-slate-900 dark:text-slate-100">
                     <div className="font-semibold">{row.label}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
+                    <div className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                       {row.desc}
                     </div>
                   </td>
@@ -413,10 +413,10 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end mb-4">
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+            <label htmlFor="adminrbacmatrixtab-field-1" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
               {t('admin.rbac_role_label', 'Peran Pengguna (Role)')}
             </label>
-            <AlphabeticalSelect
+            <AlphabeticalSelect id="adminrbacmatrixtab-field-1"
               value={testRole}
               onChange={(e) => setTestRole(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
@@ -430,10 +430,10 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+            <label htmlFor="adminrbacmatrixtab-field-2" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
               {t('admin.col_resource', 'Sumber Daya (Resource)')}
             </label>
-            <AlphabeticalSelect
+            <AlphabeticalSelect id="adminrbacmatrixtab-field-2"
               value={testResource}
               onChange={(e) => {
                 const resource = e.target.value;
@@ -447,10 +447,10 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+            <label htmlFor="adminrbacmatrixtab-field-3" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
               {t('admin.rbac_action_label', 'Tindakan (Action)')}
             </label>
-            <AlphabeticalSelect
+            <AlphabeticalSelect id="adminrbacmatrixtab-field-3"
               value={effectiveAction}
               onChange={(e) => setTestAction(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
@@ -479,7 +479,7 @@ export const AdminRbacMatrixTab: React.FC<RbacMatrixProps> = ({ matrixData }) =>
                     : t('admin.forbidden_403', 'FORBIDDEN (403)')}
                 </span>
               </div>
-              <span className="font-mono text-[11px]">{isAllowed ? t('admin.200_ok', '200 OK') : '403'}</span>
+              <span className="font-mono text-xs">{isAllowed ? t('admin.200_ok', '200 OK') : '403'}</span>
             </div>
           </div>
         </div>

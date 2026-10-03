@@ -30,8 +30,8 @@ interface DocumentInfoPanelProps {
 
 type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
 
-const SECTION_TITLE = 'text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5';
-const LABEL = 'block text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400';
+const SECTION_TITLE = 'text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5';
+const LABEL = 'block text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400';
 const BUTTON =
   'w-full inline-flex items-center justify-center gap-1.5 min-h-11 sm:min-h-8 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 cursor-pointer';
 
@@ -313,7 +313,7 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
                 <li key={field.id} className="flex items-center justify-between gap-2 text-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
                   <span className="min-w-0">
                     <span className="font-semibold text-slate-800 dark:text-slate-100">{field.name}</span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400"> · {fieldTypeLabel(field.field_type)}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400"> · {fieldTypeLabel(field.field_type)}</span>
                   </span>
                   <button
                     type="button"
@@ -327,7 +327,7 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
               ))}
             </ul>
           )}
-          <form onSubmit={addField} className="space-y-2 p-2.5 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-800">
+          <form onSubmit={addField} className="space-y-2 editor-panel-card p-4 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-800">
             <label className="block space-y-1">
               <span className={LABEL}>{t('documents.metadata.field_name', 'Nama kolom')}</span>
               <input

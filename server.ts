@@ -2,6 +2,7 @@ import "dotenv/config";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 import express from "express";
+import { allocationInvoiceMonths, validateSpendingAllocations } from "./src/lib/spendingAllocations";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
@@ -2076,6 +2077,9 @@ function recalculateStatuses() {
         `${reference} (${title}) berakhir dalam ${daysRemaining} hari.${kind === "contract" ? ` Pemberitahuan ${noticeType} diperlukan ${noticeDays} hari sebelumnya.` : ""}`,
         `${reference}（${title}）将在 ${daysRemaining} 天后到期。${kind === "contract" ? `需在到期前 ${noticeDays} 天发出${noticeType}通知。` : ""}`,
       ),
+      // Lets the UI render the message in the viewer's language; `pesan` stays
+      // in the organization language for e-mail/export and older clients.
+      pesan_params: { kind, daysRemaining, noticeType, noticeDays },
       is_read: false,
     };
     db.notifications.unshift(notif);
@@ -2247,6 +2251,9 @@ async function getClerkUserEmail(req) {
 app.get("/api/user/my-role", async (req: express.Request, res: express.Response) => {
   const email = await getClerkUserEmail(req);
   if (!email) {
+    // The app's start-up session probe: "signed out" is an expected answer, not
+    // an error, so it gets 204 instead of filling every public page's console with 401s.
+    if (req.query.probe === "1") return res.status(204).end();
     return res.status(401).json({ error: "Tidak terautentikasi." });
   }
   let allowed = db.allowedUsers.find((u) => u.email.toLowerCase() === email);
@@ -3521,7 +3528,7 @@ app.post("/api/spendings/parse", upload.single("file") as any, async (req: expre
 
     const tenantId = getRequestTenantId(req);
     const inputHash = computeInputSha256(inputData);
-    const cacheScope = `spendings:${tenantId}`;
+    const cacheScope = `spendings:v2-explicit-period:${tenantId}`;
     const cached = globalOcrCache.get(inputHash, cacheScope);
     if (cached) {
       return res.json({
@@ -3535,13 +3542,16 @@ app.post("/api/spendings/parse", upload.single("file") as any, async (req: expre
 
 1. "invoice_number": the official invoice number exactly as printed.
 2. "invoice_date": the issue date, converted to ISO 8601 "YYYY-MM-DD".
-3. "invoice_month": the billing period month as "YYYY-MM" (use the issue date's month when no separate period is printed).
+3. "spending_months": all months in an explicitly printed billing/service/spending period, as an array of "YYYY-MM" strings. Expand a printed range (e.g. October–December 2026) into every covered month. Return [] when no period is printed. NEVER infer a spending month from invoice_date or the issue date.
+   "invoice_month": the first explicitly identified spending month, or "" if none.
+   "month_allocations": an array of {"month": "YYYY-MM", "amount": number}, ONLY for per-month amounts explicitly printed in that period. Return [] when amounts are not specified. Do not invent an equal split.
 4. "invoice_description": every line-item description from the invoice table, joined with newline characters ("\n"), verbatim.
 5. "currency": the ISO 4217 three-letter currency code of the invoice total (e.g. "USD", "SGD", "INR", "JPY"). If only a symbol is shown, infer the code from the issuer's country; default to "${ctx.defaultCurrency}" when still unclear.
 6. "total_amount": the final invoice total as a plain number, without symbols or thousands separators.
 7. "bank_name": the beneficiary bank name only.
 8. "account_number": the beneficiary account number or IBAN exactly as printed, keeping separators.
 9. "account_holder": the beneficiary account name exactly as printed.
+10. "invoice_title": a short invoice/service title when present; keep it separate from the full line-item description. Use "" when absent.
 
 Return strictly one valid JSON object matching the schema. Use an empty string "" for any text field that is not present.`;
     const { contents: ocrContents, ocrStats } = await buildCheapOcrContents(
@@ -3564,6 +3574,11 @@ Return strictly one valid JSON object matching the schema. Use an empty string "
               invoice_number: { type: Type.STRING },
               invoice_date: { type: Type.STRING },
               invoice_month: { type: Type.STRING },
+              invoice_title: { type: Type.STRING },
+              spending_months: { type: Type.ARRAY, items: { type: Type.STRING } },
+              month_allocations: { type: Type.ARRAY, items: {
+                type: Type.OBJECT, properties: { month: { type: Type.STRING }, amount: { type: Type.NUMBER } },
+              } },
               invoice_description: { type: Type.STRING },
               currency: { type: Type.STRING },
               total_amount: { type: Type.NUMBER },
@@ -3648,6 +3663,8 @@ app.post("/api/partner-spendings", async (req: express.Request, res: express.Res
     invoice_number,
     invoice_date,
     invoice_month,
+    invoice_title,
+    month_allocations,
     invoice_description,
     currency,
     total_amount,
@@ -3668,11 +3685,16 @@ app.post("/api/partner-spendings", async (req: express.Request, res: express.Res
         error: "Vendor Name, Invoice Number, and Total Amount are required.",
       });
   }
+  if (Object.prototype.hasOwnProperty.call(req.body, "month_allocations")) {
+    const allocationError = validateSpendingAllocations(month_allocations, total_amount);
+    if (allocationError) return res.status(400).json({ error: "Invalid spending month allocation.", allocation_error: allocationError });
+  }
   const targetOrgId = getRequestTenantId(req);
   const targetTenant = (db.tenants || DEFAULT_TENANTS).find(
     (t) => t.id === targetOrgId,
   );
-  const monthsArray = normalizeSpendingMonths(invoice_month);
+  const monthsArray = normalizeSpendingMonths(month_allocations !== undefined
+    ? allocationInvoiceMonths(month_allocations) : invoice_month);
   const formattedMonthStr =
     monthsArray.length > 0 ? monthsArray.join("_") : "Month";
   const cleanVendorName = vendor_name.replace(/[/\\?%*:|"<>]/g, "").trim();
@@ -3849,6 +3871,8 @@ app.post("/api/partner-spendings", async (req: express.Request, res: express.Res
     invoice_number,
     invoice_date: invoice_date || new Date().toISOString().split("T")[0],
     invoice_month: monthsArray,
+    invoice_title: invoice_title || "",
+    ...(month_allocations !== undefined ? { month_allocations: month_allocations.map(({ month, amount }) => ({ month, amount })) } : {}),
     invoice_description: invoice_description || "",
     currency: normalizeCurrencyCode(currency, tenantDefaultCurrency(targetOrgId)),
     total_amount: Number(total_amount) || 0,
@@ -3894,6 +3918,14 @@ app.put("/api/partner-spendings/:id", async (req: express.Request, res: express.
     return res.status(404).json({ error: "Data spending tidak ditemukan." });
   }
   const existing = db.spendings[idx];
+  const hasAllocations = Object.prototype.hasOwnProperty.call(updates, "month_allocations") || existing.month_allocations !== undefined;
+  if (hasAllocations) {
+    const rows = Object.prototype.hasOwnProperty.call(updates, "month_allocations") ? updates.month_allocations : existing.month_allocations;
+    const allocationError = validateSpendingAllocations(rows, Object.prototype.hasOwnProperty.call(updates, "total_amount") ? updates.total_amount : existing.total_amount);
+    if (allocationError) return res.status(400).json({ error: "Invalid spending month allocation.", allocation_error: allocationError });
+    updates.month_allocations = rows.map(({ month, amount }) => ({ month, amount }));
+    updates.invoice_month = allocationInvoiceMonths(updates.month_allocations);
+  }
   if (
     updates.total_amount_usd === void 0 ||
     updates.total_amount_usd === null
@@ -7190,6 +7222,26 @@ app.get("/api/google-service-account/status", async (req: express.Request, res: 
       .json({ success: false, error: err?.message || String(err) });
   }
 });
+/** Case-insensitive match against an allowed list: "" when blank, null when not allowed. */
+function pickEnum(value: unknown, allowed: readonly string[]): string | null {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  return allowed.find((item) => item.toLowerCase() === text.toLowerCase()) ?? null;
+}
+const bulkSplitList = (value: unknown) => String(value ?? "").split(/[;,|]/).map((item) => item.trim()).filter(Boolean);
+const bulkBool = (value: unknown) => /^(1|true|ya|yes|y)$/i.test(String(value ?? "").trim());
+const BULK_PRICING_MODELS = ["CPM", "CPC", "CPA", "Fixed", "Retainer", "Hourly", "Milestone", "Commission", "Subscription"];
+const BULK_NOTICE_TYPES = ["Termination", "Extension", "Both", "None"];
+const BULK_ENUMS = {
+  jenis_dokumen: ["Master Agreement", "Agreement Addendum"],
+  status_approval: ["Draft", "Review", "Signed", "Active"],
+  charging_type: ["Prepaid", "Postpaid", "Milestone-based"],
+  obligation_target: ["Sangat baik", "Baik", "Kurang baik", "Met", "Not met"],
+  incident_frequency: ["Never", "Rare", "Frequent"],
+  communication: ["Sangat baik", "Baik", "Kurang baik", "Good", "Poor/Needs Improvement"],
+  pricing: ["Cheap", "Moderate", "Expensive"],
+  final_evaluation: ["Recommended", "Recommended with notes", "Not recommended", "Not reviewed"],
+};
 app.post("/api/bulk-import", async (req: express.Request, res: express.Response) => {
   const {
     type,
@@ -7285,7 +7337,12 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
           organizationId: tenantId,
           country: sanitizeCountryCode(row.country) || (row.badan_hukum === "BHI" ? "ID" : ""),
           entity_type: String(row.entity_type || "").slice(0, 120),
-          identifiers: [],
+          identifiers: sanitizeIdentifiers(
+            bulkSplitList(row.identifiers).map((pair) => {
+              const at = pair.indexOf(":");
+              return { scheme: at > 0 ? pair.slice(0, at).trim() : "other", value: at > 0 ? pair.slice(at + 1).trim() : pair, country: row.country };
+            }),
+          ),
           status_dd: "Incomplete",
           catatan: row.catatan || "",
           tags: sanitizePartnerTags(row.tags),
@@ -7338,12 +7395,26 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
         (p) => inTenant(p) && p.nama_partner?.toLowerCase() === partnerNama.toLowerCase(),
       );
       try {
-        const kategori = row.kategori_kerjasama
-          ? row.kategori_kerjasama
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : ["Advertising"];
+        const kategori = bulkSplitList(row.kategori_kerjasama);
+        const jenisDokumen = pickEnum(row.jenis_dokumen, BULK_ENUMS.jenis_dokumen);
+        const statusApproval = pickEnum(row.status_approval, BULK_ENUMS.status_approval);
+        const noticeType = pickEnum(row.notice_type_required, BULK_NOTICE_TYPES);
+        const invalid = jenisDokumen === null ? `jenis_dokumen harus salah satu dari: ${BULK_ENUMS.jenis_dokumen.join(", ")}.`
+          : statusApproval === null ? `status_approval harus salah satu dari: ${BULK_ENUMS.status_approval.join(", ")}.`
+          : noticeType === null ? `notice_type_required harus salah satu dari: ${BULK_NOTICE_TYPES.join(", ")}.`
+          : "";
+        if (invalid) {
+          failed.push({ rowIndex, identifier: nomor, message: invalid });
+          continue;
+        }
+        const parentNomor = (row.parent_contract_nomor || "").trim();
+        const parentContract = parentNomor
+          ? db.contracts.find((c) => inTenant(c) && c.nomor_kontrak?.toLowerCase() === parentNomor.toLowerCase())
+          : null;
+        if (parentNomor && !parentContract) {
+          failed.push({ rowIndex, identifier: nomor, message: `Kontrak induk "${parentNomor}" tidak ditemukan. Impor kontrak induk lebih dulu.` });
+          continue;
+        }
         let contractPic = (row.pic_internal || row.internal_pic || "").trim();
         if (forceDept) {
           contractPic = defDept;
@@ -7358,24 +7429,25 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
           nomor_kontrak: nomor,
           judul_kontrak: row.judul_kontrak || nomor,
           partner_id: partner?.partner_id || "",
-          jenis_dokumen: row.jenis_dokumen || "Master Agreement",
+          jenis_dokumen: jenisDokumen || "Master Agreement",
+          ...(parentContract ? { parent_contract_id: parentContract.contract_id, parent_contract_nomor: parentContract.nomor_kontrak } : {}),
           kategori_kerjasama: kategori,
           tanggal_mulai: row.tanggal_mulai || "",
           tanggal_berakhir: row.tanggal_berakhir || "",
           currency: normalizeCurrencyCode(row.currency, tenantCurrency),
           nilai_kontrak: parseFloat(row.nilai_kontrak) || 0,
-          auto_renewal: false,
+          auto_renewal: bulkBool(row.auto_renewal),
           notice_period_hari: parseInt(row.notice_period_hari) || 30,
-          notice_type_required: row.notice_type_required || "Both",
+          notice_type_required: noticeType || "Both",
           pic_internal: contractPic,
           internal_notes: row.internal_notes || "",
           status: "Active",
-          status_approval: "Signed",
+          status_approval: statusApproval || "Signed",
           created_at: now,
           updated_at: now,
         };
-        recalculateStatuses();
         db.contracts.push(newContract);
+        recalculateStatuses();
         succeeded.push({
           rowIndex,
           identifier: nomor,
@@ -7403,7 +7475,7 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
         continue;
       }
       const exists = db.ios.find(
-        (io) => io.nomor_io?.toLowerCase() === nomor.toLowerCase(),
+        (io) => inTenant(io) && io.nomor_io?.toLowerCase() === nomor.toLowerCase(),
       );
       if (exists) {
         skipped.push({
@@ -7421,6 +7493,18 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
       const contract = db.contracts.find(
         (c) => inTenant(c) && c.nomor_kontrak?.toLowerCase() === contractNomor.toLowerCase(),
       );
+      const chargingType = pickEnum(row.charging_type, BULK_ENUMS.charging_type);
+      const noticeTypeIo = pickEnum(row.notice_type_required, BULK_NOTICE_TYPES);
+      if (chargingType === null || noticeTypeIo === null) {
+        failed.push({
+          rowIndex,
+          identifier: nomor,
+          message: chargingType === null
+            ? `charging_type harus salah satu dari: ${BULK_ENUMS.charging_type.join(", ")}.`
+            : `notice_type_required harus salah satu dari: ${BULK_NOTICE_TYPES.join(", ")}.`,
+        });
+        continue;
+      }
       try {
         const newIO = {
           io_id: generateNextIOId(),
@@ -7432,13 +7516,14 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
           kanal_media: row.kanal_media || "",
           tanggal_mulai: row.tanggal_mulai || "",
           tanggal_berakhir: row.tanggal_berakhir || "",
-          pricing_model: row.pricing_model || "Flat Fee",
-          charging_type: row.charging_type || "Prepaid",
+          // Standard models are normalised ("cpm" -> "CPM"); anything else is kept as a custom model.
+          pricing_model: pickEnum(row.pricing_model, BULK_PRICING_MODELS) || String(row.pricing_model || "").trim() || "Fixed",
+          charging_type: chargingType || "Prepaid",
           currency: normalizeCurrencyCode(row.currency, tenantCurrency),
           nilai_io: parseFloat(row.nilai_io) || 0,
           deliverables: row.deliverables || "",
           notice_period_hari: parseInt(row.notice_period_hari) || 14,
-          notice_type_required: row.notice_type_required || "Termination",
+          notice_type_required: noticeTypeIo || "Termination",
           internal_notes: row.internal_notes || "",
           status: "Active",
           created_at: now,
@@ -7475,6 +7560,7 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
       const identifier = `${supplierName} \u2014 ${reviewDate}`;
       const exists = db.evaluations.find(
         (e) =>
+          inTenant(e) &&
           e.supplier_name?.toLowerCase() === supplierName.toLowerCase() &&
           e.review_date === reviewDate,
       );
@@ -7489,20 +7575,40 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
       const partner = db.partners.find(
         (p) => inTenant(p) && p.nama_partner?.toLowerCase() === supplierName.toLowerCase(),
       );
+      const picks = {
+        obligation_target: pickEnum(row.obligation_target, BULK_ENUMS.obligation_target),
+        incident_frequency: pickEnum(row.incident_frequency, BULK_ENUMS.incident_frequency),
+        communication: pickEnum(row.communication, BULK_ENUMS.communication),
+        pricing: pickEnum(row.pricing, BULK_ENUMS.pricing),
+        final_evaluation: pickEnum(row.final_evaluation, BULK_ENUMS.final_evaluation),
+      } as const;
+      const badField = (Object.keys(picks) as Array<keyof typeof picks>).find((key) => !picks[key]);
+      if (badField) {
+        failed.push({
+          rowIndex,
+          identifier,
+          message: `${badField} wajib diisi dengan salah satu dari: ${BULK_ENUMS[badField].join(", ")}.`,
+        });
+        continue;
+      }
       try {
+        const year = (reviewDate.match(/^\d{4}/) || [String(new Date().getFullYear())])[0];
         const newEval = {
-          id: `EV${String(db.evaluations.length + 1).padStart(4, "0")}`,
+          id: `EVAL-${year}-${String(db.evaluations.length + 1).padStart(3, "0")}`,
+          organizationId: tenantId,
           review_date: reviewDate,
+          year,
           partner_id: partner?.partner_id || "",
           supplier_name: supplierName,
-          type_of_work: row.type_of_work || "",
-          sla_score: parseFloat(row.sla_score) || 0,
-          obligation_target: row.obligation_target || "",
-          incident_frequency: row.incident_frequency || "",
-          communication: row.communication || "",
-          pricing: row.pricing || "",
-          final_evaluation: row.final_evaluation || "",
+          type_of_work: (row.type_of_work || "General Service").trim(),
+          sla_score: parseFloat(row.sla_score) || 60,
+          ...picks,
           notes: row.notes || "",
+          calculated_score: computeEvaluationScore(picks.obligation_target, picks.incident_frequency, picks.communication, picks.pricing),
+          evaluator_email: userEmail || "system",
+          evaluator_name: userName || "System",
+          created_at: now,
+          updated_at: now,
         };
         db.evaluations.push(newEval);
         succeeded.push({
@@ -7564,7 +7670,9 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
           invoice_description: row.invoice_description || "",
           currency,
           total_amount: totalAmount,
-          total_amount_usd: currency === "USD" ? totalAmount : 0,
+          total_amount_usd: currency === "USD" ? totalAmount : Math.round(convertToUsdWithFallback(totalAmount, currency) * 100) / 100,
+          invoice_title: row.invoice_title || "",
+          payment_status: String(row.payment_status || "").trim(),
           bank_name: row.bank_name || "",
           bank_account_number: row.bank_account_number || "",
           bank_account_holder_name: row.bank_account_holder_name || "",

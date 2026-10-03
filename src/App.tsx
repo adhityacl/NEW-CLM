@@ -10,7 +10,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { TenantProvider, useTenant } from './context/TenantContext';
 import { TenantSettingsProvider, useTenantSettings } from './context/TenantSettingsContext';
 import { DefaultPasswordBanner } from './components/DefaultPasswordBanner';
-import { NavigationProvider, useNavigation } from './context/NavigationContext';
+import { NavigationProvider, useNavigation, buildAppUrl } from './context/NavigationContext';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 
@@ -53,6 +53,16 @@ import { AIChatLauncher } from './components/AIChatLauncher';
 import { PermissionProvider } from './lib/permissions';
 import { usePermissions } from './lib/permissions';
 
+const STATIC_TABS = new Set([
+  'dashboard', 'hierarchy', 'contracts', 'create-contract', 'ios', 'io', 'partners',
+  'partner-evaluation', 'partner-spending', 'notifikasi', 'bulk-import', 'activity-logs',
+  'settings', 'privacy', 'terms',
+]);
+const TAB_PREFIXES = ['admin-system-', 'admin-organization-', 'admin-users', 'settings-'];
+
+const isKnownTab = (tab: string): boolean =>
+  STATIC_TABS.has(tab) || TAB_PREFIXES.some((prefix) => tab.startsWith(prefix));
+
 const MainApp: React.FC = () => {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
@@ -63,47 +73,57 @@ const MainApp: React.FC = () => {
 
   const { hasPermission, role, tenantId, loading: permissionsLoading } = usePermissions();
   const { activeTenantId, activeTenant } = useTenant();
-  const { activeTab, setActiveTab } = useNavigation();
-  const { policy } = useTenantSettings();
+  const { activeTab, setActiveTab, replaceActiveTab } = useNavigation();
+  const { policy, status: tenantSettingsStatus } = useTenantSettings();
   const modules = policy.settings.modules;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const confirmDialog = useConfirm();
 
+  // Guards run on every tab change, including tabs coming from `?tab=` in the
+  // URL, so they replace the history entry instead of pushing a new one.
   useEffect(() => {
+    if (!isKnownTab(activeTab)) {
+      replaceActiveTab('dashboard');
+      return;
+    }
+    // Wait for the real permissions/modules before redirecting, otherwise a
+    // deep link such as /app?tab=settings is bounced to the dashboard on reload.
+    if (permissionsLoading) return;
     if (activeTab === 'create-contract' && !hasPermission('document.create')) {
-      setActiveTab('dashboard');
+      replaceActiveTab('dashboard');
     }
     if (activeTab.startsWith('admin-users')) {
-      setActiveTab(role === 'superuser' ? 'admin-system-dashboard' : 'admin-organization-dashboard');
+      replaceActiveTab(role === 'superuser' ? 'admin-system-dashboard' : 'admin-organization-dashboard');
       return;
     }
     if (activeTab.startsWith('admin-system-') && role !== 'superuser') {
-      setActiveTab('admin-organization-dashboard');
+      replaceActiveTab('admin-organization-dashboard');
     }
     if (activeTab.startsWith('admin-organization-') && !hasPermission('admin.access')) {
-      setActiveTab('dashboard');
+      replaceActiveTab('dashboard');
     }
     if (activeTab === 'admin-organization-dashboard') {
-      setActiveTab('admin-organization-users');
+      replaceActiveTab('admin-organization-users');
     }
     if (activeTab === 'bulk-import' && !hasPermission('admin.department.manage')) {
-      setActiveTab('dashboard');
+      replaceActiveTab('dashboard');
     }
     if (activeTab === 'activity-logs' && !hasPermission('audit.view')) {
-      setActiveTab('dashboard');
+      replaceActiveTab('dashboard');
     }
     if (activeTab === 'settings' && !hasPermission('admin.access')) {
-      setActiveTab('dashboard');
+      replaceActiveTab('dashboard');
     }
     // Modules switched off for this organization are not reachable.
+    if (tenantSettingsStatus === 'idle' || tenantSettingsStatus === 'loading') return;
     if (
       ((activeTab === 'ios' || activeTab === 'io') && !modules.commercialDocuments) ||
       (activeTab === 'partner-spending' && !modules.spending) ||
       (activeTab === 'partner-evaluation' && !modules.evaluation)
     ) {
-      setActiveTab('dashboard');
+      replaceActiveTab('dashboard');
     }
-  }, [activeTab, hasPermission, role, setActiveTab, modules.commercialDocuments, modules.spending, modules.evaluation]);
+  }, [activeTab, hasPermission, role, permissionsLoading, tenantSettingsStatus, replaceActiveTab, modules.commercialDocuments, modules.spending, modules.evaluation]);
 
   const { contracts, ios, partners, notifications, evaluations, spendings, googleConfig,
     timestamp: lastSyncTimestamp, updateData, cancelPendingLoad, loadAllData } = useWorkspaceData();
@@ -630,6 +650,9 @@ const MainApp: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-[#F3F4F0] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden">
+      <a href="#main-content" className="skip-link">
+        {t('app.skip_to_content', 'Lewati ke konten utama')}
+      </a>
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -650,8 +673,16 @@ const MainApp: React.FC = () => {
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
         />
 
-        <main className="flex-1 min-h-0 p-3.5 sm:p-5 md:p-7 overflow-y-auto overflow-x-hidden bg-[#F3F4F0] dark:bg-[#0B0F19] overscroll-contain">
-          <DefaultPasswordBanner onOpenSecurity={() => setActiveTab('admin-organization-users')} />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          // The AI chat launcher is fixed bottom-right; reserve room so it never covers the last row's actions.
+          className={`flex-1 min-h-0 p-3.5 sm:p-5 md:p-7 ${modules.aiAssistant ? 'pb-24 sm:pb-28 md:pb-28' : ''} overflow-y-auto overflow-x-hidden bg-[#F3F4F0] dark:bg-[#0B0F19] overscroll-contain focus:outline-none`}
+        >
+          <DefaultPasswordBanner
+            onOpenSecurity={() => setActiveTab('admin-organization-users')}
+            showGoogleSetup={activeTab === 'dashboard' || activeTab === 'settings' || activeTab.startsWith('settings-')}
+          />
           <Suspense fallback={<div className="flex h-full min-h-70 items-center justify-center text-sm text-slate-500">{t('app.memuat_halaman', 'Memuat halaman...')}</div>}>
             <section className="w-full space-y-6">
               {activeTab === 'dashboard' && (
@@ -937,7 +968,7 @@ const MainApp: React.FC = () => {
             <button
               type="button"
               onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="min-w-11 min-h-11 -mr-2 -mt-2 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 shrink-0 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none"
+              className="min-w-11 min-h-11 -mr-2 -mt-2 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 shrink-0 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
               aria-label={t('app.tutup_notifikasi', 'Tutup notifikasi')}
             >
               <X className="w-4 h-4" />
@@ -980,6 +1011,7 @@ const isTermsRoute = (): boolean => {
 
 const AppContent = () => {
   const { user, loading } = useAuth();
+  const { activeTab } = useNavigation();
   const { t } = useLanguage();
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState<boolean>(isPrivacyRoute);
   const [showTermsOfService, setShowTermsOfService] = useState<boolean>(isTermsRoute);
@@ -1027,7 +1059,7 @@ const AppContent = () => {
         path === '/terms-of-service' ||
         window.location.hash
       ) {
-        window.history.pushState(null, '', '/');
+        window.history.pushState(null, '', buildAppUrl(activeTab));
       }
     }
   };
@@ -1073,12 +1105,12 @@ const AppContent = () => {
         className="w-full bg-slate-50 dark:bg-slate-950"
         style={{ height: '100dvh' }}
       >
-        <div className="flex h-full w-full flex-col items-center overflow-y-auto px-4 py-6 sm:px-6 sm:py-10">
+        <main className="flex h-full w-full flex-col items-center overflow-y-auto px-4 py-6 sm:px-6 sm:py-10">
           <SignInForm
             onOpenPrivacyPolicy={handleOpenPrivacy}
             onOpenTermsOfService={handleOpenTerms}
           />
-        </div>
+        </main>
       </InteractiveGridBackground>
     );
   }

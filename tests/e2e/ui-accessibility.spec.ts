@@ -17,11 +17,60 @@ test.beforeEach(async ({ page }) => {
       '/api/departments': { success: true, departments: [] },
       '/api/documents': { documents: [], total: 0 },
       '/api/dashboard/news-ticker': { items: ['UI news one', 'UI news two'] },
+      '/api/auth-console/users': { success: true, users: [] },
+      '/api/auth-console/organizations': { success: true, organizations: [{ id: 'audit', name: 'Audit Workspace', slug: 'audit' }] },
+      '/api/auth-console/teams': { success: true, teams: [] },
+      '/api/auth-console/invitations': { success: true, invitations: [] },
     };
     await route.fulfill({ json: responses[path] ?? {} });
   });
   await page.goto('/');
   await expect(page.getByText('UI news one')).toBeVisible();
+});
+
+test('admin modal names its fields, traps focus and restores the trigger on desktop and mobile', async ({ page }) => {
+  await page.getByRole('button', { name: /^(Organization Admin|Admin Organisasi)$/ }).click();
+  const trigger = page.getByRole('button', { name: /^(Add New User|Tambah Pengguna Baru)$/ });
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await trigger.click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toHaveAccessibleName(/.+/);
+    await expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(await dialog.evaluate(el => el.contains(document.activeElement))).toBe(true);
+    for (const field of await dialog.locator('input:visible, select:visible, textarea:visible').all()) {
+      await expect(field).toHaveAccessibleName(/.+/);
+    }
+    for (let i = 0; i < 15; i++) {
+      await page.keyboard.press('Tab');
+      expect(await dialog.evaluate(el => el.contains(document.activeElement))).toBe(true);
+    }
+    const box = await dialog.boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
+  }
+  await expect(page.locator('h1')).toHaveCount(1);
+});
+
+test('UI text editor traps keyboard focus and restores focus when closed', async ({ page }) => {
+  await page.getByRole('button', { name: /^(Settings|Pengaturan)$/ }).first().click();
+  await page.getByRole('button', { name: /^(Open Submenu|Buka Submenu)$/ }).last().click();
+  await page.getByRole('button', { name: /^(UI Text & Localization|Teks UI & Lokalisasi)$/ }).first().click();
+  const trigger = page.getByRole('button', { name: /^(Open UI Text Editor|Buka Editor Teks UI)$/ });
+  await trigger.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toHaveAccessibleName(/.+/);
+  expect(await dialog.evaluate(el => el.contains(document.activeElement))).toBe(true);
+  for (let i = 0; i < 20; i++) {
+    await page.keyboard.press('Tab');
+    expect(await dialog.evaluate(el => el.contains(document.activeElement))).toBe(true);
+  }
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
 });
 
 test('mobile controls fit, drawer traps focus and restores its trigger', async ({ page }) => {
@@ -41,8 +90,7 @@ test('mobile controls fit, drawer traps focus and restores its trigger', async (
     expect(box!.x + box!.width).toBeLessThanOrEqual(width);
     await page.getByTitle(/Close AI|Tutup AI/i).last().click();
   }
-  await page.getByRole('button', { name: /Next News|Berita Berikutnya/i }).click();
-  await expect(page.getByText('UI news two')).toBeVisible();
+  await expect(page.getByRole('region', { name: /Latest Regulatory Updates|Info Regulasi Terkini/i })).toContainText('UI news two');
   const trigger = page.locator('header button').first();
   await trigger.click();
   const drawer = page.getByRole('dialog');

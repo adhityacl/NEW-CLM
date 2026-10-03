@@ -152,10 +152,10 @@ export const DateInput: React.FC<DateInputProps> = ({
 
   const focusBorderClass =
     focusColor === 'emerald'
-      ? 'focus-within:border-[#06C755] focus:border-[#06C755]'
+      ? 'focus-within:border-accent focus:border-accent'
       : focusColor === 'slate'
       ? 'focus-within:border-slate-500 focus:border-slate-500'
-      : 'focus-within:border-[#06C755] focus:border-[#06C755]';
+      : 'focus-within:border-accent focus:border-accent';
 
   const selectedDate = isoToDate(formatDdMmYyyyToIso(value) || value);
   const minDate = min ? isoToDate(min) : undefined;
@@ -185,7 +185,7 @@ export const DateInput: React.FC<DateInputProps> = ({
             disabled={disabled}
             title={t('common.buka_kalender', 'Buka Kalender')}
             aria-label={t('common.buka_kalender', 'Buka Kalender')}
-            className="absolute right-2.5 text-slate-400 hover:text-[#06C755] dark:hover:text-emerald-400 transition-colors cursor-pointer disabled:cursor-not-allowed p-0.5"
+            className="absolute right-2.5 text-slate-400 hover:text-accent-text dark:hover:text-emerald-400 transition-colors cursor-pointer disabled:cursor-not-allowed p-0.5"
           >
             <CalendarIcon className="w-4 h-4" />
           </button>

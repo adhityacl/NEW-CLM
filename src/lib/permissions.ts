@@ -4,7 +4,7 @@
  * Cerminan `server/rbac.ts` — dipakai HANYA untuk visibilitas UI.
  * Backend tetap otoritatif (PRD §22, §28, §32).
  */
-import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, createElement, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export type RoleCode = 'superuser' | 'admin' | 'manager' | 'editor' | 'viewer';
@@ -68,9 +68,19 @@ export const PermissionContext = createContext<PermissionContextValue>({
 export function PermissionProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [organizationRevision, setOrganizationRevision] = useState(0);
-  const [value, setValue] = useState<PermissionContextValue>(() =>
-    ({ ...permissionValueFromMe(null, user?.role), loading: true }),
-  );
+  // `forUser` records which session the value was computed for. Right after
+  // sign-in the first render still carries the signed-out value (loading:
+  // false, fallback permissions) until the effect below runs; treating a
+  // mismatch as loading keeps tab guards from redirecting on stale permissions.
+  const [state, setState] = useState<{ value: PermissionContextValue; forUser: typeof user }>(() => ({
+    value: { ...permissionValueFromMe(null, user?.role), loading: true },
+    forUser: user,
+  }));
+  const setValue = (next: PermissionContextValue | ((previous: PermissionContextValue) => PermissionContextValue)) =>
+    setState((previous) => ({
+      value: typeof next === 'function' ? next(previous.value) : next,
+      forUser: user,
+    }));
 
   useEffect(() => {
     let cancelled = false;
@@ -123,6 +133,10 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     };
   }, [user, organizationRevision]);
 
+  const value = useMemo(
+    () => (state.forUser === user ? state.value : { ...state.value, loading: true }),
+    [state, user],
+  );
   return createElement(PermissionContext.Provider, { value }, children);
 }
 

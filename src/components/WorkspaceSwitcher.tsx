@@ -129,7 +129,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
         }}
         aria-expanded={canSwitch ? isOpen : false}
         aria-haspopup={canSwitch ? "listbox" : false}
-        className={`w-full flex items-center gap-2.5 p-1.5 rounded-xl transition-colors text-left group focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:outline-none ${
+        className={`w-full flex items-center gap-2.5 p-1.5 rounded-xl transition-colors text-left group focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none ${
           canSwitch
             ? 'hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer'
             : 'cursor-default select-none'
@@ -168,7 +168,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
               <span className="block font-semibold text-xs text-slate-900 dark:text-slate-100 tracking-tight truncate leading-tight">
                 {currentWorkspace.name}
               </span>
-              <span className="block text-[10px] text-slate-500 dark:text-slate-400 truncate">
+              <span className="block text-xs text-slate-500 dark:text-slate-400 truncate">
                 {t('workspace.workspace', 'Workspace')}
               </span>
             </div>
@@ -197,7 +197,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
           {/* Popover Header */}
           <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1 flex items-center gap-1.5">
             <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 tracking-tight">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-tight">
               {t('workspace.switch_title', 'Pilih Ruang Kerja:')}
             </p>
           </div>
@@ -213,7 +213,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
                   role="option"
                   aria-selected={isSelected}
                   onClick={() => handleSelect(workspace.id)}
-                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-colors cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06C755]/50 ${
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-colors cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
                     isSelected
                       ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
                       : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'

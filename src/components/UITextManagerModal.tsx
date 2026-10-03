@@ -1,3 +1,4 @@
+import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import { AlphabeticalSelect } from './ui/alphabetical-select';
 import React, { useRef, useState } from 'react';
 import { LANGUAGE_OPTIONS, useLanguage, type Language } from '../context/LanguageContext';
@@ -116,12 +117,12 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
             value={editing.value}
             onChange={(e) => setEditing({ ...editing, value: e.target.value })}
             onKeyDown={(e) => e.key === 'Escape' && setEditing(null)}
-            className="w-full px-2.5 py-1 text-xs border border-[#06C755] rounded-lg outline-none bg-white dark:bg-slate-800 font-normal text-slate-900 dark:text-slate-100"
+            className="w-full px-2.5 py-1 text-xs border border-accent rounded-lg outline-none bg-white dark:bg-slate-800 font-normal text-slate-900 dark:text-slate-100"
             autoFocus
           />
           <button
             type="submit"
-            className="p-1 bg-[#04803D] text-white rounded-lg hover:bg-[#036B33] cursor-pointer shrink-0"
+            className="p-1 bg-accent-strong text-white rounded-lg hover:bg-accent-strong-hover cursor-pointer shrink-0"
             aria-label={t('common.save', 'Simpan')}
           >
             <Check className="w-3.5 h-3.5" aria-hidden />
@@ -133,14 +134,14 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
       <div className="flex items-center justify-between gap-1 group">
         <span
           lang={LANGUAGE_OPTIONS.find((o) => o.code === lang)?.htmlLang}
-          className={custom ? 'font-medium text-[#06C755] dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}
+          className={custom ? 'font-medium text-accent-text dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}
         >
           {valueOf(key, lang) || <em className="text-rose-600 dark:text-rose-400 not-italic">{t('ui_text.missing', '(belum diterjemahkan)')}</em>}
         </span>
         <button
           type="button"
           onClick={() => setEditing({ key, lang, value: valueOf(key, lang) })}
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-slate-400 hover:text-[#06C755] dark:hover:text-emerald-400 p-1 cursor-pointer transition-opacity shrink-0"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-slate-400 hover:text-accent-text dark:hover:text-emerald-400 p-1 cursor-pointer transition-opacity shrink-0"
           aria-label={t('ui_text.edit_in', 'Edit dalam {lang}', { lang: languageName(lang) })}
           title={t('ui_text.edit_in', 'Edit dalam {lang}', { lang: languageName(lang) })}
         >
@@ -151,21 +152,16 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="ui-text-manager-title"
-        className="bg-white dark:bg-slate-900 rounded-2xl max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
-      >
+    <ModalFrame onClose={onClose} className="bg-white dark:bg-slate-900 rounded-2xl max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden ">
+
         <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 id="ui-text-manager-title" className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-[#06C755]" aria-hidden />
+            <ModalTitle className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5 text-accent-text" aria-hidden />
               <span>{t('ui_text.title', 'Struktur Teks UI & Ekspor / Impor CSV')}</span>
-            </h3>
+            </ModalTitle>
             {totalCustomCount > 0 && (
-              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                 <Sparkles className="w-3 h-3" aria-hidden />
                 {t('ui_text.custom_active', '{n} teks kustom aktif', { n: totalCustomCount })}
               </span>
@@ -181,14 +177,14 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
           </button>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="mobile-controls-bar p-4 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="mobile-page-actions flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={exportToCSV}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-[#EBFBF0] dark:hover:bg-emerald-950/60 hover:text-[#048C3B] dark:hover:text-emerald-300 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-[#E5E8EB] dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-accent-soft dark:hover:bg-emerald-950/60 hover:text-accent-text dark:hover:text-emerald-300 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-hairline dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
             >
-              <Download className="w-4 h-4 text-[#06C755]" aria-hidden />
+              <Download className="w-4 h-4 text-accent-text" aria-hidden />
               <span>{t('ui_text.export', 'Ekspor CSV')}</span>
             </button>
             <button
@@ -257,7 +253,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-xs focus:ring-2 focus:ring-[#06C755]/20 focus:border-[#06C755] outline-none"
+              className="w-full pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-xs focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none"
             />
           </div>
           <AlphabeticalSelect
@@ -267,7 +263,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
               setSelectedModule(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-[#06C755]/20 focus:border-[#06C755] outline-none bg-slate-50 dark:bg-slate-800 font-medium text-slate-700 dark:text-slate-200"
+            className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none bg-slate-50 dark:bg-slate-800 font-medium text-slate-700 dark:text-slate-200"
           >
             <option value="ALL">{t('ui_text.all_modules', 'Semua modul ({n})', { n: allKeys.length })}</option>
             {modules.map((mod) => (
@@ -338,7 +334,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
         </div>
 
         <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t(
               'ui_text.hint',
               'Petunjuk: ekspor CSV untuk mengunduh semua teks (Indonesia, Inggris, Mandarin), edit di Excel / Google Sheets, lalu unggah kembali file CSV tersebut di sini.',
@@ -352,7 +348,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
             {t('ui_text.done', 'Selesai & Tutup')}
           </button>
         </div>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };

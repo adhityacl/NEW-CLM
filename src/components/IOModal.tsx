@@ -2,7 +2,7 @@ import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import React, { useState, useEffect } from 'react';
 import { useTenantSettings } from '../context/TenantSettingsContext';
-import { InsertionOrder, Contract, Partner, PricingModel, ChargingType } from '../types';
+import { InsertionOrder, Contract, Partner, PricingModel, ChargingType, PRICING_MODELS } from '../types';
 import { FileSpreadsheet, Upload, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { DateInput } from './DateInput';
@@ -107,7 +107,7 @@ export const IOModal: React.FC<IOModalProps> = ({
     }
   }, [partnerId, kanalMedia, tanggalMulai, isAutoTitle]);
 
-  const STANDARD_PRICING_MODELS = ['CPM', 'CPC', 'Flat Fee', 'Revenue Share', 'Fixed Package', 'Commission Fee'];
+  const STANDARD_PRICING_MODELS: readonly string[] = PRICING_MODELS;
   const initialPricingModel = ioToEdit?.pricing_model || 'CPM';
   const isInitialCustom = Boolean(initialPricingModel && !STANDARD_PRICING_MODELS.includes(initialPricingModel));
 
@@ -367,7 +367,7 @@ export const IOModal: React.FC<IOModalProps> = ({
         <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900">
           <div>
             <ModalTitle className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-[#06C755]" />
+              <FileSpreadsheet className="w-5 h-5 text-accent-text" />
               <span>
                 {ioToEdit?.io_id
                   ? t('form.io.title_edit', 'Edit Insertion Order')
@@ -396,7 +396,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                 <AlphabeticalSelect id="IOModal-field-1"
                   value={partnerId}
                   onChange={(e) => handlePartnerChange(e.target.value)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all cursor-pointer"
                 >
                   <option value="">{t('io.pilih_partner_vendor', '-- Pilih Partner / Vendor --')}</option>
                   {partners.map((p) => (
@@ -414,7 +414,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                 <AlphabeticalSelect id="IOModal-field-2"
                   value={contractId}
                   onChange={(e) => handleContractChange(e.target.value)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all cursor-pointer"
                 >
                   <option value="">{t('form.io.standalone_opt', '-- IO Standalone (Tanpa Kontrak Induk) --')}</option>
                   {availableContracts.map((c) => (
@@ -438,7 +438,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                   placeholder={t('form.io.nomor_io_ph', 'contoh: IO/DETIK/2026/012')}
                   value={nomorIO}
                   onChange={(e) => setNomorIO(e.target.value)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                 />
               </div>
 
@@ -452,7 +452,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                   placeholder={t('form.io.kanal_ph', 'contoh: Homepage Masthead & Instagram Live Session')}
                   value={kanalMedia}
                   onChange={(e) => setKanalMedia(e.target.value)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                 />
               </div>
             </div>
@@ -471,7 +471,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                   setJudulIO(e.target.value);
                   setIsAutoTitle(false);
                 }}
-                className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
               />
             </div>
 
@@ -484,13 +484,9 @@ export const IOModal: React.FC<IOModalProps> = ({
                 <AlphabeticalSelect id="IOModal-field-6"
                   value={pricingModelSelect}
                   onChange={(e) => setPricingModelSelect(e.target.value)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all cursor-pointer"
                 >
-                  <option value="CPM">{t('io.cpm_cost_per_mille_1_000', 'CPM (Cost Per Mille / 1.000 Impresi)')}</option>
-                  <option value="CPC">{t('io.cpc_cost_per_click', 'CPC (Cost Per Click)')}</option>
-                  <option value="Flat Fee">{t('io.flat_fee_harga_tetap_paket', 'Flat Fee (Harga Tetap Paket)')}</option>
-                  <option value="Revenue Share">{t('io.revenue_share_bagi_hasil', 'Revenue Share (Bagi Hasil)')}</option>
-                  <option value="Fixed Package">{t('io.fixed_package', 'Fixed Package')}</option>
+                  {PRICING_MODELS.map((model) => <option key={model} value={model}>{model}</option>)}
                   {isInitialCustom && !STANDARD_PRICING_MODELS.includes(initialPricingModel) && (
                     <option value={initialPricingModel}>{initialPricingModel}</option>
                   )}
@@ -502,10 +498,10 @@ export const IOModal: React.FC<IOModalProps> = ({
                     <input
                       type="text"
                       required
-                      placeholder={t('form.io.pricing_model_custom_ph', 'Ketik nama pricing model baru (misal: CPA, CPV, Hybrid)...')}
+                      placeholder={t('form.io.pricing_model_custom_ph', 'Ketik nama pricing model baru (misal: CPV, Hybrid)...')}
                       value={customPricingModel}
                       onChange={(e) => setCustomPricingModel(e.target.value)}
-                      className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#06C755] rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                      className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-accent rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all"
                     />
                   </div>
                 )}
@@ -518,7 +514,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                 <AlphabeticalSelect id="IOModal-field-7"
                   value={chargingType}
                   onChange={(e) => setChargingType(e.target.value as ChargingType)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all cursor-pointer"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all cursor-pointer"
                 >
                   <option value="Prepaid">{t('io.prepaid_bayar_di_awal', 'Prepaid (Bayar di Awal)')}</option>
                   <option value="Postpaid">{t('io.postpaid_bayar_di_akhir_periode', 'Postpaid (Bayar di Akhir Periode)')}</option>
@@ -559,7 +555,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                 <AlphabeticalSelect id="IOModal-field-10"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] transition-all"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent transition-all"
                 >
                   {SUPPORTED_CURRENCIES.map((c) => (
                     <option key={c.code} value={c.code}>
@@ -578,20 +574,20 @@ export const IOModal: React.FC<IOModalProps> = ({
                   required
                   value={nilaiIO}
                   onChange={(e) => setNilaiIO(Number(e.target.value))}
-                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                 />
               </div>
             </div>
 
             {/* USD Conversion Info Banner */}
-            <div className="bg-[#06C755]/5 dark:bg-emerald-950/20 border border-[#06C755]/20 dark:border-emerald-500/20 rounded-xl p-3 text-sm flex flex-wrap items-center justify-between gap-2">
+            <div className="bg-accent/5 dark:bg-emerald-950/20 border border-accent/20 dark:border-emerald-500/20 rounded-xl p-3 text-sm flex flex-wrap items-center justify-between gap-2">
               <div>
                 <span className="font-semibold text-slate-700 dark:text-slate-300">{t('io.estimasi_konversi_usd_kurs', 'Estimasi Konversi USD (Kurs {tanggalMulai}):', { tanggalMulai })}</span>
-                <span className="ml-2 font-bold text-[#06C755] dark:text-emerald-400">
+                <span className="ml-2 font-bold text-accent-text dark:text-emerald-400">
                   {formatMoney(estimatedUsd, 'USD')}
                 </span>
               </div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 italic">
+              <span className="text-xs text-slate-500 dark:text-slate-400 italic">
                 {currency === 'USD' ? t('io.sama_mata_uang_usd', 'Sama (Mata uang USD)') : t('io.1_usd', '1 {currency} ≈ {value} USD', { currency, value: historicalRate.toFixed(8) })}
               </span>
             </div>
@@ -606,7 +602,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                 placeholder={t('form.io.deliverables_ph', 'Sebutkan detail garansi impresi, kuota SMS, tayangan banner, atau jumlah artikel...')}
                 value={deliverables}
                 onChange={(e) => setDeliverables(e.target.value)}
-                className="w-full min-h-[130px] max-h-[600px] resize-y bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl p-3.5 text-sm text-slate-900 dark:text-slate-100 leading-relaxed focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                className="w-full min-h-[130px] max-h-[600px] resize-y bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl p-3.5 text-sm text-slate-900 dark:text-slate-100 leading-relaxed focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
               />
             </div>
 
@@ -615,8 +611,8 @@ export const IOModal: React.FC<IOModalProps> = ({
               <label htmlFor="IOModal-field-13" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm">
                 {t('form.io.upload_label', 'Dokumen Asli IO (Drive PDF Upload)')}
               </label>
-              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-[#06C755] dark:hover:border-[#06C755] rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all">
-                <Upload className="w-6 h-6 text-[#06C755] mx-auto mb-1.5" />
+              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all">
+                <Upload className="w-6 h-6 text-accent-text mx-auto mb-1.5" />
                 {fileData || fileName ? (
                   <div className="space-y-1">
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
@@ -634,7 +630,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                       type="button"
                       onClick={handleParseIO}
                       disabled={isParsing}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 hover:bg-[#06C755]/20 font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 hover:bg-accent/20 font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
                       {isParsing ? t('io.parsing', 'Parsing...') : t('io.parse_file', 'Parse File')}
                     </button>
@@ -643,7 +639,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                     type="file"
                     accept=".pdf"
                     onChange={handleFileChange}
-                    className="w-[220px] text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-[#EBFBF0] dark:file:bg-emerald-950/60 file:text-[#048C3B] dark:file:text-emerald-400 hover:file:bg-[#06C755]/20 cursor-pointer"
+                    className="w-[220px] text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-accent-soft dark:file:bg-emerald-950/60 file:text-accent-text dark:file:text-emerald-400 hover:file:bg-accent/20 cursor-pointer"
                   />
                 </div>
               </div>
@@ -664,7 +660,7 @@ export const IOModal: React.FC<IOModalProps> = ({
           </div>
 
           <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
-            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium hidden sm:inline">
+            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium hidden sm:inline">
               {t('form.common.required_hint', 'Lengkapi semua kolom wajib (*) untuk menyimpan')}
             </span>
             <div className="flex items-center gap-2 ml-auto">
@@ -679,7 +675,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                 type="submit"
                 disabled={submitting || !isFormValid}
                 title={!isFormValid ? t('form.common.required_hint', 'Lengkapi semua kolom wajib (*) untuk menyimpan') : ''}
-                className="px-5 py-2.5 bg-[#04803D] hover:bg-[#036B33] text-white font-bold rounded-xl text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold rounded-xl text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {submitting
                   ? t('form.io.saving_btn', 'Menyimpan IO...')

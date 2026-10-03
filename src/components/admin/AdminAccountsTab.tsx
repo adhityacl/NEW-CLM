@@ -36,7 +36,7 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
           <div className="text-xs text-slate-500 mb-1">{t('admin.acc_total_linked', 'Total Akun Terhubung')}</div>
-          <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100">
+          <div className="text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
             {accounts.length}
           </div>
           <div className="text-xs text-slate-400 mt-1">{t('admin.acc_multi_provider', 'Multi-provider authentication')}</div>
@@ -46,7 +46,7 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
             <span className="text-xs text-slate-500">{t('admin.acc_pwd_label', 'Email & Password')}</span>
             <Lock className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1">
+          <div className="text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100 mt-1">
             {credentialCount}
           </div>
           <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
@@ -58,7 +58,7 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
             <span className="text-xs text-slate-500">{t('admin.acc_google_label', 'Google Workspace SSO')}</span>
             <Globe className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1">
+          <div className="text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100 mt-1">
             {googleCount}
           </div>
           <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
@@ -68,7 +68,7 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
       </div>
 
       {/* Filter and Search */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="mobile-controls-bar flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -96,7 +96,7 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-xs">
                 <th className="py-3 px-4">{t('admin.col_identifier', 'Pengguna')}</th>
                 <th className="py-3 px-4">{t('admin.col_provider', 'Provider Auth')}</th>
                 <th className="py-3 px-4">{t('admin.col_acc_id', 'Identifier Akun')}</th>
@@ -117,13 +117,13 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
                       <div className="font-medium text-slate-900 dark:text-slate-100">
                         {acc.userName || (t('admin.unnamed', 'Unnamed'))}
                       </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                      <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                         {acc.userEmail}
                       </div>
                     </td>
                     <td className="py-3 px-4">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[11px] ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-xs ${
                           acc.providerId === 'credential'
                             ? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
                             : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
@@ -137,20 +137,20 @@ export const AdminAccountsTab: React.FC<AdminAccountsTabProps> = ({ accounts }) 
                         {acc.providerId}
                       </span>
                     </td>
-                    <td className="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400 max-w-[200px] truncate">
+                    <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-400 max-w-[200px] truncate">
                       {acc.accountId}
                     </td>
                     <td className="py-3 px-4">
                       {acc.hasPassword ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           {t('admin.hashed_scrypt', 'Hashed (Scrypt)')}
                         </span>
                       ) : (
-                        <span className="text-[11px] text-slate-400">{t('admin.oauth_delegated', 'OAuth Delegated')}</span>
+                        <span className="text-xs text-slate-400">{t('admin.oauth_delegated', 'OAuth Delegated')}</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-slate-500 text-[11px]">
+                    <td className="py-3 px-4 text-slate-500 text-xs">
                       {new Date(acc.createdAt).toLocaleString(getActiveFormattingLocale(), {
                         day: 'numeric',
                         month: 'short',

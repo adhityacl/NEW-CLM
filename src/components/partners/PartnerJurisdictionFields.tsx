@@ -16,7 +16,7 @@ export interface PartnerJurisdictionFieldsProps {
 }
 
 const fieldClass =
-  'block min-h-11 w-full bg-[#F7F8FA] dark:bg-slate-800 border border-[#E5E8EB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs leading-5 text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20';
+  'block min-h-11 w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs leading-5 text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20';
 const labelClass = 'block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs';
 
 /**

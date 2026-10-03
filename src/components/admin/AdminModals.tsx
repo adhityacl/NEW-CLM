@@ -1,3 +1,4 @@
+import { ModalFrame, ModalTitle } from '../ui/modal-frame';
 import { AlphabeticalSelect } from '../ui/alphabetical-select';
 import React, { useState, useEffect } from 'react';
 import { useTenantSettings } from '../../context/TenantSettingsContext';
@@ -156,14 +157,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={onClose} className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <UserPlus className="w-4 h-4 text-emerald-600" />
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+            <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {t('admin.modal_add_user', 'Tambah Pengguna Sistem Baru')}
-            </h3>
+            </ModalTitle>
           </div>
           <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
@@ -172,16 +173,16 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="p-3 text-xs rounded-lg bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
+            <div role="alert" className="p-3 text-xs rounded-lg bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-1" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.fullname_label', 'Nama Lengkap Pengguna *')}
             </label>
-            <input
+            <input id="adminmodals-field-1"
               type="text"
               required
               value={name}
@@ -192,10 +193,10 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-2" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.email_label', 'Alamat Email (Google / Corporate) *')}
             </label>
-            <input
+            <input id="adminmodals-field-2"
               type="email"
               required
               value={email}
@@ -206,10 +207,10 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-3" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.role_label', 'Role Hak Akses Aplikasi *')}
             </label>
-            <AlphabeticalSelect
+            <AlphabeticalSelect id="adminmodals-field-3"
               value={role}
               onChange={(e) => handleRoleChange(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-medium"
@@ -224,16 +225,16 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+              <label htmlFor="admin-organization-1" className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                 {t('admin.select_tenant_label', 'Organisasi / Tenant')} {role !== 'superuser' && role !== 'admin' && <span className="text-red-500">*</span>}
               </label>
               {role !== 'superuser' && role !== 'admin' && (
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
                   {t('admin.must_one_tenant', '(Wajib Masuk ke 1 Tenant)')}
                 </span>
               )}
             </div>
-            <AlphabeticalSelect
+            <AlphabeticalSelect id="admin-organization-1"
               value={role === 'superuser' ? '' : organizationId}
               onChange={(e) => setOrganizationId(e.target.value)}
               disabled={role === 'superuser'}
@@ -265,10 +266,10 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-4" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.tab_teams', 'Departemen')}
             </label>
-            <AlphabeticalSelect
+            <AlphabeticalSelect id="adminmodals-field-4"
               value={role === 'superuser' || role === 'admin' ? '' : department}
               onChange={(e) => setDepartment(e.target.value)}
               disabled={role === 'superuser' || role === 'admin'}
@@ -287,10 +288,10 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-5" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.pwd_init_label', 'Kata Sandi Awal (Opsional)')}
             </label>
-            <input
+            <input id="adminmodals-field-5"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -316,8 +317,8 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };
 
@@ -407,14 +408,14 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={onClose} className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-purple-600" />
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+            <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {t('admin.modal_edit_user', 'Ubah Informasi & Hak Akses Pengguna')}
-            </h3>
+            </ModalTitle>
           </div>
           <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
@@ -423,17 +424,17 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="p-3 text-xs rounded-lg bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
+            <div role="alert" className="p-3 text-xs rounded-lg bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
               {error}
             </div>
           )}
 
           <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              <label htmlFor="adminmodals-field-6" className="block text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1">
                 {t('admin.col_name', 'Nama Lengkap')}
               </label>
-              <input
+              <input id="adminmodals-field-6"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -442,10 +443,10 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              <label htmlFor="adminmodals-field-7" className="block text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1">
                 {t('admin.col_email', 'Alamat Email')}
               </label>
-              <input
+              <input id="adminmodals-field-7"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -456,10 +457,10 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-8" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.select_new_role', 'Pilih Peran Baru (Role)')}
             </label>
-            <AlphabeticalSelect
+            <AlphabeticalSelect id="adminmodals-field-8"
               value={role}
               onChange={(e) => setRole(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium"
@@ -474,16 +475,16 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+              <label htmlFor="admin-organization-2" className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                 {t('admin.select_tenant_label', 'Organisasi / Tenant')} {role !== 'superuser' && role !== 'admin' && <span className="text-red-500">*</span>}
               </label>
               {role !== 'superuser' && role !== 'admin' && (
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
                   {t('admin.must_one_tenant', '(Wajib Masuk ke 1 Tenant)')}
                 </span>
               )}
             </div>
-            <AlphabeticalSelect
+            <AlphabeticalSelect id="admin-organization-2"
               value={role === 'superuser' ? '' : organizationId}
               onChange={(e) => setOrganizationId(e.target.value)}
               disabled={role === 'superuser'}
@@ -515,10 +516,10 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-9" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.tab_teams', 'Departmens / Tim')}
             </label>
-            <AlphabeticalSelect
+            <AlphabeticalSelect id="adminmodals-field-9"
               value={role === 'superuser' || role === 'admin' ? '' : department}
               onChange={(e) => setDepartment(e.target.value)}
               disabled={role === 'superuser' || role === 'admin'}
@@ -553,8 +554,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };
 
@@ -598,14 +599,14 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={onClose} className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-blue-600" />
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+            <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {t('admin.modal_reset_pwd', 'Reset Kata Sandi Pengguna')}
-            </h3>
+            </ModalTitle>
           </div>
           <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
@@ -614,7 +615,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="p-2.5 text-xs rounded-lg bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300">
+            <div role="alert" className="p-2.5 text-xs rounded-lg bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300">
               {error}
             </div>
           )}
@@ -622,14 +623,14 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
           <div>
             <div className="text-xs text-slate-500">{t('admin.target_user', 'Target Pengguna')}:</div>
             <div className="font-semibold text-sm text-slate-900 dark:text-slate-100">{user.name}</div>
-            <div className="text-[11px] text-slate-400">{user.email}</div>
+            <div className="text-xs text-slate-400">{user.email}</div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-10" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.new_pwd_label', 'Kata Sandi Baru')}
             </label>
-            <input
+            <input id="adminmodals-field-10"
               type="password"
               required
               minLength={6}
@@ -657,8 +658,8 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };
 
@@ -743,7 +744,7 @@ export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
         <button
           type="button"
           onClick={() => setIsUrlMode(!isUrlMode)}
-          className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+          className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
         >
           <Link2 className="w-3 h-3" />
           {isUrlMode
@@ -812,7 +813,7 @@ export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
           ) : (
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5">
-                <input
+                <input aria-label={t('admin.org_logo_label', 'Logo Organisasi / Workspace')}
                   type="url"
                   placeholder="https://example.com/logo.png"
                   value={urlInput}
@@ -897,14 +898,14 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={onClose} className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-emerald-600" />
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+            <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {t('admin.modal_create_org', 'Buat Organisasi Enterprise Baru')}
-            </h3>
+            </ModalTitle>
           </div>
           <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
@@ -913,16 +914,16 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="p-2.5 text-xs rounded-lg bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300">
+            <div role="alert" className="p-2.5 text-xs rounded-lg bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-11" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.org_name_label', 'Nama Resmi Organisasi / Entitas PT')}
             </label>
-            <input
+            <input id="adminmodals-field-11"
               type="text"
               required
               value={name}
@@ -940,14 +941,14 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
           />
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-12" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.org_slug_label', 'Identifier Slug (Unik)')}
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">
                 @
               </span>
-              <input
+              <input id="adminmodals-field-12"
                 type="text"
                 required
                 value={slug}
@@ -956,17 +957,17 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
                 className="w-full pl-7 pr-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono focus:ring-1 focus:ring-emerald-500"
               />
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               {t('admin.org_slug_hint', 'Digunakan untuk pemetaan folder root dan tenant routing')}: <code className="font-mono text-emerald-600">{t('admin.vendors', '/{slug}/[vendors]', { slug })}</code>
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label htmlFor="adminmodals-field-13" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('admin.org_currency_label', 'Mata Uang Utama')}
               </label>
-              <AlphabeticalSelect
+              <AlphabeticalSelect id="adminmodals-field-13"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
@@ -1007,10 +1008,10 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
               </AlphabeticalSelect>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label htmlFor="adminmodals-field-14" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('admin.org_tagline_label', 'Sifat Kerjasama')}
               </label>
-              <input
+              <input id="adminmodals-field-14"
                 type="text"
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
@@ -1037,8 +1038,8 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };
 
@@ -1114,17 +1115,17 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={onClose} className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
               <Pencil className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+              <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                 {t('admin.modal_edit_org_title', 'Edit Profil & Pengaturan Organisasi')}
-              </h3>
+              </ModalTitle>
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
@@ -1134,16 +1135,16 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="p-2.5 text-xs rounded-lg bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800/40">
+            <div role="alert" className="p-2.5 text-xs rounded-lg bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800/40">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-15" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.org_name_label', 'Nama Resmi Organisasi / Entitas PT')} <span className="text-red-500">*</span>
             </label>
-            <input
+            <input id="adminmodals-field-15"
               type="text"
               required
               value={name}
@@ -1161,14 +1162,14 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
           />
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-16" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.org_slug_label', 'Identifier Slug (Unik)')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">
                 @
               </span>
-              <input
+              <input id="adminmodals-field-16"
                 type="text"
                 required
                 value={slug}
@@ -1177,17 +1178,17 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
                 className="w-full pl-7 pr-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono focus:ring-1 focus:ring-emerald-500 outline-none"
               />
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               {t('admin.org_slug_hint', 'Pemetaan tenant routing')}: <code className="font-mono text-emerald-600 dark:text-emerald-400">/{slug || 'tenant'}{t('admin.vendors_2', '/[vendors]')}</code>
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label htmlFor="adminmodals-field-17" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('admin.org_currency_label', 'Mata Uang Utama')}
               </label>
-              <AlphabeticalSelect
+              <AlphabeticalSelect id="adminmodals-field-17"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 outline-none"
@@ -1198,10 +1199,10 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
               </AlphabeticalSelect>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label htmlFor="adminmodals-field-18" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('admin.org_tagline_label', 'Sifat Kerjasama / Tagline')}
               </label>
-              <input
+              <input id="adminmodals-field-18"
                 type="text"
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
@@ -1212,11 +1213,11 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
           </div>
 
           <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs space-y-1.5">
-            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
               <span>{t('admin.id_organisasi', 'ID Organisasi:')}</span>
               <code className="font-mono text-slate-700 dark:text-slate-300">{org.id}</code>
             </div>
-            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
               <span>{t('admin.folder_isolasi', 'Folder Isolasi:')}</span>
               <span className="font-mono text-emerald-600 dark:text-emerald-400">/{name || org.name}{t('admin.vendors_3', '/[Vendors]')}</span>
             </div>
@@ -1255,8 +1256,8 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
             </div>
           </div>
         </form>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };
 
@@ -1299,18 +1300,18 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={onClose} className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-950 flex items-center justify-center text-rose-700 dark:text-rose-400">
               <Trash2 className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+              <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                 {t('admin.delete_org_title', 'Hapus Organisasi')}
-              </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              </ModalTitle>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {org.name} (@{org.slug})
               </p>
             </div>
@@ -1322,7 +1323,7 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
 
         <div className="p-5 space-y-4">
           {error && (
-            <div className="p-2.5 text-xs rounded-lg bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800/40">
+            <div role="alert" className="p-2.5 text-xs rounded-lg bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800/40">
               {error}
             </div>
           )}
@@ -1332,7 +1333,7 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <strong>{t('admin.cant_delete_default_org', 'Organisasi default sistem tidak dapat dihapus.')}</strong>
-                <p className="mt-1 text-[11px] opacity-90">
+                <p className="mt-1 text-xs opacity-90">
                   {t('admin.organisasi_utama_ini_bertindak_sebagai_anchor', 'Organisasi utama ini bertindak sebagai anchor default untuk sistem dan tenant fallback.')}
                 </p>
               </div>
@@ -1342,7 +1343,7 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <strong>{t('admin.cant_delete_active_org', 'Beralih ke organisasi lain terlebih dahulu sebelum menghapus.')}</strong>
-                <p className="mt-1 text-[11px] opacity-90">
+                <p className="mt-1 text-xs opacity-90">
                   {t('admin.organisasi_ini_sedang_digunakan_pada_sesi', 'Organisasi ini sedang digunakan pada sesi aktif saat ini. Beralihlah ke organisasi lain untuk dapat menghapusnya.')}
                 </p>
               </div>
@@ -1353,22 +1354,22 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
                 <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold">{t('admin.delete_org_confirm_msg', 'Apakah Anda yakin ingin menghapus organisasi ini secara permanen?')}</p>
-                  <p className="mt-1 text-[11px] opacity-90">
+                  <p className="mt-1 text-xs opacity-90">
                     {t('admin.delete_org_warning', 'Tindakan ini tidak dapat dibatalkan. Seluruh data tim, undangan, dan relasi pengguna dalam organisasi ini akan dihapus.')}
                   </p>
                 </div>
               </div>
 
               <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs space-y-1.5">
-                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
                   <span>{t('admin.nama_organisasi', 'Nama Organisasi:')}</span>
                   <span className="font-semibold text-slate-900 dark:text-slate-100">{org.name}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
                   <span>{t('admin.slug_tenant', 'Slug Tenant:')}</span>
                   <code className="font-mono text-emerald-600 dark:text-emerald-400">@{org.slug}</code>
                 </div>
-                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
                   <span>{t('admin.id', 'ID:')}</span>
                   <code className="font-mono text-slate-600 dark:text-slate-400">{org.id}</code>
                 </div>
@@ -1397,8 +1398,8 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
             )}
           </div>
         </div>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };
 
@@ -1440,23 +1441,23 @@ export const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={onClose} className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-amber-600" />
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+            <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {t('admin.modal_create_team', 'Buat Tim / Divisi Baru')}
-            </h3>
+            </ModalTitle>
           </div>
-          <button type="button" onClick={() => { setErrorMsg(null); onClose(); }} className="p-1 text-slate-400 hover:text-slate-600">
+          <button aria-label={t('common.close', 'Tutup')} type="button" onClick={() => { setErrorMsg(null); onClose(); }} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {errorMsg && (
-            <div className="p-3 text-xs rounded-lg bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+            <div role="alert" className="p-3 text-xs rounded-lg bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
               {errorMsg}
             </div>
           )}
@@ -1469,10 +1470,10 @@ export const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-19" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.team_name_label', 'Nama Tim / Divisi')}
             </label>
-            <input
+            <input id="adminmodals-field-19"
               type="text"
               required
               value={name}
@@ -1499,8 +1500,8 @@ export const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };
 
@@ -1550,23 +1551,23 @@ export const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={onClose} className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-700 dark:text-amber-300">
               <Layers className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+              <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                 {t('admin.edit_department_title', 'Edit Tim / Departemen')}
-              </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              </ModalTitle>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {team.name}
               </p>
             </div>
           </div>
-          <button
+          <button aria-label={t('common.close', 'Tutup')}
             type="button"
             onClick={() => { setErrorMsg(null); onClose(); }}
             className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
@@ -1577,16 +1578,16 @@ export const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {errorMsg && (
-            <div className="p-3 text-xs rounded-lg bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+            <div role="alert" className="p-3 text-xs rounded-lg bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
               {errorMsg}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-20" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.team_name_label', 'Nama Tim / Divisi')}
             </label>
-            <input
+            <input id="adminmodals-field-20"
               type="text"
               required
               value={name}
@@ -1596,11 +1597,11 @@ export const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
           </div>
 
           <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs space-y-1">
-            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
               <span>{t('admin.col_members', 'Jumlah Anggota')}:</span>
               <span className="font-semibold text-slate-700 dark:text-slate-300">{team.members.length}</span>
             </div>
-            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
               <span>{t('admin.id_tim', 'ID Tim:')}</span>
               <code className="font-mono text-slate-600 dark:text-slate-400">{team.id}</code>
             </div>
@@ -1639,8 +1640,8 @@ export const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
             </div>
           </div>
         </form>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };
 
@@ -1678,23 +1679,23 @@ export const DeleteDepartmentModal: React.FC<DeleteDepartmentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={onClose} className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-950 flex items-center justify-center text-rose-700 dark:text-rose-400">
               <Trash2 className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+              <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                 {t('admin.delete_department_title', 'Hapus Departemen / Tim')}
-              </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              </ModalTitle>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {team.name}
               </p>
             </div>
           </div>
-          <button
+          <button aria-label={t('common.close', 'Tutup')}
             type="button"
             onClick={onClose}
             className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
@@ -1705,7 +1706,7 @@ export const DeleteDepartmentModal: React.FC<DeleteDepartmentModalProps> = ({
 
         <div className="p-5 space-y-4">
           {error && (
-            <div className="p-2.5 text-xs rounded-lg bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800/40">
+            <div role="alert" className="p-2.5 text-xs rounded-lg bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800/40">
               {error}
             </div>
           )}
@@ -1714,30 +1715,30 @@ export const DeleteDepartmentModal: React.FC<DeleteDepartmentModalProps> = ({
             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">{t('admin.delete_department_confirm_msg', 'Apakah Anda yakin ingin menghapus departemen ini secara permanen?')}</p>
-              <p className="mt-1 text-[11px] opacity-90">
+              <p className="mt-1 text-xs opacity-90">
                 {t('admin.delete_department_warning', 'Tindakan ini tidak dapat dibatalkan. Seluruh anggota dalam departemen ini akan dilepaskan dari penugasan tim.')}
               </p>
             </div>
           </div>
 
           <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs space-y-1.5">
-            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
               <span>{t('admin.team_name_label', 'Nama Departemen')}:</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">{team.name}</span>
             </div>
-            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
               <span>{t('admin.department_members_count', 'Jumlah Anggota')}:</span>
               <span className="font-medium text-slate-700 dark:text-slate-300">
                 {team.members?.length || 0} {t('admin.team_members', 'Anggota')}
               </span>
             </div>
             {team.organizationName && (
-              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
                 <span>{t('admin.col_org', 'Organisasi')}:</span>
                 <span className="text-slate-700 dark:text-slate-300">{team.organizationName}</span>
               </div>
             )}
-            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
               <span>{t('admin.id', 'ID:')}</span>
               <code className="font-mono text-slate-600 dark:text-slate-400">{team.id}</code>
             </div>
@@ -1762,8 +1763,8 @@ export const DeleteDepartmentModal: React.FC<DeleteDepartmentModalProps> = ({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };
 
@@ -1807,14 +1808,14 @@ export const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={onClose} className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-emerald-600" />
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+            <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {t('admin.modal_add_team_member', 'Tambah Anggota ke Tim')}
-            </h3>
+            </ModalTitle>
           </div>
           <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
@@ -1828,7 +1829,7 @@ export const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-21" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.select_user', 'Pilih Pengguna')}
             </label>
             {availableUsers.length === 0 ? (
@@ -1836,7 +1837,7 @@ export const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
                 {t('admin.all_users_in_team', 'Semua pengguna yang terdaftar sudah tergabung dalam tim ini.')}
               </div>
             ) : (
-              <AlphabeticalSelect
+              <AlphabeticalSelect id="adminmodals-field-21"
                 required
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
@@ -1869,8 +1870,8 @@ export const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };
 
@@ -1912,14 +1913,14 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={onClose} className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Mail className="w-4 h-4 text-emerald-600" />
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+            <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {t('admin.modal_create_inv', 'Undang Anggota Organisasi')}
-            </h3>
+            </ModalTitle>
           </div>
           <button type="button" onClick={onClose} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
@@ -1927,21 +1928,21 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs text-slate-600 dark:text-slate-300 space-y-1">
             <p className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
               <Mail className="w-3.5 h-3.5 text-emerald-600" />
               <span>{t('admin.pengiriman_via_email_smtp_relay', 'Pengiriman via Email (SMTP Relay)')}</span>
             </p>
-            <p className="text-[10.5px] leading-relaxed text-slate-500 dark:text-slate-400">
+            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
               {t('admin.undangan_akan_dikirimkan_langsung_ke_inbox', 'Undangan akan dikirimkan langsung ke inbox email calon anggota menggunakan server SMTP yang terkonfigurasi.')}
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-22" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.col_user_email', 'Email Rekan Kerja')}
             </label>
-            <input
+            <input id="adminmodals-field-22"
               type="email"
               required
               value={email}
@@ -1952,10 +1953,10 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-23" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.inv_col_role', 'Peran Diminta')}
             </label>
-            <AlphabeticalSelect
+            <AlphabeticalSelect id="adminmodals-field-23"
               value={role}
               onChange={(e) => setRole(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium"
@@ -1969,10 +1970,10 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="adminmodals-field-24" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('admin.team_optional_label', 'Divisi / Tim (Opsional)')}
             </label>
-            <AlphabeticalSelect
+            <AlphabeticalSelect id="adminmodals-field-24"
               value={teamId}
               onChange={(e) => setTeamId(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
@@ -2003,8 +2004,8 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };
 
@@ -2083,16 +2084,16 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+    <ModalFrame onClose={handleFinish} className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 admin-dialog max-h-[92dvh] overflow-y-auto">
+
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Lock className="w-4 h-4 text-blue-600" />
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+            <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {generatedSecret
                 ? t('admin.key_generated_success', 'API Key Berhasil Dibuat')
                 : t('admin.modal_gen_key', 'Generate API Key Baru')}
-            </h3>
+            </ModalTitle>
           </div>
           <button type="button" onClick={handleFinish} aria-label={t('redline.close', 'Tutup')} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
@@ -2115,11 +2116,11 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label htmlFor="adminmodals-field-25" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('admin.api_secret_label', 'API Secret Key')}
               </label>
               <div className="flex items-center gap-2">
-                <input
+                <input id="adminmodals-field-25"
                   type="text"
                   readOnly
                   value={generatedSecret}
@@ -2149,10 +2150,10 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
         ) : (
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label htmlFor="adminmodals-field-26" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('admin.api_name_label', 'Nama Kunci / Sistem Pengguna')}
               </label>
-              <input
+              <input id="adminmodals-field-26"
                 type="text"
                 required
                 value={name}
@@ -2179,10 +2180,10 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
                       className="rounded text-emerald-600 focus:ring-emerald-500"
                     />
                     <div>
-                      <div className="font-medium text-slate-800 dark:text-slate-200 font-mono text-[11px]">
+                      <div className="font-medium text-slate-800 dark:text-slate-200 font-mono text-xs">
                         {scope.id}
                       </div>
-                      <div className="text-[10px] text-slate-400">{scope.label}</div>
+                      <div className="text-xs text-slate-400">{scope.label}</div>
                     </div>
                   </label>
                 ))}
@@ -2207,7 +2208,7 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
             </div>
           </form>
         )}
-      </div>
-    </div>
+
+    </ModalFrame>
   );
 };

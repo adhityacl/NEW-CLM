@@ -40,7 +40,7 @@ interface Composer {
 }
 
 const SMALL_BUTTON =
-  'inline-flex items-center gap-1 px-2 min-h-11 sm:min-h-7 rounded-lg text-[10px] font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer';
+  'inline-flex items-center gap-1 px-2 min-h-11 sm:min-h-7 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer';
 const STATUS_BADGE: Record<CommentStatus, string> = {
   open: 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-700',
   resolved: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600',
@@ -248,30 +248,30 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
     const isBusy = busy === comment.id || busy === 'bulk';
     const replies = repliesOf(comment.id);
     return (
-      <li key={comment.id} className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-1.5 text-xs" aria-busy={isBusy}>
+      <li key={comment.id} className="editor-panel-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-1.5 text-xs" aria-busy={isBusy}>
         <div className="flex items-start justify-between gap-2">
-          <p className="text-[11px]">
+          <p className="text-xs">
             <span className="font-bold text-slate-900 dark:text-white">{comment.author_name || '—'}</span>{' '}
             <span className="text-slate-500 dark:text-slate-400">
               · {isSuggestion ? t('documents.comments.suggestion', 'Usulan') : t('documents.comments.comment', 'Komentar')} ·{' '}
               <RelativeTime iso={comment.created_at} />
             </span>
           </p>
-          <span className={`shrink-0 px-1.5 py-0.5 rounded-full border text-[9px] font-bold ${STATUS_BADGE[comment.status]}`}>{statusLabel(comment.status)}</span>
+          <span className={`shrink-0 px-1.5 py-0.5 rounded-full border text-xs font-bold ${STATUS_BADGE[comment.status]}`}>{statusLabel(comment.status)}</span>
         </div>
 
         {comment.quote && (
           <button
             type="button"
             onClick={() => jumpTo(comment)}
-            className="block w-full text-left border-l-2 border-amber-400 pl-2 text-[11px] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-r cursor-pointer"
+            className="block w-full text-left border-l-2 border-amber-400 pl-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-r cursor-pointer"
             title={t('documents.comments.jump', 'Lompat ke teks di dokumen')}
           >
             {isSuggestion ? <del className="text-rose-700 dark:text-rose-300">{comment.quote}</del> : <q>{comment.quote}</q>}
           </button>
         )}
         {isSuggestion && (
-          <p className="text-[11px]">
+          <p className="text-xs">
             →{' '}
             {comment.new_text ? (
               <ins className="text-emerald-800 dark:text-emerald-300 font-semibold">{comment.new_text}</ins>
@@ -282,7 +282,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
         )}
         {comment.body && <p className="whitespace-pre-wrap text-slate-800 dark:text-slate-100">{comment.body}</p>}
         {comment.resolved_at && (
-          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {statusLabel(comment.status)} · {comment.resolved_by_name || '—'} · <RelativeTime iso={comment.resolved_at} />
           </p>
         )}
@@ -290,7 +290,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
         {replies.length > 0 && (
           <ul className="space-y-1 pl-3 border-l border-slate-200 dark:border-slate-700">
             {replies.map((reply) => (
-              <li key={reply.id} className="text-[11px]">
+              <li key={reply.id} className="text-xs">
                 <span className="font-bold text-slate-900 dark:text-white">{reply.author_name || '—'}</span>{' '}
                 <span className="text-slate-500 dark:text-slate-400">
                   · <RelativeTime iso={reply.created_at} />
@@ -358,9 +358,9 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="editor-comments space-y-4">
       {canEdit && !composer && (
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="editor-comment-actions grid grid-cols-2 gap-2">
           <button type="button" onClick={() => startComposer('comment')} className={`${SMALL_BUTTON} justify-center`}>
             <MessageSquarePlus className="w-3.5 h-3.5" aria-hidden /> {t('documents.comments.add_comment', 'Komentar')}
           </button>
@@ -377,32 +377,26 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
             <AiIcon className={`w-3.5 h-3.5 ${busy === 'ai-redline' ? 'animate-pulse' : ''}`} />
             {busy === 'ai-redline' ? t('documents.comments.ai_redline_running', 'Meninjau dokumen…') : t('documents.comments.ai_redline', 'AI Redlining')}
           </button>
-          <p className="col-span-2 text-[10px] text-slate-500 dark:text-slate-400">
-            {t('documents.comments.hint', 'Blok teks di dokumen, lalu pilih Komentar atau Usulkan Perubahan. Dokumen asli tidak berubah sampai usulan diterima.')}
-          </p>
-          <p className="col-span-2 text-[10px] text-slate-500 dark:text-slate-400">
-            {t('documents.comments.ai_redline_hint', 'AI meninjau seluruh dokumen berdasarkan aturan negara dan industri organisasi Anda.')}
-          </p>
         </div>
       )}
 
       {composer && (
-        <form onSubmit={submitComposer} className="space-y-2 p-2.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/10" aria-busy={busy === 'composer'}>
-          <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100">
+        <form onSubmit={submitComposer} className="space-y-2 editor-panel-card p-4 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/10" aria-busy={busy === 'composer'}>
+          <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
             {composer.mode === 'suggestion' ? t('documents.comments.add_suggestion', 'Usulkan Perubahan') : t('documents.comments.add_comment', 'Komentar')}
           </p>
           {composer.range ? (
-            <blockquote className="border-l-2 border-amber-400 pl-2 text-[11px] text-slate-600 dark:text-slate-300 line-clamp-3">{composer.range.text}</blockquote>
+            <blockquote className="border-l-2 border-amber-400 pl-2 text-xs text-slate-600 dark:text-slate-300 line-clamp-3">{composer.range.text}</blockquote>
           ) : (
-            <p className="text-[10px] text-slate-500">{t('documents.comments.general', 'Komentar umum (tanpa teks terpilih).')}</p>
+            <p className="text-xs text-slate-500">{t('documents.comments.general', 'Komentar umum (tanpa teks terpilih).')}</p>
           )}
           {composer.mode === 'suggestion' && (
-            <label className="block space-y-1 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+            <label className="block space-y-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
               <span>{t('documents.comments.replace_with', 'Ganti menjadi (kosongkan untuk menghapus)')}</span>
               <textarea rows={2} value={composer.newText} onChange={(e) => setComposer({ ...composer, newText: e.target.value })} className={INPUT_CLASS} />
             </label>
           )}
-          <label className="block space-y-1 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+          <label className="block space-y-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
             <span>
               {composer.mode === 'suggestion' ? t('documents.comments.reason', 'Alasan (opsional)') : t('documents.comments.comment_text', 'Komentar')}
             </span>
@@ -446,11 +440,11 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
       {state.status === 'ready' && (
         <>
-          <section aria-labelledby={`${idPrefix}-summary`} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-2">
-            <h3 id={`${idPrefix}-summary`} className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+          <section aria-labelledby={`${idPrefix}-summary`} className="editor-panel-card p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-2">
+            <h3 id={`${idPrefix}-summary`} className="text-xs font-bold text-slate-800 dark:text-slate-200">
               {t('documents.comments.summary', 'Ringkasan Perubahan')}
             </h3>
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-slate-700 dark:text-slate-200">
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-slate-700 dark:text-slate-200">
               <dt>{t('documents.comments.total', 'Total')}</dt>
               <dd className="text-right font-bold">{topLevel.length}</dd>
               <dt>{statusLabel('open')}</dt>
@@ -480,7 +474,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
           </section>
 
           {open.length === 0 ? (
-            <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-4 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+            <p className="text-xs text-slate-500 dark:text-slate-400 editor-panel-empty text-center py-8 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
               {t('documents.comments.empty', 'Tidak ada komentar atau usulan terbuka.')}
             </p>
           ) : (
@@ -495,7 +489,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
                 type="button"
                 onClick={() => setShowClosed((v) => !v)}
                 aria-expanded={showClosed}
-                className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 underline cursor-pointer min-h-8"
+                className="text-xs font-semibold text-slate-600 dark:text-slate-300 underline cursor-pointer min-h-8"
               >
                 {showClosed
                   ? t('documents.comments.hide_closed', 'Sembunyikan yang selesai')
@@ -511,13 +505,13 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
                 type="button"
                 onClick={() => setShowTimeline((v) => !v)}
                 aria-expanded={showTimeline}
-                className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer min-h-8"
+                className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer min-h-8"
               >
                 <History className="w-3.5 h-3.5 text-slate-400" aria-hidden />
                 {t('documents.comments.timeline', 'Riwayat Redline')}
               </button>
               {showTimeline && (
-                <ol className="space-y-1 text-[10px] text-slate-600 dark:text-slate-300">
+                <ol className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
                   {[...topLevel]
                     .sort((a, b) => (b.resolved_at ?? b.created_at).localeCompare(a.resolved_at ?? a.created_at))
                     .map((c) => (

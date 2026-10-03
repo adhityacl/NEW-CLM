@@ -116,7 +116,7 @@ export const ResetWorkspaceDialog: React.FC<ResetWorkspaceDialogProps> = ({ open
                 <input type="radio" name="reset-mode" value="demo" checked={mode === 'demo'} onChange={() => setMode('demo')} className="mt-1" />
                 <span>
                   <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">{t('settings.reset.mode_demo', 'Reload the demo data')}</span>
-                  <span className="block text-sm text-slate-600 dark:text-slate-400">{t('settings.reset.mode_demo_desc', 'Removes all data and loads the three-country demo workspace again.')}</span>
+                  <span className="block text-sm text-slate-600 dark:text-slate-400">{t('settings.reset.mode_demo_desc', 'Removes all data and loads the Bank Mindiri demo workspace (Indonesia, Banking) again.')}</span>
                 </span>
               </label>
             </fieldset>

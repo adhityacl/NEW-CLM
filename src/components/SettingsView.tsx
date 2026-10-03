@@ -1,3 +1,4 @@
+import { ModalFrame, ModalTitle } from './ui/modal-frame';
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleSheetsConfig, Tenant } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -63,7 +64,7 @@ import {
   DriveFileItem,
   getCachedAccessToken,
 } from '../lib/googleAuthService';
-import { cn } from '../lib/utils';
+import { cn, readableTextOn } from '../lib/utils';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -339,7 +340,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       // 2. Sync all organization folders and spreadsheets to Master Root
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (accessToken) headers['x-google-access-token'] = accessToken;
-      
+
       await fetch('/api/tenants/auto-provision-folders', {
         method: 'POST',
         headers,
@@ -403,7 +404,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     if (config.smtpPassword !== prev.smtpPassword && config.smtpPassword !== undefined) setSmtpPassword(config.smtpPassword);
     if (config.smtpFromEmail !== prev.smtpFromEmail && config.smtpFromEmail !== undefined) setSmtpFromEmail(config.smtpFromEmail);
     if (config.smtpFromName !== prev.smtpFromName && config.smtpFromName !== undefined) setSmtpFromName(config.smtpFromName);
-    
+
     prevConfigRef.current = config;
   }, [config]);
 
@@ -545,14 +546,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     try {
       const headers = getAuthHeaders();
       if (token) headers['x-google-access-token'] = token;
-      
+
       const res = await fetch('/api/google-integration/auto-provision-master', {
         method: 'POST',
         headers,
         credentials: 'include',
         body: JSON.stringify({ accessToken: token }),
       });
-      
+
       let data: any = {};
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
@@ -571,16 +572,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if (!res.ok || !data.success) {
         throw new Error(data.error || t('settings.gagal_membuat_master_root_secara_otomatis', 'Gagal membuat Master Root secara otomatis.'));
       }
-      
+
       setDriveFolderId(data.driveFolderId);
       setSpreadsheetId(data.spreadsheetId);
       if (data.masterSpreadsheetId) setMasterSpreadsheetId(data.masterSpreadsheetId);
       setIsEditUnlocked(false);
       setSuccessMsg(data.message || t('settings.master_root_berhasil_dibuat', 'Master Root berhasil dibuat!'));
-      
+
       // Trigger parent update
       await onSaveConfig(data.spreadsheetId, data.driveFolderId, autoSync, isLocked, {});
-      
+
     } catch (err: any) {
       setErrorMsg(err.message || t('settings.terjadi_kesalahan_saat_memproses_pembuatan_maste', 'Terjadi kesalahan saat memproses pembuatan Master Root.'));
     } finally {
@@ -1066,7 +1067,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold py-1.5 px-3 flex items-center gap-2 shadow-2xs">
-            <span className="size-2 rounded-full bg-[#06C755] animate-pulse" />
+            <span className="size-2 rounded-full bg-accent animate-pulse" />
             <span>{t('settings.sqlite_engine_active', 'SQLite Engine Active')}</span>
           </Badge>
         </div>
@@ -1110,11 +1111,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <CardTitle className="text-lg font-bold flex items-center justify-between">
                     <span>{t('settings.google_auth_title', 'Autentikasi Akun Google Workspace')}</span>
                     {isTokenActive ? (
-                      <Badge className="text-[10px] bg-[#EBFBF0] dark:bg-emerald-950/60 text-[#048C3B] dark:text-emerald-300 border-transparent hover:bg-[#EBFBF0]">
+                      <Badge className="text-xs bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border-transparent hover:bg-accent-soft">
                         {t('settings.oauth_active', 'OAuth Aktif')}
                       </Badge>
                     ) : (
-                      <Badge className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 hover:bg-slate-200">
+                      <Badge className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 hover:bg-slate-200">
                         {t('settings.oauth_inactive', 'Belum Terhubung')}
                       </Badge>
                     )}
@@ -1123,15 +1124,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <CardContent className="space-y-4 text-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-[#F5F6F6] dark:bg-slate-800/50 rounded-2xl border border-[#EBEBEB] dark:border-slate-700">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#06C755]/10 text-[#06C755] flex items-center justify-center font-bold text-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-accent/10 text-accent-text flex items-center justify-center font-bold text-sm shrink-0">
                         {googleUser?.name?.charAt(0) || 'G'}
                       </div>
                       <div>
-                        <p className="font-semibold text-[#111111] dark:text-slate-100">
+                        <p className="font-semibold text-ink dark:text-slate-100">
                           {googleUser ? googleUser.name : t('settings.no_google_connected', 'Belum Ada Akun Google Terhubung')}
                         </p>
                         {googleUser?.email && (
-                          <p className="text-[#777777] dark:text-slate-400 font-mono text-[11px]">
+                          <p className="text-ink-soft dark:text-slate-400 font-mono text-xs">
                             {googleUser.email}
                           </p>
                         )}
@@ -1146,7 +1147,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             size="sm"
                             onClick={handleGoogleRefresh}
                             disabled={connectingAuth}
-                            className="h-9 px-4 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-[#111111] dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
+                            className="h-9 px-4 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
                           >
                             <RefreshCw className={cn('w-3.5 h-3.5', connectingAuth && 'animate-spin')} />
                             <span>{t('settings.refresh_session', 'Refresh Sesi')}</span>
@@ -1166,7 +1167,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           size="sm"
                           onClick={handleGoogleConnect}
                           disabled={connectingAuth}
-                          className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5"
+                          className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
                         >
                           <Zap className="w-3.5 h-3.5" />
                           <span>{t('settings.connect_google_btn', 'Hubungkan Akun Google')}</span>
@@ -1185,18 +1186,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1">
                       <CardTitle className="text-lg font-bold flex items-center gap-2">
-                        <Folder className="w-5 h-5 text-[#06C755]" />
+                        <Folder className="w-5 h-5 text-accent-text" />
                         <span>{t('settings.penyimpanan_file_dokumen_google_drive', 'Penyimpanan File Dokumen (Google Drive)')}</span>
                       </CardTitle>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
                       {driveFolderId ? (
-                        <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-semibold py-1 px-2.5 flex items-center gap-1.5 shadow-2xs">
-                          <span className="size-2 rounded-full bg-[#06C755] animate-pulse" />
+                        <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold py-1 px-2.5 flex items-center gap-1.5 shadow-2xs">
+                          <span className="size-2 rounded-full bg-accent animate-pulse" />
                           <span>{t('settings.folder_drive_terhubung', 'Folder Drive Terhubung')}</span>
                         </Badge>
                       ) : (
-                        <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[11px] font-semibold py-1 px-2.5 flex items-center gap-1.5 shadow-2xs">
+                        <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold py-1 px-2.5 flex items-center gap-1.5 shadow-2xs">
                           <AlertCircle className="size-3 text-amber-500" />
                           <span>{t('settings.not_configured', 'Belum Dikonfigurasi')}</span>
                         </Badge>
@@ -1210,7 +1211,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           onClick={() => setShowEditConfirmModal(true)}
                           className="h-7 px-3 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer gap-1.5 shrink-0 shadow-2xs"
                         >
-                          <Lock className="w-3 h-3 text-[#06C755]" />
+                          <Lock className="w-3 h-3 text-accent-text" />
                           <span>{t('settings.edit_config_btn', 'Ubah Konfigurasi')}</span>
                         </Button>
                       )}
@@ -1225,7 +1226,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         {/* Master Storage Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-700/60">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs bg-[#04803D]">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs bg-accent-strong">
                               <Folder className="w-4 h-4 text-white" />
                             </div>
                             <div className="min-w-0 space-y-0.5">
@@ -1233,12 +1234,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                 <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
                                   {t('settings.root_folder_title', 'Root Folder')}
                                 </h4>
-                                <Badge className="text-[10px] font-semibold py-0.5 px-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                                <Badge className="text-xs font-semibold py-0.5 px-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                                   {t('settings.root_drive', 'Root Drive')}
                                 </Badge>
                               </div>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                {t('settings.id', 'ID:')} <code className="font-mono text-[10px] text-slate-600 dark:text-slate-300">{driveFolderId || '-'}</code>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                {t('settings.id', 'ID:')} <code className="font-mono text-xs text-slate-600 dark:text-slate-300">{driveFolderId || '-'}</code>
                               </p>
                             </div>
                           </div>
@@ -1248,11 +1249,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         {!isEditUnlocked ? (
                           <div className="p-3 bg-slate-50/80 dark:bg-slate-900/60 rounded-xl border border-slate-200/70 dark:border-slate-800 flex items-center justify-between gap-2.5">
                             <div className="min-w-0 flex-1 space-y-1">
-                              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                                <Folder className="w-3.5 h-3.5 text-[#06C755] shrink-0" />
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                <Folder className="w-3.5 h-3.5 text-accent-text shrink-0" />
                                 <span className="truncate">{t('settings.master_root_id_label', 'Master Google Drive Storage Root Folder ID')}</span>
                               </span>
-                              <p className="font-mono text-[11px] text-slate-600 dark:text-slate-300 truncate select-all">
+                              <p className="font-mono text-xs text-slate-600 dark:text-slate-300 truncate select-all">
                                 {driveFolderId || '-'}
                               </p>
                             </div>
@@ -1264,7 +1265,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                   title={t('common.copy_link', 'Salin Link')}
                                   className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                                 >
-                                  {copiedKey === 'master-root' ? <Check className="w-3.5 h-3.5 text-[#06C755]" /> : <Copy className="w-3.5 h-3.5" />}
+                                  {copiedKey === 'master-root' ? <Check className="w-3.5 h-3.5 text-accent-text" /> : <Copy className="w-3.5 h-3.5" />}
                                 </button>
                                 <a href={`https://drive.google.com/drive/folders/${driveFolderId}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors inline-flex items-center">
                                   <ExternalLink className="w-3.5 h-3.5" />
@@ -1286,7 +1287,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                 )}
                               >
-                                <Folder className="w-3.5 h-3.5 text-[#06C755]" />
+                                <Folder className="w-3.5 h-3.5 text-accent-text" />
                                 <span>{t('settings.picker_tab', 'Pilih dari Google Drive')}</span>
                               </button>
                               <button
@@ -1299,7 +1300,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                 )}
                               >
-                                <Folder className="w-3.5 h-3.5 text-[#06C755]" />
+                                <Folder className="w-3.5 h-3.5 text-accent-text" />
                                 <span>{t('settings.manual_tab', 'Input Manual ID')}</span>
                               </button>
                             </div>
@@ -1307,11 +1308,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             {selectedOptionTab === 'picker' && (
                               <form onSubmit={handleSaveOption2Picker} className="space-y-4">
                                 <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
-                                  <label className="block font-semibold text-slate-800 dark:text-slate-100">
+                                  <label htmlFor="settingsview-field-1" className="block font-semibold text-slate-800 dark:text-slate-100">
                                     {t('settings.folder_google_drive_id', 'Folder Google Drive ID')}
                                   </label>
                                   <div className="flex items-center gap-2">
-                                    <input
+                                    <input id="settingsview-field-1"
                                       type="text"
                                       readOnly
                                       value={driveFolderId || t('settings.no_folder_selected', 'Belum dipilih')}
@@ -1348,7 +1349,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     type="submit"
                                     size="sm"
                                     disabled={saving || !driveFolderId}
-                                    className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5 shadow-2xs"
+                                    className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
                                   >
                                     <Save className="w-3.5 h-3.5" />
                                     <span>{saving ? t('settings.saving_and_provisioning', 'Menyimpan...') : t('settings.save_config_btn', 'Simpan Konfigurasi')}</span>
@@ -1360,15 +1361,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             {selectedOptionTab === 'manual' && (
                               <form onSubmit={handleSaveOption3Manual} className="space-y-4">
                                 <div>
-                                  <label className="block text-slate-600 dark:text-slate-400 font-semibold mb-1">
+                                  <label htmlFor="settingsview-field-2" className="block text-slate-600 dark:text-slate-400 font-semibold mb-1">
                                     {t('settings.master_root_id_label', 'Folder ID Google Drive')}
                                   </label>
-                                  <input
+                                  <input id="settingsview-field-2"
                                     type="text"
                                     value={driveFolderId}
                                     onChange={(e) => setDriveFolderId(e.target.value)}
                                     placeholder={t('settings.contoh_1xifivgwddtyezl7ioqvd9d_nas7xcfyp', 'Contoh: 1xiFIvgWdDtYEzL7IoqVD9d-NaS7XcfYp')}
-                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#06C755]/20 transition-all font-mono"
+                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all font-mono"
                                     required
                                   />
                                 </div>
@@ -1390,7 +1391,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     type="submit"
                                     size="sm"
                                     disabled={saving}
-                                    className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5 shadow-2xs"
+                                    className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
                                   >
                                     <Save className="w-3.5 h-3.5" />
                                     <span>{saving ? t('settings.saving_and_provisioning', 'Menyimpan...') : t('settings.save_config_btn', 'Simpan Konfigurasi')}</span>
@@ -1427,7 +1428,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                               <div className="flex items-center gap-3 min-w-0">
                                 <div
                                   className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs"
-                                  style={{ backgroundColor: tenant.primaryColor || '#06C755' }}
+                                  style={{ backgroundColor: tenant.primaryColor || '#04803D', color: readableTextOn(tenant.primaryColor || '#04803D') }}
                                 >
                                   {tenantDisplayName.slice(0, 2).toUpperCase()}
                                 </div>
@@ -1436,17 +1437,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
                                       {tenantDisplayName}
                                     </h4>
-                                    <Badge className="text-[10px] font-semibold py-0.5 px-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                                    <Badge className="text-xs font-semibold py-0.5 px-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                                       {tenant.legalEntity || 'PT'}
                                     </Badge>
                                     {tenant.isDefault && (
-                                      <Badge className="text-[10px] font-semibold py-0.5 px-2 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                      <Badge className="text-xs font-semibold py-0.5 px-2 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                         {t('settings.org_default_entity', 'Default Entity')}
                                       </Badge>
                                     )}
                                   </div>
-                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                    {t('settings.id', 'ID:')} <code className="font-mono text-[10px] text-slate-600 dark:text-slate-300">{tenant.id}</code>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                    {t('settings.id', 'ID:')} <code className="font-mono text-xs text-slate-600 dark:text-slate-300">{tenant.id}</code>
                                   </p>
                                 </div>
                               </div>
@@ -1460,7 +1461,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     size="sm"
                                     disabled={isProvisioning || !isTokenActive}
                                     onClick={() => handleAutoProvisionTenantGoogle(tenant)}
-                                    className="h-7 px-3 rounded-full text-[11px] font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5 shadow-2xs"
+                                    className="h-7 px-3 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
                                     title={!isTokenActive ? t('settings.org_connect_google_first', 'Hubungkan akun Google terlebih dahulu') : t('settings.org_auto_provision_tooltip', 'Buat Folder otomatis di Google Drive')}
                                   >
                                     <Sparkles className={cn('w-3 h-3', isProvisioning && 'animate-spin')} />
@@ -1473,11 +1474,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             {/* Folder Info */}
                             <div className="p-3 bg-slate-50/80 dark:bg-slate-900/60 rounded-xl border border-slate-200/70 dark:border-slate-800 flex items-center justify-between gap-2.5">
                               <div className="min-w-0 flex-1 space-y-1">
-                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                                  <Folder className="w-3.5 h-3.5 text-[#06C755] shrink-0" />
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                  <Folder className="w-3.5 h-3.5 text-accent-text shrink-0" />
                                   <span className="truncate">{t('settings.org_folder_label', 'Folder Organisasi')}</span>
                                 </span>
-                                <p className="font-mono text-[11px] text-slate-600 dark:text-slate-300 truncate select-all">
+                                <p className="font-mono text-xs text-slate-600 dark:text-slate-300 truncate select-all">
                                   {tenant.driveFolderId || '-'}
                                 </p>
                               </div>
@@ -1495,7 +1496,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                                   >
                                     {copiedKey === `folder-${tenant.id}` ? (
-                                      <Check className="w-3.5 h-3.5 text-[#06C755]" />
+                                      <Check className="w-3.5 h-3.5 text-accent-text" />
                                     ) : (
                                       <Copy className="w-3.5 h-3.5" />
                                     )}
@@ -1557,18 +1558,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
                   <div className="space-y-1">
                     <CardTitle className="text-lg font-bold flex items-center gap-2">
-                      <Key className="w-5 h-5 text-[#06C755]" />
+                      <Key className="w-5 h-5 text-accent-text" />
                       <span>{t('settings.gemini_api_key_title', 'Google Gemini API Key')}</span>
                     </CardTitle>
                   </div>
                   <div>
                     {geminiApiKey ? (
-                      <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-semibold py-1 px-2.5 flex items-center gap-1.5">
+                      <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold py-1 px-2.5 flex items-center gap-1.5">
                         <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
                         <span>{t('settings.api_key_active', 'API Key Aktif')}</span>
                       </Badge>
                     ) : (
-                      <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[11px] font-semibold py-1 px-2.5 flex items-center gap-1.5">
+                      <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold py-1 px-2.5 flex items-center gap-1.5">
                         <AlertCircle className="size-3 text-amber-500" />
                         <span>{t('settings.api_key_empty', 'Belum Diatur')}</span>
                       </Badge>
@@ -1578,25 +1579,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <CardContent className="space-y-4 text-xs">
                   <form onSubmit={handleSaveApiKey} className="space-y-3">
                     <div className="space-y-1.5">
-                      <label className="font-semibold text-slate-900 dark:text-slate-100 flex items-center justify-between">
+                      <label htmlFor="settingsview-field-3" className="font-semibold text-slate-900 dark:text-slate-100 flex items-center justify-between">
                         <span>{t('settings.gemini_api_key_label', 'Gemini API Key (AI Studio)')}</span>
                         <a
                           href="https://aistudio.google.com/app/apikey"
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[11px] text-[#06C755] hover:underline flex items-center gap-1 font-normal"
+                          className="min-h-6 text-xs text-accent-dark hover:underline flex items-center gap-1 font-normal"
                         >
                           <span>{t('settings.get_api_key_link', 'Dapatkan API Key di Google AI Studio')}</span>
                           <ExternalLink className="size-3" />
                         </a>
                       </label>
                       <div className="relative flex items-center">
-                        <input
+                        <input id="settingsview-field-3"
                           type={showApiKey ? 'text' : 'password'}
                           value={geminiApiKey}
                           onChange={(e) => setGeminiApiKey(e.target.value)}
                           placeholder={t('settings.gemini_api_key_ph', 'Masukkan Google Gemini API Key (misal: AIzaSy...)')}
-                          className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-xs text-[#111111] dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-[#06C755] transition-colors"
+                          className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-xs text-ink dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-accent transition-colors"
                         />
                         <button
                           type="button"
@@ -1628,11 +1629,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </div>
                     )}
 
-                    <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                    <div className="mobile-page-actions flex flex-wrap items-center gap-2.5 pt-1">
                       <Button
                         type="submit"
                         disabled={savingApiKey || !isAdmin}
-                        className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5"
+                        className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
                         <span>{savingApiKey ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_api_key_btn', 'Simpan API Key')}</span>
@@ -1657,7 +1658,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <Card className="border-none shadow-[0_4px_16px_rgba(0,0,0,0.04)] rounded-[20px] overflow-hidden">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <AiIcon className="w-5 h-5 text-[#06C755]" />
+                    <AiIcon className="w-5 h-5 text-accent-text" />
                     <span>{t('settings.ai_config_title', 'Pilihan Model Google Gemini')}</span>
                   </CardTitle>
                 </CardHeader>
@@ -1701,18 +1702,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         className={cn(
                           'p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3',
                           aiModel === model.id
-                            ? 'border-[#06C755] bg-[#06C755]/5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border-none'
+                            ? 'border-accent bg-accent/5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border-none'
                             : 'border-[#EBEBEB] dark:border-slate-700 bg-card hover:bg-[#F5F6F6] dark:bg-slate-800/50'
                         )}
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-[#111111] dark:text-slate-100 text-xs">{model.title}</span>
-                            <Badge className="text-[10px] border border-[#EBEBEB] dark:border-slate-700 text-[#777777] dark:text-slate-400 bg-transparent hover:bg-[#F5F6F6] dark:bg-slate-800/50">
+                            <span className="font-semibold text-ink dark:text-slate-100 text-xs">{model.title}</span>
+                            <Badge className="text-xs border border-[#EBEBEB] dark:border-slate-700 text-ink-soft dark:text-slate-400 bg-transparent hover:bg-[#F5F6F6] dark:bg-slate-800/50">
                               {model.badge}
                             </Badge>
                           </div>
-                          <p className="text-[#777777] dark:text-slate-400 text-[11px] leading-relaxed">
+                          <p className="text-ink-soft dark:text-slate-400 text-xs leading-relaxed">
                             {model.desc}
                           </p>
                         </div>
@@ -1722,7 +1723,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             className={cn(
                               'size-4 rounded-full border flex items-center justify-center transition-all',
                               aiModel === model.id
-                                ? 'border-[#06C755] bg-[#06C755] text-[#06C755]-foreground'
+                                ? 'border-accent-strong bg-accent-strong text-white'
                                 : 'border-muted-foreground/40'
                             )}
                           >
@@ -1745,18 +1746,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
                   <div className="space-y-1">
                     <CardTitle className="text-lg font-bold flex items-center gap-2">
-                      <Mail className="w-5 h-5 text-[#06C755]" />
+                      <Mail className="w-5 h-5 text-accent-text" />
                       <span>{t('settings.smtp_card_title', 'Konfigurasi SMTP Relay Server (Email Nyata)')}</span>
                     </CardTitle>
                   </div>
                   <div>
                     {smtpEnabled ? (
-                      <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-semibold py-1 px-2.5 flex items-center gap-1.5">
+                      <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold py-1 px-2.5 flex items-center gap-1.5">
                         <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
                         <span>{t('settings.smtp_aktif', 'SMTP Aktif')}</span>
                       </Badge>
                     ) : (
-                      <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold py-1 px-2.5">
+                      <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 text-xs font-semibold py-1 px-2.5">
                         <span>{t('status.nonaktif', 'Nonaktif')}</span>
                       </Badge>
                     )}
@@ -1770,47 +1771,50 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         <p className="font-semibold text-slate-900 dark:text-slate-100 text-xs">
                           {t('settings.smtp_enable_label', 'Aktifkan Pengiriman Email via SMTP Relay')}
                         </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                           {t('settings.jika_aktif_reminder_h_90_h', 'Jika aktif, reminder H-90, H-60, H-30, dan H-14 akan dikirimkan otomatis ke email nyata.')}
                         </p>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={smtpEnabled}
-                          onChange={(e) => setSmtpEnabled(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-[#06C755]"></div>
-                      </label>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={smtpEnabled}
+                        aria-label={t('settings.smtp_enable_label', 'Aktifkan Pengiriman Email via SMTP Relay')}
+                        onClick={() => setSmtpEnabled(!smtpEnabled)}
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg"
+                      >
+                        <span aria-hidden="true" className={`relative block h-6 w-11 rounded-full ${smtpEnabled ? 'bg-accent-dark' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                          <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition-transform ${smtpEnabled ? 'translate-x-5' : ''}`} />
+                        </span>
+                      </button>
                     </div>
 
                     {/* SMTP Credentials Form */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                        <label htmlFor="settingsview-field-4" className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                           {t('settings.smtp_host_label', 'SMTP Host / Server')}
                         </label>
-                        <input
+                        <input id="settingsview-field-4"
                           type="text"
                           value={smtpHost}
                           onChange={(e) => setSmtpHost(e.target.value)}
                           placeholder={t('settings.misal_smtp_gmail_com_smtp_office365', 'misal: smtp.gmail.com / smtp.office365.com')}
-                          className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
+                          className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-accent transition-colors"
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                          <label htmlFor="settingsview-field-5" className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                             {t('settings.smtp_port_label', 'SMTP Port')}
                           </label>
-                          <input
+                          <input id="settingsview-field-5"
                             type="number"
                             value={smtpPort}
                             onChange={(e) => setSmtpPort(Number(e.target.value))}
                             placeholder="465 / 587"
-                            className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
+                            className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-accent transition-colors"
                           />
                         </div>
                         <div className="flex flex-col justify-end">
@@ -1819,41 +1823,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                               type="checkbox"
                               checked={smtpSecure}
                               onChange={(e) => setSmtpSecure(e.target.checked)}
-                              className="rounded text-[#06C755] focus:ring-[#06C755]"
+                              className="rounded text-accent-text focus:ring-accent"
                             />
-                            <span className="text-[11px] truncate">{t('settings.ssl_tls', 'SSL/TLS')}</span>
+                            <span className="text-xs truncate">{t('settings.ssl_tls', 'SSL/TLS')}</span>
                           </label>
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                        <label htmlFor="settingsview-field-6" className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                           {t('settings.smtp_user_label', 'SMTP Username / Akun Email')}
                         </label>
-                        <input
+                        <input id="settingsview-field-6"
                           type="text"
                           value={smtpUser}
                           onChange={(e) => setSmtpUser(e.target.value)}
                           placeholder={t('settings.misal_notif_perusahaan_com', 'misal: notif@perusahaan.com')}
-                          className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
+                          className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-accent transition-colors"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                        <label htmlFor="settingsview-field-7" className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                           {t('settings.smtp_password_label', 'SMTP Password / Google App Password')}
                         </label>
                         <div className="relative flex items-center">
-                          <input
+                          <input id="settingsview-field-7"
                             type={showSmtpPassword ? 'text' : 'password'}
                             value={smtpPassword}
                             onChange={(e) => setSmtpPassword(e.target.value)}
                             placeholder={t('settings.password_atau_16_digit_app_password', 'Password atau 16-digit App Password')}
-                            className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
+                            className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-accent transition-colors"
                           />
                           <button
                             type="button"
-                            onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                          onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                            aria-label={showSmtpPassword ? t('settings.sembunyikan', 'Sembunyikan') : t('settings.tampilkan', 'Tampilkan')}
                             className="absolute right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                           >
                             {showSmtpPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -1862,28 +1867,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                        <label htmlFor="settingsview-field-8" className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                           {t('settings.smtp_from_email_label', 'Alamat Email Pengirim (From Email)')}
                         </label>
-                        <input
+                        <input id="settingsview-field-8"
                           type="email"
                           value={smtpFromEmail}
                           onChange={(e) => setSmtpFromEmail(e.target.value)}
                           placeholder={t('settings.misal_noreply_perusahaan_com_opsional', 'misal: noreply@perusahaan.com (opsional)')}
-                          className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
+                          className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-accent transition-colors"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                        <label htmlFor="settingsview-field-9" className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                           {t('settings.smtp_from_name_label', 'Nama Pengirim (From Name)')}
                         </label>
-                        <input
+                        <input id="settingsview-field-9"
                           type="text"
                           value={smtpFromName}
                           onChange={(e) => setSmtpFromName(e.target.value)}
                           placeholder={t('settings.misal_sistem_notifikasi_kontrak_io', 'misal: Sistem Notifikasi Kontrak & IO')}
-                          className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
+                          className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-accent transition-colors"
                         />
                       </div>
                     </div>
@@ -1895,12 +1900,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         <span>{t('settings.smtp_test_title', 'Uji Koneksi & Kirim Email Percobaan')}</span>
                       </p>
                       <div className="flex flex-col sm:flex-row gap-2">
-                        <input
+                        <input aria-label={user?.email || t('settings.smtp_test_recipient_ph', 'Masukkan email tujuan uji coba...')}
                           type="email"
                           value={testSmtpRecipient}
                           onChange={(e) => setTestSmtpRecipient(e.target.value)}
                           placeholder={user?.email || t('settings.smtp_test_recipient_ph', 'Masukkan email tujuan uji coba...')}
-                          className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755]"
+                          className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-accent"
                         />
                         <Button
                           type="button"
@@ -1937,7 +1942,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <Button
                         type="submit"
                         disabled={savingSmtp || !isAdmin}
-                        className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5"
+                        className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
                         <span>{savingSmtp ? t('settings.smtp_saving_btn', 'Menyimpan...') : t('settings.smtp_save_btn', 'Simpan Konfigurasi SMTP')}</span>
@@ -1951,39 +1956,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <Card className="border-none shadow-[0_4px_16px_rgba(0,0,0,0.04)] rounded-[20px] overflow-hidden">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Bell className="w-5 h-5 text-[#06C755]" />
+                    <Bell className="w-5 h-5 text-accent-text" />
                     <span>{t('settings.notif_recipients_title', 'Daftar Email Penerima Alert Notice Period')}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-xs">
                   <form onSubmit={handleSaveNotificationEmails} className="space-y-4">
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                      <label htmlFor="settingsview-field-10" className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                         {t('settings.legal_email_label', 'Email Tim Legal (Master Notice Period Alert)')}
                       </label>
-                      <input
+                      <input id="settingsview-field-10"
                         type="text"
                         value={legalNotificationEmail}
                         onChange={(e) => setLegalNotificationEmail(e.target.value)}
                         placeholder={t('settings.legal_lead_company_com_legal_officer', 'legal.lead@company.com, legal.officer@company.com')}
-                        className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
+                        className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-accent transition-colors"
                         required
                       />
-                      <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                         {t('settings.legal_email_hint', 'Gunakan tanda koma (,) untuk memisahkan beberapa alamat email.')}
                       </p>
                     </div>
 
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                      <label htmlFor="settingsview-field-11" className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                         {t('settings.finance_email_label', 'Email Tim Finance (Commercial & Spending Alert)')}
                       </label>
-                      <input
+                      <input id="settingsview-field-11"
                         type="text"
                         value={financeNotificationEmail}
                         onChange={(e) => setFinanceNotificationEmail(e.target.value)}
                         placeholder={t('settings.finance_lead_company_com', 'finance.lead@company.com')}
-                        className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#06C755] transition-colors"
+                        className="w-full bg-[#F5F6F6] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-accent transition-colors"
                         required
                       />
                     </div>
@@ -1993,7 +1998,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         type="submit"
                         size="sm"
                         disabled={savingNotifEmails || !isAdmin}
-                        className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5"
+                        className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
                         <span>{savingNotifEmails ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_notif_emails_btn', 'Simpan Email Notifikasi')}</span>
@@ -2010,35 +2015,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Card className="border-none shadow-[0_4px_16px_rgba(0,0,0,0.04)] rounded-[20px] overflow-hidden">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Languages className="w-5 h-5 text-[#06C755]" />
+                  <Languages className="w-5 h-5 text-accent-text" />
                   <span>{t('settings.ui_customization_title', 'Kustomisasi Teks UI & Kamus Antarmuka')}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-xs">
                 <div className="p-4 bg-[#F5F6F6] dark:bg-slate-800/50 rounded-2xl border border-[#EBEBEB] dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-[#111111] dark:text-slate-100">{t('settings.ui_editor_card_title', 'Editor Teks Antarmuka Lengkap')}</p>
-                    <p className="text-[#777777] dark:text-slate-400 text-[11px] mt-0.5">
+                    <p className="font-semibold text-ink dark:text-slate-100">{t('settings.ui_editor_card_title', 'Editor Teks Antarmuka Lengkap')}</p>
+                    <p className="text-ink-soft dark:text-slate-400 text-xs mt-0.5">
                       {t('settings.ui_editor_card_desc', 'Buka jendela dialog untuk mengubah setiap teks tombol, menu, tabel, atau pesan error.')}
                     </p>
                   </div>
                   <Button
                     size="sm"
                     onClick={() => setShowUITextModal(true)}
-                    className="h-9 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer shrink-0"
+                    className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer shrink-0"
                   >
                     {t('settings.open_ui_editor_btn', 'Buka Editor Teks UI')}
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2 flex-wrap">
+                <div className="mobile-page-actions flex items-center gap-2 pt-2 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={exportToCSV}
-                    className="h-9 px-4 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-[#111111] dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
+                    className="h-9 px-4 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
                   >
-                    <Download className="w-3.5 h-3.5 text-[#777777] dark:text-slate-400" />
+                    <Download className="w-3.5 h-3.5 text-ink-soft dark:text-slate-400" />
                     <span>{t('settings.export_csv_dict', 'Ekspor Kamus CSV')}</span>
                   </Button>
 
@@ -2053,9 +2058,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={() => textFileInputRef.current?.click()}
-                    className="h-9 px-4 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-[#111111] dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
+                    className="h-9 px-4 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
                   >
-                    <Upload className="w-3.5 h-3.5 text-[#777777] dark:text-slate-400" />
+                    <Upload className="w-3.5 h-3.5 text-ink-soft dark:text-slate-400" />
                     <span>{t('settings.import_csv_dict', 'Impor Kamus CSV')}</span>
                   </Button>
 
@@ -2089,7 +2094,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {/* Danger Zone: Reset Database */}
               <Card className="border-none shadow-[0_4px_16px_rgba(0,0,0,0.04)] rounded-[20px] overflow-hidden">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg font-bold text-[#111111] dark:text-slate-100 flex items-center gap-2">
+                  <CardTitle className="text-lg font-bold text-ink dark:text-slate-100 flex items-center gap-2">
                     <ShieldAlert className="w-5 h-5 text-rose-500" />
                     <span>{t('settings.danger_zone_title', 'Danger Zone: Reset Database Sistem')}</span>
                   </CardTitle>
@@ -2100,7 +2105,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <CardContent className="text-xs">
                   <div className="p-4 bg-[#F5F6F6] dark:bg-slate-800/50 rounded-2xl border border-[#EBEBEB] dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-[#111111] dark:text-slate-100">{t('settings.delete_all_transactions', 'Reset Seluruh Pengaturan & Data Transaksi')}</p>
+                      <p className="font-semibold text-ink dark:text-slate-100">{t('settings.delete_all_transactions', 'Reset Seluruh Pengaturan & Data Transaksi')}</p>
                     </div>
 
                     <Button
@@ -2139,20 +2144,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* Confirmation Modal for Editing Database Configuration */}
       {showEditConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-hidden animate-in fade-in-50">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full shadow-2xl border border-[#EBEBEB] dark:border-slate-800 overflow-hidden">
+        <ModalFrame onClose={() => setShowEditConfirmModal(false)} className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full shadow-2xl border border-[#EBEBEB] dark:border-slate-800 overflow-hidden">
+
             <div className="p-5 border-b border-[#EBEBEB] dark:border-slate-800 flex items-center gap-3">
               <div className="p-2 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-xl border border-amber-200 dark:border-amber-800 shrink-0">
                 <AlertCircle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-[#111111] dark:text-slate-100">
+                <ModalTitle className="text-sm font-bold text-ink dark:text-slate-100">
                   {t('settings.edit_confirm_title', 'Ubah Konfigurasi Database')}
-                </h3>
+                </ModalTitle>
               </div>
             </div>
 
-            <div className="p-5 text-xs text-[#777777] dark:text-slate-400 leading-relaxed">
+            <div className="p-5 text-xs text-ink-soft dark:text-slate-400 leading-relaxed">
               {t(
                 'settings.edit_confirm_desc',
                 'Mengubah Spreadsheet ID atau Folder Storage akan mengalihkan sinkronisasi ke berkas baru. Pastikan ID sheet tujuan valid.'
@@ -2165,7 +2170,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowEditConfirmModal(false)}
-                className="h-8 px-3.5 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-[#111111] dark:text-slate-100 hover:bg-[#F5F6F6] cursor-pointer"
+                className="h-8 px-3.5 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] cursor-pointer"
               >
                 {t('settings.edit_confirm_cancel', 'Batal')}
               </Button>
@@ -2176,36 +2181,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   setShowEditConfirmModal(false);
                   setIsEditUnlocked(true);
                 }}
-                className="h-8 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer shadow-2xs"
+                className="h-8 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer shadow-2xs"
               >
                 {t('settings.edit_confirm_proceed', 'Lanjutkan Edit')}
               </Button>
             </div>
-          </div>
-        </div>
+
+        </ModalFrame>
       )}
 
       {/* Google Drive Picker Modal */}
       {showPickerModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <ModalFrame onClose={() => setShowPickerModal(false)} className="bg-white rounded-2xl max-w-2xl w-full max-h-[92dvh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+
             <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white">
               <div className="flex items-center gap-2">
                 {pickerType === 'spreadsheet' ? (
-                  <FileSpreadsheet className="w-5 h-5 text-[#06C755]" />
+                  <FileSpreadsheet className="w-5 h-5 text-accent-text" />
                 ) : (
-                  <Folder className="w-5 h-5 text-[#06C755]" />
+                  <Folder className="w-5 h-5 text-accent-text" />
                 )}
                 <div>
-                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                  <ModalTitle className="text-base sm:text-lg font-extrabold text-slate-900">
                     {pickerType === 'spreadsheet'
                       ? t('settings.pilih_spreadsheet_dari_google_drive', 'Pilih Spreadsheet dari Google Drive')
                       : t('settings.pilih_folder_storage_dari_google_drive', 'Pilih Folder Storage dari Google Drive')}
-                  </h3>
-                  <p className="text-[11px] text-slate-500">{t('settings.akun', 'Akun: {email}', { email: googleUser?.email })}</p>
+                  </ModalTitle>
+                  <p className="text-xs text-slate-500">{t('settings.akun', 'Akun: {email}', { email: googleUser?.email })}</p>
                 </div>
               </div>
-              <button
+              <button aria-label={t('common.close', 'Tutup')}
                 type="button"
                 onClick={() => setShowPickerModal(false)}
                 className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
@@ -2217,12 +2222,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs flex-1">
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                <input
+                <input aria-label={t('settings.cari_nama', 'Cari nama {pickerType}...', { pickerType: pickerType === 'spreadsheet' ? t('settings.picker_spreadsheet', 'spreadsheet') : t('settings.picker_folder', 'folder') })}
                   type="text"
                   placeholder={t('settings.cari_nama', 'Cari nama {pickerType}...', { pickerType: pickerType === 'spreadsheet' ? t('settings.picker_spreadsheet', 'spreadsheet') : t('settings.picker_folder', 'folder') })}
                   value={pickerSearch}
                   onChange={(e) => setPickerSearch(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2.5 bg-[#F7F8FA] border border-[#E5E8EB] rounded-xl text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/20 transition-all"
+                  className="w-full pl-9 pr-3.5 py-2.5 bg-[#F7F8FA] border border-hairline rounded-xl text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                 />
               </div>
 
@@ -2237,23 +2242,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                 ) : (
                   filteredDriveItems.map((item) => (
-                    <div
+                    <button type="button"
                       key={item.id}
                       onClick={() => handleSelectItem(item)}
-                      className="p-3 hover:bg-[#EBFBF0]/50 cursor-pointer flex items-center justify-between text-xs transition-colors"
+                      className="p-3 hover:bg-accent-soft/50 cursor-pointer flex items-center justify-between text-xs transition-colors w-full text-left"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         {pickerType === 'spreadsheet' ? (
-                          <FileSpreadsheet className="w-4 h-4 text-[#06C755] shrink-0" />
+                          <FileSpreadsheet className="w-4 h-4 text-accent-text shrink-0" />
                         ) : (
                           <Folder className="w-4 h-4 text-amber-500 shrink-0" />
                         )}
                         <span className="truncate font-semibold text-slate-800">{item.name}</span>
                       </div>
-                      <span className="font-mono text-[10px] text-slate-400 shrink-0 ml-2">
+                      <span className="font-mono text-xs text-slate-400 shrink-0 ml-2">
                         {item.id.slice(0, 8)}...
                       </span>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>
@@ -2268,30 +2273,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 {t('eval.btn_cancel', 'Batal')}
               </button>
             </div>
-          </div>
-        </div>
+
+        </ModalFrame>
       )}
 
       {/* Modal Configure Tenant Drive & Sheet */}
       {editingTenant && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-hidden animate-in fade-in-50">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full shadow-2xl border border-[#EBEBEB] dark:border-slate-800 overflow-hidden">
+        <ModalFrame onClose={() => setEditingTenant(null)} className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full shadow-2xl border border-[#EBEBEB] dark:border-slate-800 overflow-hidden">
+
             <div className="p-5 border-b border-[#EBEBEB] dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0"
-                  style={{ backgroundColor: editingTenant.primaryColor || '#06C755' }}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0"
+                  style={{ backgroundColor: editingTenant.primaryColor || '#04803D', color: readableTextOn(editingTenant.primaryColor || '#04803D') }}
                 >
                   {(editingTenant.name || editingTenant.brandName || 'Org').slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-[#111111] dark:text-slate-100">
+                  <ModalTitle className="text-sm font-bold text-ink dark:text-slate-100">
                     {t('settings.manage_org_modal_title', 'Konfigurasi Drive & Sheet Organisasi')}
-                  </h3>
-                  <p className="text-[11px] text-slate-500 truncate">{editingTenant.name || editingTenant.brandName || ''}</p>
+                  </ModalTitle>
+                  <p className="text-xs text-slate-500 truncate">{editingTenant.name || editingTenant.brandName || ''}</p>
                 </div>
               </div>
-              <button
+              <button aria-label={t('common.close', 'Tutup')}
                 type="button"
                 onClick={() => setEditingTenant(null)}
                 className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
@@ -2301,7 +2306,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveTenantGoogleConfig} className="p-5 space-y-4 text-xs">
-              <p className="text-[#777777] dark:text-slate-400 leading-relaxed text-[11px]">
+              <p className="text-ink-soft dark:text-slate-400 leading-relaxed text-xs">
                 {t(
                   'settings.manage_org_modal_desc',
                   'Atur atau hubungkan ID Google Drive Folder spesifik untuk organisasi ini sebagai tempat penyimpanan lampiran file.'
@@ -2310,16 +2315,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
               <div className="space-y-3">
                 <div>
-                  <label className="block font-semibold text-[#111111] dark:text-slate-100 mb-1 flex items-center gap-1.5">
-                    <Folder className="w-3.5 h-3.5 text-[#06C755]" />
+                  <label htmlFor="settingsview-field-12" className="block font-semibold text-ink dark:text-slate-100 mb-1 flex items-center gap-1.5">
+                    <Folder className="w-3.5 h-3.5 text-accent-text" />
                     <span>{t('settings.org_folder_label', 'Folder Organisasi (Google Drive Folder ID)')}</span>
                   </label>
-                  <input
+                  <input id="settingsview-field-12"
                     type="text"
                     value={tenantFolderInput}
                     onChange={(e) => setTenantFolderInput(e.target.value)}
                     placeholder={t('settings.contoh_1vx8z', 'Contoh: 1vX8Z...')}
-                    className="w-full bg-[#F5F6F6] dark:bg-slate-800/60 border border-[#EBEBEB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-[#111111] dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-[#06C755]/20"
+                    className="w-full bg-[#F5F6F6] dark:bg-slate-800/60 border border-[#EBEBEB] dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-ink dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-accent/20"
                   />
                 </div>
               </div>
@@ -2330,7 +2335,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={() => setEditingTenant(null)}
-                  className="h-8 px-3.5 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-[#777777] hover:bg-[#F5F6F6] cursor-pointer"
+                  className="h-8 px-3.5 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink-soft hover:bg-[#F5F6F6] cursor-pointer"
                 >
                   {t('settings.cancel_edit_btn', 'Batal')}
                 </Button>
@@ -2338,15 +2343,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="submit"
                   size="sm"
                   disabled={savingTenantGoogle}
-                  className="h-8 px-4 rounded-full text-xs font-bold bg-[#04803D] text-white hover:bg-[#036B33] cursor-pointer gap-1.5 shadow-2xs"
+                  className="h-8 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>{savingTenantGoogle ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_tenant_google_btn', 'Simpan Konfigurasi Organisasi')}</span>
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
+
+        </ModalFrame>
       )}
 
       {/* UI Text Manager Modal */}

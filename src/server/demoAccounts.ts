@@ -11,6 +11,9 @@ const LEGACY_DEMO_ACCOUNT_EMAILS = new Set([
   'legal.id@example.com',
   'finance.id@example.com',
   'legal.jp@example.com',
+  'admin.id@example.com',
+  'admin.my@example.com',
+  'admin.ph@example.com',
 ]);
 
 export const isDemoAccountEmail = (email: unknown) => {
