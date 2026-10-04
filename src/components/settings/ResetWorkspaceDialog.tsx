@@ -170,11 +170,11 @@ export const ResetWorkspaceDialog: React.FC<ResetWorkspaceDialogProps> = ({ open
 
             <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
               <Dialog.Close asChild>
-                <Button type="button" variant="outline" className="min-h-11" disabled={status.kind === 'running'}>
+                <Button size="lg" type="button" variant="outline" disabled={status.kind === 'running'}>
                   {t('common.cancel', 'Cancel')}
                 </Button>
               </Dialog.Close>
-              <Button type="submit" variant="destructive" className="min-h-11 gap-2" disabled={!canSubmit}>
+              <Button size="lg" type="submit" variant="destructive" className="gap-2" disabled={!canSubmit}>
                 {status.kind === 'running' ? (
                   <><RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />{t('settings.resetting_db', 'Resetting…')}</>
                 ) : (

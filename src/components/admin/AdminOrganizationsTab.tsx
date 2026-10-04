@@ -60,7 +60,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
         <button
           type="button"
           onClick={onOpenCreateOrg}
-          className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors shadow-xs shrink-0"
+          className="ui-button ui-button-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors shadow-xs"
         >
           <Plus className="w-4 h-4" />
           <span>{t('admin.btn_create_org', 'Buat Organisasi Baru')}</span>

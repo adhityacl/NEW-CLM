@@ -25,7 +25,7 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({ json: responses[path] ?? {} });
   });
   await page.goto('/');
-  await expect(page.getByText('UI news one')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Latest Regulatory Updates' }).getByRole('listitem').filter({ hasText: 'UI news one' })).toBeVisible();
 });
 
 test('admin modal names its fields, traps focus and restores the trigger on desktop and mobile', async ({ page }) => {

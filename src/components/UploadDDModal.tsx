@@ -3,6 +3,8 @@ import React, { useState, useRef } from 'react';
 import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { Upload, FileText, X, AlertCircle, Calendar, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useTenantSettings } from '../context/TenantSettingsContext';
+import { localizeDueDiligenceDocument } from '../lib/dueDiligence';
 import { useConfirm } from '../context/ConfirmDialogContext';
 import { Partner, DDDokumenItem, DDFileItem } from '../types';
 import { formatDueDiligenceFileName } from '../lib/fileNaming';
@@ -31,11 +33,13 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
   userName,
   userRole,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { policy } = useTenantSettings();
   const confirmDialog = useConfirm();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const existingDoc: DDDokumenItem | undefined = (partner.daftar_dokumen_dd || []).find((d) => d.nama === docName);
+  const displayName = localizeDueDiligenceDocument(existingDoc || { nama: docName }, policy.dueDiligenceChecklist, language);
 
   // Normalize existing files
   const existingFiles: DDFileItem[] = existingDoc?.files && existingDoc.files.length > 0
@@ -204,7 +208,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
               </ModalTitle>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs font-bold text-accent-text dark:text-emerald-400 truncate">
-                  {docName}
+                  {displayName}
                 </span>
                 <span className="text-xs text-slate-400">•</span>
                 <span className="text-xs text-slate-600 dark:text-slate-300 truncate font-medium">
@@ -396,14 +400,14 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isUploading}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50"
+              className="ui-button ui-button-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold transition-colors cursor-pointer disabled:opacity-50"
             >
               {t('eval.btn_cancel', 'Batal')}
             </button>
             <button
               type="submit"
               disabled={!selectedFile || isUploading}
-              className="px-4 py-2 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold rounded-xl text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ui-button ui-button-lg bg-accent-strong hover:bg-accent-strong-hover text-white font-bold transition-all flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isUploading ? (
                 <>

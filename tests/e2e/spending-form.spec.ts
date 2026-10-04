@@ -40,7 +40,7 @@ async function setup(page: Page, modern = false) {
     } else await route.fulfill({ json: fixtures[path] ?? {} });
   });
   await page.goto('/');
-  await expect(page.getByText('Spending fixture ready')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Latest Regulatory Updates' }).getByRole('listitem').filter({ hasText: 'Spending fixture ready' })).toBeVisible();
   await page.getByRole('button', { name: 'Partners', exact: true }).click();
   await page.getByRole('button', { name: 'Partner Spending', exact: true }).click();
   return { partner, spending };

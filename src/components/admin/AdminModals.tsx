@@ -304,14 +304,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="ui-button ui-button-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               {t('admin.btn_cancel', 'Batal')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
+              className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
             >
               {isSubmitting ? t('admin.saving', 'Menyimpan...') : t('admin.btn_save_user', 'Simpan Pengguna')}
             </button>
@@ -541,14 +541,14 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="ui-button ui-button-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               {t('admin.btn_cancel', 'Batal')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-50"
+              className="ui-button ui-button-lg font-medium bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-50"
             >
               {isSubmitting ? t('admin.saving', 'Menyimpan...') : t('admin.btn_update_user', 'Perbarui Pengguna')}
             </button>
@@ -645,14 +645,14 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="ui-button ui-button-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               {t('admin.btn_cancel', 'Batal')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50"
+              className="ui-button ui-button-lg font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50"
             >
               {isSubmitting ? t('admin.saving', 'Menyimpan...') : t('admin.btn_update_pwd', 'Perbarui Kata Sandi')}
             </button>
@@ -823,7 +823,7 @@ export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
                 <button
                   type="button"
                   onClick={handleApplyUrl}
-                  className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer"
+                  className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer"
                 >
                   {t('admin.btn_apply', 'Terapkan')}
                 </button>
@@ -1025,14 +1025,14 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="ui-button ui-button-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               {t('admin.btn_cancel', 'Batal')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
+              className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
             >
               {isSubmitting ? t('admin.creating', 'Membuat...') : t('admin.btn_create_org', 'Buat Organisasi')}
             </button>
@@ -1242,14 +1242,14 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                className="ui-button ui-button-lg font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 {t('admin.btn_cancel', 'Batal')}
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
+                className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
               >
                 {isSubmitting ? t('admin.saving', 'Menyimpan...') : t('admin.btn_save_changes', 'Simpan Perubahan')}
               </button>
@@ -1381,7 +1381,7 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              className="ui-button ui-button-lg font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               {t('admin.btn_cancel', 'Batal')}
             </button>
@@ -1390,7 +1390,7 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
                 type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="px-4 py-2 text-xs font-medium rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-50 shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="ui-button ui-button-lg font-medium bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-50 shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{isDeleting ? t('admin.deleting', 'Menghapus...') : t('admin.btn_confirm_delete', 'Hapus Permanen')}</span>
@@ -1487,14 +1487,14 @@ export const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
             <button
               type="button"
               onClick={() => { setErrorMsg(null); onClose(); }}
-              className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="ui-button ui-button-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               {t('admin.btn_cancel', 'Batal')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition-colors disabled:opacity-50"
+              className="ui-button ui-button-lg font-medium bg-amber-600 hover:bg-amber-700 text-white transition-colors disabled:opacity-50"
             >
               {isSubmitting ? t('admin.creating', 'Membuat...') : t('admin.btn_create_team', 'Buat Tim')}
             </button>
@@ -1626,14 +1626,14 @@ export const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
               <button
                 type="button"
                 onClick={() => { setErrorMsg(null); onClose(); }}
-                className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                className="ui-button ui-button-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 {t('admin.btn_cancel', 'Batal')}
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 cursor-pointer"
+                className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? t('admin.saving', 'Menyimpan...') : t('admin.btn_save_changes', 'Simpan Perubahan')}
               </button>
@@ -1748,7 +1748,7 @@ export const DeleteDepartmentModal: React.FC<DeleteDepartmentModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              className="ui-button ui-button-lg font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               {t('admin.btn_cancel', 'Batal')}
             </button>
@@ -1756,7 +1756,7 @@ export const DeleteDepartmentModal: React.FC<DeleteDepartmentModalProps> = ({
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="px-4 py-2 text-xs font-medium rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-50 shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="ui-button ui-button-lg font-medium bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-50 shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>{isDeleting ? t('admin.deleting', 'Menghapus...') : t('admin.btn_confirm_delete_department', 'Hapus Departemen')}</span>
@@ -1857,14 +1857,14 @@ export const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="ui-button ui-button-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               {t('admin.btn_cancel', 'Batal')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !selectedUserId}
-              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
+              className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
             >
               {isSubmitting ? t('admin.adding', 'Menambahkan...') : t('admin.btn_add', 'Tambahkan')}
             </button>
@@ -1991,14 +1991,14 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="ui-button ui-button-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               {t('admin.btn_cancel', 'Batal')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
+              className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
             >
               {isSubmitting ? t('admin.sending', 'Mengirim...') : t('admin.btn_send_inv', 'Kirim Undangan')}
             </button>
@@ -2129,7 +2129,7 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors flex items-center gap-1 shrink-0"
+                  className="ui-button ui-button-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors flex items-center gap-1 shrink-0"
                 >
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied ? t('admin.copied', 'Tersalin') : t('admin.copy', 'Salin')}
@@ -2141,7 +2141,7 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
               <button
                 type="button"
                 onClick={handleFinish}
-                className="px-4 py-1.5 text-xs font-medium rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
+                className="ui-button ui-button-lg font-medium bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
               >
                 {t('admin.done', 'Selesai')}
               </button>
@@ -2194,14 +2194,14 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
               <button
                 type="button"
                 onClick={handleFinish}
-                className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                className="ui-button ui-button-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 {t('admin.btn_cancel', 'Batal')}
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || selectedScopes.length === 0}
-                className="px-4 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50"
+                className="ui-button ui-button-lg font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50"
               >
                 {isSubmitting ? t('admin.creating', 'Membuat...') : t('admin.api_generate_btn', 'Generate Kunci')}
               </button>

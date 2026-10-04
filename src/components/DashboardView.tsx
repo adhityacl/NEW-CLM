@@ -487,14 +487,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </AlphabeticalSelect>
 
             {/* 3. Currency Toggle */}
-            <div role="group" aria-label={t('settings.region.reporting_currency', 'Reporting currency')} className="flex h-11 shrink-0 items-center bg-slate-100 p-1 sm:h-9 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div role="group" aria-label={t('settings.region.reporting_currency', 'Reporting currency')} className="flex h-11 shrink-0 items-center bg-slate-100 p-[3px] dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
               {currencyViews.map((code) => (
                 <button
                   key={code}
                   type="button"
                   aria-pressed={viewCurrency === code}
                   onClick={() => setSpendingCurrencyView(code)}
-                  className={`ui-button ui-button-sm font-extrabold transition-all cursor-pointer ${
+                  className={`ui-button ui-button-md font-extrabold transition-all cursor-pointer ${
                     viewCurrency === code
                       ? 'bg-accent-strong text-white shadow-2xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'

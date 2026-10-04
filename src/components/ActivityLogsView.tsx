@@ -132,7 +132,7 @@ export const ActivityLogsView: React.FC = () => {
         <button
           onClick={loadLogs}
           disabled={loading}
-          className="mobile-page-action h-9 text-xs cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
+          className="ui-button ui-button-lg mobile-page-action cursor-pointer shadow-sm gap-1.5 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 text-white ${loading ? 'animate-spin' : ''}`} />
           <span>{t('logs.refresh_btn', 'Refresh Log')}</span>

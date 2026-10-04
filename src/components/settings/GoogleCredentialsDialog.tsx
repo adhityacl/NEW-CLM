@@ -286,7 +286,7 @@ export const GoogleCredentialsDialog: React.FC<GoogleCredentialsDialogProps> = (
           {state.status === 'error' && (
             <div role="alert" className="space-y-2 text-sm text-rose-700 dark:text-rose-300">
               <p>{state.message}</p>
-              <Button type="button" variant="outline" className="min-h-11" onClick={load}>
+              <Button size="lg" type="button" variant="outline" onClick={load}>
                 {t('common.retry', 'Coba lagi')}
               </Button>
             </div>
@@ -300,7 +300,7 @@ export const GoogleCredentialsDialog: React.FC<GoogleCredentialsDialogProps> = (
 
           <div className="flex justify-end pt-4">
             <Dialog.Close asChild>
-              <Button type="button" className="min-h-11">
+              <Button size="lg" type="button">
                 {t('google_setup.done', 'Selesai')}
               </Button>
             </Dialog.Close>

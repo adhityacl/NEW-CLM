@@ -146,7 +146,7 @@ export function resolveTenantSettings(tenant?: {
         .filter((d) => d && typeof d.key === 'string' && d.key.trim() && d.label)
         .map((d) => ({
           key: String(d.key).trim().slice(0, 64),
-          label: typeof d.label === 'string' ? { en: d.label } : { en: String(d.label.en || d.key), id: d.label.id },
+          label: typeof d.label === 'string' ? { en: d.label } : { en: String(d.label.en || d.key), id: d.label.id, zh: d.label.zh },
           required: Boolean(d.required),
           expires: Boolean(d.expires),
           source: 'tenant' as const,
@@ -227,7 +227,7 @@ export function buildDueDiligenceChecklist(
 }
 
 function normalizeName(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return value.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
 /** Does a stored document (by key or legacy display name) satisfy a requirement? */
@@ -238,7 +238,7 @@ export function matchesRequirement(
   if (stored.key && stored.key === requirement.key) return true;
   const name = normalizeName(String(stored.nama || ''));
   if (!name) return false;
-  const candidates = [requirement.label.en, requirement.label.id, ...(requirement.aliases || [])]
+  const candidates = [requirement.label.en, requirement.label.id, localize(requirement.label, 'ZH'), ...(requirement.aliases || [])]
     .filter(Boolean)
     .map((c) => normalizeName(String(c)));
   return candidates.includes(name);

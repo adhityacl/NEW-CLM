@@ -37,7 +37,7 @@ export function EventFilterPopover({ enabled, onToggle, search, onSearch, onRese
           <span>{t(EVENT_TYPE_CONFIG[type].labelKey)}</span>
         </label>)}
       </fieldset>
-      <Button type="button" variant="outline" className="min-h-11 w-full" onClick={onReset}>{t('calendar.reset_filters')}</Button>
+      <Button size="lg" type="button" variant="outline" className="w-full" onClick={onReset}>{t('calendar.reset_filters')}</Button>
     </PopoverContent>
   </Popover>;
 }

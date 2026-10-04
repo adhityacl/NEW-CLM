@@ -282,7 +282,7 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
                         onClick={() => handleCopy(msg)}
                         aria-label={copiedId === msg.id ? t('ai_chat.copied', 'Tersalin') : t('ai_chat.copy', 'Salin jawaban')}
                         title={copiedId === msg.id ? t('ai_chat.copied', 'Tersalin') : t('ai_chat.copy', 'Salin jawaban')}
-                        className="mt-1.5 inline-flex min-h-7 items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100 cursor-pointer transition-colors"
+                        className="mt-1.5 inline-flex min-h-7 items-center gap-1 rounded-md px-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100 cursor-pointer transition-colors"
                       >
                         {copiedId === msg.id ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
                         <span aria-live="polite">{copiedId === msg.id ? t('ai_chat.copied', 'Tersalin') : t('ai_chat.copy', 'Salin')}</span>
@@ -346,7 +346,7 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className="p-2.5 bg-accent-strong text-white rounded-xl hover:bg-accent-strong-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                className="ui-button ui-button-lg ui-button-icon bg-accent-strong text-white hover:bg-accent-strong-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
                 title={t('ai_chat.kirim_pesan', 'Kirim Pesan')}
               >
                 <Send size={15} />

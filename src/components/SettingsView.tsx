@@ -1144,19 +1144,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         <>
                           <Button
                             variant="outline"
-                            size="sm"
+                            size="lg"
                             onClick={handleGoogleRefresh}
                             disabled={connectingAuth}
-                            className="h-9 px-4 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
+                            className="font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
                           >
                             <RefreshCw className={cn('w-3.5 h-3.5', connectingAuth && 'animate-spin')} />
                             <span>{t('settings.refresh_session', 'Refresh Sesi')}</span>
                           </Button>
                           <Button
                             variant="outline"
-                            size="sm"
+                            size="lg"
                             onClick={handleGoogleDisconnect}
-                            className="h-9 px-4 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-red-200 dark:border-rose-800 text-red-500 hover:bg-red-50 dark:hover:bg-rose-950/40 cursor-pointer gap-1.5"
+                            className="font-bold bg-white dark:bg-slate-800 border border-red-200 dark:border-rose-800 text-red-500 hover:bg-red-50 dark:hover:bg-rose-950/40 cursor-pointer gap-1.5"
                           >
                             <LogOut className="w-3.5 h-3.5" />
                             <span>{t('settings.disconnect', 'Putuskan')}</span>
@@ -1164,10 +1164,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         </>
                       ) : (
                         <Button
-                          size="sm"
+                          size="lg"
                           onClick={handleGoogleConnect}
                           disabled={connectingAuth}
-                          className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
+                          className="font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
                         >
                           <Zap className="w-3.5 h-3.5" />
                           <span>{t('settings.connect_google_btn', 'Hubungkan Akun Google')}</span>
@@ -1322,7 +1322,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     <Button
                                       type="button"
                                       variant="outline"
-                                      size="sm"
+                                      size="lg"
                                       onClick={() => handleOpenDrivePicker('folder')}
                                       disabled={!isTokenActive}
                                       className="h-8 px-3.5 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer shrink-0 shadow-2xs"
@@ -1336,7 +1336,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                   <Button
                                     type="button"
                                     variant="outline"
-                                    size="sm"
+                                    size="lg"
                                     onClick={() => {
                                       setDriveFolderId(config.driveFolderId || '');
                                       setIsEditUnlocked(false);
@@ -1347,9 +1347,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                   </Button>
                                   <Button
                                     type="submit"
-                                    size="sm"
+                                    size="lg"
                                     disabled={saving || !driveFolderId}
-                                    className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
+                                    className="font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
                                   >
                                     <Save className="w-3.5 h-3.5" />
                                     <span>{saving ? t('settings.saving_and_provisioning', 'Menyimpan...') : t('settings.save_config_btn', 'Simpan Konfigurasi')}</span>
@@ -1378,7 +1378,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                   <Button
                                     type="button"
                                     variant="outline"
-                                    size="sm"
+                                    size="lg"
                                     onClick={() => {
                                       setDriveFolderId(config.driveFolderId || '');
                                       setIsEditUnlocked(false);
@@ -1389,9 +1389,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                   </Button>
                                   <Button
                                     type="submit"
-                                    size="sm"
+                                    size="lg"
                                     disabled={saving}
-                                    className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
+                                    className="font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
                                   >
                                     <Save className="w-3.5 h-3.5" />
                                     <span>{saving ? t('settings.saving_and_provisioning', 'Menyimpan...') : t('settings.save_config_btn', 'Simpan Konfigurasi')}</span>
@@ -1540,7 +1540,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                   <GoogleCredentialsDialog
                     trigger={
-                      <Button type="button" size="sm" className="shrink-0">
+                      <Button type="button" size="lg" className="shrink-0">
                         {t('google_setup.manage', 'Kelola file kredensial')}
                       </Button>
                     }
@@ -1630,21 +1630,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     )}
 
                     <div className="mobile-page-actions flex flex-wrap items-center gap-2.5 pt-1">
-                      <Button
+                      <Button size="lg"
                         type="submit"
                         disabled={savingApiKey || !isAdmin}
-                        className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
+                        className="font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
                         <span>{savingApiKey ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_api_key_btn', 'Simpan API Key')}</span>
                       </Button>
 
-                      <Button
+                      <Button size="lg"
                         type="button"
                         variant="outline"
                         onClick={handleTestApiKey}
                         disabled={testingApiKey || !geminiApiKey.trim()}
-                        className="h-9 px-4 rounded-full text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer gap-1.5"
+                        className="font-bold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer gap-1.5"
                       >
                         <AiIcon className={cn('w-3.5 h-3.5 text-amber-500', testingApiKey && 'animate-spin')} />
                         <span>{testingApiKey ? t('admin.test_connection_testing', 'Menguji Koneksi...') : t('settings.test_api_key_btn', 'Uji Koneksi API')}</span>
@@ -1912,7 +1912,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           variant="outline"
                           onClick={handleTestSmtp}
                           disabled={testingSmtp || !smtpHost || !smtpUser}
-                          className="h-9 px-4 rounded-xl text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 cursor-pointer gap-1.5 shrink-0"
+                          size="lg"
+                          className="font-bold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 cursor-pointer gap-1.5 shrink-0"
                         >
                           <Sparkles className={cn('w-3.5 h-3.5 text-amber-500', testingSmtp && 'animate-spin')} />
                           <span>{testingSmtp ? t('settings.smtp_testing_btn', 'Mengirim Email Uji Coba...') : t('settings.smtp_test_btn', 'Uji Koneksi SMTP')}</span>
@@ -1939,10 +1940,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
 
                     <div className="flex justify-end pt-1">
-                      <Button
+                      <Button size="lg"
                         type="submit"
                         disabled={savingSmtp || !isAdmin}
-                        className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
+                        className="font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
                         <span>{savingSmtp ? t('settings.smtp_saving_btn', 'Menyimpan...') : t('settings.smtp_save_btn', 'Simpan Konfigurasi SMTP')}</span>
@@ -1996,9 +1997,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <div className="flex justify-end pt-1">
                       <Button
                         type="submit"
-                        size="sm"
+                        size="lg"
                         disabled={savingNotifEmails || !isAdmin}
-                        className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
+                        className="font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
                         <span>{savingNotifEmails ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_notif_emails_btn', 'Simpan Email Notifikasi')}</span>
@@ -2028,7 +2029,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </p>
                   </div>
                   <Button
-                    size="sm"
+                    size="lg"
                     onClick={() => setShowUITextModal(true)}
                     className="h-9 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer shrink-0"
                   >
@@ -2039,9 +2040,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="mobile-page-actions flex items-center gap-2 pt-2 flex-wrap">
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="lg"
                     onClick={exportToCSV}
-                    className="h-9 px-4 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
+                    className="font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
                   >
                     <Download className="w-3.5 h-3.5 text-ink-soft dark:text-slate-400" />
                     <span>{t('settings.export_csv_dict', 'Ekspor Kamus CSV')}</span>
@@ -2056,7 +2057,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   />
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="lg"
                     onClick={() => textFileInputRef.current?.click()}
                     className="h-9 px-4 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
                   >
@@ -2066,7 +2067,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="lg"
                     onClick={async () => {
                       const ok = await confirmDialog({
                         description: t('settings.reset_seluruh_kamus_teks_ke_bahasa', 'Reset seluruh kamus teks ke bahasa bawaan sistem?'),
@@ -2110,10 +2111,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                     <Button
                       variant="destructive"
-                      size="sm"
+                      size="lg"
                       onClick={handleOpenResetModal}
                       disabled={resettingData || !isSuperuser}
-                      className="h-9 px-4 rounded-full text-xs font-bold bg-red-500 text-white hover:bg-red-600 cursor-pointer shrink-0"
+                      className="font-bold bg-red-500 text-white hover:bg-red-600 cursor-pointer shrink-0"
                     >
                       {resettingData ? t('settings.resetting_db', 'Mereset Database...') : t('settings.reset_db_btn', 'Reset Database Sistem')}
                     </Button>
@@ -2168,7 +2169,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
+                size="lg"
                 onClick={() => setShowEditConfirmModal(false)}
                 className="h-8 px-3.5 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] cursor-pointer"
               >
@@ -2176,7 +2177,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </Button>
               <Button
                 type="button"
-                size="sm"
+                size="lg"
                 onClick={() => {
                   setShowEditConfirmModal(false);
                   setIsEditUnlocked(true);
@@ -2333,7 +2334,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
+                  size="lg"
                   onClick={() => setEditingTenant(null)}
                   className="h-8 px-3.5 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink-soft hover:bg-[#F5F6F6] cursor-pointer"
                 >
@@ -2341,9 +2342,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </Button>
                 <Button
                   type="submit"
-                  size="sm"
+                  size="lg"
                   disabled={savingTenantGoogle}
-                  className="h-8 px-4 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
+                  className="font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>{savingTenantGoogle ? t('eval.btn_saving', 'Menyimpan...') : t('settings.save_tenant_google_btn', 'Simpan Konfigurasi Organisasi')}</span>

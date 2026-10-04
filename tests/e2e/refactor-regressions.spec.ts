@@ -67,7 +67,7 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({ json: response });
   });
   await page.goto('/');
-  await expect(page.getByText('Refactor fixture ready')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Latest Regulatory Updates' }).getByRole('listitem').filter({ hasText: 'Refactor fixture ready' })).toBeVisible();
 });
 
 test('New Document opens, edits a table, saves and reopens without selection registry errors', async ({ page }) => {

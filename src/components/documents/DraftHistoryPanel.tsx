@@ -120,15 +120,20 @@ export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
                     : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
+                {/* Centered so the Restore button lines up with the title; the panel's card rule top-aligns headers. */}
+                <div className="flex items-center! justify-between gap-2">
                   <span className="font-bold text-slate-900 dark:text-white">
                     {t('documents.history.version', 'Versi {v}', { v: draft.version_number })}
                     {draft.draft_name && <span className="font-semibold text-emerald-700 dark:text-emerald-400"> · {draft.draft_name}</span>}
                   </span>
-                  {isCurrent && (
+                  {isCurrent ? (
                     <span className="text-xs font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                       {t('documents.history.current', 'Terkini')}
                     </span>
+                  ) : canEdit && (
+                    <button type="button" onClick={() => onRestore(draft.version_number)} className={ACTION_BUTTON}>
+                      <RotateCcw className="w-3 h-3" aria-hidden /> {t('documents.history.restore', 'Pulihkan')}
+                    </button>
                   )}
                 </div>
                 {draft.labels.length > 0 && (
@@ -188,11 +193,6 @@ export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
                     <button type="button" onClick={() => onCompare(draft.version_number)} className={ACTION_BUTTON}>
                       <GitCompare className="w-3 h-3" aria-hidden /> {t('documents.history.compare', 'Bandingkan')}
                     </button>
-                    {canEdit && !isCurrent && (
-                      <button type="button" onClick={() => onRestore(draft.version_number)} className={ACTION_BUTTON}>
-                        <RotateCcw className="w-3 h-3" aria-hidden /> {t('documents.history.restore', 'Pulihkan')}
-                      </button>
-                    )}
                     {canEdit && (
                       <button
                         type="button"

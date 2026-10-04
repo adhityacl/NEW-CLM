@@ -120,7 +120,7 @@ export const DefaultPasswordBanner: React.FC<DefaultPasswordBannerProps> = ({ on
         {passwordActive && (
           <Dialog.Root open={open} onOpenChange={(value) => { setOpen(value); if (!value) setState({ kind: 'idle' }); }}>
             <Dialog.Trigger asChild>
-              <Button type="button" size="sm" className="min-h-11">
+              <Button type="button" size="lg">
                 {t('security.change_password', 'Change password')}
               </Button>
             </Dialog.Trigger>
@@ -171,11 +171,11 @@ export const DefaultPasswordBanner: React.FC<DefaultPasswordBannerProps> = ({ on
                   )}
                   <div className="flex justify-end gap-2 pt-2">
                     <Dialog.Close asChild>
-                      <Button type="button" variant="outline" className="min-h-11">
+                      <Button size="lg" type="button" variant="outline">
                         {t('common.cancel', 'Cancel')}
                       </Button>
                     </Dialog.Close>
-                    <Button type="submit" className="min-h-11" disabled={state.kind === 'saving'}>
+                    <Button size="lg" type="submit" disabled={state.kind === 'saving'}>
                       {state.kind === 'saving' ? t('common.saving', 'Saving…') : t('security.save_password', 'Save password')}
                     </Button>
                   </div>
@@ -184,14 +184,14 @@ export const DefaultPasswordBanner: React.FC<DefaultPasswordBannerProps> = ({ on
             </Dialog.Portal>
           </Dialog.Root>
         )}
-        {passwordActive && <Button type="button" size="sm" className="min-h-11" onClick={onOpenSecurity}>
+        {passwordActive && <Button type="button" size="lg" onClick={onOpenSecurity}>
           {t('security.manage_users', 'Manage users')}
         </Button>}
         {googleIncomplete && showGoogleSetup && (
           <GoogleCredentialsDialog
             onClose={refresh}
             trigger={
-              <Button type="button" size="sm" className="min-h-11">
+              <Button type="button" size="lg">
                 {t('google_setup.button', 'Hubungkan Google')}
               </Button>
             }

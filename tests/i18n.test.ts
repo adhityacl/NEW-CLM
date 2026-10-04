@@ -11,7 +11,8 @@ import { join } from 'node:path';
 import { translations } from '../src/context/LanguageContext';
 import { COUNTRY_PACKS, CORE_DUE_DILIGENCE } from '../src/lib/policy/countryPacks';
 import { INDUSTRY_PACKS } from '../src/lib/policy/industryPacks';
-import { localize, localizeName } from '../src/lib/policy';
+import { localize, localizeName, matchesRequirement, resolveTenantSettings } from '../src/lib/policy';
+import { localizeDueDiligenceDocument } from '../src/lib/dueDiligence';
 import { PACK_NAMES, PACK_ZH } from '../src/lib/policy/zh';
 import { translateServerMessage } from '../src/server/serverMessages';
 
@@ -74,4 +75,43 @@ test('API messages follow the UI language, including ones with values', () => {
   assert.equal(translateServerMessage("Nomor Kontrak '01/PKS/2026' sudah terdaftar dalam sistem.", 'ZH'), '合同编号“01/PKS/2026”已在系统中登记。');
   assert.equal(translateServerMessage('Invoice "INV-1" untuk "Acme" sudah ada (ID: 7).', 'ZH'), '“Acme”的发票“INV-1”已存在（ID：7）。');
   assert.equal(translateServerMessage('Some unlisted message', 'ZH'), 'Some unlisted message');
+});
+
+test('stored DD labels switch languages by stable key, including retained pack evidence', () => {
+  const document = { key: 'nda', nama: 'Perjanjian Kerahasiaan (NDA)', fileName: 'NDA-original.pdf' };
+  const original = { ...document };
+  assert.equal(localizeDueDiligenceDocument(document, [], 'EN'), 'Non-Disclosure Agreement (NDA)');
+  assert.equal(localizeDueDiligenceDocument(document, [], 'ID'), 'Perjanjian Kerahasiaan (NDA)');
+  assert.equal(localizeDueDiligenceDocument(document, [], 'ZH'), '保密协议（NDA）');
+  const requirements = [...CORE_DUE_DILIGENCE, ...COUNTRY_PACKS.flatMap(p => p.dueDiligence), ...INDUSTRY_PACKS.flatMap(p => p.dueDiligence)];
+  for (const requirement of requirements) {
+    for (const language of LANGS) {
+      assert.equal(localizeDueDiligenceDocument({ key: requirement.key, nama: 'Old stored name' }, [requirement], language), localize(requirement.label, language));
+      assert.equal(localizeDueDiligenceDocument({ key: requirement.key, nama: localize(requirement.label, 'ID') }, [], language), localize(requirement.label, language));
+    }
+  }
+  assert.deepEqual(document, original, 'translation must not modify stored names or filenames');
+});
+
+test('legacy DD names and aliases resolve across all three languages without confusing Chinese names', () => {
+  for (const nama of ['NDA', 'Perjanjian Kerahasiaan (NDA)', 'Non-Disclosure Agreement (NDA)', '保密协议（NDA）']) {
+    assert.equal(localizeDueDiligenceDocument({ nama }, [], 'ZH'), '保密协议（NDA）');
+    assert.equal(localizeDueDiligenceDocument({ nama }, [], 'EN'), 'Non-Disclosure Agreement (NDA)');
+  }
+  const bank = CORE_DUE_DILIGENCE.find(item => item.key === 'bank_account_confirmation')!;
+  assert.equal(matchesRequirement(bank, { nama: '银行账户确认函' }), true);
+  assert.equal(matchesRequirement(bank, { nama: '受益所有人声明' }), false);
+  assert.equal(localizeDueDiligenceDocument({ nama: 'Akta' }, [], 'EN'), 'Deed of establishment & amendments (Akta Pendirian)');
+});
+
+test('custom DD translations survive settings resolution and unknown names keep their original text', () => {
+  const settings = resolveTenantSettings({ settings: { customDueDiligence: [
+    { key: 'custom_certificate', label: { en: 'Inspection certificate', id: 'Sertifikat inspeksi', zh: '检验证书' }, required: false },
+  ] } });
+  const custom = { key: 'custom_certificate', nama: 'Sertifikat inspeksi' };
+  assert.equal(localizeDueDiligenceDocument(custom, settings.customDueDiligence, 'ZH'), '检验证书');
+  assert.equal(localizeDueDiligenceDocument(custom, settings.customDueDiligence, 'EN'), 'Inspection certificate');
+  assert.equal(localizeDueDiligenceDocument(custom, settings.customDueDiligence, 'ID'), 'Sertifikat inspeksi');
+  assert.equal(localizeDueDiligenceDocument({ nama: 'My own document' }, [], 'ZH'), 'My own document');
+  assert.equal(localizeDueDiligenceDocument({ key: 'custom_unknown', nama: 'NDA' }, [], 'ZH'), 'NDA');
 });

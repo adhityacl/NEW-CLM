@@ -223,7 +223,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           {unreadCount > 0 && onMarkRead && (
             <button
               onClick={handleMarkAllRead}
-              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-xs gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center transition-all shrink-0"
+              className="ui-button ui-button-lg ui-button-lg cursor-pointer shadow-xs gap-1.5 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center transition-all shrink-0"
             >
               <CheckCheck className="w-4 h-4 text-slate-600" />
               <span>{t('notifications.mark_all', 'Tandai Semua Dibaca')}</span>
@@ -233,7 +233,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           <button
             onClick={handleManualTrigger}
             disabled={runningCron}
-            className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
+            className="ui-button ui-button-lg ui-button-lg cursor-pointer shadow-sm gap-1.5 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 text-white ${runningCron ? 'animate-spin' : ''}`} />
             <span>{runningCron ? t('notifications.processing', 'Memproses...') : t('notifications.refresh_logs', 'Refresh Logs')}</span>
@@ -307,7 +307,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           <div className="relative flex-initial">
             <button
               onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-              className="min-h-11 sm:min-h-9 h-9 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
+              className="ui-button ui-button-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98] w-full"
               title={t('notifications.view_settings', 'Pengaturan Tampilan Kolom')}
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />

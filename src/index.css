@@ -761,9 +761,10 @@ input[type="checkbox"]:not(.sr-only) { min-width: 24px; min-height: 24px; }
 .app-header-languages { height: 44px; min-height: 44px; box-sizing: border-box; }
 .app-header-languages > button { height: 38px; min-height: 38px; min-width: 38px; padding-block: 0; }
 /* One field height across pages. Native selects, text-like inputs, and custom
-   combobox triggers share the same 44px control box on desktop and mobile. */
+   combobox triggers share the large action height, so a field and the button
+   beside it always line up (docs/button-sizes.md). */
 :root {
-  --form-control-height: 44px;
+  --form-control-height: var(--button-lg-height);
   --form-control-font-size: 0.875rem;
 }
 :is(

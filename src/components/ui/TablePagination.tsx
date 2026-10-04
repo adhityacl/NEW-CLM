@@ -17,6 +17,9 @@ export interface TablePaginationProps {
   className?: string;
 }
 
+// Same height as the rows-per-page select beside it (see docs/button-sizes.md).
+const pageButtonClass = 'ui-button ui-button-lg ui-button-icon border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs';
+
 export const TablePagination: React.FC<TablePaginationProps> = ({
   currentPage,
   totalPages,
@@ -71,7 +74,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
             type="button"
             onClick={() => onPageChange(1)}
             disabled={safeCurrentPage <= 1}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs"
+            className={pageButtonClass}
             title={t('pagination.first_page', 'First Page')}
             aria-label={t('pagination.first_page', 'First Page')}
           >
@@ -83,7 +86,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
             type="button"
             onClick={() => onPageChange(Math.max(1, safeCurrentPage - 1))}
             disabled={safeCurrentPage <= 1}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs"
+            className={pageButtonClass}
             title={t('pagination.prev_page', 'Previous Page')}
             aria-label={t('pagination.prev_page', 'Previous Page')}
           >
@@ -95,7 +98,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
             type="button"
             onClick={() => onPageChange(Math.min(safeTotalPages, safeCurrentPage + 1))}
             disabled={safeCurrentPage >= safeTotalPages}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs"
+            className={pageButtonClass}
             title={t('pagination.next_page', 'Next Page')}
             aria-label={t('pagination.next_page', 'Next Page')}
           >
@@ -107,7 +110,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
             type="button"
             onClick={() => onPageChange(safeTotalPages)}
             disabled={safeCurrentPage >= safeTotalPages}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs"
+            className={pageButtonClass}
             title={t('pagination.last_page', 'Last Page')}
             aria-label={t('pagination.last_page', 'Last Page')}
           >

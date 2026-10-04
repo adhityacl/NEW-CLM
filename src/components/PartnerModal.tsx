@@ -542,7 +542,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                 <button
                   type="button"
                   onClick={handleAddTag}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer shrink-0"
+                  className="ui-button ui-button-lg bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold transition-colors cursor-pointer"
                 >
                   {t('form.partner.add_tag_btn', 'Tambah Tag')}
                 </button>

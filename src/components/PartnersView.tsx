@@ -5,7 +5,7 @@ import { FilterSummary } from './ui/filter-summary';
 import { TableEmptyState } from './ui/table-empty-state';
 import React, { useState, useEffect } from 'react';
 import { CONTRACT_STATUS_LABEL_KEY, DD_STATUS_LABEL_KEY, DOC_STATUS_LABEL_KEY } from '../lib/domainStatus';
-import { isTerminationNoticeDocument } from '../lib/dueDiligence';
+import { isTerminationNoticeDocument, localizeDueDiligenceDocument } from '../lib/dueDiligence';
 import { useTenantSettings } from '../context/TenantSettingsContext';
 import { getCountryPack, localizeName } from '../lib/policy';
 
@@ -366,8 +366,8 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
     document.body.removeChild(link);
   };
 
-  const handleDeleteDDFile = async (partnerId: string, docName: string, fileId: string) => {
-    const ok = await confirmDialog({ description: t('partners.hapus_file_ini_dari_dokumen', 'Hapus file ini dari dokumen {docName}?', { docName }), tone: 'danger', confirmLabel: t('io.action_delete', 'Hapus') });
+  const handleDeleteDDFile = async (partnerId: string, docName: string, fileId: string, displayName: string) => {
+    const ok = await confirmDialog({ description: t('partners.hapus_file_ini_dari_dokumen', 'Hapus file ini dari dokumen {docName}?', { docName: displayName }), tone: 'danger', confirmLabel: t('io.action_delete', 'Hapus') });
     if (!ok) return;
     try {
       const res = await fetch(`/api/partners/${partnerId}/dd-file`, {
@@ -802,6 +802,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                 </div>
 
                 {(selectedPartnerDetail.daftar_dokumen_dd || []).filter((doc) => !isTerminationNoticeDocument(doc)).map((doc) => {
+                  const displayName = localizeDueDiligenceDocument(doc, policy.dueDiligenceChecklist, language);
                   const docFiles = doc.files && doc.files.length > 0
                     ? doc.files
                     : doc.linkDrive
@@ -824,7 +825,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex items-center flex-wrap gap-2">
-                          <span className="font-bold text-xs text-slate-900 dark:text-slate-100">{doc.nama}</span>
+                          <span className="font-bold text-xs text-slate-900 dark:text-slate-100">{displayName}</span>
 
                           {/* Wajib / Opsional Pill Badge (Refined) */}
                           {doc.wajib ? (
@@ -898,7 +899,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                                 {isLegal && (
                                   <button
                                     type="button"
-                                    onClick={() => handleDeleteDDFile(selectedPartnerDetail.partner_id, doc.nama, f.id)}
+                                    onClick={() => handleDeleteDDFile(selectedPartnerDetail.partner_id, doc.nama, f.id, displayName)}
                                     className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
                                     title={t('partners.hapus_file_ini', 'Hapus file ini')}
                                   >

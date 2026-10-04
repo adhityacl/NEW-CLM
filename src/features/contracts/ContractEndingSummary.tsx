@@ -13,7 +13,7 @@ export function ContractEndingSummary({ contract }: { contract: Contract }) {
     <h3 className="text-sm font-bold">{t(contract.termination_date ? 'termination.details' : 'termination.expired_details')}</h3>
     <p><span className="font-semibold">{t(contract.termination_date ? 'termination.date' : 'termination.end_date')}: </span>{formatBusinessDate(contract.termination_date || contract.tanggal_berakhir)}</p>
     {contract.termination_reason && <p className="whitespace-pre-wrap break-words"><span className="font-semibold">{t('termination.reason')}: </span>{contract.termination_reason}</p>}
-    {contract.termination_document && <Button type="button" variant="outline" className="min-h-11 max-w-full whitespace-normal break-all" onClick={async () => {
+    {contract.termination_document && <Button size="lg" type="button" variant="outline" className="max-w-full whitespace-normal break-all" onClick={async () => {
       try { await openTerminationDocument(contract.termination_document!); setError(false); } catch { setError(true); }
     }}>{t('termination.document')}: {contract.termination_document.fileName}</Button>}
     {error && <p role="alert" className="text-red-700 dark:text-red-300">{t('termination.file_open_error')}</p>}

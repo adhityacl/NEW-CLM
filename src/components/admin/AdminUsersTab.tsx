@@ -150,7 +150,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
 
           {/* Add User Action */}
           {canCreateUser && (
-            <Button type="button" size="sm" onClick={onOpenAddUser} className="shrink-0">
+            <Button type="button" size="lg" onClick={onOpenAddUser}>
               <UserPlus className="w-4 h-4" />
               <span>{t('admin.add_user_btn', 'Tambah Pengguna Baru')}</span>
             </Button>

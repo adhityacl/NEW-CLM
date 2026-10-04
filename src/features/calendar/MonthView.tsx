@@ -35,7 +35,7 @@ export function MonthView({ date, today, byDay, loading, weekStartsOn, onEventCl
               {events.slice(0, 3).map(event => <EventItem key={event.id} event={event} chip onEventClick={onEventClick} />)}
             </div>
             {events.length > 3 && <Popover>
-              <PopoverTrigger asChild><Button type="button" variant="link" className="min-h-11 w-full min-w-0 px-0 text-[10px] sm:text-xs" aria-label={t('calendar.more_on_day', undefined, { count: events.length - 3, date: fullDate.format(day) })}>{t('calendar.more', undefined, { count: events.length - 3 })}</Button></PopoverTrigger>
+              <PopoverTrigger asChild><Button type="button" variant="link" className="min-h-11 w-full min-w-0 px-0 text-xs" aria-label={t('calendar.more_on_day', undefined, { count: events.length - 3, date: fullDate.format(day) })}>{t('calendar.more', undefined, { count: events.length - 3 })}</Button></PopoverTrigger>
               <PopoverContent className="max-h-[min(20rem,var(--radix-popover-content-available-height))] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto" aria-label={fullDate.format(day)}>
                 <h4 className="mb-2 text-sm font-semibold">{fullDate.format(day)}</h4>
                 {events.map(event => <EventItem key={event.id} event={event} onEventClick={onEventClick} />)}

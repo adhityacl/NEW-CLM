@@ -159,7 +159,7 @@ export const DueDiligenceChecklistEditor: React.FC<DueDiligenceChecklistEditorPr
           type="button"
           onClick={addCustom}
           disabled={disabled || !newLabel.trim()}
-          className="ui-button ui-button-md inline-flex items-center justify-center gap-2 border border-slate-200 font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="ui-button ui-button-lg border border-slate-200 font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           {t('settings.region.dd_add', 'Add checklist item')}

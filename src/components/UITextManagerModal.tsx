@@ -122,7 +122,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
           />
           <button
             type="submit"
-            className="p-1 bg-accent-strong text-white rounded-lg hover:bg-accent-strong-hover cursor-pointer shrink-0"
+            className="ui-button ui-button-lg ui-button-icon p-1 bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer shrink-0"
             aria-label={t('common.save', 'Simpan')}
           >
             <Check className="w-3.5 h-3.5" aria-hidden />
@@ -182,7 +182,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
             <button
               type="button"
               onClick={exportToCSV}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-accent-soft dark:hover:bg-emerald-950/60 hover:text-accent-text dark:hover:text-emerald-300 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-hairline dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
+              className="ui-button ui-button-lg inline-flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-accent-soft dark:hover:bg-emerald-950/60 hover:text-accent-text dark:hover:text-emerald-300 text-slate-800 dark:text-slate-200 font-bold border border-hairline dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
             >
               <Download className="w-4 h-4 text-accent-text" aria-hidden />
               <span>{t('ui_text.export', 'Ekspor CSV')}</span>
@@ -190,7 +190,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+              className="ui-button ui-button-lg inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs transition-colors cursor-pointer"
             >
               <Upload className="w-4 h-4" aria-hidden />
               <span>{t('ui_text.import', 'Unggah CSV Hasil Revisi')}</span>
@@ -200,7 +200,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700 hover:border-rose-200 dark:hover:border-rose-800 text-slate-700 dark:text-slate-300 hover:text-rose-700 dark:hover:text-rose-400 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                className="ui-button ui-button-lg inline-flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700 hover:border-rose-200 dark:hover:border-rose-800 text-slate-700 dark:text-slate-300 hover:text-rose-700 dark:hover:text-rose-400 font-semibold transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-rose-500" aria-hidden />
                 <span>{t('ui_text.reset_to_default', 'Kembalikan ke Bawaan')}</span>

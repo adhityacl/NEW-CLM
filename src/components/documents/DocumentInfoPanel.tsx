@@ -185,58 +185,56 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
             {t('documents.info.unsaved', 'Dokumen belum disimpan. Pembuat dan waktu dicatat otomatis saat penyimpanan pertama.')}
           </p>
         ) : (
-          <dl className="space-y-2 text-xs text-slate-800 dark:text-slate-100">
-            <div>
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-4 text-xs text-slate-800 dark:text-slate-100">
+            <div className="col-span-2 space-y-1">
               <dt className={LABEL}>{t('documents.field.name', 'Nama')}</dt>
               <dd className="font-semibold break-words">{document.name}</dd>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <dt>
-                  <label htmlFor={typeSelectId} className={LABEL}>
-                    {t('documents.field.type', 'Jenis')}
-                  </label>
-                </dt>
-                <dd>
-                  <AlphabeticalSelect
-                    id={typeSelectId}
-                    disabled={!canEdit}
-                    value={document.type}
-                    onChange={(e) => isOneOf(DOCUMENT_TYPES, e.target.value) && onUpdate({ type: e.target.value })}
-                    className={INPUT_CLASS}
-                  >
-                    {DOCUMENT_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {typeLabel(t, type)}
-                      </option>
-                    ))}
-                  </AlphabeticalSelect>
-                </dd>
-              </div>
-              <div className="space-y-1">
-                <dt>
-                  <label htmlFor={statusSelectId} className={LABEL}>
-                    {t('documents.field.status', 'Status')}
-                  </label>
-                </dt>
-                <dd>
-                  <AlphabeticalSelect
-                    id={statusSelectId}
-                    disabled={!canEdit}
-                    value={document.status}
-                    onChange={(e) => isOneOf(DOCUMENT_STATUSES, e.target.value) && onUpdate({ status: e.target.value })}
-                    className={INPUT_CLASS}
-                  >
-                    {DOCUMENT_STATUSES.map((status) => (
-                      <option key={status} value={status}>
-                        {statusLabel(t, status)}
-                      </option>
-                    ))}
-                  </AlphabeticalSelect>
-                </dd>
-              </div>
+            <div className="space-y-1">
+              <dt>
+                <label htmlFor={typeSelectId} className={LABEL}>
+                  {t('documents.field.type', 'Jenis')}
+                </label>
+              </dt>
+              <dd>
+                <AlphabeticalSelect
+                  id={typeSelectId}
+                  disabled={!canEdit}
+                  value={document.type}
+                  onChange={(e) => isOneOf(DOCUMENT_TYPES, e.target.value) && onUpdate({ type: e.target.value })}
+                  className={INPUT_CLASS}
+                >
+                  {DOCUMENT_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {typeLabel(t, type)}
+                    </option>
+                  ))}
+                </AlphabeticalSelect>
+              </dd>
             </div>
-            <div>
+            <div className="space-y-1">
+              <dt>
+                <label htmlFor={statusSelectId} className={LABEL}>
+                  {t('documents.field.status', 'Status')}
+                </label>
+              </dt>
+              <dd>
+                <AlphabeticalSelect
+                  id={statusSelectId}
+                  disabled={!canEdit}
+                  value={document.status}
+                  onChange={(e) => isOneOf(DOCUMENT_STATUSES, e.target.value) && onUpdate({ status: e.target.value })}
+                  className={INPUT_CLASS}
+                >
+                  {DOCUMENT_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {statusLabel(t, status)}
+                    </option>
+                  ))}
+                </AlphabeticalSelect>
+              </dd>
+            </div>
+            <div className="space-y-1">
               <dt className={LABEL}>{t('documents.field.created', 'Dibuat')}</dt>
               <dd>
                 {t('documents.info.by', 'oleh {name}', { name: document.created_by_name || '—' })}
@@ -244,7 +242,7 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
                 <span className="text-slate-500 dark:text-slate-400">{formatDateTime(document.created_at, language)}</span>
               </dd>
             </div>
-            <div>
+            <div className="space-y-1">
               <dt className={LABEL}>{t('documents.field.modified', 'Diubah')}</dt>
               <dd>
                 {t('documents.info.by', 'oleh {name}', { name: document.modified_by_name || '—' })}
@@ -252,17 +250,15 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
                 <span className="text-slate-500 dark:text-slate-400">{formatDateTime(document.modified_at, language)}</span>
               </dd>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <dt className={LABEL}>{t('documents.info.organization', 'Organisasi')}</dt>
-                <dd>{organizationName}</dd>
-              </div>
-              <div>
-                <dt className={LABEL}>{t('documents.info.versions', 'Versi')}</dt>
-                <dd>
-                  v{document.current_version} · {t('documents.info.version_count', '{n} tersimpan', { n: document.draft_count })}
-                </dd>
-              </div>
+            <div className="space-y-1">
+              <dt className={LABEL}>{t('documents.info.organization', 'Organisasi')}</dt>
+              <dd className="break-words">{organizationName}</dd>
+            </div>
+            <div className="space-y-1">
+              <dt className={LABEL}>{t('documents.info.versions', 'Versi')}</dt>
+              <dd>
+                v{document.current_version} · {t('documents.info.version_count', '{n} tersimpan', { n: document.draft_count })}
+              </dd>
             </div>
           </dl>
         )}

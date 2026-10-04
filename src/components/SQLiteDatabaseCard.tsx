@@ -212,10 +212,10 @@ export const SQLiteDatabaseCard: React.FC = () => {
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="lg"
             onClick={fetchStatusAndTables}
             disabled={loadingStatus}
-            className="h-8 px-3 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer gap-1.5 shadow-2xs"
+            className="font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer gap-1.5 shadow-2xs"
           >
             <RefreshCw className={cn('w-3 h-3', loadingStatus && 'animate-spin')} />
             <span>{t('sqlite.refresh', 'Refresh')}</span>
@@ -223,10 +223,10 @@ export const SQLiteDatabaseCard: React.FC = () => {
 
           <Button
             type="button"
-            size="sm"
+            size="lg"
             onClick={handleOptimize}
             disabled={optimizing}
-            className="h-8 px-3 rounded-full text-xs font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
+            className="font-bold bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer gap-1.5 shadow-2xs"
           >
             <Sparkles className={cn('w-3 h-3', optimizing && 'animate-spin')} />
             <span>{optimizing ? t('sqlite.optimizing', 'Optimizing...') : t('sqlite.optimize', 'Optimize')}</span>
@@ -349,8 +349,8 @@ export const SQLiteDatabaseCard: React.FC = () => {
               <Button
                 type="submit"
                 variant="outline"
-                size="sm"
-                className="h-8 px-2.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                size="lg"
+                className="font-semibold bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
               >
                 {t('sqlite.go', 'Go')}
               </Button>
@@ -442,28 +442,26 @@ export const SQLiteDatabaseCard: React.FC = () => {
                 </span>
 
                 <div className="flex items-center gap-1">
-                  <Button
+                  <Button iconOnly
                     type="button"
                     variant="outline"
-                    size="sm"
+                    size="lg"
                     onClick={() => handlePageChange(Math.max(0, offset - limit))}
                     aria-label={t('pagination.prev_page', 'Previous Page')}
                     disabled={offset === 0 || loadingData}
-                    className="h-7 w-7 p-0 rounded-lg"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </Button>
                   <span className="px-2 font-mono text-slate-600 dark:text-slate-300 text-xs">
                     {currentPage}/{totalPages}
                   </span>
-                  <Button
+                  <Button iconOnly
                     type="button"
                     variant="outline"
-                    size="sm"
+                    size="lg"
                     onClick={() => handlePageChange(offset + limit)}
                     aria-label={t('pagination.next_page', 'Next Page')}
                     disabled={offset + limit >= tableData.total || loadingData}
-                    className="h-7 w-7 p-0 rounded-lg"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </Button>
@@ -496,9 +494,9 @@ export const SQLiteDatabaseCard: React.FC = () => {
             <div className="flex justify-end">
               <Button
                 type="button"
-                size="sm"
+                size="lg"
                 onClick={() => setExpandedCell(null)}
-                className="h-8 px-4 rounded-full text-xs font-semibold bg-slate-900 dark:bg-white text-white dark:text-slate-900"
+                className="font-semibold bg-slate-900 dark:bg-white text-white dark:text-slate-900"
               >
                 {t('redline.close', 'Close')}
               </Button>

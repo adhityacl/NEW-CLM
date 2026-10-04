@@ -311,7 +311,7 @@ export function TenantDashboard() {
             <button
               type="submit"
               disabled={isCreating}
-              className="w-full mt-2 inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm py-2.5 px-4 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50"
+              className="ui-button ui-button-lg w-full mt-2 inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition-all cursor-pointer disabled:opacity-50"
             >
               {isCreating ? (
                 <>
@@ -378,7 +378,7 @@ export function TenantDashboard() {
             <button
               type="submit"
               disabled={isInviting || !activeOrg}
-              className="w-full mt-2 inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2.5 px-4 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50"
+              className="ui-button ui-button-lg w-full mt-2 inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-sm transition-all cursor-pointer disabled:opacity-50"
             >
               {isInviting ? (
                 <>

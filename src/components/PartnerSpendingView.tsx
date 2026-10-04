@@ -1122,7 +1122,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                             <label htmlFor={`spending-amount-${index}`} className="block text-xs font-semibold mb-1.5 sm:sr-only">{t('spending.allocated_amount', 'Allocated Amount')} {index + 1} ({formCurrency})</label>
                             <input id={`spending-amount-${index}`} type="number" min="0" step="any" required value={row.amount} aria-invalid={row.amount === '' || Number(row.amount) < 0} aria-describedby="spending-allocation-status" onChange={e => setMonthAllocations(rows => rows.map((item, i) => i === index ? { ...item, amount: e.target.value === '' ? '' : Number(e.target.value) } : item))} className={`${spendingFieldClass} text-right font-semibold`} />
                           </div>
-                          <button type="button" aria-label={t('spending.delete_month', 'Delete spending month {index}', { index: index + 1 })} onClick={() => setMonthAllocations(rows => rows.filter((_, i) => i !== index))} className={`${spendingButtonClass} ui-button-icon col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto hover:text-rose-600`}><Trash2 className="size-4 mx-auto" aria-hidden="true" /></button>
+                          <button type="button" aria-label={t('spending.delete_month', 'Delete spending month {index}', { index: index + 1 })} onClick={() => setMonthAllocations(rows => rows.filter((_, i) => i !== index))} className={`${spendingButtonClass.replace('ui-button-md', 'ui-button-lg')} ui-button-icon col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto hover:text-rose-600`}><Trash2 className="size-4 mx-auto" aria-hidden="true" /></button>
                         </div>;
                       })}
                     </div>

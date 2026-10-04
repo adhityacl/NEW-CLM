@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { buildDemoDataset } from '../../src/data/demoDataset';
-import { getCountryPack, getIndustryPack } from '../../src/lib/policy';
+import { buildDueDiligenceChecklist, getCountryPack, getIndustryPack, localize } from '../../src/lib/policy';
+import { translations } from '../../src/context/LanguageContext';
 import type { Locator } from '@playwright/test';
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
@@ -72,6 +73,68 @@ test('requiring action table combines contracts and order forms', async ({ page 
   const expiringColumns = await headers.evaluateAll(cells => cells.map(cell => Math.round(cell.getBoundingClientRect().x)));
   const latestColumns = await latestHeaders.evaluateAll(cells => cells.map(cell => Math.round(cell.getBoundingClientRect().x)));
   expect(latestColumns).toEqual(expiringColumns);
+});
+
+test('DD names follow the selected language across settings, structure, audit and upload', async ({ page }) => {
+  const data = buildDemoDataset();
+  const tenant = data.tenants[0];
+  const settings = { ...tenant.settings, modules: { ...tenant.settings.modules, newsTicker: true } };
+  const checklist = buildDueDiligenceChecklist(settings);
+  const partner = data.partners[0];
+  partner.daftar_dokumen_dd = checklist.map(item => ({
+    key: item.key, nama: localize(item.label, 'ID'), wajib: item.required, status: 'Missing', files: [],
+  }));
+  // Exercise a pre-key document alongside the current keyed documents.
+  delete partner.daftar_dokumen_dd[0].key;
+  await page.route('**/api/init-data', route => route.fulfill({ json: {
+    ...data, partners: [partner],
+  } }));
+  await page.route('**/api/tenant-settings', route => route.fulfill({ json: {
+    settings, tenantId: tenant.id, country: getCountryPack(settings.countryCode),
+    industry: getIndustryPack(settings.industry), dueDiligenceChecklist: checklist,
+  } }));
+  await page.goto('/');
+  await expect(page.getByText('Test news').first()).toBeVisible();
+
+  for (const language of ['EN', 'ID', 'ZH'] as const) {
+    const text = (key: string) => translations[language][key];
+    await page.locator('header button').filter({ hasText: /^(EN|ID|ZH)$/ }).click();
+    await page.getByRole('dialog').locator(`button[lang="${language === 'ZH' ? 'zh-CN' : language.toLowerCase()}"]`).click();
+    await expect(page.locator('html')).toHaveAttribute('lang', language === 'ZH' ? 'zh-CN' : language.toLowerCase());
+    const names = checklist.map(item => localize(item.label, language));
+
+    const region = page.getByRole('button', { name: text('settings.nav_region'), exact: true });
+    if (!await region.isVisible()) {
+      await page.getByRole('button', { name: text('nav.settings'), exact: true }).locator('..')
+        .getByRole('button', { name: text('nav.buka_submenu'), exact: true }).click();
+    }
+    await region.click();
+    for (const name of names) await expect(page.getByRole('list').getByText(name, { exact: true }).last()).toBeVisible();
+
+    await page.getByRole('button', { name: text('nav.hierarchy'), exact: true }).click();
+    const expand = page.getByRole('button', { name: `${text('nav.buka_submenu')}: ${partner.nama_partner}`, exact: true });
+    await expand.click();
+    for (const name of names) await expect(page.getByText(name, { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: text('nav.partners'), exact: true }).click();
+    await page.locator(`button[title="${text('partners.klik_untuk_audit_checklist_due_diligence')}"]`).first().click();
+    const audit = page.getByRole('dialog', { name: partner.nama_partner, exact: true });
+    for (const name of names) await expect(audit.getByText(name, { exact: true })).toBeVisible();
+    await audit.getByRole('button', { name: text('partners.upload_file'), exact: true }).first().click();
+    const upload = page.getByRole('dialog', { name: text('partners.upload_dd_modal_title'), exact: true });
+    await expect(upload.getByText(names[0], { exact: true })).toBeVisible();
+    if (language === 'ZH') {
+      await page.route(`**/api/partners/${partner.partner_id}/upload-dd`, route => route.fulfill({ json: { partner } }));
+      await upload.locator('input[type="file"]').setInputFiles({ name: 'original.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7\nDD fixture') });
+      const request = page.waitForRequest(request => request.url().endsWith('/upload-dd') && request.method() === 'POST');
+      await upload.getByRole('button', { name: text('partners.upload_to_drive_btn'), exact: true }).click();
+      expect((await request).postDataJSON().docName).toBe(partner.daftar_dokumen_dd[0].nama);
+      await expect(upload).toBeHidden();
+    } else {
+      await upload.getByRole('button', { name: text('eval.btn_cancel'), exact: true }).click();
+    }
+    await audit.getByRole('button', { name: text('common.close'), exact: true }).click();
+  }
 });
 
 test('latest records combine contracts and order forms in creation order', async ({ page }) => {
@@ -235,7 +298,7 @@ test('large, medium and small actions keep icon-and-text labels inside their but
     };
     await navigate('Main Dashboard');
     const currencies = page.getByRole('group', { name: 'Reporting currency', exact: true });
-    await expectReadableAction(currencies.getByRole('button', { name: 'USD', exact: true }), 28);
+    await expectReadableAction(currencies.getByRole('button', { name: 'USD', exact: true }), 36);
 
     await page.setViewportSize({ width: 1440, height: 1000 });
     const regionLink = page.getByRole('button', { name: 'Organization & region', exact: true });
@@ -246,7 +309,7 @@ test('large, medium and small actions keep icon-and-text labels inside their but
     await regionLink.click();
     await page.setViewportSize({ width, height: 1000 });
     await expectReadableAction(page.getByRole('button', { name: 'Save organization settings', exact: true }), 44);
-    await expectReadableAction(page.getByRole('button', { name: 'Add checklist item', exact: true }), 36);
+    await expectReadableAction(page.getByRole('button', { name: 'Add checklist item', exact: true }), 44);
 
     await navigate('Partners');
     await expectReadableAction(page.getByRole('button', { name: 'Add Partner', exact: true }), 44);
@@ -285,10 +348,27 @@ test('draft history small actions retain readable text on desktop and mobile', a
     })) : path === '/api/documents' ? { documents: [document], total: 1, page: 1, limit: 25, creators: [] } : document;
     return route.fulfill({ json: response });
   });
+  await page.route('**/api/metadata-fields', route => route.fulfill({ json: [] }));
   await page.getByRole('button', { name: 'My Documents', exact: true }).click();
   await page.getByRole('button', { name: document.name, exact: true }).click();
   await page.getByRole('tab', { name: 'History', exact: true }).click();
   const panel = page.locator('.editor-panel-content');
+  // Document info: Created and Modified share a row, and every row is 16px apart.
+  await page.getByRole('tab', { name: 'Info', exact: true }).click();
+  const item = (label: string) => panel.locator('dl > div').filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) });
+  const box = async (label: string) => (await item(label).boundingBox())!;
+  const [name, type, status, created, modified, organization, versions] = await Promise.all(
+    ['Name', 'Type', 'Status', 'Created', 'Modified', 'Organization', 'Versions'].map(box),
+  );
+  for (const [left, right] of [[type, status], [created, modified], [organization, versions]]) {
+    expect(right.y).toBe(left.y);
+    expect(right.x).toBeGreaterThan(left.x + left.width);
+  }
+  expect(type.y - (name.y + name.height)).toBe(16);
+  expect(created.y - (type.y + type.height)).toBe(16);
+  expect(organization.y - (created.y + Math.max(created.height, modified.height))).toBe(16);
+  await page.screenshot({ path: test.info().outputPath('document-info.png'), fullPage: true });
+  await page.getByRole('tab', { name: 'History', exact: true }).click();
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     if (width < 1024) {
@@ -301,6 +381,14 @@ test('draft history small actions retain readable text on desktop and mobile', a
     for (const action of ['View', 'Compare', 'Restore', 'Name']) {
       await expectReadableAction(panel.getByRole('button', { name: action, exact: true }).first(), 28);
     }
+    // Restore takes the header slot the current version uses for its badge.
+    const [latest, older] = await panel.locator('li.editor-panel-card').all();
+    const badge = (await latest.getByText('Current', { exact: true }).boundingBox())!;
+    const title = (await older.getByText('Version 1', { exact: true }).boundingBox())!;
+    const restore = (await older.getByRole('button', { name: 'Restore', exact: true }).boundingBox())!;
+    expect(Math.abs(restore.x + restore.width - (badge.x + badge.width))).toBeLessThanOrEqual(1);
+    expect(Math.abs(restore.y + restore.height / 2 - (title.y + title.height / 2))).toBeLessThanOrEqual(2);
+    await expect(latest.getByRole('button', { name: 'Restore', exact: true })).toHaveCount(0);
     await page.screenshot({ path: test.info().outputPath(`history-buttons-${width}.png`), fullPage: true });
   }
 });
@@ -650,4 +738,99 @@ test('Parties panel selects a registered partner and edits both agreement partie
     await panel.evaluate(element => element.scrollTo({ top: 0 }));
     await page.screenshot({ path: `/tmp/document-editor-parties-${width}.png` });
   }
+});
+
+/** Buttons sitting on the same row as a form field whose height differs from it. */
+async function misalignedRowActions(page: import('@playwright/test').Page) {
+  return page.evaluate(() => {
+    const fieldSelector = 'input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]), select:not([multiple]), button[role="combobox"]';
+    const visible = (el: Element) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
+    const scopes = [...document.querySelectorAll('main, [role="dialog"]')];
+    const issues = new Set<string>();
+    for (const field of scopes.flatMap(scope => [...scope.querySelectorAll(fieldSelector)]).filter(visible)) {
+      const fieldBox = field.getBoundingClientRect();
+      let row = field.parentElement;
+      for (let depth = 0; depth < 3 && row; depth++, row = row.parentElement) {
+        for (const button of row.querySelectorAll('button:not([role="combobox"]):not([role="tab"]):not([role="switch"]), a.ui-button')) {
+          // Icons placed inside the field box (date pickers, clear buttons) are not row actions.
+          if (!visible(button) || button.contains(field) || getComputedStyle(button).position === 'absolute') continue;
+          const box = (button.closest('[role="group"]') ?? button).getBoundingClientRect();
+          const overlap = Math.min(box.bottom, fieldBox.bottom) - Math.max(box.top, fieldBox.top);
+          if (overlap < Math.min(box.height, fieldBox.height) / 2) continue;
+          if (Math.abs(box.height - fieldBox.height) > 1) {
+            issues.add(`${(button.getAttribute('aria-label') || button.textContent || '').trim()} ${Math.round(box.height)}px beside ${Math.round(fieldBox.height)}px field`);
+          }
+        }
+      }
+    }
+    return [...issues];
+  });
+}
+
+/**
+ * Filled (primary/destructive) actions and form submits are commits or page
+ * actions, so they all use the large size. Segments, tabs, table-row actions
+ * and the listed card-level actions are lower in the hierarchy (docs/button-sizes.md).
+ */
+async function undersizedPrimaryActions(page: import('@playwright/test').Page) {
+  return page.evaluate(() => {
+    const cardLevel = new Set(['Auto-Create in Drive', 'Export CSV']);
+    const issues: string[] = [];
+    for (const button of document.querySelectorAll('main button, [role="dialog"] button')) {
+      const box = button.getBoundingClientRect();
+      if (!box.width || button.closest('[aria-pressed], [role="tab"], [role="tablist"], td')) continue;
+      const [r, g, b, a = 1] = getComputedStyle(button).backgroundColor.match(/[\d.]+/g)!.map(Number);
+      const filled = a > 0.5 && Math.max(r, g, b) - Math.min(r, g, b) > 60;
+      if (!filled && (button as HTMLButtonElement).type !== 'submit') continue;
+      const label = (button.getAttribute('aria-label') || button.textContent || '').trim();
+      if (!cardLevel.has(label) && Math.round(box.height) !== 44) issues.push(`${label} ${Math.round(box.height)}px`);
+    }
+    return issues;
+  });
+}
+
+test('field rows and primary actions follow the control size scale', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.route('**/api/user/my-role*', route => route.fulfill({ json: { email: 'audit@example.com', name: 'UI Audit', role: 'Superuser' } }));
+  await page.route('**/api/rbac/me', route => route.fulfill({ json: { actor: { role: 'superuser' }, permissions: ['*'] } }));
+  await page.reload();
+  const issues: string[] = [];
+  const check = async (where: string) => {
+    await page.waitForTimeout(300);
+    for (const issue of await misalignedRowActions(page)) issues.push(`${where}: ${issue}`);
+    for (const issue of await undersizedPrimaryActions(page)) issues.push(`${where}: primary ${issue}`);
+  };
+  for (const width of [1440, 390]) {
+    const open = async (name: string | RegExp) => {
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.getByRole('button', { name, exact: true }).first().click();
+      await page.setViewportSize({ width, height: 1000 });
+    };
+    for (const section of ['Main Dashboard', /^Contracts(?: \d+)?$/, 'Partners', /^(Order Forms|Service Orders)(?: \d+)?$/, 'Partner Spending', 'Partner Evaluation', /^Notifications(?: \d+)?$/, 'My Documents', /^(Session )?Activity Logs$/, 'Import Data']) {
+      if (section === 'Partner Spending') await open('Partners');
+      await open(section);
+      await check(`${width} ${section}`);
+    }
+    await open(/^Contracts(?: \d+)?$/);
+    await page.getByRole('button', { name: 'Add Contract', exact: true }).click();
+    await check(`${width} Add Contract`);
+    await page.keyboard.press('Escape');
+    await open('Partners');
+    await page.getByRole('button', { name: 'Add Partner', exact: true }).click();
+    await check(`${width} Add Partner`);
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const settings = page.getByRole('button', { name: 'Organization & region', exact: true });
+    if (!await settings.isVisible()) await page.getByRole('button', { name: 'Settings', exact: true }).locator('..').getByRole('button', { name: 'Open Submenu', exact: true }).click();
+    for (const label of ['Organization & region', 'Google & Database', 'AI Model & Parser', 'Notification Recipients', 'UI Text & Localization', 'Security & Maintenance']) {
+      await open(label);
+      await check(`${width} ${label}`);
+    }
+    await open('System Admin');
+    for (const tab of ['Dashboard', 'Users', 'Sessions', 'Organizations', 'Departments', 'Invitations', 'API Keys', 'RBAC Matrix']) {
+      await page.getByRole('tab', { name: new RegExp(`^${tab}(?: \\d+)?$`) }).click();
+      await check(`${width} admin ${tab}`);
+    }
+  }
+  expect(issues).toEqual([]);
 });

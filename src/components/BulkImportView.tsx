@@ -310,7 +310,8 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => handleTypeChange(item.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                aria-pressed={isActive}
+                className={`ui-button ui-button-md font-bold border transition-all cursor-pointer ${
                   isActive
                     ? 'bg-accent-strong text-white border-accent shadow-sm'
                     : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-accent/50 hover:text-accent-text'
@@ -365,7 +366,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
             <button
               type="button"
               onClick={() => downloadTemplate(activeType, templates[activeType])}
-              className="w-full flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
+              className="ui-button ui-button-lg w-full flex items-center justify-center gap-2 font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>
@@ -419,7 +420,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
                 type="button"
                 onClick={handleImport}
                 disabled={!parsedRows || parsedRows.length === 0 || isImporting}
-                className="flex-1 flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-xs font-bold bg-accent-strong hover:bg-accent-strong-hover text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="ui-button ui-button-lg flex-1 flex items-center justify-center gap-2 font-bold bg-accent-strong hover:bg-accent-strong-hover text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isImporting
                   ? <><RefreshCw className="w-4 h-4 animate-spin" /><span>{t('import.importing', 'Mengimpor...')}</span></>
@@ -430,7 +431,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="ui-button ui-button-lg ui-button-icon flex items-center justify-center border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                   title={t('import.reset', 'Reset & Mulai Lagi')}
                 >
                   <RotateCcw className="w-4 h-4" />
@@ -550,7 +551,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
 
           <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
             <button type="button" onClick={handleReset}
-              className="flex items-center gap-2 h-9 px-4 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+              className="ui-button ui-button-lg flex items-center gap-2 font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer">
               <RotateCcw className="w-4 h-4" />
               <span>{t('import.reset', 'Reset & Mulai Lagi')}</span>
             </button>

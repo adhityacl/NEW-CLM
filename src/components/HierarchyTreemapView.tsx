@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { downloadCsv } from '../lib/csv';
-import { isTerminationNoticeDocument } from '../lib/dueDiligence';
+import { isTerminationNoticeDocument, localizeDueDiligenceDocument } from '../lib/dueDiligence';
+import { useTenantSettings } from '../context/TenantSettingsContext';
 import { TableEmptyMessage } from './ui/table-empty-state';
 import { usePermissions } from '../lib/permissions';
 import { WorkspaceDocumentCalendar } from '../features/calendar/WorkspaceDocumentCalendar';
@@ -172,6 +173,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
   onSelectIO,
 }) => {
   const { t, language } = useLanguage();
+  const { policy } = useTenantSettings();
   const { hasPermission } = usePermissions();
 
   // State
@@ -360,28 +362,31 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                         {ddDocs.length > 0 ? (
-                          ddDocs.map((doc, idx) => (
-                            <div
-                              key={idx}
-                              className={`p-2.5 rounded-xl border flex items-center justify-between transition-all ${
-                                doc.status === 'Available'
-                                  ? 'bg-accent-soft dark:bg-emerald-950/60 border-accent/30 dark:border-emerald-500/40 text-accent-text dark:text-emerald-300'
-                                  : 'bg-slate-100 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200'
-                              }`}
-                            >
-                              <div className="truncate pr-1">
-                                <span className="font-bold block truncate text-slate-900 dark:text-slate-100">{doc.nama}</span>
-                                <span className="text-xs text-slate-500 dark:text-slate-400">
-                                  {doc.status === 'Available' ? (doc.nomorDokumen || t('status.doc_available', 'Available')) : t('hierarchy.no_document', 'No Document')}
-                                </span>
+                          ddDocs.map((doc, idx) => {
+                            const displayName = localizeDueDiligenceDocument(doc, policy.dueDiligenceChecklist, language);
+                            return (
+                              <div
+                                key={idx}
+                                className={`p-2.5 rounded-xl border flex items-center justify-between transition-all ${
+                                  doc.status === 'Available'
+                                    ? 'bg-accent-soft dark:bg-emerald-950/60 border-accent/30 dark:border-emerald-500/40 text-accent-text dark:text-emerald-300'
+                                    : 'bg-slate-100 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200'
+                                }`}
+                              >
+                                <div className="truncate pr-1">
+                                  <span className="font-bold block truncate text-slate-900 dark:text-slate-100" title={displayName}>{displayName}</span>
+                                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                                    {doc.status === 'Available' ? (doc.nomorDokumen || t('status.doc_available', 'Available')) : t('hierarchy.no_document', 'No Document')}
+                                  </span>
+                                </div>
+                                {doc.status === 'Available' ? (
+                                  <CheckCircle2 className="w-4 h-4 text-accent-text dark:text-emerald-400 shrink-0" />
+                                ) : (
+                                  <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
+                                )}
                               </div>
-                              {doc.status === 'Available' ? (
-                                <CheckCircle2 className="w-4 h-4 text-accent-text dark:text-emerald-400 shrink-0" />
-                              ) : (
-                                <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
-                              )}
-                            </div>
-                          ))
+                            );
+                          })
                         ) : (
                           <div className="col-span-4 text-xs text-slate-500 dark:text-slate-400 italic">
                             {t('hierarchy.standard_dd_docs_hint', 'The due-diligence checklist comes from your organization settings.')}
