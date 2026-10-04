@@ -494,7 +494,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   type="button"
                   aria-pressed={viewCurrency === code}
                   onClick={() => setSpendingCurrencyView(code)}
-                  className={`h-full px-2.5 text-sm font-extrabold rounded-lg transition-all cursor-pointer ${
+                  className={`ui-button ui-button-sm font-extrabold transition-all cursor-pointer ${
                     viewCurrency === code
                       ? 'bg-accent-strong text-white shadow-2xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -591,7 +591,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     dataKey={key}
                     name={spendingChart.series.find(series => series.key === key)?.name}
                     stackId="spendingStack"
-                    fill={stackColors[key] || '#06C755'}
+                    fill={stackColors[key] || '#4CAF50'}
                     maxBarSize={isCompactChart ? 28 : 52}
                     radius={[2, 2, 0, 0]}
                   />

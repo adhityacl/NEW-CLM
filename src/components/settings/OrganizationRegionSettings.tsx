@@ -294,7 +294,7 @@ export const OrganizationRegionSettings: React.FC = () => {
         <button
           type="submit"
           disabled={!canEdit || save.kind === 'saving'}
-          className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-accent-strong px-4 text-xs font-bold text-white transition-colors hover:bg-accent-strong-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+          className="ui-button ui-button-lg inline-flex cursor-pointer items-center justify-center gap-1.5 bg-accent-strong font-bold text-white transition-colors hover:bg-accent-strong-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
         >
           {save.kind === 'saving'
             ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />

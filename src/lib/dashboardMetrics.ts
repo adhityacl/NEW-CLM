@@ -11,11 +11,19 @@ export function contractTotalInCurrency(contracts: Contract[], currency: string)
   }, 0);
 }
 
+// Material Design (2014) 500-shade hues. Picked by a hash of the vendor id so a vendor keeps its
+// color when rankings or filters change; yellow/lime/grey shades are left out for contrast.
+// ponytail: hash pick, two of the five vendors can share a hue; a persisted per-vendor color would rule it out.
+export const MATERIAL_SERIES_COLORS = [
+  '#2196F3', '#FF9800', '#4CAF50', '#009688', '#3F51B5', '#9C27B0', '#8BC34A',
+  '#F44336', '#00BCD4', '#E91E63', '#FF5722', '#795548', '#673AB7', '#03A9F4',
+];
+const MATERIAL_BLUE_GREY = '#607D8B';
+
 export function vendorColor(id: string): string {
   let hash = 2166136261;
   for (const char of id) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
-  const palette = ['#047857', '#2563eb', '#b45309', '#7c3aed', '#be185d', '#0e7490', '#c2410c', '#475569'];
-  return palette[(hash >>> 0) % palette.length];
+  return MATERIAL_SERIES_COLORS[(hash >>> 0) % MATERIAL_SERIES_COLORS.length];
 }
 
 export function buildSpendingSeries(rows: PartnerSpending[], year: string, category: string,
@@ -44,7 +52,7 @@ export function buildSpendingSeries(rows: PartnerSpending[], year: string, categ
   }
   const top = [...totals].sort((a, b) => b[1].total - a[1].total).slice(0, 5);
   const series = top.map(([id, item]) => ({ key: `vendor:${id}`, name: item.name, color: vendorColor(id) }));
-  if (totals.size > 5) series.push({ key: 'other', name: otherLabel, color: '#64748b' });
+  if (totals.size > 5) series.push({ key: 'other', name: otherLabel, color: MATERIAL_BLUE_GREY });
   const topIds = new Set(top.map(([id]) => id));
   const buckets = new Map<string, Record<string, number>>();
   for (const row of values) {

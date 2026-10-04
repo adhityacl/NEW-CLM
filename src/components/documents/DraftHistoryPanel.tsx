@@ -22,7 +22,7 @@ interface DraftHistoryPanelProps {
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; drafts: DraftVersion[] };
 
 const ACTION_BUTTON =
-  'inline-flex items-center gap-1 px-2 min-h-11 sm:min-h-7 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer';
+  'ui-button ui-button-sm inline-flex items-center gap-1 font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer';
 
 export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
   documentId,

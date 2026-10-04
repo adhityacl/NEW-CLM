@@ -4,7 +4,7 @@ import base from './playwright.fixtures.config';
 /** Exercise lazy dependency loading in development; APIs remain mocked. */
 export default defineConfig({
   ...base,
-  testMatch: ['ui-refinements.spec.ts', 'refactor-regressions.spec.ts'],
+  testMatch: ['ui-refinements.spec.ts', 'refactor-regressions.spec.ts', 'document-calendar.spec.ts'],
   workers: 1,
   use: { ...base.use, baseURL: 'http://127.0.0.1:4180' },
   webServer: {

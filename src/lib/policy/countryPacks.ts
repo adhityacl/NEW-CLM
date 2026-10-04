@@ -45,13 +45,6 @@ export const CORE_DUE_DILIGENCE: DueDiligenceRequirement[] = [
     required: false,
     source: 'core',
   },
-  {
-    key: 'termination_notice',
-    label: { en: 'Termination notice', id: 'Surat pemberitahuan pengakhiran' },
-    required: false,
-    aliases: ['Termination notice'],
-    source: 'core',
-  },
 ];
 
 const tax = (key: string, label: string, example?: string, pattern?: string) => ({

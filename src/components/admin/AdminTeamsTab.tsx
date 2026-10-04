@@ -133,7 +133,7 @@ export const AdminTeamsTab: React.FC<AdminTeamsTabProps> = ({
                     <button
                       type="button"
                       onClick={() => onOpenAddTeamMember(team)}
-                      className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 text-xs font-medium cursor-pointer"
+                      className="ui-button ui-button-sm text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
                     >
                       <UserPlus className="w-3 h-3" />
                       {t('admin.team_add_member', 'Tambah')}

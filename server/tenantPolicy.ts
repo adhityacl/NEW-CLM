@@ -22,6 +22,7 @@ import {
   normalizeDueDiligenceStatus,
   type DueDiligenceStatus,
 } from '../src/lib/domainStatus';
+import { isTerminationNoticeDocument } from '../src/lib/dueDiligence';
 
 /**
  * Tenant IDs used by pre-open-source deployments for records created before
@@ -159,7 +160,7 @@ export function normalizePartnerDocuments(partner: any): any[] {
 
 /** Due-diligence status derived from the (normalized) document list. */
 export function computeDueDiligenceStatus(documents: any[]): DueDiligenceStatus {
-  const docs = Array.isArray(documents) ? documents : [];
+  const docs = Array.isArray(documents) ? documents.filter((doc) => !isTerminationNoticeDocument(doc)) : [];
   if (docs.some((d) => normalizeDocumentStatus(d.status) === 'Expired')) return 'Expired';
   const required = docs.filter((d) => d.wajib);
   if (required.length === 0) {

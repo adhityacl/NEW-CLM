@@ -12,6 +12,10 @@ import { useDepartments } from '../hooks/useDepartments';
 import { getSavedCategories, saveCategory, saveMultipleCategories } from '../lib/categoryUtils';
 import { SUPPORTED_CURRENCIES, currencyLabel, formatMoney, fetchHistoricalRate, getDefaultUsdRate } from '../lib/currencyUtils';
 import { formatContractFileName } from '../lib/fileNaming';
+import { contractLifecycle, contractLifecycleMode, validateContractTermination } from '../lib/contractLifecycle';
+import { CONTRACT_STATUS_LABEL_KEY } from '../lib/domainStatus';
+import { ContractEndingFields } from '../features/contracts/ContractEndingFields';
+import { Badge } from './ui/badge';
 
 interface ContractModalProps {
   contractToEdit?: Contract | null;
@@ -54,7 +58,8 @@ export const ContractModal: React.FC<ContractModalProps> = ({
   });
   const [tanggalMulai, setTanggalMulai] = useState(contractToEdit?.tanggal_mulai || '2026-08-01');
   const [tanggalBerakhir, setTanggalBerakhir] = useState(contractToEdit?.tanggal_berakhir || '2027-07-31');
-  const tenantCurrency = useTenantSettings().policy.settings.defaultCurrency;
+  const { policy } = useTenantSettings();
+  const tenantCurrency = policy.settings.defaultCurrency;
   const [currency, setCurrency] = useState<string>(contractToEdit?.currency || tenantCurrency);
   const [nilaiKontrak, setNilaiKontrak] = useState<number>(contractToEdit?.nilai_kontrak ?? 0);
   const [historicalRate, setHistoricalRate] = useState<number>(() => getDefaultUsdRate(contractToEdit?.currency || tenantCurrency));
@@ -112,8 +117,16 @@ export const ContractModal: React.FC<ContractModalProps> = ({
 
   const [autoRenewal, setAutoRenewal] = useState(contractToEdit?.auto_renewal || false);
   const [status, setStatus] = useState<ContractStatus>(
-    contractToEdit?.status === 'Terminated' ? 'Terminated' : 'Active'
+    contractToEdit && contractLifecycleMode(contractToEdit) === 'terminated' ? 'Terminated' : 'Active'
   );
+  const [terminationDate, setTerminationDate] = useState(contractToEdit?.termination_date || '');
+  const [terminationReason, setTerminationReason] = useState(contractToEdit?.termination_reason || '');
+  const [terminationFile, setTerminationFile] = useState<{ fileName: string; fileData: string }>();
+  const [readingTerminationFile, setReadingTerminationFile] = useState(false);
+  const lifecycleMode = status === 'Terminated' ? 'terminated' : 'normal';
+  const lifecyclePreview = contractLifecycle({ lifecycle_mode: lifecycleMode, termination_date: terminationDate,
+    tanggal_berakhir: tanggalBerakhir, auto_renewal: autoRenewal }, policy.settings);
+  const showEndingFields = lifecycleMode === 'terminated' || lifecyclePreview.status === 'Expired';
   const [noticePeriodHari, setNoticePeriodHari] = useState(contractToEdit?.notice_period_hari || 30);
   const [noticeTypeRequired, setNoticeTypeRequired] = useState<NoticeType>(
     contractToEdit?.notice_type_required || 'Termination'
@@ -352,6 +365,25 @@ export const ContractModal: React.FC<ContractModalProps> = ({
     }
   };
 
+  const handleTerminationFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (!/\.(pdf|doc|docx)$/i.test(file.name) || file.size > 10 * 1024 * 1024 || file.size === 0) {
+      setError(t('termination.file_invalid')); return;
+    }
+    setReadingTerminationFile(true);
+    try {
+      const fileData = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error(t('termination.file_read_error')));
+        reader.readAsDataURL(file);
+      });
+      setTerminationFile({ fileName: file.name, fileData });
+      setError('');
+    } catch { setError(t('termination.file_read_error')); }
+    finally { setReadingTerminationFile(false); }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -391,6 +423,13 @@ export const ContractModal: React.FC<ContractModalProps> = ({
       return;
     }
 
+    const terminationError = validateContractTermination({ lifecycle_mode: lifecycleMode, termination_date: terminationDate,
+      tanggal_mulai: tanggalMulai, tanggal_berakhir: tanggalBerakhir });
+    if (terminationError) { setError(t(terminationError)); return; }
+    if (readingTerminationFile) return;
+    if ((fileData?.length || 0) + (terminationFile?.fileData.length || 0) > 24 * 1024 * 1024) {
+      setError(t('termination.payload_too_large')); return;
+    }
     setSubmitting(true);
 
     try {
@@ -429,7 +468,11 @@ export const ContractModal: React.FC<ContractModalProps> = ({
         auto_renewal: autoRenewal,
         notice_period_hari: Number(noticePeriodHari),
         notice_type_required: noticeTypeRequired,
-        status,
+        status: lifecyclePreview.status,
+        lifecycle_mode: lifecycleMode,
+        termination_date: lifecycleMode === 'terminated' ? terminationDate : null,
+        termination_reason: terminationReason.trim(),
+        termination_document_file: terminationFile,
         pic_internal: (contractToEdit?.pic_internal || selectedPartner?.pic_internal || selectedPartner?.internal_pic || user?.department || 'Commercial & Marketing').trim(),
         internal_notes: internalNotes.trim(),
         field_yang_berubah: jenisDokumen === 'Agreement Addendum' ? fieldYangBerubah : undefined,
@@ -810,6 +853,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                   <input
                     type="checkbox"
                     checked={autoRenewal}
+                    disabled={status === 'Terminated'}
                     onChange={(e) => handleAutoRenewalChange(e.target.checked)}
                     className="w-4 h-4 text-accent-text rounded border-slate-300 dark:border-slate-700 focus:ring-accent"
                   />
@@ -826,13 +870,21 @@ export const ContractModal: React.FC<ContractModalProps> = ({
               </label>
               <AlphabeticalSelect id="contract-field-14"
                 value={status === 'Terminated' ? 'Terminated' : 'Active'}
-                onChange={(e) => setStatus(e.target.value as ContractStatus)}
+                onChange={(e) => { setStatus(e.target.value as ContractStatus); if (e.target.value === 'Terminated') setAutoRenewal(false); }}
                 className="w-full bg-[#F7F8FA] dark:bg-slate-800 border border-hairline dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all cursor-pointer"
               >
                 <option value="Active">{t('form.contract.status_normal', 'Normal (Sesuai tanggal berlaku)')}</option>
                 <option value="Terminated">{t('form.contract.status_terminated', 'Dihentikan (Penghentian Perjanjian)')}</option>
               </AlphabeticalSelect>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Badge variant={lifecyclePreview.status === 'Expired' ? 'warning' : lifecyclePreview.status === 'Terminated' ? 'danger' : 'info'}>{t(CONTRACT_STATUS_LABEL_KEY[lifecyclePreview.status])}</Badge>
+                {lifecyclePreview.scheduled && terminationDate && <p className="text-xs text-slate-500 dark:text-slate-400">{t('termination.scheduled')}</p>}
+              </div>
             </div>
+
+            {showEndingFields && <ContractEndingFields terminated={lifecycleMode === 'terminated'} date={terminationDate} endDate={tanggalBerakhir}
+              reason={terminationReason} document={contractToEdit?.termination_document} fileName={terminationFile?.fileName} reading={readingTerminationFile}
+              onDate={setTerminationDate} onReason={setTerminationReason} onFile={handleTerminationFile} />}
 
             {/* Internal Notes */}
             <div>
@@ -909,15 +961,15 @@ export const ContractModal: React.FC<ContractModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-sm transition-colors cursor-pointer"
+                className="ui-button ui-button-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold transition-colors cursor-pointer"
               >
                 {t('form.common.cancel', 'Batal')}
               </button>
               <button
                 type="submit"
-                disabled={submitting || !isFormValid}
+                disabled={submitting || readingTerminationFile || !isFormValid}
                 title={!isFormValid ? t('form.common.required_hint', 'Lengkapi semua kolom wajib (*) untuk menyimpan') : ''}
-                className="px-5 py-2.5 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold rounded-xl text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="ui-button ui-button-lg bg-accent-strong hover:bg-accent-strong-hover text-white font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {submitting
                   ? t('form.contract.saving_btn', 'Menyimpan Kontrak...')

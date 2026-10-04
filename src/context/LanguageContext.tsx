@@ -1,4 +1,6 @@
 import { UI_REFINEMENTS } from '../i18n/uiRefinements';
+import { DOCUMENT_CALENDAR_TRANSLATIONS } from '../i18n/documentCalendar';
+import { CONTRACT_TERMINATION_TRANSLATIONS } from '../i18n/contractTermination';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { EXTRA_TRANSLATIONS } from '../i18n/extraTranslations';
 import { ZH_TRANSLATIONS } from '../i18n/zh';
@@ -2164,9 +2166,9 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
 
 /** Built-in catalog: base keys plus newer feature keys kept in src/i18n. */
 export const translations: Record<Language, Record<string, string>> = {
-  ID: { ...baseTranslations.ID, ...EXTRA_TRANSLATIONS.ID, ...UI_REFINEMENTS.ID },
-  EN: { ...baseTranslations.EN, ...EXTRA_TRANSLATIONS.EN, ...UI_REFINEMENTS.EN },
-  ZH: { ...ZH_TRANSLATIONS, ...UI_REFINEMENTS.ZH },
+  ID: { ...baseTranslations.ID, ...EXTRA_TRANSLATIONS.ID, ...UI_REFINEMENTS.ID, ...DOCUMENT_CALENDAR_TRANSLATIONS.ID, ...CONTRACT_TERMINATION_TRANSLATIONS.ID },
+  EN: { ...baseTranslations.EN, ...EXTRA_TRANSLATIONS.EN, ...UI_REFINEMENTS.EN, ...DOCUMENT_CALENDAR_TRANSLATIONS.EN, ...CONTRACT_TERMINATION_TRANSLATIONS.EN },
+  ZH: { ...ZH_TRANSLATIONS, ...UI_REFINEMENTS.ZH, ...DOCUMENT_CALENDAR_TRANSLATIONS.ZH, ...CONTRACT_TERMINATION_TRANSLATIONS.ZH },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

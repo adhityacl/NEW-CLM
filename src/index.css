@@ -1054,3 +1054,93 @@ select:disabled { opacity: .5; cursor: not-allowed; }
   .news-ticker { overflow-x: auto; }
   .news-ticker-track { animation: none; }
 }
+
+/* Explicit action sizes. Width remains intrinsic unless the caller requests an
+   icon-only button or a responsive full-width layout. */
+:root {
+  --button-lg-height: 44px;
+  --button-md-height: 36px;
+  --button-sm-height: 28px;
+}
+.ui-button-lg { --button-height: var(--button-lg-height); --button-font-size: 14px; --button-padding: 16px; --button-radius: 12px; --button-icon-size: 16px; }
+.ui-button-md { --button-height: var(--button-md-height); --button-font-size: 13px; --button-padding: 12px; --button-radius: 10px; --button-icon-size: 16px; }
+.ui-button-sm { --button-height: var(--button-sm-height); --button-font-size: 12px; --button-padding: 8px; --button-radius: 8px; --button-icon-size: 14px; }
+:is(button, a).ui-button:not(:where([data-slot="calendar"] *, [data-calendar-event])) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: var(--button-height);
+  min-height: var(--button-height);
+  padding: 0 var(--button-padding);
+  gap: 6px;
+  border-radius: var(--button-radius);
+  font-size: var(--button-font-size);
+  line-height: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  & > svg {
+    width: var(--button-icon-size);
+    height: var(--button-icon-size);
+    flex-shrink: 0;
+  }
+
+  &.ui-button-icon {
+    width: var(--button-height);
+    min-width: var(--button-height);
+    padding: 0;
+  }
+}
+input[type="file"]::file-selector-button {
+  height: var(--button-md-height);
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+@media (max-width: 767px) {
+  .mobile-page-actions:has(.ui-button-md) { grid-template-columns: 1fr; }
+  :is(.mobile-page-actions, .contracts-mobile-actions) .ui-button {
+    padding-inline: 8px;
+    white-space: normal;
+    overflow-wrap: normal;
+  }
+  .editor-header-identity { width: 100%; }
+  .editor-header-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+  .editor-header-modes {
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .editor-header-actions:not(:has(.editor-header-save)) .editor-header-modes {
+    grid-column: 1 / -1;
+  }
+  .editor-header-actions button {
+    width: 100%;
+    min-width: 0;
+    height: var(--button-lg-height);
+    min-height: var(--button-lg-height);
+    margin: 0;
+    padding: 0 4px;
+    gap: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    white-space: nowrap;
+  }
+  .editor-header-actions button > svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .editor-header-modes > button { border: 1px solid var(--border); }
+  .editor-header-modes > button[aria-pressed="false"] { background: var(--muted); }
+}

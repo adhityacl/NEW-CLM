@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { downloadCsv } from '../lib/csv';
+import { isTerminationNoticeDocument } from '../lib/dueDiligence';
 import { TableEmptyMessage } from './ui/table-empty-state';
 import { usePermissions } from '../lib/permissions';
+import { WorkspaceDocumentCalendar } from '../features/calendar/WorkspaceDocumentCalendar';
 import { TableEmptyState } from './ui/table-empty-state';
 
 
@@ -115,7 +117,8 @@ import {
   CheckSquare,
   Square,
   SlidersHorizontal,
-  FileDown
+  FileDown,
+  CalendarDays
 } from 'lucide-react';
 
 interface HierarchyTreemapViewProps {
@@ -124,6 +127,10 @@ interface HierarchyTreemapViewProps {
   ios: InsertionOrder[];
   evaluations?: PartnerEvaluation[];
   spendings?: PartnerSpending[];
+  loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+  onOpenCalendarDocument: (kind: 'contract' | 'io', id: string) => void;
   onOpenAddPartner: () => void;
   onOpenAddContract: (partnerId?: string) => void;
   onOpenAddIO: (contractId?: string, partnerId?: string) => void;
@@ -153,6 +160,10 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
   ios,
   evaluations = [],
   spendings = [],
+  loading,
+  error,
+  onRetry,
+  onOpenCalendarDocument,
   onOpenAddPartner,
   onOpenAddContract,
   onOpenAddIO,
@@ -164,7 +175,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
   const { hasPermission } = usePermissions();
 
   // State
-  const [viewMode, setViewMode] = useState<'treemap' | 'audit'>('treemap');
+  const [viewMode, setViewMode] = useState<'treemap' | 'audit' | 'calendar'>('treemap');
 
   // Audit Table State
   const [auditFlatMode, setAuditFlatMode] = useState<boolean>(false);
@@ -218,10 +229,17 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
       {/* Control Toolbar & View Mode Switcher */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-hairline dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* View Switchers - Solid Green Pill Buttons for Selected State matching reference */}
-        <div className="mobile-page-actions flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+        <div role="tablist" aria-label={t('hierarchy.title')} className="mobile-page-actions flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto"
+          onKeyDown={event => {
+            const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+            const index = tabs.indexOf(document.activeElement as HTMLButtonElement);
+            const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : -1;
+            if (next >= 0) { event.preventDefault(); tabs[next].focus(); tabs[next].click(); }
+          }}>
           <button
+            type="button" role="tab" id="structure-tree-tab" aria-selected={viewMode === 'treemap'} aria-controls="structure-panel" tabIndex={viewMode === 'treemap' ? 0 : -1}
             onClick={() => setViewMode('treemap')}
-            className={`h-9.5 px-4.5 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer text-xs font-bold shadow-xs ${
+            className={`h-(--form-control-height) min-h-11 px-4.5 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer text-xs font-bold shadow-xs ${
               viewMode === 'treemap'
                 ? 'bg-accent-strong text-white border border-transparent shadow-md'
                 : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -231,8 +249,9 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
             <span>{t('hierarchy.tree_view', 'Tampilan Pohon Interaktif')}</span>
           </button>
           <button
+            type="button" role="tab" id="structure-audit-tab" aria-selected={viewMode === 'audit'} aria-controls="structure-panel" tabIndex={viewMode === 'audit' ? 0 : -1}
             onClick={() => setViewMode('audit')}
-            className={`h-9.5 px-4.5 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer text-xs font-bold shadow-xs ${
+            className={`h-(--form-control-height) min-h-11 px-4.5 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer text-xs font-bold shadow-xs ${
               viewMode === 'audit'
                 ? 'bg-accent-strong text-white border border-transparent shadow-md'
                 : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -241,10 +260,15 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
             <FileSpreadsheet className={`w-4 h-4 ${viewMode === 'audit' ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
             <span>{t('hierarchy.audit_view', 'Audit Struktur')}</span>
           </button>
+          <button type="button" role="tab" id="structure-calendar-tab" aria-selected={viewMode === 'calendar'} aria-controls="structure-panel" tabIndex={viewMode === 'calendar' ? 0 : -1}
+            onClick={() => setViewMode('calendar')}
+            className={`h-(--form-control-height) min-h-11 px-4.5 rounded-2xl transition-colors flex items-center justify-center gap-2 cursor-pointer text-xs font-bold shadow-xs ${viewMode === 'calendar' ? 'bg-accent-strong text-white border border-transparent shadow-md' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+            <CalendarDays aria-hidden="true" className="size-4" /><span>{t('hierarchy.calendar_view')}</span>
+          </button>
         </div>
 
         {/* Search Input */}
-        <div className="relative w-full sm:w-72">
+        {viewMode !== 'calendar' && <div className="relative w-full sm:w-72">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input aria-label={t('hierarchy.search_placeholder', 'Cari partner, nomor kontrak, atau IO...')}
             type="text"
@@ -253,8 +277,12 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 bg-[#F7F8FA] dark:bg-slate-800/80 border border-hairline dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-xs focus:ring-2 focus:ring-accent focus:border-accent focus:bg-white dark:focus:bg-slate-800 focus:outline-none"
           />
-        </div>
+        </div>}
       </div>
+
+      <div id="structure-panel" role="tabpanel" aria-labelledby={`structure-${viewMode === 'treemap' ? 'tree' : viewMode}-tab`}>
+      {viewMode === 'calendar' && <WorkspaceDocumentCalendar contracts={contracts} ios={ios} partners={partners}
+        loading={loading} error={error} onRetry={onRetry} onOpenDocument={onOpenCalendarDocument} />}
 
       {/* VIEW MODE 1: VISUAL TREEMAP */}
       {viewMode === 'treemap' && (
@@ -269,7 +297,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
               const isPartnerExpanded = expandedPartners[partner.partner_id] ?? false;
 
               // DD Document stats
-              const ddDocs = partner.daftar_dokumen_dd || [];
+              const ddDocs = (partner.daftar_dokumen_dd || []).filter((doc) => !isTerminationNoticeDocument(doc));
               const verifiedDocsCount = ddDocs.filter((d) => d.status === 'Available').length;
               const isDDComplete = partner.status_dd === 'Complete';
 
@@ -1140,7 +1168,7 @@ const exportToCSV = () => {
               <div className="mobile-page-actions flex flex-wrap items-center gap-3">
                 <button
                   onClick={() => setAuditFlatMode(!auditFlatMode)}
-                  className={`text-xs px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-1.5 transition-colors ${
+                  className={`ui-button ui-button-md border font-semibold flex items-center gap-1.5 transition-colors ${
                     auditFlatMode ? 'bg-accent-soft border-accent/30 text-accent-text' : 'bg-white border-slate-200 dark:border-slate-800 text-slate-600'
                   }`}
                 >
@@ -1150,7 +1178,7 @@ const exportToCSV = () => {
                 <div className="relative">
                   <button
                     onClick={() => setShowColPicker(!showColPicker)}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 font-semibold flex items-center gap-1.5 hover:bg-slate-50 transition-colors"
+                    className="ui-button ui-button-md border border-slate-200 dark:border-slate-800 text-slate-600 font-semibold flex items-center gap-1.5 hover:bg-slate-50 transition-colors"
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5" />
                     {t('hierarchy.custom_columns', 'Kustom Kolom')}
@@ -1207,7 +1235,7 @@ const exportToCSV = () => {
                   <button
                     onClick={exportToCSV}
                     disabled={baseRows.length === 0}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-accent-strong text-white font-bold flex items-center gap-1.5 hover:bg-accent-strong-hover shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-accent-strong"
+                    className="ui-button ui-button-md bg-accent-strong text-white font-bold flex items-center gap-1.5 hover:bg-accent-strong-hover shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-accent-strong"
                   >
                     <FileDown className="w-3.5 h-3.5" />
                     {t('hierarchy.export_csv', 'Ekspor CSV')}
@@ -1298,6 +1326,7 @@ const exportToCSV = () => {
           </div>
         );
       })()}
+      </div>
     </div>
   );
 };

@@ -5,6 +5,7 @@ import type {
   DocumentEvidenceStatus,
 } from './lib/domainStatus';
 import type { TenantSettings } from './lib/policy/types';
+import type { ContractLifecycleFields } from './lib/contractLifecycle';
 
 export type { ContractStatus, ApprovalStatus, DocumentEvidenceStatus, TenantSettings };
 
@@ -101,7 +102,7 @@ export interface Partner {
 
 export type JenisDokumenContract = 'Master Agreement' | 'Agreement Addendum';
 
-export interface Contract {
+export interface Contract extends ContractLifecycleFields {
   contract_id: string;
   organizationId?: string;
   jenis_dokumen?: JenisDokumenContract;
@@ -386,4 +387,3 @@ export interface RedlineAnalysisData {
   complianceChecklist: ComplianceItem[];
   analyzed_at?: string;
 }
-

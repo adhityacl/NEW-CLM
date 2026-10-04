@@ -2,11 +2,12 @@ import * as React from "react"
 import { cn } from "../../lib/utils"
 
 export type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
-export type ButtonSize = "default" | "sm" | "lg" | "icon"
+export type ButtonSize = "default" | "sm" | "md" | "lg" | "icon"
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
   size?: ButtonSize
+  iconOnly?: boolean
 }
 
 /**
@@ -16,6 +17,9 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
  */
 export function buttonVariants(variant: ButtonVariant = "default", size: ButtonSize = "default", className?: string) {
   return cn(
+    "ui-button",
+    `ui-button-${size === "default" || size === "icon" ? "md" : size}`,
+    size === "icon" && "ui-button-icon",
     "inline-flex items-center justify-center gap-1.5 font-semibold transition-colors duration-150 cursor-pointer shrink-0",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40",
     "disabled:pointer-events-none disabled:opacity-50",
@@ -26,10 +30,6 @@ export function buttonVariants(variant: ButtonVariant = "default", size: ButtonS
       "bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:brightness-95": variant === "secondary",
       "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]": variant === "ghost",
       "text-accent-text underline-offset-4 hover:underline": variant === "link",
-      "h-9 px-4 text-xs rounded-[var(--radius)]": size === "default",
-      "h-8 px-3 text-xs rounded-[var(--radius)]": size === "sm",
-      "h-10 px-5 text-sm rounded-[var(--radius)]": size === "lg",
-      "h-9 w-9 p-0 rounded-[var(--radius)]": size === "icon",
     },
     className
   )
@@ -40,8 +40,8 @@ export function buttonVariants(variant: ButtonVariant = "default", size: ButtonS
  * Variant/size API is unchanged, so all existing call sites keep working.
  */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", size = "default", ...props }, ref) => {
-    return <button ref={ref} className={buttonVariants(variant, size, className)} {...props} />
+  ({ className, variant = "default", size = "default", iconOnly = false, ...props }, ref) => {
+    return <button ref={ref} data-button-size={size} className={buttonVariants(variant, size, cn(iconOnly && "ui-button-icon", className))} {...props} />
   }
 )
 Button.displayName = "Button"

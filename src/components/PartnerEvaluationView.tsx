@@ -574,7 +574,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
             <button
               onClick={handleExportCSV}
               disabled={sortedEvaluations.length === 0}
-              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ui-button ui-button-lg cursor-pointer shadow-sm border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               title={t('eval.export_csv', 'Ekspor CSV')}
             >
               <Download className="w-4 h-4" />
@@ -585,7 +585,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
           {canCreateEvaluation && (
             <button
               onClick={handleAddNew}
-              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0"
+              className="ui-button ui-button-lg cursor-pointer shadow-sm bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all"
             >
               <Plus className="w-4 h-4 text-white" />
               <span>{t('ui.add_evaluation')}</span>

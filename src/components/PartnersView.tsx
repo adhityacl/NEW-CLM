@@ -5,6 +5,7 @@ import { FilterSummary } from './ui/filter-summary';
 import { TableEmptyState } from './ui/table-empty-state';
 import React, { useState, useEffect } from 'react';
 import { CONTRACT_STATUS_LABEL_KEY, DD_STATUS_LABEL_KEY, DOC_STATUS_LABEL_KEY } from '../lib/domainStatus';
+import { isTerminationNoticeDocument } from '../lib/dueDiligence';
 import { useTenantSettings } from '../context/TenantSettingsContext';
 import { getCountryPack, localizeName } from '../lib/policy';
 
@@ -318,10 +319,11 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
     ];
 
     const rows = currentPartners.map((p) => {
-      const wajibDocs = p.daftar_dokumen_dd.filter((d) => d.wajib);
+      const documents = p.daftar_dokumen_dd.filter((d) => !isTerminationNoticeDocument(d));
+      const wajibDocs = documents.filter((d) => d.wajib);
       const adaWajib = wajibDocs.filter((d) => d.status === 'Available');
-      const totalDocs = p.daftar_dokumen_dd.length || 1;
-      const adaDocs = p.daftar_dokumen_dd.filter((d) => d.status === 'Available').length;
+      const totalDocs = documents.length || 1;
+      const adaDocs = documents.filter((d) => d.status === 'Available').length;
       const progress = wajibDocs.length > 0
         ? Math.round((adaWajib.length / wajibDocs.length) * 100)
         : Math.round((adaDocs / totalDocs) * 100);
@@ -416,7 +418,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                 <button
                   onClick={handleExportCSV}
                   disabled={filteredPartners.length === 0}
-                  className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="ui-button ui-button-lg cursor-pointer shadow-sm border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('contracts.export_csv', 'Ekspor CSV')}
                 >
                   <Download className="w-4 h-4" />
@@ -427,7 +429,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
               {canCreatePartner(user) && (
                 <button
                   onClick={onAddPartner}
-                  className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0"
+                  className="ui-button ui-button-lg cursor-pointer shadow-sm bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all"
                 >
                   <Plus className="w-4 h-4 text-white" />
                   <span>{t('ui.add_partner')}</span>
@@ -799,7 +801,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                   </span>
                 </div>
 
-                {(selectedPartnerDetail.daftar_dokumen_dd || []).map((doc) => {
+                {(selectedPartnerDetail.daftar_dokumen_dd || []).filter((doc) => !isTerminationNoticeDocument(doc)).map((doc) => {
                   const docFiles = doc.files && doc.files.length > 0
                     ? doc.files
                     : doc.linkDrive

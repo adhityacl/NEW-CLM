@@ -1,8 +1,32 @@
 import { test, expect } from '@playwright/test';
 import { buildDemoDataset } from '../../src/data/demoDataset';
 import { getCountryPack, getIndustryPack } from '../../src/lib/policy';
+import type { Locator } from '@playwright/test';
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+
+async function expectReadableAction(button: Locator, height: number) {
+  await expect(button).toBeVisible();
+  const layout = await button.evaluate(element => {
+    const bounds = element.getBoundingClientRect();
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let textFits = true;
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!node.textContent?.trim() || node.parentElement?.closest('.sr-only')) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      for (const rect of range.getClientRects()) {
+        textFits &&= rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1
+          && rect.top >= bounds.top - 1 && rect.bottom <= bounds.bottom + 1;
+      }
+    }
+    return { height: bounds.height, width: bounds.width, textFits };
+  });
+  expect(layout.height).toBe(height);
+  expect(layout.width).toBeGreaterThan(height);
+  expect(layout.textFits).toBe(true);
+}
 
 test.beforeEach(async ({ page }) => {
   const data = buildDemoDataset();
@@ -33,7 +57,7 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({ json: fixtures[new URL(route.request().url()).pathname] ?? {} });
   });
   await page.goto('/');
-  await expect(page.getByText('Test news')).toBeVisible();
+  await expect(page.getByText('Test news').first()).toBeVisible();
 });
 
 test('requiring action table combines contracts and order forms', async ({ page }) => {
@@ -201,6 +225,86 @@ test('New Document matches primary action styling on desktop and mobile in both 
   }
 });
 
+test('large, medium and small actions keep icon-and-text labels inside their buttons', async ({ page }) => {
+  test.setTimeout(90_000);
+  for (const width of [1440, 390]) {
+    const navigate = async (name: string | RegExp) => {
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.getByRole('button', { name, exact: true }).first().click();
+      await page.setViewportSize({ width, height: 1000 });
+    };
+    await navigate('Main Dashboard');
+    const currencies = page.getByRole('group', { name: 'Reporting currency', exact: true });
+    await expectReadableAction(currencies.getByRole('button', { name: 'USD', exact: true }), 28);
+
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const regionLink = page.getByRole('button', { name: 'Organization & region', exact: true });
+    if (!await regionLink.isVisible()) {
+      await page.getByRole('button', { name: 'Settings', exact: true }).locator('..')
+        .getByRole('button', { name: 'Open Submenu', exact: true }).click();
+    }
+    await regionLink.click();
+    await page.setViewportSize({ width, height: 1000 });
+    await expectReadableAction(page.getByRole('button', { name: 'Save organization settings', exact: true }), 44);
+    await expectReadableAction(page.getByRole('button', { name: 'Add checklist item', exact: true }), 36);
+
+    await navigate('Partners');
+    await expectReadableAction(page.getByRole('button', { name: 'Add Partner', exact: true }), 44);
+    await page.getByRole('button', { name: 'Add Partner', exact: true }).click();
+    await expectReadableAction(page.getByRole('dialog').getByRole('button', { name: 'Add identifier', exact: true }), 36);
+    await page.keyboard.press('Escape');
+
+    await navigate('Partner Spending');
+    await page.getByRole('button', { name: 'Add Spending', exact: true }).click();
+    await expectReadableAction(page.getByRole('dialog').getByRole('button', { name: 'Add Month', exact: true }), 36);
+    await page.keyboard.press('Escape');
+
+    await navigate(/^(Explorer|Explore|Document Structure)$/);
+    await page.getByRole('tab', { name: 'Structure Audit', exact: true }).click();
+    for (const button of await page.locator('main .mobile-page-actions:not([role="tablist"]) button').all()) {
+      await expectReadableAction(button, 36);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  }
+});
+
+test('draft history small actions retain readable text on desktop and mobile', async ({ page }) => {
+  test.setTimeout(60_000);
+  const now = new Date().toISOString();
+  const document = {
+    id: 'button-history', organization_id: buildDemoDataset().tenants[0].id,
+    name: 'Button history fixture', content: '<p>Saved draft</p>', type: 'contract', status: 'draft',
+    file_size: 40, current_version: 2, draft_count: 2, created_by: 'audit@example.com',
+    created_by_name: 'UI Audit', modified_by: null, modified_by_name: null, created_at: now, modified_at: now,
+  };
+  await page.route('**/api/documents**', route => {
+    const path = new URL(route.request().url()).pathname;
+    const response = path.endsWith('/drafts') ? [2, 1].map(version_number => ({
+      version_number, draft_name: null, labels: [], file_size: 40, save_kind: 'manual',
+      restored_from: null, saved_by: 'audit@example.com', saved_by_name: 'UI Audit', saved_at: now,
+    })) : path === '/api/documents' ? { documents: [document], total: 1, page: 1, limit: 25, creators: [] } : document;
+    return route.fulfill({ json: response });
+  });
+  await page.getByRole('button', { name: 'My Documents', exact: true }).click();
+  await page.getByRole('button', { name: document.name, exact: true }).click();
+  await page.getByRole('tab', { name: 'History', exact: true }).click();
+  const panel = page.locator('.editor-panel-content');
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    if (width < 1024) {
+      const toggle = page.getByTitle(/Toggle.*Panel|Open.*Panel|Form.*Clause|Buka.*Panel/i);
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      await toggle.click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+    }
+    await expect(panel).toBeVisible();
+    for (const action of ['View', 'Compare', 'Restore', 'Name']) {
+      await expectReadableAction(panel.getByRole('button', { name: action, exact: true }).first(), 28);
+    }
+    await page.screenshot({ path: test.info().outputPath(`history-buttons-${width}.png`), fullPage: true });
+  }
+});
+
 test('mobile editor keeps a usable canvas and opens its panel as a dismissible overlay', async ({ page }) => {
   await page.getByRole('button', { name: 'My Documents', exact: true }).click();
   await page.getByRole('button', { name: 'New Document', exact: true }).first().click();
@@ -304,7 +408,7 @@ for (const section of ['Main Dashboard', 'Partners', 'Order Forms', 'Partner Spe
       : section === 'Explorer' ? /^(Explorer|Explore|Document Structure)$/ : section;
     await page.getByRole('button', { name: navigation, exact: true }).click();
     await expect(page.locator('main')).toBeVisible();
-    if (section === 'Explorer') await page.getByRole('button', { name: 'Structure Audit', exact: true }).click();
+    if (section === 'Explorer') await page.getByRole('tab', { name: 'Structure Audit', exact: true }).click();
     if (section === 'Import Data') {
       await page.locator('main input[type="file"]').setInputFiles({ name: 'mobile-preview.csv', mimeType: 'text/csv', buffer: Buffer.from('nama_partner,partner_channel,country\nFixture Partner,Procurement,ID\n') });
       await expect(page.locator('main table')).toContainText('Fixture Partner');

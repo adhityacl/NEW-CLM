@@ -122,7 +122,7 @@ export const PartnerJurisdictionFields: React.FC<PartnerJurisdictionFieldsProps>
         <button
           type="button"
           onClick={addIdentifier}
-          className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="ui-button ui-button-md mt-2 inline-flex items-center gap-2 border border-dashed border-slate-300 font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           {t('form.partner.identifier_add', 'Add identifier')}

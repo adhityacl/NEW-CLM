@@ -229,7 +229,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
             <button
               type="button"
               onClick={onCreate}
-              className="mobile-page-action inline-flex w-fit shrink-0 items-center gap-1.5 px-4 h-9 min-h-11 sm:min-h-9 rounded-xl text-sm font-bold bg-accent-strong hover:bg-accent-strong-hover text-white shadow-sm cursor-pointer transition-all"
+              className="ui-button ui-button-lg mobile-page-action inline-flex w-fit items-center font-bold bg-accent-strong hover:bg-accent-strong-hover text-white shadow-sm cursor-pointer transition-all"
             >
               <FilePlus2 className="w-4 h-4" aria-hidden />
               <span>{t('documents.explorer.new', 'Dokumen Baru')}</span>

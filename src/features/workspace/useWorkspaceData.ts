@@ -76,5 +76,6 @@ export function useWorkspaceData() {
     await queryClient.invalidateQueries({ queryKey, exact: true });
   }, [queryClient, queryKey]);
 
-  return { ...(query.data || EMPTY_DATA), updateData, cancelPendingLoad, loadAllData };
+  return { ...(query.data || EMPTY_DATA), updateData, cancelPendingLoad, loadAllData,
+    workspaceLoading: query.isFetching && !query.data, workspaceError: query.isError };
 }

@@ -126,7 +126,9 @@ const MainApp: React.FC = () => {
   }, [activeTab, hasPermission, role, permissionsLoading, tenantSettingsStatus, replaceActiveTab, modules.commercialDocuments, modules.spending, modules.evaluation]);
 
   const { contracts, ios, partners, notifications, evaluations, spendings, googleConfig,
-    timestamp: lastSyncTimestamp, updateData, cancelPendingLoad, loadAllData } = useWorkspaceData();
+    timestamp: lastSyncTimestamp, updateData, cancelPendingLoad, loadAllData, workspaceLoading, workspaceError } = useWorkspaceData();
+  const [calendarDocument, setCalendarDocument] = useState<{ kind: 'contract' | 'io'; id: string } | null>(null);
+  useEffect(() => { setCalendarDocument(null); }, [activeTenantId]);
 
   // Modal States
   const [showContractModal, setShowContractModal] = useState(false);
@@ -207,24 +209,19 @@ const MainApp: React.FC = () => {
       });
 
       if (!res.ok) {
-
-        rollback();
         const errData = await res.json().catch(() => ({}));
-        showToast({
-          type: 'error',
-          title: t('app.gagal_menyimpan_kontrak', 'Gagal Menyimpan Kontrak'),
-          message: errData.error || t('app.terjadi_kesalahan_saat_menyimpan_ke_backend', 'Terjadi kesalahan saat menyimpan ke backend.'),
-        });
+        throw new Error(errData.code ? t(errData.code, errData.error) : errData.error || t('app.terjadi_kesalahan_saat_menyimpan_ke_backend'));
       }
       loadAllData();
     } catch (err: any) {
       rollback();
       showToast({
         type: 'error',
-        title: t('app.error_koneksi', 'Error Koneksi'),
+        title: t('app.gagal_menyimpan_kontrak', 'Gagal Menyimpan Kontrak'),
         message: err?.message || t('app.gagal_terhubung_ke_server', 'Gagal terhubung ke server.'),
       });
       loadAllData();
+      throw err;
     }
   };
 
@@ -704,6 +701,13 @@ const MainApp: React.FC = () => {
 
               {activeTab === 'hierarchy' && (
                 <LazyHierarchyTreemapView
+                  loading={workspaceLoading}
+                  error={workspaceError}
+                  onRetry={loadAllData}
+                  onOpenCalendarDocument={(kind, id) => {
+                    setCalendarDocument({ kind, id });
+                    setActiveTab(kind === 'contract' ? 'contracts' : 'ios');
+                  }}
                   partners={partners}
                   contracts={contracts}
                   ios={ios}
@@ -742,6 +746,8 @@ const MainApp: React.FC = () => {
 
               {activeTab === 'contracts' && (
                 <LazyContractsView
+                  openDocumentId={calendarDocument?.kind === 'contract' ? calendarDocument.id : undefined}
+                  onDocumentOpened={() => setCalendarDocument(null)}
                   contracts={contracts}
                   partners={partners}
                   ios={ios}
@@ -780,6 +786,8 @@ const MainApp: React.FC = () => {
 
               {(activeTab === 'ios' || activeTab === 'io') && modules.commercialDocuments && (
                 <LazyIOView
+                  openDocumentId={calendarDocument?.kind === 'io' ? calendarDocument.id : undefined}
+                  onDocumentOpened={() => setCalendarDocument(null)}
                   ios={ios}
                   contracts={contracts}
                   partners={partners}

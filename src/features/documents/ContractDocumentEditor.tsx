@@ -1450,7 +1450,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
           position:static, and matching the app Header's z-20 let this later-in-DOM element win
           the tie-break and paint over the Header's user-menu dropdown. */}
       <header className="editor-header bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0 max-w-full">
+        <div className="editor-header-identity flex items-center gap-2.5 min-w-0 max-w-full">
           <button
             type="button"
             onClick={backToExplorer}
@@ -1487,14 +1487,14 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
         </div>
 
         {/* Action Controls & Mode Switcher */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="editor-header-actions flex items-center gap-2 flex-wrap">
 
           {canEdit && (
             <button
               type="button"
               onClick={() => void saveNow('manual')}
               disabled={saveState.status === 'saving'}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
+              className="editor-header-save inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
               title={t('documents.save.manual_title', 'Simpan sebagai versi baru (Ctrl+S)')}
             >
               <Save className="w-3.5 h-3.5" aria-hidden />
@@ -1503,10 +1503,11 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
           )}
 
           {/* View Mode Toggle: Edit vs Pratinjau */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 mr-1">
+          <div className="editor-header-modes flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 mr-1">
             <button
               type="button"
               onClick={() => switchViewMode('editor')}
+              aria-pressed={viewMode === 'editor'}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 viewMode === 'editor'
                   ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
@@ -1520,6 +1521,7 @@ export const ContractDocumentEditor: React.FC<ContractCreatorViewProps> = ({
             <button
               type="button"
               onClick={() => switchViewMode('preview')}
+              aria-pressed={viewMode === 'preview'}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 viewMode === 'preview'
                   ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'

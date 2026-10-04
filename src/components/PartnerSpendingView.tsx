@@ -81,7 +81,7 @@ import {
 
 const spendingFieldClass = 'w-full min-w-0 min-h-11 px-3 py-2.5 bg-white dark:bg-slate-900 border border-hairline dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:border-accent';
 const spendingLabelClass = 'block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5';
-const spendingButtonClass = 'min-h-11 px-3 py-2 rounded-lg border border-hairline dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 disabled:cursor-not-allowed';
+const spendingButtonClass = 'ui-button ui-button-md border border-hairline dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 disabled:cursor-not-allowed';
 const spendingUploadClass = 'min-w-0 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors';
 const spendingFileInputClass = 'w-[220px] max-w-full min-w-0 text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-accent-soft dark:file:bg-emerald-950/60 file:text-accent-text dark:file:text-emerald-400 hover:file:bg-accent/20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-xl';
 
@@ -700,7 +700,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
             <button
               onClick={handleExportCSV}
               disabled={sortedSpendings.length === 0}
-              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ui-button ui-button-lg cursor-pointer shadow-sm border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               title={t('contracts.export_csv', 'Ekspor CSV')}
             >
               <Download className="w-4 h-4" />
@@ -711,7 +711,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
           {canCreateContract(user) && (
             <button
               onClick={handleAddNew}
-              className="min-h-11 sm:min-h-9 h-9 text-sm cursor-pointer shadow-sm gap-1.5 rounded-xl px-4 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all shrink-0"
+              className="ui-button ui-button-lg cursor-pointer shadow-sm bg-accent-strong hover:bg-accent-strong-hover text-white font-bold flex items-center transition-all"
             >
               <Plus className="w-4 h-4 text-white" />
               <span>{t('ui.add_spending')}</span>
@@ -1122,7 +1122,7 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                             <label htmlFor={`spending-amount-${index}`} className="block text-xs font-semibold mb-1.5 sm:sr-only">{t('spending.allocated_amount', 'Allocated Amount')} {index + 1} ({formCurrency})</label>
                             <input id={`spending-amount-${index}`} type="number" min="0" step="any" required value={row.amount} aria-invalid={row.amount === '' || Number(row.amount) < 0} aria-describedby="spending-allocation-status" onChange={e => setMonthAllocations(rows => rows.map((item, i) => i === index ? { ...item, amount: e.target.value === '' ? '' : Number(e.target.value) } : item))} className={`${spendingFieldClass} text-right font-semibold`} />
                           </div>
-                          <button type="button" aria-label={t('spending.delete_month', 'Delete spending month {index}', { index: index + 1 })} onClick={() => setMonthAllocations(rows => rows.filter((_, i) => i !== index))} className={`${spendingButtonClass} px-0 col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto hover:text-rose-600`}><Trash2 className="size-4 mx-auto" aria-hidden="true" /></button>
+                          <button type="button" aria-label={t('spending.delete_month', 'Delete spending month {index}', { index: index + 1 })} onClick={() => setMonthAllocations(rows => rows.filter((_, i) => i !== index))} className={`${spendingButtonClass} ui-button-icon col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto hover:text-rose-600`}><Trash2 className="size-4 mx-auto" aria-hidden="true" /></button>
                         </div>;
                       })}
                     </div>
@@ -1186,14 +1186,14 @@ export const PartnerSpendingView: React.FC<PartnerSpendingViewProps> = ({
                   <button
                     type="button"
                     onClick={closeSpendingModal} disabled={formBusy}
-                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-sm transition-colors cursor-pointer"
+                    className="ui-button ui-button-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold transition-colors cursor-pointer"
                   >
                     {t('spending.cancel_btn', 'Batal')}
                   </button>
                   <button
                     type="submit"
                     disabled={formBusy || Boolean(allocationError) || !formVendorName || !formInvoiceNumber.trim()}
-                    className="px-5 py-2.5 bg-accent-strong hover:bg-accent-strong-hover text-white font-bold rounded-xl text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="ui-button ui-button-lg bg-accent-strong hover:bg-accent-strong-hover text-white font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isSubmitting
                       ? t('spending.saving_btn', 'Menyimpan...')

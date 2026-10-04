@@ -62,6 +62,10 @@ import {
 } from "./src/lib/googleServiceAccountAuth";
 import { createGoogleCredentialStore, createGoogleCredentialsRouter } from "./src/server/googleCredentials";
 import multer from "multer";
+import { randomUUID } from "node:crypto";
+import { contractLifecycle, contractLifecycleMode, validateContractTermination } from "./src/lib/contractLifecycle";
+import { parseTerminationFile, type TerminationFile } from "./src/server/contractTermination";
+import { CONTRACT_TERMINATION_TRANSLATIONS } from "./src/i18n/contractTermination";
 import {
   bindTenantStore,
   getDefaultTenantId,
@@ -2013,6 +2017,7 @@ function buildReminderEmail(params: {
 }
 /** Roll an auto-renewing contract's end date forward past "today" (tenant timezone). */
 function rollForwardAutoRenewal(contract: any): void {
+  if (contractLifecycleMode(contract) === 'terminated') return;
   if (!contract.auto_renewal || !contract.tanggal_mulai || !contract.tanggal_berakhir) return;
   const settings = getTenantSettings(contract.organizationId);
   const today = todayInTimezone(settings.timezone);
@@ -2105,14 +2110,9 @@ function recalculateStatuses() {
   };
 
   db.contracts = (db.contracts || []).map((contract) => {
-    if (normalizeContractStatus(contract.status) === "Terminated") {
-      return { ...contract, status: "Terminated" };
-    }
     rollForwardAutoRenewal(contract);
-    const { daysRemaining, status } = computeLifecycle(
-      contract.organizationId, contract.tanggal_berakhir, contract.status, contract.auto_renewal,
-    );
-    if (daysRemaining !== null) emitReminder("contract", contract, daysRemaining);
+    const { daysRemaining, status } = contractLifecycle(contract, getTenantSettings(contract.organizationId));
+    if (status !== 'Terminated' && daysRemaining !== null) emitReminder("contract", contract, daysRemaining);
     return {
       ...contract,
       status,
@@ -2135,6 +2135,22 @@ function recalculateStatuses() {
   return newNotifsCount;
 }
 recalculateStatuses();
+/** Reads refresh date-driven status without sending reminders or requiring a cron run. */
+function refreshContractLifecycles() {
+  let changed = false;
+  for (const contract of db.contracts || []) {
+    const previousEnd = contract.tanggal_berakhir;
+    rollForwardAutoRenewal(contract);
+    const lifecycle = contractLifecycle(contract, getTenantSettings(contract.organizationId));
+    const remaining = lifecycle.daysRemaining ?? contract.sisa_hari;
+    if (previousEnd !== contract.tanggal_berakhir || contract.status !== lifecycle.status || contract.sisa_hari !== remaining) {
+      contract.status = lifecycle.status;
+      contract.sisa_hari = remaining;
+      changed = true;
+    }
+  }
+  if (changed) saveDb();
+}
 function addActivityLog(
   userEmail,
   userName,
@@ -4421,6 +4437,7 @@ app.post("/api/contracts/export-google-docs", async (req: express.Request, res: 
 
 // Aggregation Endpoint for Fast Initial Data Load (replaces multi-endpoint polling)
 app.get("/api/init-data", (req: express.Request, res: express.Response) => {
+  refreshContractLifecycles();
   const activeTenantId = getRequestTenantId(req);
   const filterTenant = !canReadAllTenants(req);
 
@@ -4464,6 +4481,7 @@ app.get("/api/init-data", (req: express.Request, res: express.Response) => {
 });
 
 app.get("/api/contracts", (req: express.Request, res: express.Response) => {
+  refreshContractLifecycles();
   const activeTenantId = getRequestTenantId(req);
   const filterTenant = !canReadAllTenants(req);
   const contractsList = filterTenant
@@ -5091,6 +5109,27 @@ app.use("/api", createGoogleCredentialsRouter(googleCredentials));
 // Create Contract documents: explorer, draft versions, metadata, comments/redlines.
 app.use("/api", createDocumentRouter({ db: sqliteDb, tenantOf: getRequestTenantId }));
 
+async function persistContractTerminationFile(req: express.Request, record: { organizationId?: string; partner_id?: string }, file: TerminationFile) {
+  const partner = db.partners.find(p => p.partner_id === record.partner_id);
+  const tenant = findTenant(record.organizationId);
+  const storedName = `termination-${randomUUID()}.${file.extension}`;
+  const token = await resolveActiveGoogleToken(req.headers['x-google-access-token'] || req.body.accessToken);
+  let url = '';
+  if (token) {
+    try {
+      const folder = await getPartnerCategoryFolderId(partner, 'Folder Termination', token);
+      const uploaded = await uploadFileToDrive(storedName, file.fileData, file.mimeType, folder, token);
+      if (uploaded?.includes('google.com')) url = uploaded;
+    } catch (error) { console.warn('Termination document Drive upload failed; using private local storage.'); }
+  }
+  if (!url) url = saveLocalFile(partner?.nama_partner, 'Folder Termination', storedName, file.fileData, tenant?.name);
+  return { fileName: file.fileName, url };
+}
+
+function terminationWriteError(res: express.Response, code: string) {
+  return res.status(400).json({ code, error: CONTRACT_TERMINATION_TRANSLATIONS.EN[code] || code });
+}
+
 app.post("/api/contracts", async (req: express.Request, res: express.Response) => {
   const {
     nomor_kontrak,
@@ -5139,6 +5178,12 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
       .status(400)
       .json({ error: "Tanggal Berakhir harus setelah Tanggal Mulai." });
   }
+  const lifecycleMode = contractLifecycleMode(req.body);
+  const terminationError = validateContractTermination({ ...req.body, lifecycle_mode: req.body.lifecycle_mode ?? lifecycleMode });
+  if (terminationError) return terminationWriteError(res, terminationError);
+  let terminationFile: TerminationFile | undefined;
+  try { terminationFile = parseTerminationFile(req.body.termination_document_file); }
+  catch { return terminationWriteError(res, 'termination.file_invalid'); }
   const requestTenantId = getRequestTenantId(req);
   const existingContractDup = db.contracts.find(
     (c) =>
@@ -5255,16 +5300,14 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
     organizationId: targetOrgId,
     tanggal_mulai,
     tanggal_berakhir,
-    auto_renewal: Boolean(auto_renewal),
+    auto_renewal: lifecycleMode !== 'terminated' && Boolean(auto_renewal),
+    lifecycle_mode: lifecycleMode,
+    termination_date: lifecycleMode === 'terminated' ? req.body.termination_date : null,
   };
-  if (normalizeContractStatus(status) !== "Terminated") rollForwardAutoRenewal(lifecycleDraft);
+  rollForwardAutoRenewal(lifecycleDraft);
   const finalTanggalBerakhir = lifecycleDraft.tanggal_berakhir;
-  const { status: finalStatus, daysRemaining: diffDays } = computeLifecycle(
-    targetOrgId,
-    finalTanggalBerakhir,
-    normalizeContractStatus(status) === "Terminated" ? "Terminated" : "Active",
-    Boolean(auto_renewal),
-  );
+  const { status: finalStatus, daysRemaining: diffDays } = contractLifecycle(lifecycleDraft, getTenantSettings(targetOrgId));
+  const terminationDocument = terminationFile ? await persistContractTerminationFile(req, { organizationId: targetOrgId, partner_id }, terminationFile) : undefined;
   const newContract = {
     contract_id: generateNextContractId(),
     organizationId: targetOrgId,
@@ -5285,7 +5328,11 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
     currency: cur,
     nilai_kontrak: amt,
     nilai_kontrak_usd: Number(total_usd),
-    auto_renewal: Boolean(auto_renewal),
+    auto_renewal: lifecycleDraft.auto_renewal,
+    lifecycle_mode: lifecycleMode,
+    termination_date: lifecycleDraft.termination_date,
+    termination_reason: String(req.body.termination_reason || '').trim().slice(0, 10000),
+    termination_document: terminationDocument,
     notice_period_hari: Number(notice_period_hari) || 30,
     notice_type_required: notice_type_required || "Termination",
     status: finalStatus,
@@ -5318,7 +5365,7 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
 });
 app.put("/api/contracts/:id", async (req: express.Request, res: express.Response) => {
   const { id } = req.params;
-  const { userEmail, userName, userRole, fileData, fileName, ...updates } =
+  const { userEmail, userName, userRole, fileData, fileName, termination_document_file, ...updates } =
     req.body;
   const idx = db.contracts.findIndex((c) => c.contract_id === id);
   if (idx === -1) {
@@ -5328,11 +5375,26 @@ app.put("/api/contracts/:id", async (req: express.Request, res: express.Response
   const tenantDenial = assertTenantWriteAccess(req, existing.organizationId);
   if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
   if ((req as any).actor?.role !== "superuser") delete (updates as any).organizationId;
+  delete updates.termination_document;
   const updated = {
     ...existing,
     ...updates,
     updated_at: new Date().toISOString(),
   };
+  // Status-only legacy clients may still request a lifecycle transition.
+  if (updates.lifecycle_mode === undefined && updates.status !== undefined) {
+    updated.lifecycle_mode = normalizeContractStatus(updates.status) === 'Terminated' ? 'terminated' : 'normal';
+  }
+  updated.lifecycle_mode = contractLifecycleMode(updated);
+  if (updated.lifecycle_mode === 'normal') updated.termination_date = null;
+  const unchangedLegacyTermination = existing.status === 'Terminated' && !existing.termination_date && updates.lifecycle_mode === undefined && updates.status === undefined;
+  const terminationError = unchangedLegacyTermination ? null : validateContractTermination(updated);
+  if (terminationError) return terminationWriteError(res, terminationError);
+  let terminationFile: TerminationFile | undefined;
+  try { terminationFile = parseTerminationFile(termination_document_file); }
+  catch { return terminationWriteError(res, 'termination.file_invalid'); }
+  updated.termination_reason = String(updated.termination_reason || '').trim().slice(0, 10000);
+  if (updated.lifecycle_mode === 'terminated') updated.auto_renewal = false;
   const cur = normalizeCurrencyCode(updated.currency || existing.currency, tenantDefaultCurrency(existing.organizationId));
   updated.currency = cur;
   const amt = Number(updated.nilai_kontrak) || 0;
@@ -5459,10 +5521,11 @@ app.put("/api/contracts/:id", async (req: express.Request, res: express.Response
     updated.link_file_kontrak = link_file_kontrak;
     updated.fileName = targetFileName;
   }
+  if (terminationFile) updated.termination_document = await persistContractTerminationFile(req, updated, terminationFile);
   updated.status = normalizeContractStatus(updated.status);
   updated.status_approval = normalizeApprovalStatus(updated.status_approval);
-  if (updated.status !== "Terminated") rollForwardAutoRenewal(updated);
-  const lifecycle = computeLifecycle(updated.organizationId, updated.tanggal_berakhir, updated.status, updated.auto_renewal);
+  rollForwardAutoRenewal(updated);
+  const lifecycle = contractLifecycle(updated, getTenantSettings(updated.organizationId));
   updated.sisa_hari = lifecycle.daysRemaining ?? updated.sisa_hari;
   updated.status = lifecycle.status;
   db.contracts[idx] = updated;
