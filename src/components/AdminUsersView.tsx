@@ -1,234 +1,91 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
+import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
+import { AlertTriangle, CheckCircle2, Loader2, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useConfirm } from '../context/ConfirmDialogContext';
 import { useTenant } from '../context/TenantContext';
 import { useNavigation } from '../context/NavigationContext';
-import { getAuthHeaders } from '../lib/apiFetch';
-import {
-  ConsoleSubmenu,
-  ConsoleUser,
-  ConsoleAccount,
-  ConsoleSession,
-  ConsoleOrganization,
-  ConsoleTeam,
-  ConsoleInvitation,
-  ConsoleApiKey,
-  ConsoleMetrics,
-} from './admin/types';
+import type { SystemSubmenu } from '../lib/appRoutes';
+import type { ConsoleAccount, ConsoleApiKey, ConsoleMetrics, ConsoleOrganization, ConsoleSession, ConsoleUser } from './admin/types';
 import { AdminDashboardTab } from './admin/AdminDashboardTab';
 import { AdminConsoleHeader } from './admin/AdminConsoleHeader';
-import { AdminUsersTab } from './admin/AdminUsersTab';
-import { AdminAccountsTab } from './admin/AdminAccountsTab';
 import { AdminSessionsTab } from './admin/AdminSessionsTab';
 import { AdminOrganizationsTab } from './admin/AdminOrganizationsTab';
-import { AdminTeamsTab } from './admin/AdminTeamsTab';
-import { AdminInvitationsTab } from './admin/AdminInvitationsTab';
 import { AdminApiKeysTab } from './admin/AdminApiKeysTab';
 import { AdminRbacMatrixTab } from './admin/AdminRbacMatrixTab';
-import {
-  AddUserModal,
-  EditUserModal,
-  ResetPasswordModal,
-  CreateOrganizationModal,
-  EditOrganizationModal,
-  DeleteOrganizationModal,
-  CreateTeamModal,
-  EditDepartmentModal,
-  DeleteDepartmentModal,
-  AddTeamMemberModal,
-  InviteMemberModal,
-  GenerateApiKeyModal,
-} from './admin/AdminModals';
-import { CheckCircle2, AlertTriangle, Loader2, X } from 'lucide-react';
-import { ROLE_LEVEL, normalizeRole, usePermissions } from '../lib/permissions';
+import { PlatformUsersTab, type PlatformUser } from './admin/PlatformUsersTab';
+import { CreateOrganizationModal, DeleteOrganizationModal, EditOrganizationModal, GenerateApiKeyModal } from './admin/AdminModals';
 
-interface AdminUsersViewProps {
-  initialTab?: ConsoleSubmenu;
-  area?: 'system' | 'organization';
+const LazyPlatformConfigurationPanel = lazy(() => import('./admin/PlatformConfigurationPanel').then((m) => ({ default: m.PlatformConfigurationPanel })));
+
+async function consoleApi<T = any>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  const res = await fetch(`/api/auth-console${path}`, {
+    method: init.method || 'GET',
+    headers: init.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+    body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+  return data as T;
 }
 
-export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'dashboard', area = 'organization' }) => {
-  const { user: currentUser, refreshUser } = useAuth();
-  const { t, language } = useLanguage();
+/**
+ * System Admin console (PRD §6.6): platform-only. Global accounts, sessions,
+ * the organization directory with "Manage organization", API keys, the full
+ * permission matrix and the Configuration tab. Tenant membership, departments
+ * and invitations are handled in the managed organization's Settings.
+ */
+export const AdminUsersView: React.FC<{ initialTab?: SystemSubmenu }> = ({ initialTab = 'dashboard' }) => {
+  const { t } = useLanguage();
   const confirmDialog = useConfirm();
-  const { activeTenantId, switchTenant } = useTenant();
+  const { switchTenant } = useTenant();
   const { setActiveTab: setNavigationTab } = useNavigation();
-  const { hasPermission, role } = usePermissions();
-  const isSystemArea = area === 'system';
+  const [activeTab, setActiveTab] = useState<SystemSubmenu>(initialTab);
+  useEffect(() => { setActiveTab(initialTab); }, [initialTab]);
 
-  // Navigation tab state
-  const [activeTab, setActiveTab] = useState<ConsoleSubmenu>(initialTab);
-
-  useEffect(() => {
-    if (initialTab) {
-      setActiveTab(initialTab);
-    }
-  }, [initialTab]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  // Data states
   const [metrics, setMetrics] = useState<ConsoleMetrics | null>(null);
-  const [users, setUsers] = useState<ConsoleUser[]>([]);
+  const [users, setUsers] = useState<PlatformUser[]>([]);
   const [accounts, setAccounts] = useState<ConsoleAccount[]>([]);
   const [sessions, setSessions] = useState<ConsoleSession[]>([]);
   const [organizations, setOrganizations] = useState<ConsoleOrganization[]>([]);
-  const [activeOrg, setActiveOrg] = useState<ConsoleOrganization | null>(null);
-  const [teams, setTeams] = useState<ConsoleTeam[]>([]);
-  const [invitations, setInvitations] = useState<ConsoleInvitation[]>([]);
   const [apiKeys, setApiKeys] = useState<ConsoleApiKey[]>([]);
   const [matrixData, setMatrixData] = useState<any>(null);
-
-  // Modal dialog states
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-  const [selectedUserForEdit, setSelectedUserForEdit] = useState<ConsoleUser | null>(null);
-  const [selectedUserForPassword, setSelectedUserForPassword] = useState<ConsoleUser | null>(null);
   const [isCreateOrgOpen, setIsCreateOrgOpen] = useState(false);
-  const [selectedOrgForEdit, setSelectedOrgForEdit] = useState<ConsoleOrganization | null>(null);
-  const [selectedOrgForDelete, setSelectedOrgForDelete] = useState<ConsoleOrganization | null>(null);
-  const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
-  const [selectedTeamForEdit, setSelectedTeamForEdit] = useState<ConsoleTeam | null>(null);
-  const [selectedTeamForDelete, setSelectedTeamForDelete] = useState<ConsoleTeam | null>(null);
-  const [selectedTeamForAddMember, setSelectedTeamForAddMember] = useState<ConsoleTeam | null>(null);
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [orgForEdit, setOrgForEdit] = useState<ConsoleOrganization | null>(null);
+  const [orgForDelete, setOrgForDelete] = useState<ConsoleOrganization | null>(null);
   const [isCreateApiKeyOpen, setIsCreateApiKeyOpen] = useState(false);
-
-  // Inline toast state
-  const [toast, setToast] = useState<{
-    type: 'success' | 'error';
-    message: string;
-  } | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 4000);
   };
+  const navigateToTab = useCallback((tab: string) => {
+    setActiveTab(tab as SystemSubmenu);
+    setNavigationTab(`admin-system-${tab}`);
+  }, [setNavigationTab]);
 
-  const navigateToTab = useCallback((tab: ConsoleSubmenu) => {
-    setActiveTab(tab);
-    setNavigationTab(`admin-${area}-${tab}`);
-  }, [area, setNavigationTab]);
-
-  // Fetch all console data
-  const loadConsoleData = useCallback(async (isSilent = false) => {
-    if (!isSilent) setIsLoading(true);
+  const loadConsoleData = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
     setIsRefreshing(true);
     setLoadError(null);
-
     try {
-      const headers = getAuthHeaders();
-
-      // Parallel fetching for high performance
-      const [
-        overviewRes,
-        usersRes,
-        accountsRes,
-        sessionsRes,
-        orgsRes,
-        teamsRes,
-        invitesRes,
-        apiKeysRes,
-        matrixRes,
-      ] = await Promise.all([
-        isSystemArea
-          ? fetch('/api/auth-console/overview', { headers, credentials: 'include' })
-          : Promise.resolve(null),
-        fetch('/api/auth-console/users', { headers, credentials: 'include' }),
-        isSystemArea
-          ? fetch('/api/auth-console/accounts', { headers, credentials: 'include' })
-          : Promise.resolve(null),
-        isSystemArea
-          ? fetch('/api/auth-console/sessions', { headers, credentials: 'include' })
-          : Promise.resolve(null),
-        fetch('/api/auth-console/organizations', { headers, credentials: 'include' }),
-        fetch('/api/auth-console/teams', { headers, credentials: 'include' }),
-        fetch('/api/auth-console/invitations', { headers, credentials: 'include' }),
-        isSystemArea
-          ? fetch('/api/auth-console/api-keys', { headers, credentials: 'include' })
-          : Promise.resolve(null),
-        isSystemArea
-          ? fetch('/api/auth-console/rbac-matrix', { headers, credentials: 'include' })
-          : Promise.resolve(null),
+      const [overview, usersRes, accountsRes, sessionsRes, orgsRes, keysRes, matrixRes] = await Promise.all([
+        consoleApi('/overview'), consoleApi('/users'), consoleApi('/accounts'), consoleApi('/sessions'),
+        consoleApi('/organizations'), consoleApi('/api-keys'), consoleApi('/rbac-matrix'),
       ]);
-
-      const failedResponse = [overviewRes, usersRes, accountsRes, sessionsRes, orgsRes, teamsRes, invitesRes, apiKeysRes, matrixRes]
-        .find((response): response is Response => Boolean(response && !response.ok));
-      if (failedResponse) {
-        const body = await failedResponse.clone().json().catch(() => null);
-        throw new Error(body?.error || body?.message || `HTTP ${failedResponse.status}`);
-      }
-
-      if (overviewRes?.ok) {
-        const data = await overviewRes.json();
-        if (data.success && data.data) {
-          setMetrics(data.data.metrics);
-        }
-      }
-
-      if (usersRes.ok) {
-        const data = await usersRes.json();
-        if (data.success && Array.isArray(data.users)) {
-          setUsers(data.users);
-        }
-      }
-
-      if (accountsRes?.ok) {
-        const data = await accountsRes.json();
-        if (data.success && Array.isArray(data.accounts)) {
-          setAccounts(data.accounts);
-        }
-      }
-
-      if (sessionsRes?.ok) {
-        const data = await sessionsRes.json();
-        if (data.success && Array.isArray(data.sessions)) {
-          setSessions(data.sessions);
-        }
-      }
-
-      if (orgsRes.ok) {
-        const data = await orgsRes.json();
-        if (data.success && Array.isArray(data.organizations)) {
-          setOrganizations(data.organizations);
-          const selectedOrg = data.organizations.find((org: ConsoleOrganization) => org.id === activeTenantId)
-            || data.organizations.find((org: ConsoleOrganization) => org.id === activeOrg?.id)
-            || data.organizations[0]
-            || null;
-          setActiveOrg(selectedOrg);
-        }
-      }
-
-      if (teamsRes.ok) {
-        const data = await teamsRes.json();
-        if (data.success && Array.isArray(data.teams)) {
-          setTeams(data.teams);
-        }
-      }
-
-      if (invitesRes.ok) {
-        const data = await invitesRes.json();
-        if (data.success && Array.isArray(data.invitations)) {
-          setInvitations(data.invitations);
-        }
-      }
-
-      if (apiKeysRes?.ok) {
-        const data = await apiKeysRes.json();
-        if (data.success && Array.isArray(data.apiKeys)) {
-          setApiKeys(data.apiKeys);
-        }
-      }
-
-      if (matrixRes?.ok) {
-        const data = await matrixRes.json();
-        if (data.success && data.matrix) {
-          setMatrixData(data.matrix);
-        }
-      }
+      setMetrics(overview.data?.metrics || null);
+      setUsers(usersRes.users || []);
+      setAccounts(accountsRes.accounts || []);
+      setSessions(sessionsRes.sessions || []);
+      setOrganizations(orgsRes.organizations || []);
+      setApiKeys(keysRes.apiKeys || []);
+      setMatrixData(matrixRes.matrix || null);
     } catch (err: any) {
-      console.error('Failed to load Better Auth Console data:', err);
       const message = err?.message || t('admin.toast.load_failed', 'Gagal memuat data konsol autentikasi');
       setLoadError(message);
       showToast(message, 'error');
@@ -236,758 +93,147 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ initialTab = 'da
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [activeOrg?.id, activeTenantId, isSystemArea, t]);
+  }, [t]);
+  useEffect(() => { void loadConsoleData(); }, [loadConsoleData]);
 
-  useEffect(() => {
-    loadConsoleData();
-  }, [loadConsoleData]);
-
-  const handleSelectOrg = async (org: ConsoleOrganization) => {
-    if (!org.id || org.id === activeOrg?.id) return;
-    const switched = await switchTenant(org.id);
-    if (switched) {
-      setActiveOrg(org);
-      return;
-    }
-    showToast(t('admin.toast.switch_org_failed', 'Gagal mengganti organisasi.'), 'error');
-  };
-
-  // Handler: Add User
-  const handleAddUser = async (formData: {
-    name: string;
-    email: string;
-    role: string;
-    password?: string;
-    department?: string;
-    organizationId?: string;
-  }) => {
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const res = await fetch('/api/auth-console/users', {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify(formData),
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.add_user_failed', 'Failed to add user'));
-    }
-    showToast(`${t('admin.toast.user', 'User')} ${formData.name} ${t('admin.toast.added_success', 'successfully added.')}`);
-    loadConsoleData(true);
-  };
-
-  // Handler: Edit User Info
-  const handleEditUser = async (
-    userId: string,
-    newRole: string,
-    newDepartment?: string,
-    organizationId?: string,
-    newName?: string,
-    newEmail?: string
-  ) => {
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const res = await fetch(`/api/auth-console/users/${userId}/role`, {
-      method: 'PUT',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify({
-        role: newRole,
-        department: newDepartment,
-        organizationId,
-        name: newName,
-        email: newEmail,
-      }),
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.role_update_failed', 'Failed to update user info'));
-    }
-    showToast(t('admin.toast.user_updated', 'Informasi pengguna berhasil diperbarui.'));
-    loadConsoleData(true);
+  const act = async (fn: () => Promise<unknown>, success: string) => {
     try {
-      await refreshUser();
-    } catch {
-      // non-fatal
-    }
-  };
-
-  // Handler: Reset Password
-  const handleResetPassword = async (userId: string, newPass: string) => {
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const res = await fetch(`/api/auth-console/users/${userId}/password`, {
-      method: 'PUT',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify({ password: newPass }),
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.reset_pass_failed', 'Failed to reset password'));
-    }
-    showToast(t('admin.toast.reset_pass_success', 'New password successfully saved and encrypted.'));
-  };
-
-  // Handler: Ban / Unban User
-  const handleToggleBan = async (user: ConsoleUser) => {
-    const newBannedState = !user.banned;
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    try {
-      const res = await fetch(`/api/auth-console/users/${user.id}/ban`, {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({
-          banned: newBannedState,
-          banReason: newBannedState ? t('admin.toast.banned_reason', 'Banned by Administrator') : undefined,
-        }),
-      });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || t('admin.toast.ban_status_failed', 'Failed to change ban status'));
-      }
-      showToast(
-        newBannedState
-          ? `${t('admin.toast.user', 'User')} ${user.name} ${t('admin.toast.banned_success', 'has been successfully banned.')}`
-          : `${t('admin.toast.user', 'User')} ${user.name} ${t('admin.toast.unbanned_success', 'ban status has been lifted.')}`
-      );
-      loadConsoleData(true);
+      await fn();
+      showToast(success);
+      await loadConsoleData(true);
     } catch (err: any) {
       showToast(err.message, 'error');
+      throw err;
     }
   };
 
-  // Handler: Delete User
-  const handleDeleteUser = async (user: ConsoleUser) => {
-    const ok = await confirmDialog({
-      description: t('admin.hapus_pengguna_akun_ini_akan_dihapus', 'Hapus pengguna "{name}"? Akun ini akan dihapus permanen.', { name: user.name }),
-      tone: 'danger',
-      confirmLabel: t('admin.action_delete', 'Hapus'),
-    });
-    if (!ok) {
-      return;
-    }
-    const headers = getAuthHeaders();
-    try {
-      const res = await fetch(`/api/auth-console/users/${user.id}`, {
-        method: 'DELETE',
-        headers,
-        credentials: 'include',
-      });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || t('admin.toast.delete_user_failed', 'Failed to delete user'));
-      }
-      showToast(`${t('admin.toast.user', 'User')} ${user.name} ${t('admin.toast.deleted_success', 'has been deleted.')}`);
-      loadConsoleData(true);
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    }
+  /** Explicit platform-management context; no membership is created (PRD §6.6). */
+  const manageOrganization = async (org: ConsoleOrganization) => {
+    if (await switchTenant(org.id)) setNavigationTab('settings-organization');
+    else showToast(t('admin.toast.switch_org_failed', 'Gagal mengganti organisasi.'), 'error');
   };
 
-  // Handler: Revoke Session
-  const handleRevokeSession = async (sessionId: string) => {
-    const headers = getAuthHeaders();
-    try {
-      const res = await fetch(`/api/auth-console/sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers,
-        credentials: 'include',
-      });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || t('admin.toast.revoke_session_failed', 'Failed to revoke session'));
-      }
-      showToast(t('admin.toast.revoke_session_success', 'Login session successfully revoked.'));
-      loadConsoleData(true);
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  // Handler: Revoke All User Sessions
-  const handleRevokeAllUserSessions = async (userId: string) => {
-    const headers = getAuthHeaders();
-    try {
-      const res = await fetch(`/api/auth-console/sessions/revoke-all/${userId}`, {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-      });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || t('admin.toast.revoke_all_sessions_failed', 'Failed to revoke all user sessions'));
-      }
-      showToast(t('admin.toast.revoke_all_sessions_success', 'All active sessions for user successfully revoked.'));
-      loadConsoleData(true);
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  // Handler: Create Organization
-  const handleCreateOrganization = async (data: {
-    name: string;
-    slug: string;
-    logo?: string;
-    tagline?: string;
-    currency?: string;
-    countryCode?: string;
-    industry?: string;
-  }) => {
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const res = await fetch('/api/auth-console/organizations', {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify({
-        name: data.name,
-        slug: data.slug,
-        logo: data.logo,
-        metadata: {
-          tagline: data.tagline,
-          currency: data.currency,
-          settings: { countryCode: data.countryCode, industry: data.industry, defaultCurrency: data.currency },
-        },
-      }),
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.create_org_failed', 'Failed to create organization'));
-    }
-    showToast(`${t('admin.toast.org', 'Organization')} "${data.name}" ${t('admin.toast.created_success', 'successfully created.')}`);
-    loadConsoleData(true);
-    window.dispatchEvent(new CustomEvent('organization-updated'));
-  };
-
-  // Handler: Update Organization
-  const handleUpdateOrganization = async (
-    orgId: string,
-    data: { name: string; slug: string; logo?: string; metadata?: any }
-  ) => {
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const res = await fetch(`/api/auth-console/organizations/${orgId}`, {
-      method: 'PUT',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify(data),
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.update_org_failed', 'Gagal memperbarui data organisasi'));
-    }
-    showToast(
-      `${t('admin.toast.org', 'Organisasi')} "${data.name}" ${t('admin.toast.updated_success', 'berhasil diperbarui.')}`
-    );
-    loadConsoleData(true);
-    window.dispatchEvent(new CustomEvent('organization-updated'));
-  };
-
-  // Handler: Delete Organization
-  const handleDeleteOrganization = async (org: ConsoleOrganization) => {
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const res = await fetch(`/api/auth-console/organizations/${org.id}`, {
-      method: 'DELETE',
-      headers,
-      credentials: 'include',
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.delete_org_failed', 'Gagal menghapus organisasi.'));
-    }
-    showToast(
-      `${t('admin.toast.org', 'Organisasi')} "${org.name}" ${t('admin.toast.org_deleted_success', 'berhasil dihapus.')}`
-    );
-    loadConsoleData(true);
-    window.dispatchEvent(new CustomEvent('organization-updated'));
-  };
-
-  // Handler: Create Team
-  const handleCreateTeam = async (name: string) => {
-    if (!activeOrg) throw new Error(t('admin.error.select_org_first', 'Please select an organization first'));
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const res = await fetch('/api/auth-console/teams', {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify({ name, organizationId: activeOrg.id }),
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.create_team_failed', 'Failed to create team'));
-    }
-    showToast(`${t('admin.toast.team', 'Team')} "${name}" ${t('admin.toast.created_success', 'successfully created.')}`);
-    loadConsoleData(true);
-    window.dispatchEvent(new CustomEvent('departments-updated'));
-  };
-
-  // Handler: Add Team Member
-  const handleAddTeamMember = async (teamId: string, userId: string) => {
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const res = await fetch(`/api/auth-console/teams/${teamId}/members`, {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify({ userId }),
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.add_member_failed', 'Failed to add member to team'));
-    }
-    showToast(t('admin.toast.add_member_success', 'Member successfully added to team.'));
-    loadConsoleData(true);
-  };
-
-  // Handler: Remove Team Member
-  const handleRemoveTeamMember = async (teamId: string, userId: string) => {
-    const headers = getAuthHeaders();
-    try {
-      const res = await fetch(`/api/auth-console/teams/${teamId}/members/${userId}`, {
-        method: 'DELETE',
-        headers,
-        credentials: 'include',
-      });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || t('admin.toast.remove_member_failed', 'Failed to remove member'));
-      }
-      showToast(t('admin.toast.remove_member_success', 'Member successfully removed from team.'));
-      loadConsoleData(true);
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  // Handler: Update Team / Department
-  const handleUpdateTeam = async (teamId: string, name: string) => {
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const res = await fetch(`/api/auth-console/teams/${teamId}`, {
-      method: 'PUT',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify({ name }),
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.update_team_failed', 'Gagal memperbarui departemen'));
-    }
-    showToast(
-      `${t('admin.toast.department', 'Departemen')} "${name}" ${t('admin.toast.updated_success', 'berhasil diperbarui.')}`
-    );
-    loadConsoleData(true);
-    window.dispatchEvent(new CustomEvent('departments-updated'));
-  };
-
-  // Handler: Delete Team / Department
-  const handleDeleteTeam = async (team: ConsoleTeam) => {
-    const headers = getAuthHeaders();
-    const res = await fetch(`/api/auth-console/teams/${team.id}`, {
-      method: 'DELETE',
-      headers,
-      credentials: 'include',
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.delete_department_failed', 'Gagal menghapus departemen.'));
-    }
-    showToast(
-      `${t('admin.toast.department', 'Departemen')} "${team.name}" ${t('admin.toast.department_deleted_success', 'berhasil dihapus.')}`
-    );
-    loadConsoleData(true);
-    window.dispatchEvent(new CustomEvent('departments-updated'));
-  };
-
-  // Handler: Create Invitation
-  const handleCreateInvitation = async (data: {
-    email: string;
-    role: string;
-    teamId?: string;
-  }) => {
-    if (!activeOrg) throw new Error(t('admin.error.select_org_first', 'Please select an organization first'));
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const res = await fetch('/api/auth-console/invitations', {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify({ ...data, organizationId: activeOrg.id }),
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.invite_failed', 'Gagal mengirim undangan'));
-    }
-    showToast(`${t('admin.toast.invite_success', 'Undangan berhasil dicatat ke')} ${data.email}.`);
-    loadConsoleData(true);
-  };
-
-  // Handler: Resend Invitation
-  const handleResendInvitation = async (inviteId: string) => {
-    const headers = getAuthHeaders();
-    try {
-      const res = await fetch(`/api/auth-console/invitations/${inviteId}/resend`, {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-      });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || t('admin.toast.resend_failed', 'Failed to resend invitation'));
-      }
-      showToast(t('admin.toast.resend_success', 'Invitation successfully updated and resent.'));
-      loadConsoleData(true);
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  // Handler: Cancel Invitation
-  const handleCancelInvitation = async (inviteId: string) => {
-    const headers = getAuthHeaders();
-    try {
-      const res = await fetch(`/api/auth-console/invitations/${inviteId}`, {
-        method: 'DELETE',
-        headers,
-        credentials: 'include',
-      });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || t('admin.toast.cancel_invite_failed', 'Failed to cancel invitation'));
-      }
-      showToast(t('admin.toast.cancel_invite_success', 'Invitation successfully canceled.'));
-      loadConsoleData(true);
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  // Handler: Generate API Key
-  const handleGenerateApiKey = async (data: { name: string; scopes: string[] }) => {
-    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const res = await fetch('/api/auth-console/api-keys', {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify(data),
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || t('admin.toast.generate_key_failed', 'Failed to generate API Key'));
-    }
-    showToast(t('admin.toast.generate_key_success', 'API Key successfully generated.'));
-    loadConsoleData(true);
-    return { secret: result.apiKey.secret }; // Fixed to use result.apiKey based on backend response
-  };
-
-  // Handler: Revoke API Key
-  const handleRevokeApiKey = async (keyId: string) => {
-    const headers = getAuthHeaders();
-    try {
-      const res = await fetch(`/api/auth-console/api-keys/${keyId}/revoke`, {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-      });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || t('admin.toast.revoke_key_failed', 'Failed to revoke API Key'));
-      }
-      showToast(t('admin.toast.revoke_key_success', 'API Key has been revoked.'));
-      loadConsoleData(true);
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  // Handler: Delete API Key
-  const handleDeleteApiKey = async (keyId: string) => {
-    const ok = await confirmDialog({
-      description: t('admin.confirm.delete_key', 'Hapus API Key ini? Aplikasi yang memakainya akan berhenti berfungsi.'),
-      tone: 'danger',
-      confirmLabel: t('admin.action_delete', 'Hapus'),
-    });
-    if (!ok) return;
-    const headers = getAuthHeaders();
-    try {
-      const res = await fetch(`/api/auth-console/api-keys/${keyId}`, {
-        method: 'DELETE',
-        headers,
-        credentials: 'include',
-      });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || t('admin.toast.delete_key_failed', 'Failed to delete API Key'));
-      }
-      showToast(t('admin.toast.delete_key_success', 'API Key has been deleted.'));
-      loadConsoleData(true);
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  const allowedRoles = role === 'superuser'
-    ? ['superuser', 'admin', 'manager', 'editor', 'viewer']
-    : role === 'admin'
-      ? ['manager', 'editor', 'viewer']
-      : role === 'manager'
-        ? ['editor', 'viewer']
-        : [];
-  const canManageUser = (user: ConsoleUser) => user.email.toLowerCase() !== currentUser?.email.toLowerCase()
-    && (role === 'superuser' || ROLE_LEVEL[normalizeRole(user.role)] > ROLE_LEVEL[role]);
-  const canEditUser = (user: ConsoleUser) => hasPermission('user.edit') && canManageUser(user);
-  const canResetUserPassword = (user: ConsoleUser) => hasPermission('admin.user.manage') && canManageUser(user);
-  const canChangeUserStatus = (user: ConsoleUser) => hasPermission('user.status.update') && canManageUser(user);
-  const canDeleteUser = (user: ConsoleUser) => hasPermission('user.delete') && canManageUser(user);
+  const consoleUsers: ConsoleUser[] = users.map((u) => ({
+    id: u.id, name: u.name, email: u.email, emailVerified: u.emailVerified, role: u.platformRole, banned: u.banned,
+    banReason: u.banReason || undefined, createdAt: u.createdAt, sessionCount: u.sessionCount, primaryProvider: u.primaryProvider || undefined,
+  }));
 
   return (
-    <div className="w-full flex flex-col space-y-6 text-slate-900 dark:text-slate-100">
-      {/* Toast Banner */}
+    <div className="flex w-full flex-col space-y-6 text-slate-900 dark:text-slate-100">
       {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl shadow-lg border text-xs font-medium animate-in fade-in slide-in-from-top-4 ${
-            toast.type === 'success'
-              ? 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/90 dark:border-emerald-800 dark:text-emerald-200'
-              : 'bg-red-50 border-red-300 text-red-900 dark:bg-red-950/90 dark:border-red-800 dark:text-red-200'
-          }`}
-        >
-          {toast.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          ) : (
-            <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
-          )}
+        <div role="status" aria-live="polite" className={`fixed right-4 top-4 z-50 flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-xs font-medium shadow-lg ${toast.type === 'success'
+          ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/90 dark:text-emerald-200'
+          : 'border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/90 dark:text-red-200'}`}>
+          {toast.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" /> : <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />}
           <span>{toast.message}</span>
-          <button
-            type="button"
-            onClick={() => setToast(null)}
-            aria-label={t('admin.toast.dismiss', 'Tutup notifikasi')}
-            className="p-1 hover:bg-slate-200/50 rounded-md ml-2"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+          <button type="button" onClick={() => setToast(null)} aria-label={t('admin.toast.dismiss', 'Tutup notifikasi')} className="ml-2 rounded-md p-1 hover:bg-slate-200/50"><X className="h-3.5 w-3.5" /></button>
         </div>
       )}
 
-      {/* Admin Header with integrated Tabs and Org Switcher */}
       <AdminConsoleHeader
-        area={area}
-        activeTab={activeTab}
-        onTabChange={navigateToTab}
+        area="system"
+        activeTab={activeTab as any}
+        onTabChange={navigateToTab as any}
         onCreateOrgClick={() => setIsCreateOrgOpen(true)}
         onRefresh={() => loadConsoleData(true)}
         isRefreshing={isRefreshing}
-        userCounts={{
-          users: users.length,
-          sessions: sessions.length,
-          orgs: organizations.length,
-          teams: teams.length,
-          invites: invitations.length,
-          apiKeys: apiKeys.length,
-        }}
+        userCounts={{ users: users.length, sessions: sessions.length, orgs: organizations.length, teams: 0, invites: 0, apiKeys: apiKeys.length }}
       />
 
-      {/* Main Tab Content */}
-      <div
-        id={`admin-${area}-${activeTab}-panel`}
-        role="tabpanel"
-        aria-labelledby={`admin-${area}-${activeTab}-tab`}
-        className="w-full"
-      >
-        {loadError && (
+      <div id={`admin-system-${activeTab}-panel`} role="tabpanel" aria-labelledby={`admin-system-${activeTab}-tab`} className="w-full">
+        {activeTab === 'settings' ? (
+          <Suspense fallback={<div role="status" className="flex min-h-56 items-center justify-center text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /></div>}>
+            <LazyPlatformConfigurationPanel />
+          </Suspense>
+        ) : loadError ? (
           <div role="alert" className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
             <span>{t('admin.load_error', 'Data gagal dimuat')}: {loadError}</span>
-            <button type="button" onClick={() => loadConsoleData()} className="shrink-0 font-semibold underline underline-offset-2">
-              {t('admin.retry', 'Coba lagi')}
-            </button>
+            <button type="button" onClick={() => loadConsoleData()} className="shrink-0 font-semibold underline underline-offset-2">{t('admin.retry', 'Coba lagi')}</button>
           </div>
+        ) : isLoading ? (
+          <div role="status" className="flex min-h-56 items-center justify-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />{t('admin.loading', 'Memuat data akses admin...')}</div>
+        ) : (
+          <>
+            {activeTab === 'dashboard' && (
+              <AdminDashboardTab metrics={metrics} activeOrg={null} recentUsers={consoleUsers} recentSessions={sessions}
+                onNavigateTab={navigateToTab as any} onOpenCreateOrg={() => setIsCreateOrgOpen(true)} onOpenCreateTeam={() => navigateToTab('organizations')}
+                onOpenCreateApiKey={() => setIsCreateApiKeyOpen(true)}
+                onRevokeSession={(id) => act(() => consoleApi(`/sessions/${id}`, { method: 'DELETE' }), t('admin.toast.revoke_session_success', 'Login session successfully revoked.')).catch(() => {})} />
+            )}
+            {activeTab === 'users' && (
+              <PlatformUsersTab
+                users={users}
+                onCreate={(v) => act(() => consoleApi('/users', { method: 'POST', body: v }), t('tb.account_created', 'Account created.'))}
+                onUpdate={(u, v) => act(async () => {
+                  if (v.name !== u.name || v.email !== u.email) await consoleApi(`/users/${u.id}`, { method: 'PUT', body: { name: v.name, email: v.email } });
+                  if (v.platformRole !== u.platformRole) await consoleApi(`/users/${u.id}/role`, { method: 'PUT', body: { platformRole: v.platformRole } });
+                }, t('tb.account_updated', 'Account updated.'))}
+                onResetPassword={(u, password) => act(() => consoleApi(`/users/${u.id}/password`, { method: 'PUT', body: { password } }), t('admin.toast.reset_pass_success', 'New password successfully saved and encrypted.'))}
+                onToggleBan={async (u) => {
+                  if (!u.banned && !(await confirmDialog({ description: t('tb.disable_account_confirm', 'Disable {name}? They are signed out everywhere and cannot sign in until enabled again.', { name: u.name }), tone: 'danger', confirmLabel: t('tb.disable', 'Disable') }))) return;
+                  await act(() => consoleApi(`/users/${u.id}/ban`, { method: 'POST', body: { banned: !u.banned } }), u.banned ? t('tb.account_enabled', 'Account enabled.') : t('tb.account_disabled', 'Account disabled.')).catch(() => {});
+                }}
+                onDelete={async (u) => {
+                  if (!(await confirmDialog({ description: t('admin.hapus_pengguna_akun_ini_akan_dihapus', 'Hapus pengguna "{name}"? Akun ini akan dihapus permanen.', { name: u.name }), tone: 'danger', confirmLabel: t('admin.action_delete', 'Hapus') }))) return;
+                  await act(() => consoleApi(`/users/${u.id}`, { method: 'DELETE' }), t('tb.account_deleted', 'Account deleted.')).catch(() => {});
+                }}
+              />
+            )}
+            {activeTab === 'sessions' && (
+              <AdminSessionsTab sessions={sessions}
+                onRevokeSession={(id) => act(() => consoleApi(`/sessions/${id}`, { method: 'DELETE' }), t('admin.toast.revoke_session_success', 'Login session successfully revoked.')).catch(() => {})}
+                onRevokeAllUserSessions={(userId) => act(() => consoleApi(`/sessions/revoke-all/${userId}`, { method: 'POST' }), t('admin.toast.revoke_all_sessions_success', 'All active sessions for user successfully revoked.')).catch(() => {})} />
+            )}
+            {activeTab === 'accounts' && (
+              <ul className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white text-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+                {accounts.map((a) => (
+                  <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                    <span>{a.userName} · {a.userEmail}</span><span className="text-slate-600 dark:text-slate-400">{a.providerId}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {activeTab === 'organizations' && (
+              <AdminOrganizationsTab organizations={organizations} activeOrg={null} onSelectOrg={manageOrganization}
+                onOpenCreateOrg={() => setIsCreateOrgOpen(true)} onOpenEditOrg={setOrgForEdit} onDeleteOrg={setOrgForDelete} />
+            )}
+            {activeTab === 'apikeys' && (
+              <AdminApiKeysTab apiKeys={apiKeys} onOpenCreateKey={() => setIsCreateApiKeyOpen(true)}
+                onRevokeKey={(id) => act(() => consoleApi(`/api-keys/${id}/revoke`, { method: 'POST' }), t('admin.toast.revoke_key_success', 'API Key has been revoked.')).catch(() => {})}
+                onDeleteKey={async (id) => {
+                  if (!(await confirmDialog({ description: t('admin.confirm.delete_key', 'Hapus API Key ini? Aplikasi yang memakainya akan berhenti berfungsi.'), tone: 'danger', confirmLabel: t('admin.action_delete', 'Hapus') }))) return;
+                  await act(() => consoleApi(`/api-keys/${id}`, { method: 'DELETE' }), t('admin.toast.delete_key_success', 'API Key has been deleted.')).catch(() => {});
+                }} />
+            )}
+            {activeTab === 'rbac' && <AdminRbacMatrixTab matrixData={matrixData} />}
+          </>
         )}
-
-        {loadError ? null : isLoading ? (
-          <div role="status" className="flex min-h-56 items-center justify-center gap-2 text-sm text-slate-500">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {t('admin.loading', 'Memuat data akses admin...')}
-          </div>
-        ) : <>
-        {activeTab === 'dashboard' && (
-          <AdminDashboardTab
-            metrics={metrics}
-            activeOrg={activeOrg}
-            recentUsers={users}
-            recentSessions={sessions}
-            onNavigateTab={navigateToTab}
-            onOpenCreateOrg={() => setIsCreateOrgOpen(true)}
-            onOpenCreateTeam={() => setIsCreateTeamOpen(true)}
-            onOpenCreateApiKey={() => setIsCreateApiKeyOpen(true)}
-            onRevokeSession={handleRevokeSession}
-          />
-        )}
-
-        {activeTab === 'users' && (
-          <AdminUsersTab
-            users={users}
-            organizations={organizations}
-            canCreateUser={hasPermission('user.create') || hasPermission('user.invite')}
-            onOpenAddUser={() => {
-              if (hasPermission('user.create') || hasPermission('user.invite')) {
-                setIsAddUserOpen(true);
-              }
-            }}
-            onOpenEditUser={(user) => setSelectedUserForEdit(user)}
-            onOpenResetPassword={(user) => setSelectedUserForPassword(user)}
-            onToggleBan={handleToggleBan}
-            onDeleteUser={handleDeleteUser}
-            canEditUser={canEditUser}
-            canResetPassword={canResetUserPassword}
-            canChangeStatus={canChangeUserStatus}
-            canDeleteUser={canDeleteUser}
-          />
-        )}
-
-        {activeTab === 'sessions' && (
-          <AdminSessionsTab
-            sessions={sessions}
-            onRevokeSession={handleRevokeSession}
-            onRevokeAllUserSessions={handleRevokeAllUserSessions}
-          />
-        )}
-
-        {activeTab === 'organizations' && (
-          <AdminOrganizationsTab
-            organizations={organizations}
-            activeOrg={activeOrg}
-            onSelectOrg={handleSelectOrg}
-            onOpenCreateOrg={() => setIsCreateOrgOpen(true)}
-            onOpenEditOrg={(org) => setSelectedOrgForEdit(org)}
-            onDeleteOrg={(org) => setSelectedOrgForDelete(org)}
-          />
-        )}
-
-        {activeTab === 'teams' && (
-          <AdminTeamsTab
-            teams={teams}
-            activeOrg={activeOrg}
-            onOpenCreateTeam={() => setIsCreateTeamOpen(true)}
-            onOpenEditTeam={(team) => setSelectedTeamForEdit(team)}
-            onOpenAddTeamMember={(team) => setSelectedTeamForAddMember(team)}
-            onRemoveTeamMember={handleRemoveTeamMember}
-            onDeleteTeam={(team) => setSelectedTeamForDelete(team)}
-          />
-        )}
-
-        {activeTab === 'invitations' && (
-          <AdminInvitationsTab
-            invitations={invitations}
-            activeOrg={activeOrg}
-            onOpenInviteModal={() => setIsInviteOpen(true)}
-            onResendInvitation={handleResendInvitation}
-            onCancelInvitation={handleCancelInvitation}
-          />
-        )}
-
-        {activeTab === 'apikeys' && (
-          <AdminApiKeysTab
-            apiKeys={apiKeys}
-            onOpenCreateKey={() => setIsCreateApiKeyOpen(true)}
-            onRevokeKey={handleRevokeApiKey}
-            onDeleteKey={handleDeleteApiKey}
-          />
-        )}
-
-        {activeTab === 'rbac' && <AdminRbacMatrixTab matrixData={matrixData} />}
-        </>}
       </div>
 
-      {/* Modals */}
-      <AddUserModal
-        isOpen={isAddUserOpen}
-        teams={teams}
-        organizations={organizations}
-        activeOrgId={activeOrg?.id}
-        allowedRoles={allowedRoles}
-        onClose={() => setIsAddUserOpen(false)}
-        onSubmit={handleAddUser}
-      />
-
-      <EditUserModal
-        user={selectedUserForEdit}
-        teams={teams}
-        organizations={organizations}
-        isOpen={Boolean(selectedUserForEdit)}
-        allowedRoles={allowedRoles}
-        onClose={() => setSelectedUserForEdit(null)}
-        onSubmit={handleEditUser}
-      />
-
-      <ResetPasswordModal
-        user={selectedUserForPassword}
-        isOpen={Boolean(selectedUserForPassword)}
-        onClose={() => setSelectedUserForPassword(null)}
-        onSubmit={handleResetPassword}
-      />
-
-      <CreateOrganizationModal
-        isOpen={isCreateOrgOpen}
-        onClose={() => setIsCreateOrgOpen(false)}
-        onSubmit={handleCreateOrganization}
-      />
-
-      <EditOrganizationModal
-        org={selectedOrgForEdit}
-        isOpen={Boolean(selectedOrgForEdit)}
-        onClose={() => setSelectedOrgForEdit(null)}
-        onSubmit={handleUpdateOrganization}
-        onDelete={(org) => setSelectedOrgForDelete(org)}
-      />
-
-      <DeleteOrganizationModal
-        isOpen={Boolean(selectedOrgForDelete)}
-        org={selectedOrgForDelete}
-        isActive={activeOrg?.id === selectedOrgForDelete?.id}
-        onClose={() => setSelectedOrgForDelete(null)}
-        onConfirm={handleDeleteOrganization}
-      />
-
-      <CreateTeamModal
-        isOpen={isCreateTeamOpen}
-        activeOrg={activeOrg}
-        onClose={() => setIsCreateTeamOpen(false)}
-        onSubmit={handleCreateTeam}
-      />
-
-      <EditDepartmentModal
-        isOpen={Boolean(selectedTeamForEdit)}
-        team={selectedTeamForEdit}
-        onClose={() => setSelectedTeamForEdit(null)}
-        onSubmit={handleUpdateTeam}
-        onDelete={(team) => setSelectedTeamForDelete(team)}
-      />
-
-      <DeleteDepartmentModal
-        isOpen={Boolean(selectedTeamForDelete)}
-        team={selectedTeamForDelete}
-        onClose={() => setSelectedTeamForDelete(null)}
-        onConfirm={handleDeleteTeam}
-      />
-
-      <AddTeamMemberModal
-        team={selectedTeamForAddMember}
-        users={users}
-        isOpen={Boolean(selectedTeamForAddMember)}
-        onClose={() => setSelectedTeamForAddMember(null)}
-        onSubmit={handleAddTeamMember}
-      />
-
-      <InviteMemberModal
-        isOpen={isInviteOpen}
-        activeOrg={activeOrg}
-        teams={teams}
-        onClose={() => setIsInviteOpen(false)}
-        onSubmit={handleCreateInvitation}
-      />
-
-      <GenerateApiKeyModal
-        isOpen={isCreateApiKeyOpen}
-        onClose={() => setIsCreateApiKeyOpen(false)}
-        onSubmit={handleGenerateApiKey}
-      />
+      <CreateOrganizationModal isOpen={isCreateOrgOpen} onClose={() => setIsCreateOrgOpen(false)}
+        onSubmit={async (data) => {
+          await act(() => consoleApi('/organizations', { method: 'POST', body: {
+            name: data.name, slug: data.slug, countryCode: data.countryCode, industry: data.industry, defaultCurrency: data.currency,
+          } }), `${t('admin.toast.org', 'Organization')} "${data.name}" ${t('admin.toast.created_success', 'successfully created.')}`);
+          window.dispatchEvent(new CustomEvent('organization-updated'));
+        }} />
+      <EditOrganizationModal org={orgForEdit} isOpen={Boolean(orgForEdit)} onClose={() => setOrgForEdit(null)} onDelete={(org) => setOrgForDelete(org)}
+        onSubmit={async (orgId, data) => {
+          await act(() => consoleApi(`/organizations/${orgId}`, { method: 'PUT', body: { name: data.name, slug: data.slug } }), `${t('admin.toast.org', 'Organisasi')} "${data.name}" ${t('admin.toast.updated_success', 'berhasil diperbarui.')}`);
+          window.dispatchEvent(new CustomEvent('organization-updated'));
+        }} />
+      <DeleteOrganizationModal isOpen={Boolean(orgForDelete)} org={orgForDelete} isActive={false} onClose={() => setOrgForDelete(null)}
+        onConfirm={async (org) => {
+          await act(() => consoleApi(`/organizations/${org.id}`, { method: 'DELETE' }), `${t('admin.toast.org', 'Organisasi')} "${org.name}" ${t('admin.toast.org_deleted_success', 'berhasil dihapus.')}`);
+          window.dispatchEvent(new CustomEvent('organization-updated'));
+        }} />
+      <GenerateApiKeyModal isOpen={isCreateApiKeyOpen} onClose={() => setIsCreateApiKeyOpen(false)}
+        onSubmit={async (data) => {
+          const result = await consoleApi('/api-keys', { method: 'POST', body: data });
+          showToast(t('admin.toast.generate_key_success', 'API Key successfully generated.'));
+          void loadConsoleData(true);
+          return { secret: result.apiKey.secret };
+        }} />
     </div>
   );
 };

@@ -296,15 +296,21 @@ export interface ActivityLog {
   userAgent?: string;
 }
 
+/**
+ * Operational view of the signed-in person inside the selected organization.
+ * `role`/`department*` come from the verified capability context; the
+ * platform role is separate and never doubles as a tenant role.
+ */
 export interface UserSession {
+  id?: string;
   email: string;
   name: string;
   role: UserRole;
   department: string;
+  departmentIds?: string[];
   loginTime?: string;
   organizationId?: string;
-  allowedTenantIds?: string[];
-  isGlobalAdmin?: boolean;
+  platformRole?: 'user' | 'superuser';
 }
 
 export interface GoogleSheetsConfig {

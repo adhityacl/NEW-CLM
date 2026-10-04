@@ -1,7 +1,10 @@
 import { UI_REFINEMENTS } from '../i18n/uiRefinements';
 import { DOCUMENT_CALENDAR_TRANSLATIONS } from '../i18n/documentCalendar';
 import { CONTRACT_TERMINATION_TRANSLATIONS } from '../i18n/contractTermination';
+import { TENANT_BOUNDARIES_TRANSLATIONS } from '../i18n/tenantBoundaries';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { readPreference, setPreferenceUser, writePreference } from '../lib/userPreferences';
+import { useOptionalIdentity } from './AuthContext';
 import { EXTRA_TRANSLATIONS } from '../i18n/extraTranslations';
 import { ZH_TRANSLATIONS } from '../i18n/zh';
 
@@ -2166,9 +2169,9 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
 
 /** Built-in catalog: base keys plus newer feature keys kept in src/i18n. */
 export const translations: Record<Language, Record<string, string>> = {
-  ID: { ...baseTranslations.ID, ...EXTRA_TRANSLATIONS.ID, ...UI_REFINEMENTS.ID, ...DOCUMENT_CALENDAR_TRANSLATIONS.ID, ...CONTRACT_TERMINATION_TRANSLATIONS.ID },
-  EN: { ...baseTranslations.EN, ...EXTRA_TRANSLATIONS.EN, ...UI_REFINEMENTS.EN, ...DOCUMENT_CALENDAR_TRANSLATIONS.EN, ...CONTRACT_TERMINATION_TRANSLATIONS.EN },
-  ZH: { ...ZH_TRANSLATIONS, ...UI_REFINEMENTS.ZH, ...DOCUMENT_CALENDAR_TRANSLATIONS.ZH, ...CONTRACT_TERMINATION_TRANSLATIONS.ZH },
+  ID: { ...baseTranslations.ID, ...EXTRA_TRANSLATIONS.ID, ...UI_REFINEMENTS.ID, ...DOCUMENT_CALENDAR_TRANSLATIONS.ID, ...CONTRACT_TERMINATION_TRANSLATIONS.ID, ...TENANT_BOUNDARIES_TRANSLATIONS.ID },
+  EN: { ...baseTranslations.EN, ...EXTRA_TRANSLATIONS.EN, ...UI_REFINEMENTS.EN, ...DOCUMENT_CALENDAR_TRANSLATIONS.EN, ...CONTRACT_TERMINATION_TRANSLATIONS.EN, ...TENANT_BOUNDARIES_TRANSLATIONS.EN },
+  ZH: { ...ZH_TRANSLATIONS, ...UI_REFINEMENTS.ZH, ...DOCUMENT_CALENDAR_TRANSLATIONS.ZH, ...CONTRACT_TERMINATION_TRANSLATIONS.ZH, ...TENANT_BOUNDARIES_TRANSLATIONS.ZH },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -2181,9 +2184,9 @@ export function translateStatic(key: string, defaultText?: string, vars?: Record
   let language: Language = 'EN';
   let custom: Record<string, string> = {};
   try {
-    const saved = localStorage.getItem('app_language');
+    const saved = readPreference('language');
     if (isLanguage(saved)) language = saved;
-    custom = JSON.parse(localStorage.getItem('app_custom_translations') || '{}')?.[language] || {};
+    custom = JSON.parse(readPreference('customTranslations') || '{}')?.[language] || {};
   } catch {
     /* storage unavailable — English catalog */
   }
@@ -2248,36 +2251,40 @@ function splitCSVLines(text: string): string[] {
   return lines;
 }
 
-export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>(() => {
-    try {
-      const saved = localStorage.getItem('app_language');
-      return isLanguage(saved) ? saved : 'EN';
-    } catch {
-      return 'EN';
+const readCustom = (): Record<Language, Record<string, string>> => {
+  try {
+    const saved = readPreference('customTranslations');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ID: parsed.ID || {}, EN: parsed.EN || {}, ZH: parsed.ZH || {} };
     }
-  });
+  } catch (e) {
+    console.error('Failed to parse custom translations:', e);
+  }
+  return emptyCatalogs();
+};
 
-  const [customTranslations, setCustomTranslations] = useState<Record<Language, Record<string, string>>>(() => {
-    try {
-      const saved = localStorage.getItem('app_custom_translations');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return { ID: parsed.ID || {}, EN: parsed.EN || {}, ZH: parsed.ZH || {} };
-      }
-    } catch (e) {
-      console.error('Failed to parse custom translations:', e);
-    }
-    return emptyCatalogs();
-  });
+/**
+ * UI language and the browser-local text overrides are personal, namespaced
+ * by the signed-in identity (PRD §6.7). Built-in dictionaries stay shared.
+ */
+export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const identity = useOptionalIdentity();
+  const userId = identity?.id ?? null;
+  const [language, setLanguageState] = useState<Language>('EN');
+  const [customTranslations, setCustomTranslations] = useState<Record<Language, Record<string, string>>>(emptyCatalogs);
+
+  // Switching identity loads that identity's preferences (or the defaults).
+  useEffect(() => {
+    setPreferenceUser(userId);
+    const saved = readPreference('language');
+    setLanguageState((current) => (isLanguage(saved) ? saved : userId ? 'EN' : current));
+    setCustomTranslations(userId ? readCustom() : emptyCatalogs());
+  }, [userId]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    try {
-      localStorage.setItem('app_language', lang);
-    } catch {
-      /* storage unavailable — the choice lasts for this session only */
-    }
+    writePreference('language', lang);
   };
 
   // Screen readers pick pronunciation from <html lang>.
@@ -2389,7 +2396,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       setCustomTranslations(newCustom);
-      localStorage.setItem('app_custom_translations', JSON.stringify(newCustom));
+      writePreference('customTranslations', JSON.stringify(newCustom));
       return { success: true, updatedCount };
     } catch (err: any) {
       return { success: false, updatedCount: 0, error: err.message || t('ui_text.import_failed', 'Gagal memproses file CSV.') };
@@ -2398,7 +2405,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const resetCustomTranslations = () => {
     setCustomTranslations(emptyCatalogs());
-    localStorage.removeItem('app_custom_translations');
+    writePreference('customTranslations', null);
   };
 
   const updateSingleTranslation = (key: string, lang: Language, value: string) => {
@@ -2410,7 +2417,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       },
     };
     setCustomTranslations(updated);
-    localStorage.setItem('app_custom_translations', JSON.stringify(updated));
+    writePreference('customTranslations', JSON.stringify(updated));
   };
 
   return (

@@ -40,7 +40,7 @@ test('contract API persists termination date, separate document and reason; reje
     database.prepare('INSERT INTO user (id,name,email,emailVerified,createdAt,updatedAt,role,banned) VALUES (?,?,?,?,?,?,?,?)').run('termination-test', 'Termination Test', 'termination@example.test', 1, now, now, 'superuser', 0);
     database.prepare('INSERT INTO session (id,expiresAt,token,createdAt,updatedAt,userId) VALUES (?,?,?,?,?,?)').run('termination-session', new Date(Date.now() + 300_000).toISOString(), token, now, now, 'termination-test');
     const base = `http://127.0.0.1:${port}`;
-    const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+    const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'x-organization-id': 'org-demo-bmd' };
     const send = async (path: string, method = 'GET', body?: unknown) => {
       const response = await fetch(base + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
       return { status: response.status, data: await response.json() };

@@ -1,208 +1,146 @@
 /**
- * Helper permission sisi klien (PRD §20–§22).
+ * Client capability context (tenant-boundaries PRD §11.1, §11.3).
  *
- * Cerminan `server/rbac.ts` — dipakai HANYA untuk visibilitas UI.
- * Backend tetap otoritatif (PRD §22, §28, §32).
+ * Loads `GET /api/organizations/:id/capabilities` for the tab's selected
+ * organization. Visibility only — the server stays authoritative. Fail
+ * closed: until the response for the CURRENT selection is ready, and after
+ * any error, the permission list is empty. There is no role-based bootstrap
+ * matrix and no wildcard.
  */
-import { createContext, createElement, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useIdentity } from '../context/AuthContext';
+import { useTenant } from '../context/TenantContext';
+import { getSelectionRevision } from './organizationSelection';
 
-export type RoleCode = 'superuser' | 'admin' | 'manager' | 'editor' | 'viewer';
-
-export const ROLE_LEVEL: Record<RoleCode, number> = {
-  superuser: 1, admin: 2, manager: 3, editor: 4, viewer: 5,
-};
-
-const LEGACY: Record<string, RoleCode> = {
-  owner: 'superuser', 'super admin': 'superuser', super_admin: 'superuser',
-  legal: 'manager', finance: 'editor', staff: 'viewer', member: 'viewer',
-};
-
-export function normalizeRole(role?: string | null, fallback: RoleCode = 'viewer'): RoleCode {
-  const raw = (role ?? '').toString().toLowerCase().trim();
-  const key = raw.replace(/[\s-]+/g, '_');
-  if (key in ROLE_LEVEL) return key as RoleCode;
-  if (raw in LEGACY) return LEGACY[raw];
-  if (key in LEGACY) return LEGACY[key];
-  return fallback;
-}
-
-/**
- * Matriks BOOTSTRAP minimal sisi klien.
- *
- * ⚠️ PRD §20 melarang frontend menghardcode logika otorisasi yang kompleks.
- * Nilai di sini HANYA untuk render pertama sebelum `GET /api/rbac/me` menjawab.
- * Sumber kebenaran tetap server; setelah respons `/api/rbac/me` masuk,
- * `permissionValueFromMe()` memakai daftar permission dari server.
- */
-export const EDITOR_CAN_DELETE_DOCUMENT = true;
-
-export const BOOTSTRAP_ROLE_PERMISSIONS: Record<RoleCode, '*' | string[]> = {
-  superuser: '*',
-  admin: ['user.view', 'user.create', 'user.edit', 'user.delete', 'user.invite', 'user.role.assign',
-    'user.status.update', 'document.view', 'document.create', 'document.edit', 'document.delete',
-    'document.export', 'document.download', 'department.view', 'department.create', 'department.edit',
-    'export.csv', 'export.document', 'admin.access', 'admin.user.manage', 'admin.department.manage',
-    'tenant.view', 'workspace.view'],
-  manager: ['user.view', 'user.create', 'user.edit', 'user.invite', 'user.role.assign', 'user.status.update',
-    'document.view', 'document.create', 'document.edit', 'document.delete', 'document.export',
-    'workspace.view',
-    'document.download', 'department.view', 'export.csv', 'export.document', 'admin.access', 'admin.user.manage'],
-  editor: ['document.view', 'document.create', 'document.edit', 'workspace.view',
-    ...(EDITOR_CAN_DELETE_DOCUMENT ? ['document.delete'] : []), 'document.download'],
-  viewer: ['document.view', 'workspace.view'],
-};
+export type TenantRole = 'admin' | 'manager' | 'editor' | 'viewer';
+/** Legacy name kept for views; `superuser` here only means explicit platform management. */
+export type RoleCode = 'superuser' | TenantRole;
 
 export interface PermissionContextValue {
-  role: RoleCode;
+  status: 'idle' | 'loading' | 'ready' | 'error';
+  organizationId: string | null;
+  accessMode: 'membership' | 'platform' | null;
+  tenantRole: TenantRole | null;
+  membershipId: string | null;
+  departmentIds: string[];
+  departmentNames: string[];
   permissions: string[];
-  tenantId?: string | null;
-  departmentId?: string | null;
+  assignableTenantRoles: TenantRole[];
+  platformPermissions: string[];
+  /** Legacy role code for views; `superuser` only in explicit platform management. */
+  role: RoleCode;
+  /** @deprecated use organizationId */
+  tenantId: string | null;
   loading: boolean;
+  retry: () => void;
 }
 
-export const PermissionContext = createContext<PermissionContextValue>({
-  role: 'viewer', permissions: BOOTSTRAP_ROLE_PERMISSIONS.viewer as string[], loading: true,
-});
+const EMPTY: PermissionContextValue = {
+  status: 'idle', organizationId: null, accessMode: null, tenantRole: null, membershipId: null,
+  departmentIds: [], departmentNames: [], permissions: [], assignableTenantRoles: [], platformPermissions: [],
+  role: 'viewer', tenantId: null, loading: false, retry: () => {},
+};
+
+export const PermissionContext = createContext<PermissionContextValue>(EMPTY);
 
 export function PermissionProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const [organizationRevision, setOrganizationRevision] = useState(0);
-  // `forUser` records which session the value was computed for. Right after
-  // sign-in the first render still carries the signed-out value (loading:
-  // false, fallback permissions) until the effect below runs; treating a
-  // mismatch as loading keeps tab guards from redirecting on stale permissions.
-  const [state, setState] = useState<{ value: PermissionContextValue; forUser: typeof user }>(() => ({
-    value: { ...permissionValueFromMe(null, user?.role), loading: true },
-    forUser: user,
-  }));
-  const setValue = (next: PermissionContextValue | ((previous: PermissionContextValue) => PermissionContextValue)) =>
-    setState((previous) => ({
-      value: typeof next === 'function' ? next(previous.value) : next,
-      forUser: user,
-    }));
+  const { identity } = useIdentity();
+  const { activeTenantId } = useTenant();
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<Omit<PermissionContextValue, 'retry' | 'platformPermissions'>>({ ...EMPTY });
+  const requestRef = useRef(0);
 
   useEffect(() => {
-    let cancelled = false;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_session_token') : null;
-    const activeOrganizationId = typeof window !== 'undefined'
-      ? localStorage.getItem('activeOrganizationId')
-      : null;
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-      headers['x-session-token'] = token;
+    const request = ++requestRef.current;
+    const selection = getSelectionRevision();
+    if (!identity || !activeTenantId) {
+      setState({ ...EMPTY });
+      return;
     }
-    if (activeOrganizationId) {
-      headers['x-organization-id'] = activeOrganizationId;
-      headers['x-tenant-id'] = activeOrganizationId;
-    }
-
-    if (!user || !token) {
-      setValue({ ...permissionValueFromMe(null, user?.role), loading: false });
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setValue((previous) => ({ ...previous, loading: true }));
-    fetch('/api/rbac/me', {
-      headers,
-      credentials: 'include',
-      cache: 'no-store',
-    })
-      .then(async (response) => {
-        if (!response.ok) return null;
-        return response.json();
-      })
-      .then((me) => {
-        if (!cancelled) setValue({ ...permissionValueFromMe(me, user.role), loading: false });
-      })
-      .catch(() => {
-        if (!cancelled) setValue({ ...permissionValueFromMe(null, user.role), loading: false });
-      });
-
-    const refreshForOrganization = () => {
-      if (!cancelled) setOrganizationRevision((revision) => revision + 1);
-    };
-    window.addEventListener('organization-updated', refreshForOrganization);
-
+    // Never keep the previous organization's permissions while loading (§11.3).
+    setState({ ...EMPTY, status: 'loading', loading: true, organizationId: activeTenantId, tenantId: activeTenantId });
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`/api/organizations/${encodeURIComponent(activeTenantId)}/capabilities`, { cache: 'no-store', signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const caps = await res.json();
+        const depts = await fetch('/api/departments', { cache: 'no-store', signal: controller.signal, headers: { 'x-organization-id': activeTenantId } })
+          .then((r) => (r.ok ? r.json() : { items: [] }))
+          .catch(() => ({ items: [] }));
+        // Ignore responses for an organization that is no longer selected (AC-026).
+        if (request !== requestRef.current || caps.organizationId !== activeTenantId || selection !== getSelectionRevision()) return;
+        const names = new Map<string, string>((depts.items || []).map((d: { id: string; name: string }) => [d.id, d.name]));
+        setState({
+          status: 'ready',
+          loading: false,
+          organizationId: caps.organizationId,
+          tenantId: caps.organizationId,
+          accessMode: caps.accessMode,
+          tenantRole: caps.tenantRole,
+          membershipId: caps.membershipId,
+          departmentIds: Array.isArray(caps.departmentIds) ? caps.departmentIds : [],
+          departmentNames: (caps.departmentIds || []).map((id: string) => names.get(id)).filter(Boolean),
+          permissions: Array.isArray(caps.permissions) ? caps.permissions : [],
+          assignableTenantRoles: Array.isArray(caps.assignableTenantRoles) ? caps.assignableTenantRoles : [],
+          role: caps.accessMode === 'platform' ? 'superuser' : (caps.tenantRole || 'viewer'),
+        });
+      } catch (err: any) {
+        if (controller.signal.aborted || request !== requestRef.current) return;
+        setState({ ...EMPTY, status: 'error', organizationId: activeTenantId, tenantId: activeTenantId });
+        if (String(err?.message || '').includes('404')) {
+          window.dispatchEvent(new CustomEvent('organization-access-lost', { detail: activeTenantId }));
+        }
+      }
+    })();
+    const onUpdated = () => setAttempt((n) => n + 1);
+    window.addEventListener('organization-updated', onUpdated);
     return () => {
-      cancelled = true;
-      window.removeEventListener('organization-updated', refreshForOrganization);
+      controller.abort();
+      window.removeEventListener('organization-updated', onUpdated);
     };
-  }, [user, organizationRevision]);
+  }, [identity?.id, activeTenantId, attempt]);
 
-  const value = useMemo(
-    () => (state.forUser === user ? state.value : { ...state.value, loading: true }),
-    [state, user],
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  const value = useMemo<PermissionContextValue>(
+    () => ({ ...state, platformPermissions: identity?.platformPermissions || [], retry }),
+    [state, identity?.platformPermissions, retry],
   );
   return createElement(PermissionContext.Provider, { value }, children);
 }
 
-/** Menghasilkan nilai context dari respons `GET /api/rbac/me`. */
-export function permissionValueFromMe(me: {
-  actor?: { role?: string; tenantId?: string | null; departmentId?: string | null };
-  permissions?: string[];
-} | null, fallbackRole?: string | null): PermissionContextValue {
-  const role = normalizeRole(me?.actor?.role ?? fallbackRole);
-  const permissions = me?.permissions?.length
-    ? me.permissions
-    : (BOOTSTRAP_ROLE_PERMISSIONS[role] === '*' ? ['*'] : (BOOTSTRAP_ROLE_PERMISSIONS[role] as string[]));
-  return {
-    role,
-    permissions,
-    tenantId: me?.actor?.tenantId ?? null,
-    departmentId: me?.actor?.departmentId ?? null,
-    loading: false,
-  };
-}
+const allowed = (ctx: PermissionContextValue, permission: string) =>
+  ctx.status === 'ready' && ctx.permissions.includes(permission);
 
-/** PRD §20 — `hasPermission("document.edit")`. */
+/** Tenant permission in the selected organization; false until capabilities are ready. */
 export function hasPermission(permission: string): boolean {
-  const ctx = useContext(PermissionContext);
-  return ctx.permissions.includes('*') || ctx.permissions.includes(permission);
+  return allowed(useContext(PermissionContext), permission);
 }
 
-/** PRD §20 alternatif — `can("document","edit")`. */
 export function can(resource: string, action: string): boolean {
   return hasPermission(`${resource}.${action}`);
 }
 
 export function usePermissions(): PermissionContextValue & {
   hasPermission: (p: string) => boolean;
+  hasPlatformPermission: (p: string) => boolean;
   can: (r: string, a: string) => boolean;
 } {
   const ctx = useContext(PermissionContext);
-  const has = (p: string) => ctx.permissions.includes('*') || ctx.permissions.includes(p);
-  return { ...ctx, hasPermission: has, can: (r, a) => has(`${r}.${a}`) };
+  const has = (p: string) => allowed(ctx, p);
+  return {
+    ...ctx,
+    hasPermission: has,
+    hasPlatformPermission: (p: string) => ctx.platformPermissions.includes(p),
+    can: (r, a) => has(`${r}.${a}`),
+  };
 }
 
-/**
- * PRD §22 — wrapper visibilitas.
- *   <Can permission="user.invite"><InviteUserButton /></Can>
- * Hanya mengatur tampilan; TIDAK menggantikan otorisasi backend.
- */
-export function Can({
-  permission, anyOf, fallback = null, children,
-}: {
-  permission?: string;
-  anyOf?: string[];
-  fallback?: ReactNode;
-  children: ReactNode;
+/** Visibility wrapper; never a substitute for server authorization. */
+export function Can({ permission, anyOf, fallback = null, children }: {
+  permission?: string; anyOf?: string[]; fallback?: ReactNode; children: ReactNode;
 }) {
   const ctx = useContext(PermissionContext);
-  const all = ctx.permissions.includes('*');
-  const allowed = all
-    || (permission ? ctx.permissions.includes(permission) : false)
-    || (anyOf ? anyOf.some((p) => ctx.permissions.includes(p)) : false);
-  return allowed ? (children as any) : (fallback as any);
+  const ok = (permission ? allowed(ctx, permission) : false) || (anyOf ? anyOf.some((p) => allowed(ctx, p)) : false);
+  return (ok ? children : fallback) as any;
 }
-
-/** PRD §23 — proteksi route berbasis permission. */
-export const ROUTE_PERMISSIONS: Record<string, string> = {
-  '/documents': 'document.view',
-  '/admin': 'admin.access',
-  '/admin/users': 'user.view',
-  '/admin/rbac': 'admin.access',
-};

@@ -1,7 +1,6 @@
 import express from "express";
 import crypto from "crypto";
 import type { Database } from "better-sqlite3";
-import { hasPermission } from "../../server/rbac";
 import {
   DOCUMENT_SORT_KEYS,
   DOCUMENT_STATUSES,
@@ -103,6 +102,8 @@ export function ensureDocumentSchema(db: Database) {
 interface Actor {
   id: string;
   role: string;
+  /** Effective permissions of the verified organization context. */
+  permissions: string[];
 }
 
 interface DocumentRow {
@@ -132,7 +133,7 @@ interface CommentRow {
 
 export interface DocumentRouterOptions {
   db: Database;
-  /** Tenant the request operates on; never widened by client input for non-superusers. */
+  /** Organization of the verified request context; never widened by client input. */
   tenantOf: (req: express.Request) => string;
 }
 
@@ -462,7 +463,7 @@ export function createDocumentRouter({ db, tenantOf }: DocumentRouterOptions) {
     }>).map((f) => ({ ...f, options: JSON.parse(f.options) as string[] }));
 
   const requireFieldAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (hasPermission(actorOf(req)!.role, "admin.access")) return next();
+    if (actorOf(req)?.permissions?.includes("tenant.settings.update")) return next();
     res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "Only administrators can manage metadata fields." });
   };
 

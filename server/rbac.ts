@@ -1,655 +1,337 @@
 /**
- * RBAC Engine — implementasi tunggal sesuai
- * "Engineering PRD — RBAC Structure & Authorization" (v1.0).
+ * Authorization policy — tenant-boundaries PRD §4 and §9.3.
  *
- * Prinsip PRD:
- *   ROLE ≠ AUTHORIZATION
- *   AUTHORIZATION = ROLE + PERMISSION + TENANT SCOPE + DEPARTMENT SCOPE + RESOURCE SCOPE
+ * Two independent role families:
+ *   - PlatformRole (`user.role`): authority over this installation.
+ *   - TenantRole (`member.role`): authority inside ONE organization.
+ * A tenant admin is never a weaker superuser, and a superuser never gets a
+ * fabricated membership. Every permission is an explicit, known string;
+ * there is no wildcard and unknown permissions are always denied.
  *
- * Modul ini SENGAJA bebas-dependensi (tanpa import dari app) agar dapat diuji
- * secara terisolasi (lihat tests/rbac.test.ts).
+ * Dependency-free on purpose so it can be unit-tested in isolation
+ * (tests/rbac.test.ts) and imported by both the server and the tools.
  */
 
-/* ------------------------------------------------------------------ */
-/* 1. Peran & hierarki (PRD §3)                                        */
-/* ------------------------------------------------------------------ */
+export type PlatformRole = 'user' | 'superuser';
+export type TenantRole = 'admin' | 'manager' | 'editor' | 'viewer';
+export type MembershipStatus = 'active' | 'suspended';
+export type AccessMode = 'membership' | 'platform';
 
-export type RoleCode = 'superuser' | 'admin' | 'manager' | 'editor' | 'viewer';
+export const PLATFORM_ROLES: readonly PlatformRole[] = ['user', 'superuser'];
+export const TENANT_ROLES: readonly TenantRole[] = ['admin', 'manager', 'editor', 'viewer'];
+export const MEMBERSHIP_STATUSES: readonly MembershipStatus[] = ['active', 'suspended'];
 
-/** Lower numeric level = higher authority (PRD §3.1). */
-export const ROLE_LEVEL: Record<RoleCode, number> = {
-  superuser: 1,
-  admin: 2,
-  manager: 3,
-  editor: 4,
-  viewer: 5,
-};
+/** Higher = more authority. Only meaningful inside one selected organization. */
+export const TENANT_ROLE_RANK: Record<TenantRole, number> = { admin: 4, manager: 3, editor: 2, viewer: 1 };
 
-export interface RoleDefinition {
-  code: RoleCode;
-  name: string;
-  level: number;
-  scope: 'Global' | 'Tenant' | 'Tenant + Department';
-  description: string;
-}
+export const isPlatformRole = (value: unknown): value is PlatformRole =>
+  typeof value === 'string' && (PLATFORM_ROLES as readonly string[]).includes(value);
+export const isTenantRole = (value: unknown): value is TenantRole =>
+  typeof value === 'string' && (TENANT_ROLES as readonly string[]).includes(value);
+export const isMembershipStatus = (value: unknown): value is MembershipStatus =>
+  typeof value === 'string' && (MEMBERSHIP_STATUSES as readonly string[]).includes(value);
 
-/** Seed resmi (PRD §7 Seed Data). */
-export const ROLES: RoleDefinition[] = [
-  { code: 'superuser', name: 'Superuser', level: 1, scope: 'Global', description: 'Global owner with access to all tenants' },
-  { code: 'admin', name: 'Admin', level: 2, scope: 'Tenant', description: 'Tenant administrator' },
-  { code: 'manager', name: 'Manager', level: 3, scope: 'Tenant + Department', description: 'Department-level supervisor' },
-  { code: 'editor', name: 'Editor', level: 4, scope: 'Tenant + Department', description: 'Operational user with write access' },
-  { code: 'viewer', name: 'Viewer', level: 5, scope: 'Tenant + Department', description: 'Read-only user' },
-];
-
-/** Pemetaan role legacy → role standar (menjaga kompatibilitas data lama). */
-export const LEGACY_ROLE_MAP: Record<string, RoleCode> = {
-  owner: 'superuser',
-  'super admin': 'superuser',
-  super_admin: 'superuser',
-  legal: 'manager',
-  finance: 'editor',
-  staff: 'viewer',
-  member: 'viewer',
-};
-
-/** Normalisasi role apa pun ke RoleCode standar. Default aman = `viewer` (deny by default). */
-export function normalizeRole(role?: string | null): RoleCode {
-  const r = (role ?? '').toString().toLowerCase().trim().replace(/[\s-]+/g, '_');
-  if (r in ROLE_LEVEL) return r as RoleCode;
-  const spaced = (role ?? '').toString().toLowerCase().trim();
-  if (spaced in LEGACY_ROLE_MAP) return LEGACY_ROLE_MAP[spaced];
-  if (r in LEGACY_ROLE_MAP) return LEGACY_ROLE_MAP[r];
-  return 'viewer';
-}
+/** Runtime platform role from a stored `user.role`. Anything but an exact `superuser` is an ordinary user. */
+export const platformRoleOf = (stored: unknown): PlatformRole => (stored === 'superuser' ? 'superuser' : 'user');
 
 /* ------------------------------------------------------------------ */
-/* 2. Katalog permission (PRD §9–§10)                                  */
+/* Permission catalogs                                                  */
 /* ------------------------------------------------------------------ */
 
-export interface PermissionDefinition {
-  code: string;
-  resource: string;
-  action: string;
-  description: string;
-}
-
-function def(code: string, description = ''): PermissionDefinition {
-  const [resource, action] = code.split('.');
-  return { code, resource, action, description };
-}
-
-/** Permission code mengikuti konvensi `<resource>.<action>` (PRD §9). */
-export const PERMISSIONS: PermissionDefinition[] = [
-  // User Management (PRD §10)
-  def('user.view'), def('user.create'), def('user.edit'), def('user.delete'),
-  def('user.invite'), def('user.role.assign'), def('user.status.update'),
-  // Document Management
-  def('document.view'), def('document.create'), def('document.edit'),
-  def('document.delete'), def('document.export'), def('document.download'),
-  // Tenant Management
-  def('tenant.view'), def('tenant.create'), def('tenant.edit'), def('tenant.delete'),
-  // Department Management
-  def('department.view'), def('department.create'), def('department.edit'), def('department.delete'),
-  // Workspace
-  def('workspace.view'), def('workspace.switch'),
-  // Export
-  def('export.csv'), def('export.document'),
-  // Administration
-  def('admin.access'), def('admin.system.access'), def('admin.user.manage'), def('admin.role.manage'),
-  def('admin.tenant.manage'), def('admin.department.manage'), def('admin.configuration.manage'),
-  // Audit (PRD §27)
-  def('audit.view'),
-];
-
-export const PERMISSION_CODES: string[] = PERMISSIONS.map((p) => p.code);
-
-export type PermissionCode = string;
-
-/* ------------------------------------------------------------------ */
-/* 3. Pemetaan role → permission (PRD §12 & §33)                       */
-/* ------------------------------------------------------------------ */
-
-/**
- * `'*'` = seluruh permission (SUPERUSER, PRD §12 "ALL PERMISSIONS").
- *
- * Catatan keputusan terbuka PRD §34.2: `document.delete` untuk EDITOR
- * tertulis TBD di §18/§21 tetapi DIPEROLEH di §12/§33. Default di sini
- * mengikuti §33 (diberikan) dan dapat dimatikan lewat EDITOR_CAN_DELETE_DOCUMENT.
- */
-export const EDITOR_CAN_DELETE_DOCUMENT = true;
-
-export const ROLE_PERMISSIONS: Record<RoleCode, '*' | string[]> = {
-  superuser: '*',
-
-  admin: [
-    'user.view', 'user.create', 'user.edit', 'user.delete', 'user.invite',
-    'user.role.assign', 'user.status.update',
-    'document.view', 'document.create', 'document.edit', 'document.delete',
-    'document.export', 'document.download',
-    'department.view', 'department.create', 'department.edit',
-    'export.csv', 'export.document',
-    'admin.access', 'admin.user.manage', 'admin.department.manage',
-    'tenant.view', 'workspace.view',
-  ],
-
-  manager: [
-    'user.view', 'user.create', 'user.edit', 'user.invite',
-    'user.role.assign', 'user.status.update',
-    'document.view', 'document.create', 'document.edit', 'document.delete',
-    'document.export', 'document.download',
-    'department.view',
-    'export.csv', 'export.document',
-    'admin.access', 'admin.user.manage', 'workspace.view',
-  ],
-
-  editor: [
-    'document.view', 'document.create', 'document.edit', 'workspace.view',
-    ...(EDITOR_CAN_DELETE_DOCUMENT ? ['document.delete'] : []),
-    'document.download',
-  ],
-
-  viewer: ['document.view', 'workspace.view'],
-};
-
-/** Permission yang secara eksplisit DILARANG meski ada di daftar lain (PRD §12). */
-export const ROLE_DENYLIST: Record<RoleCode, string[]> = {
-  superuser: [],
-  admin: ['workspace.switch', 'tenant.create', 'tenant.delete', 'admin.configuration.manage'],
-  manager: ['workspace.switch', 'tenant.create', 'tenant.delete', 'admin.role.manage',
-    'admin.department.manage', 'admin.configuration.manage', 'user.delete'],
-  editor: ['user.invite', 'user.role.assign', 'user.delete', 'admin.access',
-    'export.csv', 'export.document', 'workspace.switch', 'audit.view'],
-  viewer: ['document.create', 'document.edit', 'document.delete', 'document.export',
-    'document.download', 'user.invite', 'admin.access', 'export.csv', 'export.document',
-    'workspace.switch', 'audit.view'],
-};
-
-/** Daftar permission efektif untuk sebuah role (deny-by-default + denylist). */
-export function permissionsFor(role: RoleCode): string[] {
-  const base = ROLE_PERMISSIONS[role];
-  const deny = new Set(ROLE_DENYLIST[role]);
-  const list = base === '*' ? PERMISSION_CODES.slice() : base.slice();
-  return list.filter((p) => !deny.has(p));
-}
-
-/* ------------------------------------------------------------------ */
-/* 4. Pemeriksaan permission (PRD §4, §32)                             */
-/* ------------------------------------------------------------------ */
-
-export function hasPermission(role: RoleCode | string, permission: PermissionCode): boolean {
-  const r = normalizeRole(typeof role === 'string' ? role : role);
-  const deny = new Set(ROLE_DENYLIST[r]);
-  if (deny.has(permission)) return false; // deny selalu menang
-  const base = ROLE_PERMISSIONS[r];
-  if (base === '*') return true;
-  return base.includes(permission);
-}
-
-/* ------------------------------------------------------------------ */
-/* 5. Scope tenant & department (PRD §14, §19, §24–§25)                */
-/* ------------------------------------------------------------------ */
-
-export interface Actor {
-  id: string;
-  role: RoleCode | string;
-  tenantId?: string | null;
-  /**
-   * @deprecated Kept for callers built before multi-department support: the
-   * first entry of `departmentIds`, or null. New code should read/set
-   * `departmentIds` instead — every scope check below treats this as
-   * `departmentIds[0]` when `departmentIds` isn't provided, so a caller that
-   * only sets `departmentId` still behaves exactly as before.
-   */
-  departmentId?: string | null;
-  /** All departments the actor belongs to. Use `actorDepartmentIds()` to read this (it falls back to `[departmentId]`). */
-  departmentIds?: string[];
-}
-
-export interface ScopedResource {
-  tenantId?: string | null;
-  departmentId?: string | null;
-  /** A resource that belongs to more than one department at once (rare — most resources have exactly one). */
-  departmentIds?: string[];
-  ownerId?: string | null;
-}
-
-export type ScopeKind = 'global' | 'tenant' | 'department';
-
-export const isGlobalRole = (role: RoleCode | string): boolean => normalizeRole(role) === 'superuser';
-
-/**
- * Normalizes either an Actor or a ScopedResource/invite-target down to the
- * full set of department ids it's associated with, so every scope check can
- * compare two SETS (actor's departments ∩ resource's departments) instead of
- * two single values. Single-department callers (only `departmentId` set)
- * keep working unchanged — they just resolve to a one-element set.
- */
-export function actorDepartmentIds(actor: Pick<Actor, 'departmentId' | 'departmentIds'>): string[] {
-  if (actor.departmentIds && actor.departmentIds.length > 0) return actor.departmentIds;
-  return actor.departmentId ? [actor.departmentId] : [];
-}
-function resourceDepartmentIds(resource: Pick<ScopedResource, 'departmentId' | 'departmentIds'>): string[] {
-  if (resource.departmentIds && resource.departmentIds.length > 0) return resource.departmentIds;
-  return resource.departmentId ? [resource.departmentId] : [];
-}
-
-/** Validasi constraint kolom sesuai PRD §6.1. */
-export function validateActorScope(actor: Actor): { ok: boolean; errors: string[] } {
-  const role = normalizeRole(actor.role);
-  const errors: string[] = [];
-  const tenant = actor.tenantId ?? null;
-  const depts = actorDepartmentIds(actor);
-  switch (role) {
-    case 'superuser':
-      break; // tenant NULL / global
-    case 'admin':
-      if (!tenant) errors.push('ADMIN wajib punya tenantId');
-      if (depts.length > 0) errors.push('ADMIN tidak boleh punya departmentId');
-      break;
-    default: // manager/editor/viewer
-      if (!tenant) errors.push(`${role.toUpperCase()} wajib punya tenantId`);
-      if (depts.length === 0) errors.push(`${role.toUpperCase()} wajib punya departmentId`);
-  }
-  return { ok: errors.length === 0, errors };
-}
-
-export type ScopeResult =
-  | { allowed: true }
-  | { allowed: false; error: 'TENANT_SCOPE_VIOLATION' | 'DEPARTMENT_SCOPE_VIOLATION' | 'RESOURCE_SCOPE_VIOLATION' };
-
-/** Scope maksimum yang boleh dinikmati sebuah peran (PRD §3.1 scope). */
-export function maxScopeFor(role: RoleCode | string): ScopeKind {
-  const r = normalizeRole(role);
-  if (r === 'superuser') return 'global';
-  if (r === 'admin') return 'tenant';
-  return 'department';
-}
-
-/**
- * Scope maksimum berdasarkan AKTOR (bukan hanya peran).
- *
- * Aturan tambahan (didokumentasikan): peran ber-scope departemen yang **belum
- * punya data departemen** (mis. aplikasi yang belum mengisi `department_id`)
- * diperlakukan setara scope tenant. Alasannya: departemen tak bisa ditegakkan
- * bila datanya tidak ada, sedangkan isolasi tenant tetap ditegakkan penuh.
- * Bila `departmentId` terisi, peran tetap terkunci ke departemennya (fail-closed).
- */
-export function maxScopeForActor(actor: Actor): ScopeKind {
-  const r = normalizeRole(actor.role);
-  if (r === 'superuser') return 'global';
-  if (r === 'admin') return 'tenant';
-  return actorDepartmentIds(actor).length > 0 ? 'department' : 'tenant';
-}
-
-const SCOPE_WIDTH: Record<ScopeKind, number> = { department: 0, tenant: 1, global: 2 };
-
-/**
- * Mengecilkan scope yang diminta pemanggil agar tidak melebihi scope perannya.
- * PRD §4/§25: scope TIDAK boleh ditentukan pemanggil. Meminta yang lebih lebar
- * akan dipersempit otomatis (mis. editor minta 'tenant' → menjadi 'department').
- */
-export function clampScope(role: RoleCode | string, requested: ScopeKind): ScopeKind {
-  const max = maxScopeFor(role);
-  return SCOPE_WIDTH[requested] <= SCOPE_WIDTH[max] ? requested : max;
-}
-
-/**
- * Inti aturan scope (PRD §19 canEditDocument + §24 + §25 + §32.4 "Scope Is Mandatory").
- *
- * Fail-closed: untuk peran ber-scope departemen, resource tanpa `departmentId`
- * DITOLAK (bukan diloloskan). Pemanggil tidak dapat memperlebar scope.
- */
-export function checkScope(actor: Actor, resource: ScopedResource, scope: ScopeKind = 'department'): ScopeResult {
-  const role = normalizeRole(actor.role);
-
-  if (role === 'superuser') return { allowed: true };
-
-  const max = maxScopeForActor(actor);
-  const eff = SCOPE_WIDTH[scope] <= SCOPE_WIDTH[max] ? scope : max;
-
-  if (resource.tenantId && resource.tenantId !== actor.tenantId) {
-    return { allowed: false, error: 'TENANT_SCOPE_VIOLATION' };
-  }
-
-  // ADMIN: seluruh departemen di dalam tenant-nya.
-  if (role === 'admin') {
-    if (eff === 'global') return { allowed: false, error: 'TENANT_SCOPE_VIOLATION' };
-    return { allowed: true };
-  }
-
-  // MANAGER / EDITOR / VIEWER: hanya departemen-departemennya sendiri (bisa
-  // lebih dari satu) — hanya bila scope departemen ini yang diminta DAN
-  // aktor memang punya departemen. Resource dianggap terjangkau bila
-  // SALAH SATU departemennya cocok dengan salah satu departemen aktor.
-  if (eff !== 'department') return { allowed: true };
-  const resourceDepts = resourceDepartmentIds(resource);
-  if (resourceDepts.length === 0) {
-    return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
-  }
-  const actorDepts = new Set(actorDepartmentIds(actor));
-  if (!resourceDepts.some((d) => actorDepts.has(d))) {
-    return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
-  }
-  return { allowed: true };
-}
-
-/**
- * Filter scope yang HARUS diterapkan ke query (PRD §24).
- * `tenantId: null` HANYA bermakna "tanpa filter" untuk SUPERUSER.
- * Untuk peran lain tanpa tenantId → melempar (fail-closed), bukan mengembalikan
- * null yang bisa disalahartikan konsumen query sebagai "tanpa filter".
- */
-export function buildScopeFilter(actor: Actor, scope: ScopeKind = 'department'):
-  { tenantId: string | null; departmentIds: string[] | null } {
-  const role = normalizeRole(actor.role);
-  if (role === 'superuser') return { tenantId: null, departmentIds: null };
-  if (!actor.tenantId) throw new Error('RBAC: actor non-superuser tanpa tenantId (scope wajib).');
-  const eff = clampScope(role, scope);
-  if (role === 'admin') return { tenantId: actor.tenantId, departmentIds: null };
-  const depts = actorDepartmentIds(actor);
-  if (depts.length === 0) throw new Error('RBAC: actor ber-scope departemen tanpa departmentId.');
-  return { tenantId: actor.tenantId, departmentIds: eff === 'department' ? depts : null };
-}
-
-/**
- * PRD §25 — scope dari client TIDAK boleh dipercaya untuk non-superuser.
- *
- * Untuk MANAGER/EDITOR/VIEWER yang membuat resource baru: bila client
- * meminta `departmentId` tertentu, permintaan itu HANYA dihormati jika
- * memang salah satu departemen milik aktor sendiri (tidak pernah dipercaya
- * mentah-mentah) — di luar itu jatuh ke departemen utama (pertama) aktor.
- */
-export function resolveTrustedScope(actor: Actor, clientSupplied?: Partial<ScopedResource>): ScopedResource {
-  const role = normalizeRole(actor.role);
-  if (role === 'superuser') {
-    return { tenantId: clientSupplied?.tenantId ?? null, departmentId: clientSupplied?.departmentId ?? null };
-  }
-  if (role === 'admin') {
-    return { tenantId: actor.tenantId ?? null, departmentId: clientSupplied?.departmentId ?? null };
-  }
-  const depts = actorDepartmentIds(actor);
-  const requested = clientSupplied?.departmentId ?? null;
-  const departmentId = requested && depts.includes(requested) ? requested : (depts[0] ?? null);
-  return { tenantId: actor.tenantId ?? null, departmentId };
-}
-
-/* ------------------------------------------------------------------ */
-/* 5b. Otorisasi resource dokumen (PRD §19) + anti-enumeration (§29)   */
-/* ------------------------------------------------------------------ */
-
-/**
- * PRD §19 — canEditDocument(user, document):
- *   1) wajib punya permission `document.edit`
- *   2) SUPERUSER lolos
- *   3) tenant harus sama
- *   4) MANAGER/EDITOR/VIEWER: departemen harus sama
- */
-export function canEditDocument(actor: Actor | null, document: ScopedResource): boolean {
-  if (!actor) return false;
-  if (!hasPermission(actor.role, 'document.edit')) return false;
-  const role = normalizeRole(actor.role);
-  if (role === 'superuser') return true;
-  if (document.tenantId != null && document.tenantId !== actor.tenantId) return false;
-  if (['manager', 'editor', 'viewer'].includes(role)) {
-    if (document.departmentId == null) return false; // fail-closed (PRD §32.4)
-    if (!actorDepartmentIds(actor).includes(document.departmentId)) return false;
-  }
-  return true;
-}
-
-/**
- * PRD §29 — anti-enumeration. Bila penolakan disebabkan perbedaan tenant,
- * kembalikan RESOURCE_NOT_FOUND (bukan TENANT_SCOPE_VIOLATION) agar penyerang
- * tidak dapat memastikan keberadaan resource milik tenant lain.
- */
-export function maskCrossTenantAsNotFound(
-  actor: Actor | null,
-  resource: ScopedResource,
-  decision: Decision,
-): Decision {
-  if (decision.allow) return decision;
-  const role = normalizeRole(actor?.role);
-  if (role === 'superuser') return decision;
-  if (resource.tenantId != null && resource.tenantId !== actor?.tenantId) {
-    return { allow: false, error: authzError('RESOURCE_NOT_FOUND') };
-  }
-  return decision;
-}
-
-/* ------------------------------------------------------------------ */
-/* 6. Invitation hierarchy (PRD §13–§14)                               */
-/* ------------------------------------------------------------------ */
-
-export type InviteDeny = 'INSUFFICIENT_PERMISSION' | 'INVALID_ROLE_ASSIGNMENT'
-  | 'TENANT_SCOPE_VIOLATION' | 'DEPARTMENT_SCOPE_VIOLATION';
-
-export function canInvite(
-  actor: Actor,
-  targetRole: RoleCode | string,
-  target?: { tenantId?: string | null; departmentId?: string | null; departmentIds?: string[] },
-): { allowed: true } | { allowed: false; error: InviteDeny } {
-  const actorRole = normalizeRole(actor.role);
-  const tRole = normalizeRole(targetRole);
-
-  if (!hasPermission(actorRole, 'user.invite')) {
-    return { allowed: false, error: 'INSUFFICIENT_PERMISSION' };
-  }
-  // Superuser is the top of the hierarchy — there is no role above it to
-  // require, so unlike every other role it MAY create a peer Superuser.
-  // Checked before the strictly-lower-level rule below, which still applies
-  // unchanged to Admin/Manager/etc (Admin still can't create Admin/Superuser).
-  if (actorRole === 'superuser') return { allowed: true };
-
-  // hierarki: target harus level lebih rendah (angka lebih besar)
-  if (ROLE_LEVEL[tRole] <= ROLE_LEVEL[actorRole]) {
-    return { allowed: false, error: 'INVALID_ROLE_ASSIGNMENT' };
-  }
-
-  // sama tenant untuk semua di bawah superuser (fail-closed bila tak diketahui)
-  if (target?.tenantId == null || target.tenantId !== actor.tenantId) {
-    return { allowed: false, error: 'TENANT_SCOPE_VIOLATION' };
-  }
-  if (actorRole === 'admin') return { allowed: true };
-
-  // MANAGER: salah satu departemennya sendiri (fail-closed; target bisa
-  // punya lebih dari satu departemen, cukup satu yang beririsan)
-  const targetDepts = target ? resourceDepartmentIds(target as ScopedResource) : [];
-  const actorDepts = new Set(actorDepartmentIds(actor));
-  if (targetDepts.length === 0 || !targetDepts.some((d) => actorDepts.has(d))) {
-    return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
-  }
-  return { allowed: true };
-}
-
-/* ------------------------------------------------------------------ */
-/* 7. Perubahan role (PRD §26)                                         */
-/* ------------------------------------------------------------------ */
-
-export type RoleChangeDeny = InviteDeny | 'SELF_ROLE_CHANGE_FORBIDDEN';
-
-export function canChangeRole(
-  actor: Actor,
-  targetUser: { id: string; tenantId?: string | null; departmentId?: string | null; departmentIds?: string[] },
-  newRole: RoleCode | string,
-): { allowed: true } | { allowed: false; error: RoleChangeDeny } {
-  const actorRole = normalizeRole(actor.role);
-  const nRole = normalizeRole(newRole);
-
-  if (targetUser.id === actor.id) {
-    // A no-op role resubmission (e.g. editing your own name/email while the role
-    // field still holds your current, unchanged role) isn't a role change — allow
-    // it without running the "assign to someone else" hierarchy checks below, which
-    // would otherwise reject it (a role is never strictly higher than itself).
-    // An actual attempt to change your own role (up or down) is always forbidden.
-    return nRole === actorRole ? { allowed: true } : { allowed: false, error: 'SELF_ROLE_CHANGE_FORBIDDEN' };
-  }
-
-  if (actorRole === 'superuser') return { allowed: true };
-
-  if (!hasPermission(actorRole, 'user.role.assign')) {
-    return { allowed: false, error: 'INSUFFICIENT_PERMISSION' };
-  }
-  if (ROLE_LEVEL[nRole] <= ROLE_LEVEL[actorRole]) {
-    return { allowed: false, error: 'INVALID_ROLE_ASSIGNMENT' };
-  }
-  if (targetUser.tenantId == null || targetUser.tenantId !== actor.tenantId) {
-    return { allowed: false, error: 'TENANT_SCOPE_VIOLATION' };
-  }
-  if (actorRole === 'manager') {
-    const targetDepts = resourceDepartmentIds(targetUser as ScopedResource);
-    const actorDepts = new Set(actorDepartmentIds(actor));
-    if (targetDepts.length === 0 || !targetDepts.some((d) => actorDepts.has(d))) {
-      return { allowed: false, error: 'DEPARTMENT_SCOPE_VIOLATION' };
-    }
-  }
-  return { allowed: true };
-}
-
-/**
- * Daftar role yang boleh di-assign oleh actor (untuk dropdown UI).
- * Aturan PRD §3.1: hanya role dengan level LEBIH BESAR (otoritas lebih rendah).
- * Pengecualian tunggal: SUPERUSER juga boleh assign SUPERUSER — tidak ada
- * role di atasnya untuk dijadikan syarat "lebih besar". Admin dan role di
- * bawahnya tetap mengikuti aturan `target_level > actor_level` tanpa
- * pengecualian (Admin tidak bisa assign Admin/Superuser, dst).
- */
-export function assignableRoles(actor: Actor): RoleCode[] {
-  const actorRole = normalizeRole(actor.role);
-  const canAssign = actorRole === 'superuser'
-    || hasPermission(actorRole, 'user.invite')
-    || hasPermission(actorRole, 'user.role.assign');
-  if (!canAssign) return [];
-  return (Object.keys(ROLE_LEVEL) as RoleCode[]).filter((r) =>
-    ROLE_LEVEL[r] > ROLE_LEVEL[actorRole] || (actorRole === 'superuser' && r === 'superuser'),
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* 8. Audit log (PRD §27)                                              */
-/* ------------------------------------------------------------------ */
-
-export const AUDITABLE_ACTIONS = [
-  'user.invite', 'user.create', 'user.edit', 'user.delete', 'user.role.assign',
-  'user.status.update', 'tenant.create', 'tenant.edit', 'tenant.delete',
-  'department.create', 'department.edit', 'department.delete', 'workspace.switch',
-  'document.create', 'document.edit', 'document.delete', 'document.export',
+export const PLATFORM_PERMISSIONS = [
+  'platform.access',
+  'platform.user.read', 'platform.user.create', 'platform.user.update',
+  'platform.user.role.update', 'platform.user.ban', 'platform.user.delete',
+  'platform.user.password.reset',
+  'platform.session.read', 'platform.session.revoke',
+  'platform.organization.read', 'platform.organization.create',
+  'platform.organization.update', 'platform.organization.delete',
+  'platform.organization.manage',
+  'platform.apikey.read', 'platform.apikey.create',
+  'platform.apikey.revoke', 'platform.apikey.delete',
+  'platform.policy.read',
+  'platform.configuration.read', 'platform.configuration.update',
+  'platform.database.read', 'platform.database.optimize',
+  'platform.application.reset', 'platform.audit.read',
 ] as const;
+export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[number];
 
-export type AuditableAction = (typeof AUDITABLE_ACTIONS)[number] | string;
+/** §4.4 — operational grants, unchanged from the previous matrix. */
+export const OPERATIONAL_PERMISSIONS: Record<TenantRole, readonly string[]> = {
+  admin: ['document.view', 'document.create', 'document.edit', 'document.delete', 'document.export', 'document.download', 'export.csv', 'export.document'],
+  manager: ['document.view', 'document.create', 'document.edit', 'document.delete', 'document.export', 'document.download', 'export.csv', 'export.document'],
+  editor: ['document.view', 'document.create', 'document.edit', 'document.delete', 'document.download'],
+  viewer: ['document.view'],
+};
 
-export interface AuditEvent {
-  actorId: string;
-  action: AuditableAction;
-  targetType: 'USER' | 'TENANT' | 'DEPARTMENT' | 'DOCUMENT' | 'WORKSPACE' | 'SESSION';
-  targetId: string;
-  tenantId?: string | null;
-  departmentId?: string | null;
-  metadata?: Record<string, unknown>;
-  timestamp: string;
-  /** Diisi bila aksi dilakukan di dalam sesi impersonasi (PRD §27 + acceptance "impersonation-audit-trail"). */
-  impersonatedBy?: string | null;
+/** §9.3 — fixed administrative catalog. Scope limits are enforced by the check functions below. */
+export const ADMINISTRATIVE_PERMISSIONS: Record<TenantRole, readonly string[]> = {
+  admin: [
+    'tenant.settings.read', 'tenant.settings.update',
+    'tenant.member.read', 'tenant.member.invite',
+    'tenant.member.role.update', 'tenant.member.status.update',
+    'tenant.member.departments.update', 'tenant.member.remove',
+    'tenant.invitation.read', 'tenant.invitation.resend', 'tenant.invitation.cancel',
+    'department.view', 'department.create', 'department.edit', 'department.delete',
+    'tenant.integration.read', 'tenant.integration.update', 'tenant.audit.read',
+    'tenant.data.import',
+    'workspace.view', 'workspace.switch',
+  ],
+  manager: [
+    'tenant.member.read', 'tenant.member.invite',
+    'tenant.member.role.update', 'tenant.member.status.update',
+    'tenant.invitation.read', 'tenant.invitation.resend', 'tenant.invitation.cancel',
+    'department.view',
+    'workspace.view', 'workspace.switch',
+  ],
+  editor: ['workspace.view', 'workspace.switch'],
+  viewer: ['workspace.view', 'workspace.switch'],
+};
+
+export const TENANT_PERMISSIONS: readonly string[] = Array.from(
+  new Set(TENANT_ROLES.flatMap((r) => [...OPERATIONAL_PERMISSIONS[r], ...ADMINISTRATIVE_PERMISSIONS[r]])),
+);
+
+const KNOWN = new Set<string>([...PLATFORM_PERMISSIONS, ...TENANT_PERMISSIONS]);
+export const isKnownPermission = (permission: string): boolean => KNOWN.has(permission);
+
+export function tenantPermissionsFor(role: TenantRole): string[] {
+  return [...OPERATIONAL_PERMISSIONS[role], ...ADMINISTRATIVE_PERMISSIONS[role]];
 }
 
-export function buildAuditEvent(
-  actor: Actor,
-  action: AuditableAction,
-  targetType: AuditEvent['targetType'],
-  targetId: string,
-  metadata?: Record<string, unknown>,
-  impersonatedBy?: string | null,
-): AuditEvent {
+export function platformPermissionsFor(role: PlatformRole): string[] {
+  return role === 'superuser' ? [...PLATFORM_PERMISSIONS] : [];
+}
+
+/** Effective tenant permissions of a superuser in explicit organization-management context (§5.3). */
+export const PLATFORM_ORGANIZATION_PERMISSIONS: readonly string[] = tenantPermissionsFor('admin');
+
+/* ------------------------------------------------------------------ */
+/* Organization context                                                 */
+/* ------------------------------------------------------------------ */
+
+export interface OrgContext {
+  organizationId: string;
+  accessMode: AccessMode;
+  userId: string;
+  platformRole: PlatformRole;
+  membershipId: string | null;
+  tenantRole: TenantRole | null;
+  departmentIds: string[];
+  permissions: string[];
+}
+
+export function membershipContext(input: {
+  organizationId: string; userId: string; platformRole: PlatformRole;
+  membershipId: string; tenantRole: TenantRole; departmentIds: string[];
+}): OrgContext {
   return {
-    actorId: actor.id,
-    action,
-    targetType,
-    targetId,
-    tenantId: actor.tenantId ?? null,
-    departmentId: actor.departmentId ?? null,
-    metadata: metadata ?? {},
-    timestamp: new Date().toISOString(),
-    impersonatedBy: impersonatedBy ?? null,
+    ...input,
+    accessMode: 'membership',
+    departmentIds: input.tenantRole === 'admin' ? [] : [...input.departmentIds],
+    permissions: tenantPermissionsFor(input.tenantRole),
   };
 }
 
-/* ------------------------------------------------------------------ */
-/* 9. Error standar (PRD §29)                                          */
-/* ------------------------------------------------------------------ */
-
-export interface AuthzError {
-  status: 401 | 403 | 404;
-  error: string;
-  message: string;
+export function platformContext(input: { organizationId: string; userId: string }): OrgContext {
+  return {
+    organizationId: input.organizationId,
+    userId: input.userId,
+    platformRole: 'superuser',
+    accessMode: 'platform',
+    membershipId: null,
+    tenantRole: null,
+    departmentIds: [],
+    permissions: [...PLATFORM_ORGANIZATION_PERMISSIONS],
+  };
 }
 
-export const AUTHZ_ERRORS: Record<string, AuthzError> = {
-  UNAUTHENTICATED: { status: 401, error: 'UNAUTHENTICATED', message: 'Authentication is required.' },
-  INSUFFICIENT_PERMISSION: { status: 403, error: 'INSUFFICIENT_PERMISSION', message: 'You do not have permission to perform this action.' },
-  INVALID_ROLE_ASSIGNMENT: { status: 403, error: 'INVALID_ROLE_ASSIGNMENT', message: 'You cannot assign a role equal to or higher than your own.' },
-  TENANT_SCOPE_VIOLATION: { status: 403, error: 'TENANT_SCOPE_VIOLATION', message: 'The resource is outside your assigned tenant.' },
-  DEPARTMENT_SCOPE_VIOLATION: { status: 403, error: 'DEPARTMENT_SCOPE_VIOLATION', message: 'The resource is outside your assigned department.' },
-  RESOURCE_SCOPE_VIOLATION: { status: 403, error: 'RESOURCE_SCOPE_VIOLATION', message: 'The resource is outside your permitted scope.' },
-  RESOURCE_NOT_FOUND: { status: 404, error: 'RESOURCE_NOT_FOUND', message: 'Resource not found.' },
-  SELF_ROLE_CHANGE_FORBIDDEN: { status: 403, error: 'INVALID_ROLE_ASSIGNMENT', message: 'You cannot change your own role.' },
+/** Explicit known permission check. Unknown codes are always denied. */
+export function can(ctx: OrgContext | null | undefined, permission: string): boolean {
+  return Boolean(ctx && isKnownPermission(permission) && ctx.permissions.includes(permission));
+}
+
+/** True when the context sees the whole organization (tenant admin or platform management). */
+export const hasOrganizationScope = (ctx: OrgContext): boolean =>
+  ctx.accessMode === 'platform' || ctx.tenantRole === 'admin';
+
+/** Department IDs the context is limited to, or null for organization scope. */
+export const departmentScope = (ctx: OrgContext): string[] | null =>
+  hasOrganizationScope(ctx) ? null : ctx.departmentIds;
+
+/** Whether a record owned by `departmentId` (null = unverifiable) is visible to the context. */
+export function inDepartmentScope(ctx: OrgContext, departmentId: string | null | undefined): boolean {
+  const scope = departmentScope(ctx);
+  if (scope === null) return true;
+  return Boolean(departmentId) && scope.includes(departmentId as string);
+}
+
+/* ------------------------------------------------------------------ */
+/* Administration rules (§4.3)                                          */
+/* ------------------------------------------------------------------ */
+
+export type Denial = {
+  ok: false;
+  status: 400 | 403 | 404 | 409;
+  error: 'INSUFFICIENT_PERMISSION' | 'INVALID_INPUT' | 'RESOURCE_NOT_FOUND';
 };
+export type Verdict = { ok: true } | Denial;
 
-export function authzError(code: keyof typeof AUTHZ_ERRORS | string): AuthzError {
-  return AUTHZ_ERRORS[code] ?? AUTHZ_ERRORS.INSUFFICIENT_PERMISSION;
+const ALLOW: Verdict = { ok: true };
+const deny = (status: Denial['status'], error: Denial['error']): Denial => ({ ok: false, status, error });
+const FORBIDDEN = deny(403, 'INSUFFICIENT_PERMISSION');
+const INVALID = deny(400, 'INVALID_INPUT');
+
+const below = (role: TenantRole, ceiling: TenantRole) => TENANT_ROLE_RANK[role] < TENANT_ROLE_RANK[ceiling];
+const fullyInside = (ids: string[], scope: string[]) => ids.length > 0 && ids.every((id) => scope.includes(id));
+const intersects = (a: string[], b: string[]) => a.some((id) => b.includes(id));
+
+/** Roles the context may assign through invitation or role change. */
+export function assignableTenantRoles(ctx: OrgContext): TenantRole[] {
+  if (ctx.accessMode === 'platform') return [...TENANT_ROLES];
+  if (ctx.tenantRole === 'admin') return ['manager', 'editor', 'viewer'];
+  if (ctx.tenantRole === 'manager') return ['editor', 'viewer'];
+  return [];
 }
 
-/* ------------------------------------------------------------------ */
-/* 10. Keputusan otorisasi terpadu (PRD §4)                            */
-/* ------------------------------------------------------------------ */
-
-export type Decision =
-  | { allow: true }
-  | { allow: false; error: AuthzError };
-
-export interface AuthorizeInput {
-  actor: Actor | null;
-  permission: PermissionCode;
-  resource?: ScopedResource;
-  scope?: ScopeKind;
+export interface MemberTarget {
+  userId: string;
+  tenantRole: TenantRole;
+  status: MembershipStatus;
+  departmentIds: string[];
 }
 
-/** Can User U perform Action A on Resource R? (PRD §4) */
-export function decide({ actor, permission, resource, scope = 'department' }: AuthorizeInput): Decision {
-  if (!actor) return { allow: false, error: authzError('UNAUTHENTICATED') };
+/** Member-list visibility: admin/platform see all, a manager sees self plus intersecting departments. */
+export function canSeeMember(ctx: OrgContext, target: MemberTarget): boolean {
+  if (!can(ctx, 'tenant.member.read')) return false;
+  if (hasOrganizationScope(ctx)) return true;
+  return target.userId === ctx.userId || intersects(target.departmentIds, ctx.departmentIds);
+}
 
-  if (!hasPermission(actor.role, permission)) {
-    return { allow: false, error: authzError('INSUFFICIENT_PERMISSION') };
+/** Role/department combination rule (§4.3 rules 5–6). `departmentIds` must already be organization-owned. */
+export function checkRoleDepartments(role: TenantRole, departmentIds: string[]): Verdict {
+  if (role === 'admin') return departmentIds.length === 0 ? ALLOW : INVALID;
+  return departmentIds.length > 0 ? ALLOW : INVALID;
+}
+
+/** May the context act on this target at all (hierarchy + scope)? Visibility is checked separately. */
+function outranks(ctx: OrgContext, target: MemberTarget): boolean {
+  if (ctx.accessMode === 'platform') return true;
+  if (ctx.tenantRole === 'admin') return below(target.tenantRole, 'admin');
+  if (ctx.tenantRole === 'manager') {
+    return below(target.tenantRole, 'manager') && fullyInside(target.departmentIds, ctx.departmentIds);
   }
+  return false;
+}
 
-  if (!resource) return { allow: true };
+export function checkInvite(ctx: OrgContext, role: unknown, departmentIds: string[]): Verdict {
+  if (!can(ctx, 'tenant.member.invite')) return FORBIDDEN;
+  if (!isTenantRole(role)) return INVALID;
+  if (!assignableTenantRoles(ctx).includes(role)) return FORBIDDEN;
+  const combo = checkRoleDepartments(role, departmentIds);
+  if (!combo.ok) return combo;
+  if (ctx.tenantRole === 'manager' && ctx.accessMode === 'membership' && !fullyInside(departmentIds, ctx.departmentIds)) {
+    return FORBIDDEN;
+  }
+  return ALLOW;
+}
 
-  const scoped = checkScope(actor, resource, scope);
-  if ('error' in scoped) return { allow: false, error: authzError(scoped.error) };
+export interface MemberChange {
+  tenantRole?: unknown;
+  status?: unknown;
+  departmentIds?: string[];
+}
 
-  return { allow: true };
+/**
+ * §4.3 update rules. Returns the verdict for the combined change; every
+ * changed field needs its own permission and the target must be below the
+ * actor (and, for a manager, wholly inside its departments).
+ */
+export function checkMemberUpdate(ctx: OrgContext, target: MemberTarget, change: MemberChange): Verdict {
+  const fields = (['tenantRole', 'status', 'departmentIds'] as const).filter((f) => change[f] !== undefined);
+  if (fields.length === 0) return INVALID;
+  if (change.tenantRole !== undefined && !isTenantRole(change.tenantRole)) return INVALID;
+  if (change.status !== undefined && !isMembershipStatus(change.status)) return INVALID;
+  if (change.departmentIds !== undefined && !Array.isArray(change.departmentIds)) return INVALID;
+  if (target.userId === ctx.userId) return FORBIDDEN; // never self-administer (rule 2)
+  if (!canSeeMember(ctx, target)) return deny(404, 'RESOURCE_NOT_FOUND');
+  if (!outranks(ctx, target)) return FORBIDDEN;
+
+  if (change.tenantRole !== undefined) {
+    if (!can(ctx, 'tenant.member.role.update')) return FORBIDDEN;
+    if (!assignableTenantRoles(ctx).includes(change.tenantRole as TenantRole)) return FORBIDDEN;
+  }
+  if (change.status !== undefined && !can(ctx, 'tenant.member.status.update')) return FORBIDDEN;
+  if (change.departmentIds !== undefined && !can(ctx, 'tenant.member.departments.update')) return FORBIDDEN;
+
+  const nextRole = (change.tenantRole as TenantRole | undefined) ?? target.tenantRole;
+  if (change.tenantRole !== undefined || change.departmentIds !== undefined) {
+    // Promotion to admin drops this organization's assignments (rule 5).
+    const nextDepartments = nextRole === 'admin' ? [] : change.departmentIds ?? target.departmentIds;
+    const combo = checkRoleDepartments(nextRole, nextDepartments);
+    if (!combo.ok) return combo;
+  }
+  return ALLOW;
+}
+
+export function checkMemberRemove(ctx: OrgContext, target: MemberTarget): Verdict {
+  if (target.userId === ctx.userId) return FORBIDDEN;
+  if (!canSeeMember(ctx, target)) return deny(404, 'RESOURCE_NOT_FOUND');
+  if (!can(ctx, 'tenant.member.remove')) return FORBIDDEN;
+  return outranks(ctx, target) ? ALLOW : FORBIDDEN;
+}
+
+export interface InvitationTarget {
+  tenantRole: TenantRole;
+  departmentIds: string[];
+}
+
+/** Invitation visibility and resend/cancel authority (§4.3). */
+export function checkInvitationAction(
+  ctx: OrgContext,
+  invitation: InvitationTarget,
+  action: 'read' | 'resend' | 'cancel',
+): Verdict {
+  if (!can(ctx, `tenant.invitation.${action}`)) return FORBIDDEN;
+  if (ctx.accessMode === 'platform') return ALLOW;
+  if (!assignableTenantRoles(ctx).includes(invitation.tenantRole)) {
+    return action === 'read' ? deny(404, 'RESOURCE_NOT_FOUND') : FORBIDDEN;
+  }
+  if (ctx.tenantRole === 'manager' && !fullyInside(invitation.departmentIds, ctx.departmentIds)) {
+    return action === 'read' ? deny(404, 'RESOURCE_NOT_FOUND') : FORBIDDEN;
+  }
+  return ALLOW;
 }
 
 /* ------------------------------------------------------------------ */
-/* 11. Matriks (untuk endpoint /api/rbac/matrix & dokumen)             */
+/* Legacy membership role normalization (migration only)                */
 /* ------------------------------------------------------------------ */
 
-export function buildMatrix(): {
-  roles: RoleDefinition[];
-  permissions: PermissionDefinition[];
-  matrix: Record<RoleCode, string[]>;
-} {
-  const matrix = {} as Record<RoleCode, string[]>;
-  for (const r of ROLES) matrix[r.code] = permissionsFor(r.code);
-  return { roles: ROLES, permissions: PERMISSIONS, matrix };
+/** §14.2 rule 2 — documented legacy membership values. Unknown or combined values return null. */
+export function legacyMembershipRole(value: unknown): TenantRole | null {
+  const raw = String(value ?? '').toLowerCase().trim().replace(/\s+/g, ' ');
+  if (isTenantRole(raw)) return raw;
+  const map: Record<string, TenantRole> = { owner: 'admin', legal: 'manager', finance: 'editor', staff: 'viewer', member: 'viewer' };
+  return map[raw] ?? null;
 }
 
-/** Ringkasan aturan hierarki untuk dokumen/QC. */
-export function describeHierarchyRules(): string[] {
-  return [
-    'Lower numeric level = higher authority (superuser(1) > admin(2) > manager(3) > editor(4) > viewer(5)).',
-    'Actor hanya boleh mengundang/mengangkat role dengan level LEBIH BESAR (lebih rendah otoritasnya).',
-    'Hanya SUPERUSER boleh workspace.switch dan tenant.create/delete.',
-    'ADMIN: seluruh departemen dalam tenant-nya; tidak boleh lintas tenant.',
-    'MANAGER/EDITOR/VIEWER: hanya departemennya sendiri.',
-    'Deny by default: permission yang tidak diberikan eksplisit = DITOLAK.',
-  ];
+/** §14.2 rules 3–4 — legacy global role. `null` means an explicit reviewed resolution is required. */
+export function legacyPlatformRole(value: unknown): PlatformRole | null {
+  const raw = String(value ?? '').toLowerCase().trim().replace(/[\s-]+/g, '_');
+  if (raw === 'superuser' || raw === 'super_admin') return 'superuser';
+  if (['user', 'admin', 'manager', 'editor', 'viewer', 'legal', 'finance', 'staff', 'member'].includes(raw)) return 'user';
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Matrix (generated docs / platform-only matrix endpoint)              */
+/* ------------------------------------------------------------------ */
+
+export function buildMatrix() {
+  return {
+    platformRoles: PLATFORM_ROLES.map((role) => ({ role, permissions: platformPermissionsFor(role) })),
+    tenantRoles: TENANT_ROLES.map((role) => ({ role, permissions: tenantPermissionsFor(role) })),
+    platformPermissions: [...PLATFORM_PERMISSIONS],
+    tenantPermissions: [...TENANT_PERMISSIONS],
+  };
 }

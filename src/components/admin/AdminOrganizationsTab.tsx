@@ -194,13 +194,13 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                   </button>
                 </div>
 
-                {!isActive && onSelectOrg && (
+                {onSelectOrg && (
                   <button
                     type="button"
                     onClick={() => onSelectOrg(org)}
                     className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
                   >
-                    {t('admin.btn_set_active', 'Pilih Aktif')}
+                    {t('tb.manage_organization', 'Manage organization')}
                   </button>
                 )}
               </div>

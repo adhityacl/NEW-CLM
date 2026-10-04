@@ -1,15 +1,15 @@
 import { UserRole } from '../../types';
 
+/** System Admin console sections (platform-only, PRD §6.6). */
 export type ConsoleSubmenu =
   | 'dashboard'
   | 'users'
   | 'accounts'
   | 'sessions'
   | 'organizations'
-  | 'teams'
-  | 'invitations'
   | 'apikeys'
-  | 'rbac';
+  | 'rbac'
+  | 'settings';
 
 export interface ConsoleUser {
   id: string;

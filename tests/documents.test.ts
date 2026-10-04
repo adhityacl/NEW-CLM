@@ -9,6 +9,7 @@ import Database from 'better-sqlite3';
 import express from 'express';
 import { createDocumentRouter } from '../src/server/documentRoutes';
 import { diffParagraphs } from '../src/lib/paragraphDiff';
+import { tenantPermissionsFor } from '../server/rbac';
 
 const db = new Database(':memory:');
 db.exec(`CREATE TABLE "user" (id TEXT PRIMARY KEY, name TEXT);
@@ -16,10 +17,10 @@ db.exec(`CREATE TABLE "user" (id TEXT PRIMARY KEY, name TEXT);
 
 const app = express();
 app.use(express.json());
-const ACTORS: Record<string, { id: string; role: string; org: string }> = {
-  ana: { id: 'u1', role: 'editor', org: 'org-a' },
-  budi: { id: 'u2', role: 'admin', org: 'org-a' },
-  citra: { id: 'u3', role: 'admin', org: 'org-b' },
+const ACTORS: Record<string, { id: string; role: string; org: string; permissions: string[] }> = {
+  ana: { id: 'u1', role: 'editor', org: 'org-a', permissions: tenantPermissionsFor('editor') },
+  budi: { id: 'u2', role: 'admin', org: 'org-a', permissions: tenantPermissionsFor('admin') },
+  citra: { id: 'u3', role: 'admin', org: 'org-b', permissions: tenantPermissionsFor('admin') },
 };
 app.use((req, _res, next) => {
   (req as any).actor = ACTORS[String(req.headers['x-test-actor'])] ?? null;

@@ -68,8 +68,9 @@ export function synchronizeCoreData(sqliteDb: Database.Database, data: any) {
   syncTable('activity_logs', Array.isArray(data.activityLogs) ? data.activityLogs : []);
   syncTable('evaluations', Array.isArray(data.evaluations) ? data.evaluations : []);
   syncTable('spendings', Array.isArray(data.spendings) ? data.spendings : []);
-  syncTable('tenants', Array.isArray(data.tenants) ? data.tenants : []);
-  syncTable('departments', Array.isArray(data.departments) ? data.departments : []);
+  // `tenants`/`departments` are legacy projections of the canonical
+  // organization/team rows (tenant-boundaries PRD §7.3): never snapshot-
+  // replaced from memory, so they stay intact as migration input.
   syncTable('templates', Array.isArray(data.templates) ? data.templates : []);
 
   if (data.branding) {

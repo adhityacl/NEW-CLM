@@ -9,6 +9,7 @@ import {
   Radio,
   Mail,
   Lock,
+  Settings,
 } from 'lucide-react';
 import { ConsoleSubmenu } from './types';
 import { useLanguage } from '../../context/LanguageContext';
@@ -43,7 +44,7 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
   userCounts,
 }) => {
   const { t } = useLanguage();
-  const { hasPermission } = usePermissions();
+  const { hasPlatformPermission } = usePermissions();
   const isSystemArea = area === 'system';
 
   const navItems: Array<{
@@ -57,28 +58,23 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
     { id: 'users', label: t('admin.tab_users', 'Pengguna'), icon: Users, count: userCounts.users },
     { id: 'sessions', label: t('admin.tab_sessions', 'Sesi'), icon: Radio, count: userCounts.sessions, badgeVariant: 'success' },
     { id: 'organizations', label: t('admin.tab_organizations', 'Organisasi'), icon: Building2, count: userCounts.orgs },
-    { id: 'teams', label: t('admin.tab_teams', 'Departemen'), icon: Layers, count: userCounts.teams },
-    { id: 'invitations', label: t('admin.tab_invitations', 'Undangan'), icon: Mail, count: userCounts.invites },
     { id: 'apikeys', label: t('admin.tab_apikeys', 'API Keys'), icon: Lock, count: userCounts.apiKeys },
     { id: 'rbac', label: t('admin.tab_rbac', 'RBAC Matrix'), icon: Shield },
+    { id: 'settings', label: t('tb.configuration', 'Configuration'), icon: Settings },
   ];
 
-  const visibleNavItems = navItems.filter((item) => {
-    if (!isSystemArea && ['sessions', 'organizations', 'apikeys', 'rbac'].includes(item.id)) return false;
-    if (!isSystemArea && item.id === 'dashboard') return false;
-    const requiredPermission: Record<ConsoleSubmenu, string> = {
-      dashboard: 'admin.access',
-      users: 'admin.user.manage',
-      accounts: 'admin.access',
-      sessions: 'admin.access',
-      organizations: 'admin.tenant.manage',
-      teams: 'admin.department.manage',
-      invitations: 'user.invite',
-      apikeys: 'admin.configuration.manage',
-      rbac: 'admin.access',
-    };
-    return hasPermission(requiredPermission[item.id]);
-  });
+  // Platform console only: each tab needs its explicit platform permission (PRD §9.3).
+  const requiredPermission: Record<ConsoleSubmenu, string> = {
+    dashboard: 'platform.access',
+    users: 'platform.user.read',
+    accounts: 'platform.user.read',
+    sessions: 'platform.session.read',
+    organizations: 'platform.organization.read',
+    apikeys: 'platform.apikey.read',
+    rbac: 'platform.policy.read',
+    settings: 'platform.configuration.read',
+  };
+  const visibleNavItems = navItems.filter((item) => isSystemArea && hasPlatformPermission(requiredPermission[item.id]));
 
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     let nextIndex: number | null = null;

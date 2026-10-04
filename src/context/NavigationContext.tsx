@@ -39,8 +39,11 @@ interface SetTabOptions {
 interface NavigationContextType {
   activeTab: string;
   setActiveTab: (tab: string, itemToSelect?: any, options?: SetTabOptions) => void;
-  /** Same as setActiveTab but never adds a history entry — use for permission/module redirects. */
-  replaceActiveTab: (tab: string) => void;
+  /** Same as setActiveTab but never adds a history entry — use for permission/module redirects and alias mapping. */
+  replaceActiveTab: (tab: string, intent?: string) => void;
+  /** One-shot UI intent carried by a legacy alias (e.g. open the Departments dialog). */
+  intent: string | null;
+  consumeIntent: () => string | null;
   selectedItem: any | null;
   setSelectedItem: (item: any | null) => void;
   clearSelectedItem: () => void;
@@ -67,6 +70,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultTab?: st
 }) => {
   const [activeTab, setActiveTabState] = useState<string>(() => readTabFromUrl() ?? defaultTab);
   const [selectedItem, setSelectedItemState] = useState<any | null>(null);
+  const [intent, setIntent] = useState<string | null>(null);
 
   // Canonicalize the initial URL (`/` or `/app` without a tab → `/app?tab=…`)
   // without adding a history entry.
@@ -99,10 +103,17 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultTab?: st
     }
   }, []);
 
-  const replaceActiveTab = useCallback((tab: string) => {
+  const replaceActiveTab = useCallback((tab: string, nextIntent?: string) => {
     setActiveTabState(tab);
+    if (nextIntent) setIntent(nextIntent);
     writeTabToUrl(tab, true);
   }, []);
+
+  const consumeIntent = useCallback(() => {
+    const current = intent;
+    if (current) setIntent(null);
+    return current;
+  }, [intent]);
 
   const setSelectedItem = useCallback((item: any | null) => {
     setSelectedItemState(item);
@@ -118,6 +129,8 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultTab?: st
         activeTab,
         setActiveTab,
         replaceActiveTab,
+        intent,
+        consumeIntent,
         selectedItem,
         setSelectedItem,
         clearSelectedItem,

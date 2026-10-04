@@ -1,73 +1,75 @@
 import { getCachedAccessToken } from './googleAuthService';
+import { getSelectedOrganizationId } from './organizationSelection';
 
-export const getAuthHeaders = () => {
-  const token = getCachedAccessToken();
-  const sessionToken = typeof window !== 'undefined' ? localStorage.getItem('auth_session_token') : null;
-  const activeOrgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrganizationId') : null;
-  const googleProfileStr = typeof window !== 'undefined' ? localStorage.getItem('google_user_profile') : null;
-  const authUserStr = typeof window !== 'undefined' ? localStorage.getItem('auth_user') : null;
-  let userEmail = '';
-  let userName = '';
-  let userRole = '';
-  if (authUserStr) {
-    try {
-      const u = JSON.parse(authUserStr);
-      userEmail = u.email || '';
-      userName = u.name || '';
-      userRole = u.role || '';
-    } catch {}
+const readSessionToken = (): string | null => {
+  try {
+    return typeof window !== 'undefined' ? localStorage.getItem('auth_session_token') : null;
+  } catch {
+    return null;
   }
-  if (!userEmail && googleProfileStr) {
-    try {
-      const p = JSON.parse(googleProfileStr);
-      userEmail = p.email || '';
-      userName = p.name || '';
-    } catch {}
-  }
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (token) {
-    headers['x-google-access-token'] = token;
-  }
-  if (userEmail) {
-    headers['x-user-email'] = userEmail;
-    headers['x-google-user-email'] = userEmail;
-  }
-  if (userName) {
-    headers['x-user-name'] = userName;
-  }
-  if (userRole) {
-    headers['x-user-role'] = userRole;
-    headers['x-role'] = userRole;
-  }
-  if (sessionToken) {
-    headers['Authorization'] = `Bearer ${sessionToken}`;
-    headers['x-session-token'] = sessionToken;
-  }
-  if (activeOrgId) {
-    headers['x-tenant-id'] = activeOrgId;
-    headers['x-organization-id'] = activeOrgId;
-  }
+};
+
+/**
+ * Identity-scoped, platform and path-scoped routes never receive the tab's
+ * organization selector (PRD §5.2, §9.1): the organization is in the path, the
+ * call is about the caller's own identity, or it is platform-wide.
+ */
+const NO_SELECTOR = [
+  /^\/api\/me(\/|$)/,
+  /^\/api\/organizations\//,
+  /^\/api\/invitations\//,
+  /^\/api\/platform\//,
+  /^\/api\/auth(\/|$)/,
+  /^\/api\/auth-console\//,
+  /^\/api\/system\//,
+  /^\/api\/user\//,
+  /^\/api\/tenants(\/switch)?\/?$/,
+  /^\/api\/tenants\/[^/]+\/(setup|sync)-google$/,
+  /^\/api\/branding$/,
+  /^\/api\/policy-packs$/,
+  /^\/api\/google-integration(\/(connect|disconnect|auto-provision-master|provision-folders))?$/,
+  /^\/api\/google-credentials/,
+  /^\/api\/google-service-account\//,
+  /^\/api\/(smtp|ai)\//,
+  /^\/api\/admin\//,
+  /^\/api\/rbac\/(matrix|roles)$/,
+  /^\/api\/cron\//,
+];
+
+export const needsOrganizationSelector = (pathname: string): boolean =>
+  (pathname.startsWith('/api/') || pathname.startsWith('/uploads/')) &&
+  !pathname.startsWith('/uploads/') &&
+  !NO_SELECTOR.some((pattern) => pattern.test(pathname));
+
+/**
+ * Headers for explicit API calls. Only the verified session token and, for
+ * legacy tenant routes, the tab's selected organization — never identity or
+ * role assertions (PRD §5.1).
+ */
+export const getAuthHeaders = (organizationId: string | null = getSelectedOrganizationId()) => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const googleToken = getCachedAccessToken();
+  if (googleToken) headers['x-google-access-token'] = googleToken;
+  const sessionToken = readSessionToken();
+  if (sessionToken) headers['Authorization'] = `Bearer ${sessionToken}`;
+  if (organizationId) headers['x-organization-id'] = organizationId;
   return headers;
 };
 
 /**
- * Adds the session token and active organization to every same-origin
- * `/api/*` and `/uploads/*` request that does not set them explicitly.
- *
- * The server requires an authenticated session for all data and AI
- * endpoints; many views call `fetch('/api/...')` directly, so this keeps
- * them working without threading headers through every call site.
+ * Adds the session token (and, for legacy tenant routes, the tab's selected
+ * organization) to every same-origin `/api/*` and `/uploads/*` request that
+ * does not set them explicitly.
  */
 let installed = false;
 
-function isSameOriginApi(url: string): boolean {
+function sameOriginPath(url: string): string | null {
   try {
     const parsed = new URL(url, window.location.origin);
-    return parsed.origin === window.location.origin && (parsed.pathname.startsWith('/api/') || parsed.pathname.startsWith('/uploads/'));
+    if (parsed.origin !== window.location.origin) return null;
+    return parsed.pathname.startsWith('/api/') || parsed.pathname.startsWith('/uploads/') ? parsed.pathname : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -77,22 +79,20 @@ export function installApiFetchInterceptor(): void {
 
   const interceptedFetch = (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-    if (!isSameOriginApi(url)) return originalFetch(input, init);
-
-    let token: string | null = null;
-    let organizationId: string | null = null;
-    try {
-      token = localStorage.getItem('auth_session_token');
-      organizationId = localStorage.getItem('activeOrganizationId');
-    } catch {
-      /* storage unavailable (private mode) — send the request unchanged */
-    }
+    const pathname = sameOriginPath(url);
+    if (!pathname) return originalFetch(input, init);
 
     const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+    const token = readSessionToken();
     if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
-    if (token && !headers.has('x-session-token')) headers.set('x-session-token', token);
-    if (organizationId && !headers.has('x-organization-id')) headers.set('x-organization-id', organizationId);
-
+    const organizationId = getSelectedOrganizationId();
+    if (organizationId && needsOrganizationSelector(pathname) && !headers.has('x-organization-id')) {
+      headers.set('x-organization-id', organizationId);
+    }
+    if (!needsOrganizationSelector(pathname)) {
+      headers.delete('x-organization-id');
+      headers.delete('x-tenant-id');
+    }
     return originalFetch(input, { ...init, headers, credentials: init?.credentials ?? 'include' });
   };
 
@@ -100,16 +100,10 @@ export function installApiFetchInterceptor(): void {
     window.fetch = interceptedFetch;
   } catch {
     try {
-      Object.defineProperty(window, 'fetch', {
-        configurable: true,
-        enumerable: true,
-        value: interceptedFetch,
-        writable: true,
-      });
+      Object.defineProperty(window, 'fetch', { configurable: true, enumerable: true, value: interceptedFetch, writable: true });
     } catch {
       return;
     }
   }
-
   installed = true;
 }

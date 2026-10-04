@@ -61,13 +61,13 @@ test('explicit termination dates create events even while a termination is sched
   assert.ok(!events.some(event => event.type === 'renewal'));
 });
 
-test('tenant, department and final-document scoping are applied before event creation', () => {
+// Department scope is enforced by the server before records reach the client
+// (tenant-boundaries PRD §4.5.3); the calendar keeps tenant and final-document rules.
+test('tenant and final-document scoping are applied before event creation', () => {
   const viewer = { ...user, role: 'Viewer' };
-  const otherPartner = { ...partner, partner_id: 'restricted', nama_partner: 'Restricted', pic_internal: 'Finance', internal_pic: 'Finance' };
   const records = [contract(), contract({ contract_id: 'other-tenant', organizationId: 'elsewhere' }),
-    contract({ contract_id: 'other-dept', partner_id: otherPartner.partner_id, partner_nama: otherPartner.nama_partner }),
     contract({ contract_id: 'draft', status: 'Expired', status_approval: 'Draft' })];
-  const events = buildDocumentCalendarEvents(records, [], [partner, otherPartner], viewer, tenantId);
+  const events = buildDocumentCalendarEvents(records, [], [partner], viewer, tenantId);
   assert.ok(events.length > 0);
   assert.ok(events.every(event => event.documentId === records[0].contract_id));
   assert.deepEqual(buildDocumentCalendarEvents(records, [], [partner], null, tenantId), []);

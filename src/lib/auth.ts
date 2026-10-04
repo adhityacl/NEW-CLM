@@ -1,11 +1,12 @@
 import { synchronizeCoreData, normalizeSqliteId, isValidAllowedUserRow } from '../server/coreDataStore';
+import { ensureTenantBoundarySchema } from '../server/organizationSettingsStore';
 import { betterAuth } from "better-auth";
 import { admin, organization } from "better-auth/plugins";
 import { dash, sentinel } from "@better-auth/infra";
 import { createAccessControl } from "better-auth/plugins/access";
+import { adminAc, defaultStatements, memberAc } from "better-auth/plugins/organization/access";
 import Database from "better-sqlite3";
-import path from "path";
-import fs from "fs";
+import { AUTH_DB_PATH } from "../../server/runtimePaths";
 
 const googleClientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
@@ -70,139 +71,39 @@ if (!authSecret) {
 }
 
 // --- Access Control ---
+// Admin plugin = platform authority only (tenant-boundaries PRD §10.2): an
+// ordinary identity is `user` with no Admin-plugin permissions, and only
+// `superuser` is an admin role. Tenant roles live in `member.role`.
 export const statement = {
-  user: [
-    "create",
-    "list",
-    "set-role",
-    "ban",
-    "delete",
-    "set-password",
-    "set-email",
-    "get",
-    "update",
-    "read",
-  ],
-  session: [
-    "list",
-    "revoke",
-    "delete"
-  ],
-  organization: [
-    "create",
-    "read",
-    "update",
-    "delete",
-    "set-active"
-  ],
-  team: [
-    "create",
-    "read",
-    "update",
-    "delete"
-  ],
-  contract: ["create", "read", "update", "delete"],
-  partner: ["create", "read", "update", "delete"],
-  report: ["view", "export"],
+  user: ["create", "list", "set-role", "ban", "delete", "set-password", "set-email", "get", "update", "impersonate"],
+  session: ["list", "revoke", "delete"],
 } as const;
 
 export const ac = createAccessControl(statement);
 
 export const roles = {
   superuser: ac.newRole({
-    user: [
-      "create",
-      "list",
-      "set-role",
-      "ban",
-      "delete",
-      "set-password",
-      "set-email",
-      "get",
-      "update",
-      "read",
-    ],
-    session: [
-      "list",
-      "revoke",
-      "delete",
-    ],
-    organization: [
-      "create",
-      "read",
-      "update",
-      "delete",
-      "set-active",
-    ],
-    team: [
-      "create",
-      "read",
-      "update",
-      "delete",
-    ],
-    contract: ["create", "read", "update", "delete"],
-    partner: ["create", "read", "update", "delete"],
-    report: ["view", "export"],
+    user: ["create", "list", "set-role", "ban", "delete", "set-password", "set-email", "get", "update"],
+    session: ["list", "revoke", "delete"],
   }),
-  admin: ac.newRole({
-    user: [
-      "read",
-      "list",
-    ],
-    session: [
-      "list",
-    ],
-    organization: [
-      "read",
-    ],
-    team: [
-      "read",
-    ],
-    contract: ["create", "read", "update", "delete"],
-    partner: ["create", "read", "update", "delete"],
-    report: ["view", "export"],
-  }),
-  manager: ac.newRole({
-    organization: ["read"],
-    team: ["read"],
-    contract: ["create", "read", "update"],
-    partner: ["create", "read", "update"],
-    report: ["view"],
-  }),
-  editor: ac.newRole({
-    organization: ["read"],
-    team: ["read"],
-    contract: ["create", "read", "update"],
-    partner: ["create", "read", "update"],
-    report: ["view"],
-  }),
-  viewer: ac.newRole({
-    contract: ["read"],
-    partner: ["read"],
-    report: ["view"],
-  }),
-  // Legacy backward compatibility
-  legal: ac.newRole({
-    contract: ["create", "read", "update"],
-    partner: ["create", "read", "update"],
-    report: ["view"],
-  }),
-  finance: ac.newRole({
-    contract: ["read"],
-    partner: ["read"],
-    report: ["view", "export"],
-  }),
-  staff: ac.newRole({
-    contract: ["read"],
-    partner: ["read"],
-    report: ["view"],
-  }),
+  user: ac.newRole({ user: [], session: [] }),
+};
+
+// Organization plugin: the fixed tenant role catalog. Its HTTP routes are
+// denied at the server boundary (server/routePolicies.ts); canonical
+// services enforce membership status, ownership and hierarchy instead.
+const orgAc = createAccessControl(defaultStatements);
+const orgRoles = {
+  admin: orgAc.newRole(adminAc.statements),
+  manager: orgAc.newRole(memberAc.statements),
+  editor: orgAc.newRole(memberAc.statements),
+  viewer: orgAc.newRole(memberAc.statements),
 };
 
 // --- Database & Schema Initialization ---
-const dbPath = path.join(process.cwd(), "auth.db");
-export const sqliteDb = new Database(dbPath);
+export const sqliteDb = new Database(AUTH_DB_PATH);
 sqliteDb.pragma("journal_mode = WAL");
+sqliteDb.pragma("foreign_keys = ON");
 sqliteDb.pragma("synchronous = NORMAL");
 sqliteDb.pragma("busy_timeout = 5000");
 
@@ -583,6 +484,9 @@ try {
 }
 
 initializeCoreDataSchema();
+// Canonical tenant-boundary tables + member.status / invitation.departmentIds
+// must exist before Better Auth reads the plugin schema.
+ensureTenantBoundarySchema(sqliteDb);
 
 // Better Auth 1.7.3 no longer writes account.issuer for every provider.
 // Keep older databases compatible by making the legacy column nullable.
@@ -642,6 +546,23 @@ try {
 // Organizations are not seeded here: server startup hydrates them from the
 // tenant list (the demo dataset on first run, or the admin's own setup).
 
+/** Active allowlist entry or a pending, unexpired invitation for this email. */
+export function isOnboardingApproved(email: string): boolean {
+  const normalized = String(email || '').trim().toLowerCase();
+  const allowed = sqliteDb.prepare("SELECT status FROM allowed_users WHERE LOWER(email) = ?").get(normalized) as any;
+  if (allowed?.status === 'Active') return true;
+  return Boolean(sqliteDb.prepare(
+    "SELECT 1 FROM invitation WHERE LOWER(email) = ? AND status = 'pending' AND expiresAt > ?",
+  ).get(normalized, new Date().toISOString()));
+}
+
+type VerificationMailer = (input: { email: string; name: string; url: string }) => Promise<void>;
+let verificationMailer: VerificationMailer | null = null;
+/** server.ts installs the platform mailer; tests leave it unset (no delivery). */
+export function setVerificationMailer(mailer: VerificationMailer | null) {
+  verificationMailer = mailer;
+}
+
 // --- Better Auth Instance ---
 export const auth = betterAuth({
   // Unset: Better Auth derives the base URL per request from its real
@@ -656,17 +577,34 @@ export const auth = betterAuth({
   socialProviders: googleClientId && googleClientSecret
     ? { google: { clientId: googleClientId, clientSecret: googleClientSecret } }
     : {},
+  emailVerification: {
+    // Delivery uses the platform mailer (set by server.ts). Failure never
+    // marks an account verified; the user can request another email.
+    sendOnSignUp: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      try {
+        await verificationMailer?.({ email: user.email, name: user.name, url });
+      } catch (err) {
+        console.warn("[auth] verification email not sent:", (err as Error)?.message);
+      }
+    },
+  },
   plugins: [
     admin({
       ac,
       roles,
-      defaultRole: "viewer",
-      adminRoles: ["superuser", "admin"],
+      defaultRole: "user",
+      adminRoles: ["superuser"],
     }),
     organization({
-      allowUserToCreateOrganization: true,
-      creatorRole: "owner",
+      allowUserToCreateOrganization: false,
+      creatorRole: "admin",
+      roles: orgRoles,
       teams: { enabled: true },
+      schema: {
+        member: { additionalFields: { status: { type: "string", required: false, defaultValue: "active", input: false } } },
+        invitation: { additionalFields: { departmentIds: { type: "string", required: false, input: false } } },
+      },
     }),
     ...(process.env.BETTER_AUTH_ENABLE_INFRA === 'true' && process.env.BETTER_AUTH_API_KEY && true
       ? [
@@ -682,57 +620,21 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        before: async (user) => {
-          console.log('[AUTH HOOK] Creating user (before):', user.email);
-          // No "first registrant becomes admin" shortcut: the first admin is created by
-          // the first-run setup page (POST /api/system/setup). With it, whoever hit the
-          // sign-up API first on an empty install would have been handed admin.
-
-          // Read the SQLite whitelist before applying pending approval.
-          try {
-            const isAllowed = sqliteDb.prepare(
-              'SELECT role, status FROM allowed_users WHERE LOWER(email) = LOWER(?)',
-            ).get(user.email) as any;
-            if (isAllowed?.status === 'Active') {
-              return {
-                data: {
-                  ...user,
-                  role: String(isAllowed.role || 'staff').toLowerCase(),
-                  banned: false,
-                  banReason: null,
-                },
-              };
-              }
-          } catch (e) {
-            console.error('Error checking whitelist during registration:', e);
-          }
-
-          // Return banned: false initially in before hook so Better Auth saves the user!
-          return {
-            data: {
-              ...user,
-              banned: false,
-              banReason: "PENDING_APPROVAL",
-            },
-          };
-        },
+        // Ordinary account creation is always platform `user` (PRD §8.4). An
+        // active allowlist entry or a pending invitation only lets the account
+        // sign in for onboarding; neither grants a role or a membership.
+        before: async (user) => ({
+          data: { ...user, role: "user", banned: false, banReason: null },
+        }),
         after: async (user) => {
-          console.log('[AUTH HOOK] User created (after):', user.email);
-          // Not whitelisted → hold for administrator approval.
           try {
-            const isAllowed = sqliteDb.prepare(
-              'SELECT status FROM allowed_users WHERE LOWER(email) = LOWER(?)',
-            ).get(user.email) as any;
-            const isWhitelisted = isAllowed?.status === 'Active';
-
-            if (!isWhitelisted) {
-              console.log('[AUTH HOOK] Auto-banning user for pending approval:', user.email);
+            if (!isOnboardingApproved(user.email)) {
               sqliteDb.prepare("UPDATE user SET banned = 1, banReason = 'PENDING_APPROVAL' WHERE id = ?").run(user.id);
             }
           } catch (err) {
-            console.error('Error auto-banning in after hook:', err);
+            console.error('Error applying pending approval:', err);
           }
-        }
+        },
       },
     },
   },

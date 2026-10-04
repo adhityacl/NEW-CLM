@@ -22,8 +22,11 @@
     "test:rbac": "tsx --test tests/rbac.test.ts",
     "test:documents": "tsx --test tests/documents.test.ts",
     "test:credentials": "tsx --test tests/googleCredentials.test.ts",
+    "test:tenant-boundaries": "node tools/run-tenant-boundaries-tests.mjs",
     "test:e2e": "playwright test",
     "test:e2e:fixtures": "playwright test --config playwright.fixtures.config.ts",
+    "test:e2e:tenant-boundaries": "node tools/run-tenant-boundaries-tests.mjs --e2e",
+    "tenant-boundaries:migrate": "tsx tools/migrate-tenant-boundaries.ts",
     "auth:generate": "better-auth generate --config ./server/auth.ts",
     "auth:migrate": "better-auth migrate --config ./server/auth.ts"
   },

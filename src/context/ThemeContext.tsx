@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { readPreference, writePreference } from '../lib/userPreferences';
+import { useOptionalIdentity } from './AuthContext';
 
 export type Theme = 'light' | 'dark';
 
@@ -10,15 +12,19 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+const systemTheme = (): Theme =>
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+/** Theme is a personal preference stored under `user:<userId>:theme` (PRD §6.7). */
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem('app_theme');
-    if (saved === 'dark' || saved === 'light') return saved;
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    return 'light';
-  });
+  const identity = useOptionalIdentity();
+  const userId = identity?.id ?? null;
+  const [theme, setTheme] = useState<Theme>(systemTheme);
+
+  useEffect(() => {
+    const saved = readPreference('theme', userId);
+    setTheme(saved === 'dark' || saved === 'light' ? saved : systemTheme());
+  }, [userId]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -27,15 +33,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } else {
       root.classList.remove('dark');
     }
-    localStorage.setItem('app_theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  // Only an explicit choice is stored; defaults are never persisted.
+  const choose = (next: Theme) => {
+    setTheme(next);
+    writePreference('theme', next, userId);
   };
+  const toggleTheme = () => choose(theme === 'dark' ? 'light' : 'dark');
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme: choose, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

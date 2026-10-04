@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { useAuth } from './AuthContext';
+import { useIdentity } from './AuthContext';
 import { useTenant } from './TenantContext';
 import { useLanguage } from './LanguageContext';
 import {
@@ -107,27 +107,34 @@ function localPolicyView(settings: TenantSettings = defaultTenantSettings()): Te
 const TenantSettingsContext = createContext<TenantSettingsContextValue | undefined>(undefined);
 
 export const TenantSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { identity } = useIdentity();
   const { activeTenantId } = useTenant();
   const { language, setDocumentTerminology } = useLanguage();
   const [status, setStatus] = useState<LoadStatus>('idle');
   const [policy, setPolicy] = useState<TenantPolicyView>(() => localPolicyView());
   const [countries, setCountries] = useState<CountryOption[]>([]);
   const [industries, setIndustries] = useState<IndustryOption[]>([]);
+  const currentOrg = React.useRef(activeTenantId);
+  currentOrg.current = activeTenantId;
 
+  /** Runtime policy of the selected organization only; responses for a previous selection are dropped. */
   const refresh = useCallback(async () => {
-    if (!user) {
+    const organizationId = activeTenantId;
+    if (!identity || !organizationId) {
+      setPolicy(localPolicyView());
       setStatus('idle');
       return;
     }
     setStatus('loading');
     try {
       const [settingsRes, packsRes] = await Promise.all([
-        fetch('/api/tenant-settings', { cache: 'no-store' }),
+        fetch(`/api/organizations/${encodeURIComponent(organizationId)}/policy`, { cache: 'no-store' }),
         fetch('/api/policy-packs', { cache: 'no-cache' }),
       ]);
       if (!settingsRes.ok) throw new Error(`HTTP ${settingsRes.status}`);
-      setPolicy((await settingsRes.json()) as TenantPolicyView);
+      const next = (await settingsRes.json()) as TenantPolicyView;
+      if (currentOrg.current !== organizationId || next.tenantId !== organizationId) return;
+      setPolicy(next);
       if (packsRes.ok) {
         const packs = await packsRes.json();
         setCountries(Array.isArray(packs.countries) ? packs.countries : []);
@@ -135,14 +142,18 @@ export const TenantSettingsProvider: React.FC<{ children: React.ReactNode }> = (
       }
       setStatus('ready');
     } catch (err) {
+      if (currentOrg.current !== organizationId) return;
       console.warn('Failed to load organization settings:', err);
       setStatus('error');
     }
-  }, [user]);
+  }, [identity, activeTenantId]);
 
   useEffect(() => {
     void refresh();
-  }, [refresh, activeTenantId]);
+    const onUpdated = () => { void refresh(); };
+    window.addEventListener('organization-updated', onUpdated);
+    return () => window.removeEventListener('organization-updated', onUpdated);
+  }, [refresh]);
 
   // UI terminology for commercial documents follows the industry pack.
   const profile = policy.industry.commercialDocument;
@@ -157,17 +168,26 @@ export const TenantSettingsProvider: React.FC<{ children: React.ReactNode }> = (
   // the previous language's locale until something else forces a re-render.
   setActiveFormattingLocale(formattingLocaleFor(language, policy.settings.countryCode));
 
+  /** Section save through the canonical settings service (expectedVersion from a fresh read). */
   const saveSettings = useCallback(async (settings: Partial<TenantSettings>, legalEntity?: string) => {
-    const res = await fetch('/api/tenant-settings', {
-      method: 'PUT',
+    const organizationId = activeTenantId;
+    const base = `/api/organizations/${encodeURIComponent(organizationId)}/settings`;
+    const current = await fetch(base, { cache: 'no-store' }).then((r) => r.json());
+    const res = await fetch(base, {
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ settings, ...(legalEntity !== undefined ? { legalEntity } : {}) }),
+      body: JSON.stringify({
+        expectedVersion: current.version,
+        policy: settings,
+        ...(legalEntity !== undefined ? { profile: { legalEntity } } : {}),
+      }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
-    setPolicy(data as TenantPolicyView);
-    return data as TenantPolicyView;
-  }, []);
+    window.dispatchEvent(new CustomEvent('organization-updated'));
+    await refresh();
+    return policy;
+  }, [activeTenantId, refresh, policy]);
 
   return (
     <TenantSettingsContext.Provider

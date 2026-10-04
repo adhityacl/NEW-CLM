@@ -7,9 +7,19 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
-/* RBAC-INTEGRATION-V1 */
-import { createRbacRouter, requirePermission } from "./server/rbacRoutes";
-import { hasPermission as rbacHasPermission, normalizeRole as rbacNormalizeRole } from "./server/rbac";
+import { buildMatrix as buildRbacMatrix, can, hasOrganizationScope, type OrgContext } from "./server/rbac";
+import {
+  RequestDenied, accessibleOrganizations, isIdentityBanned, resolveIdentity, resolveLegacyContext, resolveOrganizationContext, sendError,
+} from "./server/identity";
+import { BETTER_AUTH_ALLOWED, createAuthorizationMiddleware, isBetterAuthPathAllowed } from "./server/routePolicies";
+import { createOrganizationScope, filterRecords, recordVisible, normalizeDepartmentName, type RecordKind } from "./server/recordScope";
+import { IS_TEST_MODE, LEGACY_DATA_FILE, UPLOADS_DIR } from "./server/runtimePaths";
+import {
+  ApiError, appendAudit, buildTenantProjection, ensureTenantBoundarySchema, isEmptyInstall, markMigrationApplied,
+  migrationApplied, readIntegration, writeIntegrationRow, patchOrganizationSettings, readOrganizationSettings, patchIntegration,
+} from "./src/server/organizationSettingsStore";
+import { auditActorFor, capabilitiesOf, createOrganizationAdminRouter, identityResponse, selectActiveOrganization } from "./src/server/organizationAdminRoutes";
+import { createOrganizationRecord, seedOrganizationsFromDataset } from "./src/server/organizationProvisioning";
 import { GoogleGenAI, Type } from "@google/genai";
 import { OAuth2Client } from "google-auth-library";
 import { toNodeHandler } from "better-auth/node";
@@ -20,11 +30,12 @@ import {
   hydrateCoreDataFromJson,
   syncDbToSqlite,
   loadCoreDataFromSqlite,
+  setVerificationMailer,
+  isOnboardingApproved,
 } from "./src/lib/auth";
 import {
   authConsoleRouter,
   setConsoleDbReference,
-  hydrateAuthConsoleFromDataStore,
   ensureUserAccountsExist,
 } from "./src/server/authConsoleRoutes";
 import { createDocumentRouter } from "./src/server/documentRoutes";
@@ -127,344 +138,91 @@ app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 // Error/status messages follow the UI language (x-app-language header).
 app.use("/api", localizeApiMessages);
 
+/*
+ * Tenant-boundaries PRD §5/§10: Better Auth is reachable only through the
+ * enumerated sign-in/self-service endpoints; Admin- and Organization-plugin
+ * routes are denied in favour of the canonical services. Every other /api
+ * operation passes the declared route policy (server/routePolicies.ts).
+ */
+let migrationBlock: string | null = null;
 app.all(["/api/auth", "/api/auth/*"], (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (req.path.startsWith("/api/auth/google")) {
-    return next();
+  if (req.path.startsWith("/api/auth/google/")) return next();
+  if (migrationBlock) return sendError(req, res, 503, migrationBlock, "The database must be migrated before this version can serve requests.");
+  const path = req.path.replace(/\/$/, "");
+  if (!isBetterAuthPathAllowed(path)) return sendError(req, res, 404, "RESOURCE_NOT_FOUND");
+  if (BETTER_AUTH_ALLOWED[path] === "self") {
+    try {
+      resolveIdentity(sqliteDb, req);
+    } catch (err: any) {
+      if (err instanceof RequestDenied) return sendError(req, res, err.status, err.error);
+      throw err;
+    }
   }
   return toNodeHandler(betterAuthInstance)(req, res);
 });
+app.use(createAuthorizationMiddleware(sqliteDb, { blocked: () => migrationBlock }));
 
-// Strict RBAC Middleware with 1-word roles: Admin, Editor, Viewer
-// Viewer is strictly view-only: permits GET / HEAD / OPTIONS, rejects database write mutations (POST/PUT/DELETE/PATCH) on resource entities with 403.
-/** Session token from the Better Auth cookie (`<token>.<signature>`), if any. */
-function readSessionCookieToken(req: express.Request): string {
-  const cookie = String(req.headers.cookie || "");
-  const match = cookie.match(/(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=([^;]+)/);
-  if (!match) return "";
-  try {
-    return decodeURIComponent(match[1]).split(".")[0];
-  } catch {
-    return "";
-  }
-}
-export const rbacAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  // Only authentication itself, health checks, public reference data and the
-  // unauthenticated first-run status probe are reachable without a session.
-  // Every data or AI endpoint requires one (PRD §5.2, §6.3).
-  if (
-    !req.path.startsWith("/api/") ||
-    req.path === "/api/auth" || req.path.startsWith("/api/auth/") ||
-    req.path === "/api/health" ||
-    req.path === "/api/system/public-status" ||
-    req.path === "/api/system/setup" ||
-    req.path === "/api/exchange-rates" ||
-    req.path === "/api/exchange-rate-historical"
-  ) {
-    return next();
-  }
-
-  // 1. Resolve user email and token
-  let userEmail = (
-    req.headers["x-user-email"] ||
-    req.headers["x-google-user-email"] ||
-    req.query?.userEmail ||
-    ""
-  ).toString().toLowerCase().trim();
-
-  let detectedRole: string | null = null;
-  let isBanned = false;
-
-  // Check session token in SQLite auth database (Bearer header, or the
-  // Better Auth session cookie for plain browser requests).
-  const authHeader = req.headers["authorization"] || req.headers["x-session-token"] || readSessionCookieToken(req);
-  if (authHeader && sqliteDb) {
-    try {
-      const token = typeof authHeader === "string" && authHeader.startsWith("Bearer ")
-        ? authHeader.substring(7).trim()
-        : String(authHeader).trim();
-      const sessionRow: any = sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(token);
-      if (sessionRow?.userId) {
-        const userRow: any = sqliteDb.prepare("SELECT email, role, banned FROM user WHERE id = ?").get(sessionRow.userId);
-        if (userRow) {
-          if (!userEmail && userRow.email) {
-            userEmail = userRow.email.toLowerCase().trim();
-          }
-          if (userRow.banned === 1) {
-            isBanned = true;
-          }
-          if (userRow.role) {
-            detectedRole = userRow.role;
-          }
-        }
-      }
-    } catch {}
-  }
-
-  // Look up in SQLite user table by email
-  if (userEmail && !detectedRole && sqliteDb) {
-    try {
-      const userRow: any = sqliteDb.prepare("SELECT role, banned FROM user WHERE LOWER(email) = LOWER(?)").get(userEmail);
-      if (userRow) {
-        if (userRow.banned === 1) {
-          isBanned = true;
-        }
-        if (userRow.role) {
-          detectedRole = userRow.role;
-        }
-      }
-    } catch {}
-  }
-
-  // Look up in db.allowedUsers
-  if (userEmail) {
-    const allowed = (db.allowedUsers || []).find(
-      (u: any) => (u.email || "").toLowerCase() === userEmail,
-    );
-    if (allowed) {
-      if (allowed.status === "Inactive" || allowed.status === "Banned") {
-        isBanned = true;
-      }
-      if (!detectedRole && allowed.role) {
-        detectedRole = allowed.role;
-      }
-    }
-  }
-
-  if (isBanned) {
-    return res.status(403).json({
-      error: "Forbidden: Account Banned",
-      message: "Akun Anda telah dinonaktifkan/banned oleh Administrator. Silakan hubungi tim IT/Admin.",
-      email: userEmail,
-    });
-  }
-
-  /* RBAC-INTEGRATION-V1-STRICT */
-  // Identitas WAJIB berasal dari sesi terverifikasi (token di tabel session).
-  // Menutup kebocoran: request anonim sebelumnya diperlakukan sebagai Viewer.
-  {
-    let strictSessionOk = false;
-    if (authHeader && sqliteDb) {
-      try {
-        const t = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7).trim() : String(authHeader).trim();
-        strictSessionOk = !!sqliteDb.prepare("SELECT userId FROM session WHERE token = ?").get(t);
-      } catch { strictSessionOk = false; }
-    }
-    if (!strictSessionOk) {
-      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
-    }
-  }
-
-  // Determine role based on verified DB/Session role.
-  //
-  // This used to collapse the app's 5 roles into 3 ad-hoc buckets by regex
-  // ("admin|superuser|owner" -> Admin, "editor|manager|legal|finance" ->
-  // Editor, everything else -> Viewer) and only ever blocked the Viewer
-  // bucket from write methods — meaning Editor and Manager were completely
-  // undifferentiated here, as were Admin and Superuser, and any endpoint
-  // that relied solely on this gate (most of them; see QA/QC audit finding
-  // C5) enforced nothing beyond "not a Viewer". `normalizeRole`/
-  // `hasPermission` are the same functions the rest of the RBAC engine
-  // (`server/rbac.ts`) is built on, so this floor now tracks the real
-  // permission matrix instead of a parallel, driftable regex classifier.
-  const rawRole = (detectedRole || "").toString().toLowerCase().trim();
-  const role = rbacNormalizeRole(rawRole);
-  (req as any).rbacRole = role;
-
-  const method = req.method.toUpperCase();
-  // POST endpoints that only read data (AI Q&A over the viewer's own tenant).
-  const READ_ONLY_POSTS = new Set(["/api/chat"]);
-  if (["POST", "PUT", "DELETE", "PATCH"].includes(method) && !READ_ONLY_POSTS.has(req.path)) {
-    const requiredPermission =
-      method === "DELETE" ? "document.delete" : method === "POST" ? "document.create" : "document.edit";
-    if (!rbacHasPermission(role, requiredPermission)) {
-      return res.status(403).json({
-        error: "INSUFFICIENT_PERMISSION",
-        message: `Peran ${role} tidak memiliki izin untuk melakukan perubahan data (${method}).`,
-        role,
-        attemptedMethod: method,
-      });
-    }
-  }
-
-  next();
-};
-
-app.use(rbacAuthMiddleware);
-
-/* RBAC-INTEGRATION-V1 */
-// Actor RBAC diambil dari sesi terverifikasi (better-auth / token sesi), bukan header yang bisa dipalsukan.
-/**
- * Resolve the tenant-scoped actor for a verified user.
- *
- * A non-superuser always operates inside one of THEIR memberships: the
- * session's active organization first, then the client-requested one, then
- * their first membership. A requested organization they do not belong to is
- * ignored (never trusted), so headers cannot widen tenant scope.
- */
-function resolveMembershipActor(userId: string, globalRole: string, sessionActiveOrgId: string, requestedOrgId: string, token: string) {
-  if (globalRole === "superuser") {
-    return { id: userId, role: "superuser", tenantId: requestedOrgId || sessionActiveOrgId || null, departmentId: null };
-  }
-  const memberships: any[] = sqliteDb.prepare(
-    "SELECT organizationId, role FROM member WHERE userId = ? ORDER BY createdAt ASC",
-  ).all(userId);
-  if (memberships.length === 0) return null;
-  const m =
-    memberships.find((r) => sessionActiveOrgId && r.organizationId === sessionActiveOrgId) ||
-    memberships.find((r) => requestedOrgId && r.organizationId === requestedOrgId) ||
-    memberships[0];
-  if (token && m.organizationId !== sessionActiveOrgId) {
-    try {
-      sqliteDb.prepare("UPDATE session SET activeOrganizationId = ?, updatedAt = ? WHERE token = ?")
-        .run(m.organizationId, new Date().toISOString(), token);
-    } catch { /* best effort */ }
-  }
-  // All of this org's teams the user belongs to, so Managers/Editors/Viewers
-  // covering several departments are scoped to all of them.
-  const tms: any[] = sqliteDb.prepare(`
-    SELECT t.id
-    FROM teamMember tm
-    JOIN team t ON t.id = tm.teamId
-    WHERE tm.userId = ? AND t.organizationId = ?
-    ORDER BY tm.createdAt ASC
-  `).all(userId, m.organizationId);
-  const departmentIds = tms.map((r: any) => r.id);
-  const memberRole = String(m.role || "").toLowerCase().trim();
-  const raw = memberRole === "owner" ? "admin" : (memberRole || globalRole || "viewer");
-  return {
-    id: userId,
-    role: String(raw).toLowerCase(),
-    tenantId: m.organizationId,
-    departmentId: departmentIds[0] ?? null,
-    departmentIds,
-  };
+/** Verified organization context attached by the route policy (tenant/orgParam routes only). */
+function orgContextOf(req: express.Request): OrgContext {
+  const ctx = (req as any).orgContext as OrgContext | undefined;
+  if (!ctx) throw new RequestDenied(409, "ORGANIZATION_REQUIRED");
+  return ctx;
 }
 
-const resolveRbacActor = async (req: any) => {
-  const requestedOrgId = String(req.headers["x-organization-id"] || req.headers["x-tenant-id"] || "").trim();
-  const rawToken = req.headers["authorization"] || req.headers["x-session-token"] || readSessionCookieToken(req);
-  const token = typeof rawToken === "string" && rawToken.startsWith("Bearer ") ? rawToken.substring(7).trim() : String(rawToken || "").trim();
+/* Legacy RBAC adapters (PRD §10.1): server-resolved actor, explicit catalogs, no wildcard. */
+app.get("/api/rbac/me", (req: express.Request, res: express.Response) => {
+  const identity = resolveIdentity(sqliteDb, req);
+  let ctx: OrgContext | null = null;
+  try { ctx = resolveLegacyContext(sqliteDb, identity, req, { includeBody: false }); } catch { ctx = null; }
+  res.json({
+    ok: true,
+    identity: { id: identity.userId, platformRole: identity.platformRole },
+    platformPermissions: identity.platformPermissions,
+    context: ctx ? capabilitiesOf(ctx) : null,
+    permissions: ctx ? ctx.permissions : [],
+  });
+});
+app.get("/api/rbac/matrix", (_req: express.Request, res: express.Response) => res.json({ ok: true, ...buildRbacMatrix() }));
+app.get("/api/rbac/roles", (_req: express.Request, res: express.Response) => {
+  const matrix = buildRbacMatrix();
+  res.json({ ok: true, platformRoles: matrix.platformRoles.map((r) => r.role), tenantRoles: matrix.tenantRoles.map((r) => r.role) });
+});
+app.post("/api/rbac/check", (req: express.Request, res: express.Response) => {
+  const permission = req.body?.permission;
+  if (typeof permission !== "string") return sendError(req, res, 400, "INVALID_INPUT", "permission is required.");
   try {
-    const session = await betterAuthInstance.api.getSession({ headers: req.headers as any });
-    if (session?.user?.id) {
-      const u: any = sqliteDb.prepare("SELECT role, banned FROM user WHERE id = ?").get(session.user.id);
-      if (u?.banned === 1) return null;
-      const sessionData = (session as any).session || {};
-      return resolveMembershipActor(
-        session.user.id,
-        String(u?.role || "").toLowerCase().trim(),
-        String(sessionData.activeOrganizationId || "").trim(),
-        requestedOrgId,
-        token,
-      );
-    }
-  } catch { /* fall back to the raw session table */ }
-  try {
-    if (token && sqliteDb) {
-      const s: any = sqliteDb.prepare("SELECT userId, activeOrganizationId, expiresAt FROM session WHERE token = ?").get(token);
-      if (s?.userId && (!s.expiresAt || new Date(s.expiresAt).getTime() > Date.now())) {
-        const u: any = sqliteDb.prepare("SELECT role, banned FROM user WHERE id = ?").get(s.userId);
-        if (u?.banned === 1) return null;
-        return resolveMembershipActor(
-          s.userId,
-          String(u?.role || "").toLowerCase().trim(),
-          String(s.activeOrganizationId || "").trim(),
-          requestedOrgId,
-          token,
-        );
-      }
-    }
-  } catch { /* no actor */ }
-  return null;
-};
-const attachRbacActor = async (req: any, _res: any, next: any) => {
-  req.actor = await resolveRbacActor(req);
-  next();
-};
-app.use(attachRbacActor);
-app.use("/api/rbac", createRbacRouter({ resolveActor: (req: any) => req.actor ?? null }));
-
-/* RBAC-INTEGRATION-V1-SECURE */
-// Guard izin bertarget (jangan blanket — endpoint publik seperti invitations/accept harus tetap jalan).
-app.use("/api/auth-console/users", requirePermission("admin.user.manage", "tenant"));
-app.use("/api/auth-console/sessions", requirePermission("admin.access", "tenant"));
-app.use("/api/activity-logs", requirePermission("admin.access", "tenant"));
-app.post("/api/tenants/switch", requirePermission("workspace.switch", "global"));
-app.use("/api/tenants/switch", requirePermission("workspace.switch", "global"));
-
-// Middleware proteksi route berdasarkan Tenant & Role (Better Auth Organization Plugin)
-export const requireTenantRole = (requiredRole: string) => {
-  return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    try {
-      const session = await betterAuthInstance.api.getSession({
-        headers: req.headers as any,
-      });
-
-      if (!session) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      // Ambil orgId dari request header atau query
-      const activeOrgId = (req.headers["x-organization-id"] || req.headers["x-tenant-id"] || req.query.organizationId) as string;
-
-      if (!activeOrgId) {
-        return res.status(400).json({ message: "Organization ID header is missing" });
-      }
-
-      // Verifikasi peran user di dalam tenant tersebut
-      try {
-        const member = await betterAuthInstance.api.getActiveMember({
-          headers: req.headers as any,
-          query: { organizationId: activeOrgId },
-        });
-
-        if (!member || (requiredRole === "admin" && member.role !== "admin" && member.role !== "owner")) {
-          return res.status(403).json({ message: "Forbidden: Insufficient permissions for this tenant" });
-        }
-      } catch {
-        // Fallback SQLite check
-        const row = sqliteDb.prepare("SELECT role FROM member WHERE organizationId = ? AND userId = ?").get(activeOrgId, session.user.id) as any;
-        if (!row || (requiredRole === "admin" && row.role !== "admin" && row.role !== "owner")) {
-          return res.status(403).json({ message: "Forbidden: Insufficient permissions for this tenant" });
-        }
-      }
-
-      (req as any).user = session.user;
-      next();
-    } catch (err: any) {
-      return res.status(500).json({ message: "Internal server error", error: err.message });
-    }
-  };
-};
-
-// Protected API Endpoint untuk Better Auth Multi-Tenant
-app.get("/api/tenant-data", requireTenantRole("admin"), (req, res) => {
-  res.json({ message: "Rahasia Tenant: Hanya untuk Admin/Owner organisasi ini." });
+    const ctx = resolveLegacyContext(sqliteDb, resolveIdentity(sqliteDb, req), req, { includeBody: false });
+    return res.json({ ok: true, allow: can(ctx, permission) });
+  } catch (err: any) {
+    if (err instanceof RequestDenied) return sendError(req, res, err.status, err.error);
+    throw err;
+  }
 });
 
+/** Persists a platform-provisioned folder mapping through the canonical integration store. */
+function persistTenantFolder(tenantId: string, folderId: string) {
+  try {
+    const current = readIntegration(sqliteDb, tenantId);
+    const claimed = sqliteDb.prepare("SELECT 1 FROM organization_integrations WHERE driveFolderId = ? AND organizationId <> ?").get(folderId, tenantId);
+    if (claimed) return;
+    writeIntegrationRow(sqliteDb, { ...current, driveFolderId: folderId, version: current.version + 1 }, null);
+    refreshTenantProjection();
+  } catch (err: any) {
+    console.warn(`[Drive] Could not record folder mapping for ${tenantId}:`, err?.message);
+  }
+}
 async function getOrgFolderId(tenantInput, token) {
   const masterRootId = sanitizeParentFolderId(db.googleConfig?.driveFolderId);
   if (!masterRootId) {
     return { id: "" };
   }
-  let tenant;
-  if (typeof tenantInput === "string") {
-    tenant = (db.tenants || DEFAULT_TENANTS).find((t) => t.id === tenantInput);
-  } else {
-    tenant = tenantInput;
-  }
-  if (!tenant) {
-    const activeId = db.activeTenantId || getDefaultTenantId();
-    tenant =
-      (db.tenants || DEFAULT_TENANTS).find((t) => t.id === activeId) ||
-      DEFAULT_TENANTS[0];
-  }
-  if (!tenant) {
-    return { id: masterRootId };
-  }
+  const tenant = typeof tenantInput === "string" ? findTenant(tenantInput) : tenantInput;
+  // No owning organization means no folder: never fall back to another tenant's tree.
+  if (!tenant) return { id: "" };
   if (tenant.driveFolderId && !tenant.driveFolderId.startsWith("Folder_")) {
     return { id: tenant.driveFolderId, webViewLink: tenant.driveFolderLink };
   }
+  if (IS_TEST_MODE) return { id: "" };
   const activeToken = await resolveActiveGoogleToken(token);
   const orgFolderName = tenant.name || tenant.brandName || "Organisasi";
   try {
@@ -474,9 +232,7 @@ async function getOrgFolderId(tenantInput, token) {
       activeToken,
     );
     if (orgFolder.id) {
-      tenant.driveFolderId = orgFolder.id;
-      tenant.driveFolderLink = orgFolder.webViewLink;
-      saveDb();
+      persistTenantFolder(tenant.id, orgFolder.id);
       return orgFolder;
     }
   } catch (err) {
@@ -485,111 +241,43 @@ async function getOrgFolderId(tenantInput, token) {
       err?.message || err,
     );
   }
-  return {
-    id: masterRootId,
-    webViewLink: `https://drive.google.com/drive/folders/${masterRootId}`,
-  };
+  return { id: "" };
 }
+/** Platform-only provisioning of every organization's Drive folder (explicit service authority). */
 async function autoEnsureTenantGoogleResources(token, forceNew = false) {
   const masterRootId = sanitizeParentFolderId(db.googleConfig?.driveFolderId);
-  if (!masterRootId) return { success: false, updatedCount: 0 };
+  if (!masterRootId || IS_TEST_MODE) return { success: false, updatedCount: 0 };
   const activeToken = await resolveActiveGoogleToken(token);
   if (!activeToken && !hasServiceAccountCredentials())
     return { success: false, updatedCount: 0 };
   let updatedCount = 0;
-  if (!db.tenants || !Array.isArray(db.tenants) || db.tenants.length === 0) {
-    db.tenants = [...DEFAULT_TENANTS];
-  }
-  for (const tenant of db.tenants) {
-    let tenantChanged = false;
+  for (const tenant of db.tenants || []) {
     const needFolder =
       !tenant.driveFolderId ||
       tenant.driveFolderId === masterRootId ||
       tenant.driveFolderId.startsWith("Folder_") ||
-      tenant.driveFolderId === "-" ||
       forceNew;
-    if (needFolder) {
-      try {
-        const orgFolderName = tenant.name || tenant.brandName || "Organisasi";
-        let orgFolder = null;
-        if (forceNew) {
-          try {
-            orgFolder = await createNewDriveFolderInParent(
-              orgFolderName,
-              masterRootId,
-              activeToken,
-            );
-          } catch (createErr) {
-            console.warn(
-              `[AutoProvision] createNewDriveFolderInParent failed, falling back to getOrCreateDriveFolder:`,
-              createErr?.message,
-            );
-          }
+    if (!needFolder) continue;
+    try {
+      const orgFolderName = tenant.name || tenant.brandName || "Organisasi";
+      let orgFolder = null;
+      if (forceNew) {
+        try {
+          orgFolder = await createNewDriveFolderInParent(orgFolderName, masterRootId, activeToken);
+        } catch (createErr) {
+          console.warn(`[AutoProvision] createNewDriveFolderInParent failed, falling back to getOrCreateDriveFolder:`, createErr?.message);
         }
-        if (!orgFolder || !orgFolder.id) {
-          orgFolder = await getOrCreateDriveFolder(
-            orgFolderName,
-            masterRootId,
-            activeToken,
-          );
-        }
-        if (orgFolder && orgFolder.id && orgFolder.id !== masterRootId) {
-          tenant.driveFolderId = orgFolder.id;
-          tenant.driveFolderLink =
-            orgFolder.webViewLink ||
-            `https://drive.google.com/drive/folders/${orgFolder.id}`;
-          tenantChanged = true;
-          console.log(
-            `[AutoProvision] Created/Resolved org folder '${orgFolderName}' (${orgFolder.id}) inside Master Root (${masterRootId})`,
-          );
-        }
-      } catch (err) {
-        console.warn(
-          `[AutoProvision] Failed to create folder for tenant '${tenant.name}':`,
-          err?.message || err,
-        );
       }
-    }
-    if (tenantChanged) {
-      tenant.updated_at = new Date().toISOString();
-      updatedCount++;
-      try {
-        const orgsDb = new Database(path.join(process.cwd(), "auth.db"));
-        if (orgsDb) {
-          const row: any = orgsDb
-            .prepare("SELECT * FROM organization WHERE id = ? OR slug = ?")
-            .get(tenant.id, tenant.domainSlug || tenant.id);
-          if (row) {
-            let meta: any = {};
-            try {
-              if (row.metadata)
-                meta =
-                  typeof row.metadata === "string"
-                    ? JSON.parse(row.metadata)
-                    : row.metadata;
-            } catch {}
-            if (tenant.driveFolderId) meta.driveFolderId = tenant.driveFolderId;
-            orgsDb
-              .prepare(
-                "UPDATE organization SET metadata = ? WHERE id = ? OR slug = ?",
-              )
-              .run(
-                JSON.stringify(meta),
-                tenant.id,
-                tenant.domainSlug || tenant.id,
-              );
-          }
-        }
-      } catch (e) {
-        console.warn(
-          `Could not sync sqlite organization metadata for ${tenant.name}:`,
-          e?.message,
-        );
+      if (!orgFolder || !orgFolder.id) {
+        orgFolder = await getOrCreateDriveFolder(orgFolderName, masterRootId, activeToken);
       }
+      if (orgFolder && orgFolder.id && orgFolder.id !== masterRootId) {
+        persistTenantFolder(tenant.id, orgFolder.id);
+        updatedCount++;
+      }
+    } catch (err) {
+      console.warn(`[AutoProvision] Failed to create folder for tenant '${tenant.name}':`, err?.message || err);
     }
-  }
-  if (updatedCount > 0) {
-    saveDb();
   }
   return { success: true, updatedCount };
 }
@@ -598,8 +286,7 @@ async function getPartnerFolderId(partner, token, orgId) {
     const orgFolder2 = await getOrgFolderId(orgId, token);
     return orgFolder2.id || db.googleConfig.driveFolderId;
   }
-  const targetOrgId =
-    orgId || partner.organizationId || db.activeTenantId || getDefaultTenantId();
+  const targetOrgId = orgId || partner.organizationId;
   const orgFolder = await getOrgFolderId(targetOrgId, token);
   const parentFolderId = orgFolder.id || db.googleConfig.driveFolderId;
   const extractedId = extractFolderIdFromLink(partner.link_folder_dd);
@@ -615,9 +302,6 @@ async function getPartnerFolderId(partner, token, orgId) {
         activeToken,
       );
       partner.link_folder_dd = folderRes.webViewLink;
-      if (!partner.organizationId) {
-        partner.organizationId = targetOrgId;
-      }
       saveDb();
       return folderRes.id;
     } catch (err) {
@@ -646,39 +330,79 @@ async function getPartnerCategoryFolderId(partner: any, category: string, token?
     return vendorFolderId;
   }
 }
-const uploadsDir = path.join(process.cwd(), "uploads");
+const uploadsDir = UPLOADS_DIR;
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-/** Folder name used for a tenant under uploads/ (mirrors saveLocalFile). */
-function tenantUploadFolderName(tenant: any): string {
-  return String(tenant?.name || "Organization").replace(/[/\\?%*:|"<>]/g, "_").trim();
-}
 /*
- * Uploaded evidence (identity documents, contracts, invoices) is private:
- * a session is required, non-superusers may only read their own tenant's
- * folder, and files are served with headers that stop the browser from
- * executing uploaded content (PRD §5.2 upload hardening).
+ * Uploaded evidence is private (PRD §11.5). A file is served only when it
+ * resolves to persisted records that own it, and the caller can see at least
+ * one of those records in that record's organization and department scope.
+ * Folder names are never proof of ownership (two organizations can sanitize
+ * to the same name), and unowned root files are denied, not deleted.
  */
+const UPLOAD_KINDS: Array<[RecordKind, string]> = [
+  ["partner", "partners"], ["contract", "contracts"], ["io", "ios"], ["spending", "spendings"], ["evaluation", "evaluations"],
+];
+let uploadIndex: Map<string, Array<{ kind: RecordKind; record: any }>> | null = null;
+function normalizeUploadPath(value: string): string | null {
+  try {
+    const raw = value.split(/[?#]/)[0];
+    const at = raw.indexOf("/uploads/");
+    if (at < 0) return null;
+    const decoded = decodeURIComponent(raw.slice(at));
+    if (decoded.includes("\0") || decoded.split("/").some((seg) => seg === "..")) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+function uploadOwners(urlPath: string) {
+  if (!uploadIndex) {
+    uploadIndex = new Map();
+    for (const [kind, collection] of UPLOAD_KINDS) {
+      for (const record of db[collection] || []) {
+        const urls = JSON.stringify(record).match(/\/uploads\/[^"\\]+/g) || [];
+        for (const url of urls) {
+          const key = normalizeUploadPath(url);
+          if (!key) continue;
+          const owners = uploadIndex.get(key) || [];
+          owners.push({ kind, record });
+          uploadIndex.set(key, owners);
+        }
+      }
+    }
+  }
+  return uploadIndex.get(urlPath) || [];
+}
 app.use("/uploads", (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const actor = (req as any).actor;
-  if (!actor) {
-    return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
+  if (migrationBlock) return res.status(503).end();
+  let identity;
+  try {
+    identity = resolveIdentity(sqliteDb, req);
+  } catch (err: any) {
+    if (err instanceof RequestDenied) return sendError(req, res, err.status, err.error);
+    throw err;
   }
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Content-Security-Policy", "sandbox");
   res.setHeader("Cache-Control", "private, no-store");
-  if (actor.role === "superuser") return next();
-  let firstSegment = "";
-  try {
-    firstSegment = decodeURIComponent(req.path.replace(/^\/+/, "").split("/")[0] || "");
-  } catch {
-    return res.status(400).end();
-  }
-  const ownTenant = findTenant(actor.tenantId);
-  const ownsFolder = ownTenant && tenantUploadFolderName(ownTenant) === firstSegment;
-  const isRootFile = !req.path.replace(/^\/+/, "").includes("/");
-  if (ownsFolder || (isRootFile && ["admin"].includes(String(actor.role)))) return next();
+  const key = normalizeUploadPath(`/uploads${req.path}`);
+  if (!key) return res.status(400).end();
+  const scopes = new Map<string, any>();
+  const allowed = uploadOwners(key).some(({ kind, record }) => {
+    if (!record?.organizationId) return false;
+    let ctx: OrgContext;
+    try {
+      ctx = resolveOrganizationContext(sqliteDb, identity, record.organizationId);
+    } catch {
+      return false;
+    }
+    if (!can(ctx, "document.view")) return false;
+    if (!scopes.has(ctx.organizationId)) scopes.set(ctx.organizationId, createOrganizationScope(sqliteDb, ctx.organizationId, db));
+    return recordVisible(ctx, scopes.get(ctx.organizationId), kind, record);
+  });
+  if (allowed) return next();
   return res.status(404).end();
 }, express.static(uploadsDir, { dotfiles: "deny", index: false }));
 function saveLocalFile(
@@ -689,7 +413,7 @@ function saveLocalFile(
   orgName?: string,
 ) {
   try {
-    const cleanOrg = (orgName || tenantDisplayName(getDefaultTenantId()))
+    const cleanOrg = (orgName || "Organization")
       .replace(/[/\\?%*:|"<>]/g, "_")
       .trim();
     const cleanVendor = (partnerName || "Vendor")
@@ -963,62 +687,46 @@ async function migrateLocalFilesToGoogleDrive(token) {
   }
   return { migratedCount };
 }
+/** Exact canonical ownership. Records without an organization belong to nobody (PRD §14.3). */
 function isMatchingOrg(entityOrgId, targetTenantId) {
-  if (!targetTenantId) return true;
-  if (entityOrgId === targetTenantId) return true;
-  // Records without an organization (or carrying a pre-OSS alias) belong to
-  // the default tenant.
-  const defaultId = getDefaultTenantId();
-  const isDefaultTarget = targetTenantId === defaultId || isLegacyDefaultAlias(targetTenantId);
-  const isDefaultEntity = !entityOrgId || entityOrgId === defaultId || isLegacyDefaultAlias(entityOrgId);
-  return Boolean(isDefaultTarget && isDefaultEntity);
+  return Boolean(entityOrgId) && Boolean(targetTenantId) && entityOrgId === targetTenantId;
+}
+/** Request-local department resolver for the verified organization. */
+function scopeOf(req: express.Request) {
+  const r = req as any;
+  if (!r.recordScope) r.recordScope = createOrganizationScope(sqliteDb, orgContextOf(req).organizationId, db);
+  return r.recordScope as ReturnType<typeof createOrganizationScope>;
+}
+/** Records of `kind` the caller may see: own organization, department scope, before any aggregation. */
+function scopedRecords<T = any>(req: express.Request, kind: RecordKind, rows: T[] | undefined): T[] {
+  return filterRecords(orgContextOf(req), scopeOf(req), kind, rows);
 }
 /**
- * PUT/DELETE on contracts/partners/ios previously had no tenant check at all,
- * letting any non-Viewer role edit or delete another tenant's records by ID
- * (see QA/QC audit finding C4). GET already scopes reads via `isMatchingOrg`;
- * this mirrors that same tolerant comparison for writes. Superuser bypasses.
- * Returns null when the write may proceed, or a `{status, body}` pair to send
- * as-is when it may not — mismatches come back as 404 (not 403) so a caller
- * probing IDs can't use the response to confirm another tenant's resource
- * exists (PRD §29 anti-enumeration, mirrored from server/rbac.ts).
+ * Resource boundary for reads/updates/deletes (PRD §5.4): the persisted
+ * record must belong to the verified organization and, for department roles,
+ * to one of the caller's departments. Anything else answers 404 so IDs of
+ * other tenants/departments cannot be probed.
  */
-function assertTenantWriteAccess(
+function assertRecordAccess(
   req: express.Request,
-  entityOrgId: string | null | undefined,
+  kind: RecordKind,
+  record: any,
 ): { status: number; body: { error: string; message: string } } | null {
-  const actor = (req as any).actor;
-  if (!actor) {
-    return { status: 401, body: { error: "UNAUTHENTICATED", message: "Authentication is required." } };
-  }
-  if (actor.role === "superuser") return null;
-  if (isMatchingOrg(entityOrgId, actor.tenantId)) return null;
-  return {
-    status: 404,
-    body: { error: "RESOURCE_NOT_FOUND", message: "Resource not found." },
-  };
+  if (record && recordVisible(orgContextOf(req), scopeOf(req), kind, record)) return null;
+  return { status: 404, body: { error: "RESOURCE_NOT_FOUND", message: "Resource not found." } };
 }
-/**
- * Tenant a request operates on. Non-superusers are pinned to the tenant of
- * their verified membership — client headers/body can never widen that
- * (PRD §4.4). Superusers may target any existing tenant explicitly.
- */
+/** Creates/updates may not place a record outside the caller's department scope. */
+function assertRecordWritable(req: express.Request, kind: RecordKind, record: any) {
+  const ctx = orgContextOf(req);
+  if (hasOrganizationScope(ctx)) return null;
+  // Rebuild so a just-edited partner/contract name or PIC is resolved fresh.
+  const fresh = createOrganizationScope(sqliteDb, ctx.organizationId, db);
+  if (recordVisible(ctx, fresh, kind, { ...record, organizationId: ctx.organizationId })) return null;
+  return { status: 403, body: { error: "INSUFFICIENT_PERMISSION", message: "The record must belong to one of your departments." } };
+}
+/** Organization a tenant request operates on: always the verified context, never a default. */
 function getRequestTenantId(req: express.Request): string {
-  const actor = (req as any).actor;
-  if (!actor) return "__no_tenant__";
-  if (actor.role !== "superuser") return actor.tenantId || "__no_tenant__";
-  const requested = String(
-    req.headers["x-organization-id"] ||
-    req.headers["x-tenant-id"] ||
-    req.query.tenantId ||
-    (req.body && typeof req.body === "object" ? req.body.organizationId : "") ||
-    "",
-  ).trim();
-  if (requested && findTenant(requested)) return findTenant(requested).id;
-  return db.activeTenantId || getDefaultTenantId();
-}
-function canReadAllTenants(req: express.Request): boolean {
-  return (req as any).actor?.role === "superuser" && req.query.all === "true";
+  return orgContextOf(req).organizationId;
 }
 async function ensureAllPartnersFolders(token?: string, targetTenantId?: string) {
   let localFoldersCreated = 0;
@@ -1031,14 +739,9 @@ async function ensureAllPartnersFolders(token?: string, targetTenantId?: string)
     : db.partners || [];
   for (const partner of partnersToProcess) {
     if (!partner.nama_partner) continue;
-    const orgId =
-      partner.organizationId ||
-      targetTenantId ||
-      db.activeTenantId ||
-      getDefaultTenantId();
-    const tenant =
-      (db.tenants || DEFAULT_TENANTS).find((t) => t.id === orgId) ||
-      DEFAULT_TENANTS[0];
+    const orgId = partner.organizationId;
+    const tenant = findTenant(orgId);
+    if (!tenant) continue; // unowned records are quarantined, never filed under another tenant
     const cleanOrg = (tenant?.name || "Organization")
       .replace(/[/\\?%*:|"<>]/g, "_")
       .trim();
@@ -1107,7 +810,7 @@ async function ensureAllPartnersFolders(token?: string, targetTenantId?: string)
   }
   return { localFoldersCreated, driveFoldersCreated };
 }
-const dataFilePath = path.join(process.cwd(), "data_store.json");
+const dataFilePath = LEGACY_DATA_FILE;
 const DEFAULT_BRANDING = {
   appName: "Legalio CLM",
   logoUrl: "/favicon.png",
@@ -1115,9 +818,6 @@ const DEFAULT_BRANDING = {
   footerText: "Legalio — open-source contract lifecycle management.",
   loginHeadline: "Contract, partner and commercial document management",
 };
-// Only used when the store has no tenants at all (e.g. a store emptied by
-// hand). A fresh install is seeded from the demo dataset instead.
-const DEFAULT_TENANTS = [DEMO_TENANTS[0]];
 /*
  * There are no default credentials. The first admin is created on the
  * first-run setup page (POST /api/system/setup). For automated deploys,
@@ -1130,19 +830,22 @@ const shouldSeedDemoAdmin = process.env.SEED_DEMO_ADMIN !== "false";
 // The password older releases seeded the admin with; only kept to warn installs still using it.
 const LEGACY_DEFAULT_ADMIN_PASSWORD = "123456789";
 const demoData = buildDemoDataset();
+// APP_TEST_MODE never reseeds demo data (PRD §15); fixtures are created explicitly.
+const seedData = IS_TEST_MODE
+  ? { partners: [], contracts: [], ios: [], notifications: [], activityLogs: [], evaluations: [], spendings: [] }
+  : demoData;
 let db: any = {
-  allowedUsers: demoData.allowedUsers,
-  partners: demoData.partners,
-  contracts: demoData.contracts,
-  ios: demoData.ios,
-  notifications: demoData.notifications,
-  activityLogs: demoData.activityLogs,
-  evaluations: demoData.evaluations,
-  spendings: demoData.spendings,
-  tenants: demoData.tenants,
-  departments: demoData.departments,
+  allowedUsers: [],
+  partners: seedData.partners,
+  contracts: seedData.contracts,
+  ios: seedData.ios,
+  notifications: seedData.notifications,
+  activityLogs: seedData.activityLogs,
+  evaluations: seedData.evaluations,
+  spendings: seedData.spendings,
+  tenants: [],
+  templates: [],
   newsTicker: { items: [] as string[], lastGeneratedAt: null as string | null },
-  activeTenantId: demoData.tenants[0].id,
   branding: DEFAULT_BRANDING,
   googleConfig: {
     spreadsheetId: "",
@@ -1161,27 +864,10 @@ let db: any = {
 };
 bindTenantStore(() => db);
 
-function seedDemoAdminAccount() {
-  if (!shouldSeedDemoAdmin || !demoAdminEmail || !demoAdminPassword) return;
-  const allowedUsers = Array.isArray(db.allowedUsers) ? db.allowedUsers : [];
-  const existingUser = allowedUsers.find(
-    (user: any) => String(user.email || "").trim().toLowerCase() === demoAdminEmail,
-  );
-  if (existingUser) return;
-
-  allowedUsers.push({
-    id: "demo-admin",
-    organizationId: getDefaultTenantId(),
-    email: demoAdminEmail,
-    name: "Legalio Admin",
-    role: "Superuser",
-    department: null,
-    status: "Active",
-    addedBy: "System bootstrap",
-    createdAt: new Date().toISOString(),
-  });
-  db.allowedUsers = allowedUsers;
-  console.log(`Seeded bootstrap superuser: ${demoAdminEmail}`);
+/** Rebuilds the read-only `db.tenants` projection from canonical organization rows (PRD §7.3). */
+function refreshTenantProjection() {
+  if (migrationBlock) return;
+  db.tenants = buildTenantProjection(sqliteDb);
 }
 setInvalidTokenCallback((badToken) => {
   if (db.googleConfig && db.googleConfig.accessToken === badToken) {
@@ -1587,63 +1273,77 @@ __name(
   computeContractEndDateFromDuration,
   "computeContractEndDateFromDuration",
 );
+/*
+ * Startup (PRD §14.1): a fresh install initializes the canonical schema
+ * directly; an existing database must have run 002_tenant_boundaries,
+ * otherwise the API stays in a controlled MIGRATION_REQUIRED state and no
+ * legacy administrative projection is hydrated or saved.
+ */
+ensureTenantBoundarySchema(sqliteDb);
+if (isEmptyInstall(sqliteDb)) {
+  if (!IS_TEST_MODE) {
+    seedOrganizationsFromDataset(sqliteDb, demoData, {
+      bootstrapSuperuser: shouldSeedDemoAdmin && demoAdminEmail && demoAdminPassword
+        ? { id: "demo-admin", email: demoAdminEmail, name: "Legalio Admin" }
+        : undefined,
+    });
+  }
+  markMigrationApplied(sqliteDb, { freshInstall: true });
+} else if (!migrationApplied(sqliteDb)) {
+  migrationBlock = "MIGRATION_REQUIRED";
+  console.error("[startup] Legacy data found without migration 002_tenant_boundaries. Run `npm run tenant-boundaries:migrate` (dry-run, then --apply) before starting this version.");
+}
+if (!migrationBlock && !IS_TEST_MODE && shouldSeedDemoAdmin && demoAdminEmail && demoAdminPassword
+  && !sqliteDb.prepare(`SELECT 1 FROM "user" WHERE id = 'demo-admin' OR LOWER(email) = ?`).get(demoAdminEmail)) {
+  seedOrganizationsFromDataset(sqliteDb, { tenants: [], departments: [], allowedUsers: [] }, {
+    bootstrapSuperuser: { id: "demo-admin", email: demoAdminEmail, name: "Legalio Admin" },
+  });
+  console.log(`Seeded bootstrap superuser: ${demoAdminEmail}`);
+}
 const sqliteInitialData = loadCoreDataFromSqlite();
-const sqliteHasCoreData = Object.values(sqliteInitialData).some((value) =>
-  Array.isArray(value) ? value.length > 0 : Boolean(value),
-);
+const sqliteHasCoreData = ["partners", "contracts", "ios", "spendings", "evaluations", "notifications", "templates", "activityLogs"]
+  .some((key) => Array.isArray((sqliteInitialData as any)[key]) && (sqliteInitialData as any)[key].length > 0);
 
 if (sqliteHasCoreData) {
   db = { ...db, ...sqliteInitialData };
   console.log("Database loaded from SQLite as the source of truth.");
-} else if (fs.existsSync(dataFilePath)) {
+} else if (!IS_TEST_MODE && fs.existsSync(dataFilePath)) {
   try {
     const raw = fs.readFileSync(dataFilePath, "utf-8");
     const parsed = JSON.parse(raw);
     db = { ...db, ...parsed };
-    hydrateCoreDataFromJson(db);
+    if (!migrationBlock) hydrateCoreDataFromJson(db);
     console.log("Imported legacy data_store.json into SQLite.");
   } catch (err) {
     console.error("Error importing data_store.json, using seed defaults", err);
   }
 } else {
+  db = {
+    ...db,
+    allowedUsers: sqliteInitialData.allowedUsers || [],
+    branding: sqliteInitialData.branding || db.branding,
+    googleConfig: sqliteInitialData.googleConfig || db.googleConfig,
+    newsTicker: sqliteInitialData.newsTicker || db.newsTicker,
+  };
   console.log("SQLite is empty; using seed defaults for the first initialization.");
 }
-
-seedDemoAdminAccount();
+// Only the canonical tables define organizations; legacy snapshot rows are migration input.
+db.tenants = [];
+delete db.departments;
+delete db.activeTenantId;
+refreshTenantProjection();
 migrateLegacyRecords();
 /**
  * Bring records written by earlier releases in line with the current model:
- * - organization-less / legacy-alias records belong to the default tenant;
  * - Indonesian status labels become stable codes (see src/lib/domainStatus);
  * - due-diligence checklists are rebuilt from the tenant's policy packs,
  *   keeping every document that was already uploaded.
  * Idempotent: running it on migrated data changes nothing.
  */
 function migrateLegacyRecords() {
-  if (!Array.isArray(db.tenants) || db.tenants.length === 0) db.tenants = [...DEFAULT_TENANTS];
-  if (!db.tenants.some((t: any) => t.isDefault)) db.tenants[0].isDefault = true;
-  for (const tenant of db.tenants) {
-    if (!tenant.settings) {
-      // Pre-OSS tenants were Indonesian by construction; keep that behaviour
-      // for them, everything else starts jurisdiction-neutral.
-      const legacyIndonesian = tenant.currency === "IDR" || tenant.legalEntity === "PT";
-      tenant.settings = resolveTenantSettings({
-        settings: { countryCode: legacyIndonesian ? "ID" : "INTL" },
-        currency: tenant.currency,
-      });
-    }
-  }
-  const defaultId = getDefaultTenantId();
-  const fixOrg = (row: any) => {
-    if (row && (!row.organizationId || isLegacyDefaultAlias(row.organizationId))) row.organizationId = defaultId;
-  };
-  for (const collection of [db.partners, db.contracts, db.ios, db.spendings, db.evaluations, db.notifications, db.templates, db.departments, db.allowedUsers]) {
-    if (Array.isArray(collection)) collection.forEach(fixOrg);
-  }
+  // Organization ownership is never guessed here: records without a canonical
+  // organization stay quarantined until the 002 migration maps them (PRD §14.3).
   if (!db.templates) db.templates = [];
-  if (isLegacyDefaultAlias(db.activeTenantId) || !db.tenants.some((t: any) => t.id === db.activeTenantId)) {
-    db.activeTenantId = defaultId;
-  }
   (db.partners || []).forEach((p: any) => {
     if (p.country === undefined && p.badan_hukum) {
       // BHI = "Badan Hukum Indonesia"; BHA = foreign entity of unknown country.
@@ -1666,17 +1366,6 @@ function migrateLegacyRecords() {
     sp.currency = normalizeCurrencyCode(sp.currency, tenantDefaultCurrency(sp.organizationId));
   });
 }
-const defaultOrg = db.tenants.find((t) => t.isDefault);
-if (defaultOrg) {
-  if (!defaultOrg.spreadsheetId && db.googleConfig?.spreadsheetId) {
-    defaultOrg.spreadsheetId = db.googleConfig.spreadsheetId;
-    defaultOrg.spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${db.googleConfig.spreadsheetId}/edit`;
-  }
-  if (!defaultOrg.driveFolderId && db.googleConfig?.driveFolderId) {
-    defaultOrg.driveFolderId = db.googleConfig.driveFolderId;
-    defaultOrg.driveFolderLink = `https://drive.google.com/drive/folders/${db.googleConfig.driveFolderId}`;
-  }
-}
 // Demo-dataset logins share DEMO_ADMIN_PASSWORD, so a production server never keeps them —
 // including servers that created them before this rule existed.
 if (process.env.NODE_ENV === "production") {
@@ -1685,14 +1374,15 @@ if (process.env.NODE_ENV === "production") {
   if (removed) console.log(`Production: removed ${removed} demo login account(s).`);
 }
 saveDb();
-// Hydrate the Better Auth SQLite tables (user/organization/team/member) from
-// the SQLite-backed `db` projection after startup normalization. This keeps
-// auth-console records aligned with the same source of truth as app data.
-setConsoleDbReference(db, saveDb);
-ensureUserAccountsExist();
-ensureAllPartnersFolders().catch((err) =>
-  console.error("Startup category folder provisioning error:", err),
-);
+// The auth console reads platform configuration (SMTP) from `db`; it no longer
+// hydrates identities, memberships or organizations from this projection.
+setConsoleDbReference(db, saveDb, (organizationId?: string) => (organizationId ? onOrganizationChanged(organizationId) : refreshTenantProjection()));
+if (!IS_TEST_MODE && !migrationBlock) {
+  ensureUserAccountsExist();
+  ensureAllPartnersFolders().catch((err) =>
+    console.error("Startup category folder provisioning error:", err),
+  );
+}
 if (db.spendings && db.spendings.length > 0) {
   let legacyCounter = 1;
   let changed = false;
@@ -1832,6 +1522,8 @@ if (db.partners && Array.isArray(db.partners)) {
   saveDb();
 }
 function saveDb() {
+  uploadIndex = null;
+  if (migrationBlock) return; // never persist legacy projections before migration
   try {
     syncDbToSqlite(db);
   } catch (err) {
@@ -1933,6 +1625,20 @@ async function sendSmtpEmail({
     return { success: false, error: err.message || String(err) };
   }
 }
+/** Platform mail delivery used after commit; false when not delivered (never throws). */
+async function sendPlatformMail(input: { to: string; subject: string; html: string }): Promise<boolean> {
+  if (IS_TEST_MODE) return false;
+  const result = await sendSmtpEmail(input);
+  return Boolean(result?.success);
+}
+setVerificationMailer(async ({ email, url }) => {
+  const sent = await sendPlatformMail({
+    to: email,
+    subject: "Verify your email address",
+    html: `<p>Confirm your email address to finish setting up your Legalio account.</p><p><a href="${escapeHtml(url)}">Verify email</a></p>`,
+  });
+  if (!sent) throw new Error("Verification email delivery is unavailable.");
+});
 function daysUntilForTenant(tenantId: string | null | undefined, date: string): number | null {
   return computeLifecycle(tenantId, date, "Active").daysRemaining;
 }
@@ -2031,15 +1737,16 @@ function rollForwardAutoRenewal(contract: any): void {
   }
   contract.tanggal_berakhir = end;
 }
+/** Recipients from the record's OWNING organization (PRD §11.5), never global config. */
 function reminderRecipients(tenantId: string, kind: "contract" | "commercial", owner?: string): string {
-  const cfg = db.googleConfig || {};
-  const configured = kind === "contract"
-    ? cfg.legalNotificationEmail || cfg.notificationEmails
-    : cfg.financeNotificationEmail || cfg.notificationEmails;
-  const tenantAdmins = (db.allowedUsers || [])
-    .filter((u: any) => isMatchingOrg(u.organizationId, tenantId) && ["admin", "manager"].includes(String(u.role).toLowerCase()) && u.status !== "Inactive")
-    .map((u: any) => u.email);
-  return [owner, configured, ...tenantAdmins].filter(Boolean).join(", ");
+  const notifications = findTenant(tenantId)?.notifications || { notificationEmails: [], legalNotificationEmail: null, financeNotificationEmail: null };
+  const dedicated = kind === "contract" ? notifications.legalNotificationEmail : notifications.financeNotificationEmail;
+  const configured = dedicated ? [dedicated] : notifications.notificationEmails || [];
+  const admins = (sqliteDb.prepare(`
+    SELECT u.email FROM member m JOIN "user" u ON u.id = m.userId
+    WHERE m.organizationId = ? AND m.status = 'active' AND m.role IN ('admin', 'manager') AND COALESCE(u.banned, 0) = 0
+  `).all(tenantId) as any[]).map((r) => r.email);
+  return Array.from(new Set([owner, ...configured, ...admins].filter(Boolean))).join(", ");
 }
 /**
  * Recompute lifecycle status for contracts and commercial documents and emit
@@ -2048,7 +1755,8 @@ function reminderRecipients(tenantId: string, kind: "contract" | "commercial", o
 function recalculateStatuses() {
   let newNotifsCount = 0;
   const emitReminder = (kind: "contract" | "commercial", record: any, daysRemaining: number) => {
-    const tenantId = record.organizationId || getDefaultTenantId();
+    const tenantId = record.organizationId;
+    if (!findTenant(tenantId)) return; // unowned records get no reminders
     const settings = getTenantSettings(tenantId);
     if (!settings.reminderOffsetsDays.includes(daysRemaining)) return;
     const parentId = kind === "contract" ? record.contract_id : record.io_id;
@@ -2151,6 +1859,11 @@ function refreshContractLifecycles() {
   }
   if (changed) saveDb();
 }
+/**
+ * Operational activity entry (the History drawer's "activity" dataset). The
+ * actor comes from the verified identity and the organization from the
+ * verified context; caller-supplied names/roles are ignored when either exists.
+ */
 function addActivityLog(
   userEmail,
   userName,
@@ -2159,31 +1872,20 @@ function addActivityLog(
   moduleName,
   description,
   req,
+  organizationId?: string | null,
 ) {
-  // `userEmail`/`userName`/`role` used to come straight from whatever the
-  // caller passed in, which for several routes was itself lifted verbatim
-  // from the request body/query — any caller could dictate who the audit
-  // log says performed the action (QA/QC audit finding H2). Prefer the
-  // identity of the actually-authenticated actor when one is attached to
-  // the request; the passed-in values remain only as a fallback for the
-  // rare call site made before `attachRbacActor` has run.
-  const actorId = req?.actor?.id;
-  if (actorId && sqliteDb) {
-    try {
-      const actorUser: any = sqliteDb
-        .prepare("SELECT name, email FROM user WHERE id = ?")
-        .get(actorId);
-      if (actorUser) {
-        userEmail = actorUser.email || userEmail;
-        userName = actorUser.name || userName;
-      }
-      if (req.actor.role) {
-        role = String(req.actor.role).replace(/^./, (c: string) => c.toUpperCase());
-      }
-    } catch { /* keep caller-supplied values */ }
+  const identity = req?.identity;
+  const ctx: OrgContext | undefined = req?.orgContext;
+  if (identity) {
+    userEmail = identity.email;
+    userName = identity.name;
+    role = ctx?.tenantRole
+      ? ctx.tenantRole.replace(/^./, (c: string) => c.toUpperCase())
+      : identity.platformRole === "superuser" ? "Platform administrator" : "User";
   }
   const log = {
-    id: `act-${Date.now()}-${Math.floor(Math.random() * 1e3)}`,
+    id: `act-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+    organizationId: organizationId !== undefined ? organizationId : ctx?.organizationId ?? null,
     timestamp: new Date().toISOString(),
     userEmail,
     userName,
@@ -2191,7 +1893,7 @@ function addActivityLog(
     actionType,
     module: moduleName,
     description,
-    ipAddress: req?.ip || req?.headers["x-forwarded-for"] || "127.0.0.1",
+    ipAddress: req?.ip || "127.0.0.1",
     userAgent: req?.headers["user-agent"] || "Browser Client",
   };
   db.activityLogs.unshift(log);
@@ -2203,160 +1905,30 @@ function addActivityLog(
 }
 async function getBetterAuthSession(req) {
   try {
-    const session = await betterAuthInstance.api.getSession({
-      headers: req.headers,
-    });
-    if (session?.user) {
-      return session;
-    }
-  } catch (err) {}
-  try {
-    let token = "";
-    const authHeader =
-      req.headers["authorization"] || req.headers["x-session-token"];
-    if (authHeader) {
-      token = authHeader.startsWith("Bearer ")
-        ? authHeader.substring(7).trim()
-        : authHeader.trim();
-    }
-    if (!token && req.headers["cookie"]) {
-      const match = req.headers["cookie"].match(
-        /better-auth\.session_token=([^;]+)/,
-      );
-      if (match) {
-        token = decodeURIComponent(match[1]).split(".")[0];
-      }
-    }
-    if (token) {
-      const authDb = new Database(path.join(process.cwd(), "auth.db"));
-      const sessionRow: any = authDb
-        .prepare("SELECT * FROM session WHERE token = ? OR token LIKE ?")
-        .get(token, `${token}%`);
-      if (sessionRow && new Date(sessionRow.expiresAt) > new Date()) {
-        const userRow: any = authDb
-          .prepare("SELECT * FROM user WHERE id = ?")
-          .get(sessionRow.userId);
-        if (userRow) {
-          return {
-            user: {
-              id: userRow.id,
-              email: userRow.email,
-              name: userRow.name,
-              role: userRow.role,
-              banned: Boolean(userRow.banned),
-            },
-            session: sessionRow,
-          };
-        }
-      }
-    }
-  } catch (e) {
-    console.error("Session lookup fallback error:", e);
-  }
-  return null;
-}
-async function getClerkUserEmail(req) {
-  try {
-    const session = await getBetterAuthSession(req);
-    return session?.user?.email?.toLowerCase() || null;
-  } catch (err) {
-    console.error("Failed to get user email:", err);
+    const identity = resolveIdentity(sqliteDb, req);
+    return { user: { id: identity.userId, email: identity.email, name: identity.name, platformRole: identity.platformRole } };
+  } catch {
     return null;
   }
 }
-app.get("/api/user/my-role", async (req: express.Request, res: express.Response) => {
-  const email = await getClerkUserEmail(req);
-  if (!email) {
-    // The app's start-up session probe: "signed out" is an expected answer, not
-    // an error, so it gets 204 instead of filling every public page's console with 401s.
-    if (req.query.probe === "1") return res.status(204).end();
-    return res.status(401).json({ error: "Tidak terautentikasi." });
-  }
-  let allowed = db.allowedUsers.find((u) => u.email.toLowerCase() === email);
-  if (!allowed) {
-    const isFirstUser = db.allowedUsers.length === 0;
-    const session = await getBetterAuthSession(req);
-    const userName = session?.user?.name || email.split("@")[0];
-    const newUser = {
-      id: `user_${Date.now()}`,
-      email,
-      name: userName,
-      role: isFirstUser ? "Admin" : "Staff",
-      // Superuser/Admin are never tied to a single department (RBAC scope is
-      // Global/Tenant, not Tenant+Department); a real department, when one
-      // applies, is filled in below from the user's team membership. No
-      // hardcoded placeholder here — see QA/QC audit finding H1.
-      department: null,
-      status: "Active",
-      addedBy: "System (Auto)",
-      createdAt: new Date().toISOString(),
-      lastLoginAt: new Date().toISOString(),
-    };
-    db.allowedUsers.push(newUser);
-    saveDb();
-    allowed = newUser;
-  }
-  if (allowed.status !== "Active") {
-    return res
-      .status(403)
-      .json({
-        error: "Akses Ditolak",
-        message: `Email '${email}' telah dinonaktifkan. Hubungi Tim Administrator.`,
-      });
-  }
+async function getClerkUserEmail(req) {
+  return (await getBetterAuthSession(req))?.user?.email || null;
+}
+/**
+ * Identity adapter (PRD §10.1): explicit platformRole and own memberships.
+ * GET never creates allowlist rows, memberships or selections.
+ */
+app.get("/api/user/my-role", (req: express.Request, res: express.Response) => {
+  let identity;
   try {
-    const userRow: any = sqliteDb
-      .prepare(
-        "SELECT u.id, u.name, u.role FROM user u WHERE LOWER(u.email) = LOWER(?)",
-      )
-      .get(email);
-    if (userRow) {
-      if (userRow.name) {
-        allowed.name = userRow.name;
-      }
-      if (userRow.role) {
-        const rawRole = String(userRow.role).toLowerCase();
-        if (rawRole === "superuser") allowed.role = "Superuser";
-        else if (rawRole === "admin") allowed.role = "Admin";
-        else if (rawRole === "manager") allowed.role = "Manager";
-        else if (rawRole === "editor") allowed.role = "Editor";
-        else if (rawRole === "viewer") allowed.role = "Viewer";
-        else if (rawRole === "legal") allowed.role = "Manager";
-        else if (rawRole === "finance") allowed.role = "Editor";
-        else if (rawRole === "staff") allowed.role = "Viewer";
-      }
-      const isGlobalRole = allowed.role === "Superuser" || allowed.role === "Admin";
-      if (isGlobalRole) {
-        // Never let a stray teamMember row (legacy data, or a role change that
-        // left one behind) put a department back on a Superuser/Admin profile.
-        allowed.department = null;
-      } else {
-        const teamRow: any = sqliteDb
-          .prepare(
-            `
-          SELECT t.name FROM team t
-          JOIN teamMember tm ON tm.teamId = t.id
-          WHERE tm.userId = ?
-          LIMIT 1
-        `,
-          )
-          .get(userRow.id);
-        if (teamRow?.name) {
-          allowed.department = teamRow.name;
-        }
-      }
-    }
-  } catch (err) {}
-  allowed.lastLoginAt = new Date().toISOString();
-  saveDb();
-  const isGlobalRole = allowed.role === "Superuser" || allowed.role === "Admin";
-  res.json({
-    email: allowed.email,
-    name: allowed.name,
-    role: allowed.role,
-    department: isGlobalRole ? "Semua Departemen (Akses Global)" : (allowed.department || null),
-    loginTime: new Date().toISOString(),
-  });
+    identity = resolveIdentity(sqliteDb, req);
+  } catch (err: any) {
+    // The start-up probe treats "signed out" as an expected answer.
+    if (req.query.probe === "1") return res.status(204).end();
+    return sendError(req, res, err?.status || 401, err?.error || "UNAUTHENTICATED");
+  }
+  const me = identityResponse(sqliteDb, identity);
+  res.json({ ...me, email: identity.email, name: identity.name, platformRole: identity.platformRole, loginTime: new Date().toISOString() });
 });
 // Dashboard news ticker (optional module, off by default): 5 short
 // regulatory headlines for the tenant's industry and country, written in the
@@ -2452,96 +2024,21 @@ app.get("/api/dashboard/news-ticker", async (req: express.Request, res: express.
   }
 });
 
-app.get("/api/departments", async (req: express.Request, res: express.Response) => {
-  try {
-    let tenantId =
-      req.headers["x-tenant-id"] ||
-      req.headers["x-organization-id"] ||
-      req.query.tenantId;
-    if (!tenantId || isLegacyDefaultAlias(tenantId)) {
-      const email = await getClerkUserEmail(req);
-      if (email) {
-        const user: any = sqliteDb
-          .prepare("SELECT id FROM user WHERE email = ?")
-          .get(email);
-        if (user) {
-          const session: any = sqliteDb
-            .prepare(
-              "SELECT activeOrganizationId FROM session WHERE userId = ? ORDER BY updatedAt DESC LIMIT 1",
-            )
-            .get(user.id);
-          if (session && session.activeOrganizationId) {
-            tenantId = session.activeOrganizationId;
-          }
-        }
-      }
-    }
-    if (!tenantId || isLegacyDefaultAlias(tenantId)) {
-      const firstOrg: any = sqliteDb
-        .prepare("SELECT id FROM organization ORDER BY createdAt ASC LIMIT 1")
-        .get();
-      tenantId = db.activeTenantId || firstOrg?.id || "org-1";
-    }
-    let teams: any[] = (sqliteDb
-      .prepare(
-        "SELECT name FROM team WHERE organizationId = ? ORDER BY createdAt ASC",
-      )
-      .all(tenantId) || []) as any[];
-    if (teams.length === 0) {
-      const firstOrg: any = sqliteDb
-        .prepare("SELECT id FROM organization ORDER BY createdAt ASC LIMIT 1")
-        .get();
-      if (firstOrg && firstOrg.id !== tenantId) {
-        teams = (sqliteDb
-          .prepare(
-            "SELECT name FROM team WHERE organizationId = ? ORDER BY createdAt ASC",
-          )
-          .all(firstOrg.id) || []) as any[];
-      }
-    }
-    const departments = teams.map((t: any) => t.name);
-    if (departments.length === 0) {
-      departments.push("Marketing");
-    }
-    res.json({ success: true, departments });
-  } catch (err) {
-    console.error("Failed to fetch departments:", err);
-    res.status(500).json({ error: "Failed to fetch departments" });
-  }
+/** Department names for operational forms: the verified organization, scoped to the caller (no fallback). */
+app.get("/api/departments", (req: express.Request, res: express.Response) => {
+  const ctx = orgContextOf(req);
+  const rows = sqliteDb.prepare("SELECT id, name FROM team WHERE organizationId = ? ORDER BY name COLLATE NOCASE, id").all(ctx.organizationId) as any[];
+  const visible = hasOrganizationScope(ctx) ? rows : rows.filter((r) => ctx.departmentIds.includes(r.id));
+  res.json({ success: true, departments: visible.map((r) => r.name), items: visible });
 });
-app.post("/api/user/log-activity", async (req: express.Request, res: express.Response) => {
-  const {
-    actionType,
-    module: moduleName,
-    description,
-    userEmail,
-    userName,
-    userRole,
-  } = req.body;
-  const email = await getClerkUserEmail(req);
-  let finalEmail = userEmail || "user@app";
-  let finalName = userName || "User";
-  let finalRole = userRole || "Legal";
-  if (email) {
-    const allowed = db.allowedUsers.find(
-      (u) => u.email.toLowerCase() === email,
-    );
-    if (allowed) {
-      finalEmail = allowed.email;
-      finalName = allowed.name;
-      finalRole = allowed.role;
-    }
-  }
-  addActivityLog(
-    finalEmail,
-    finalName,
-    finalRole,
-    actionType || "LOGIN",
-    moduleName || "AUTH",
-    description ||
-      `${actionType === "LOGOUT" ? "Keluar dari" : "Masuk ke"} aplikasi via Clerk Auth`,
-    req,
-  );
+/** Records the caller's own sign-in/sign-out in their session's organization (if any). */
+app.post("/api/user/log-activity", (req: express.Request, res: express.Response) => {
+  const identity = resolveIdentity(sqliteDb, req);
+  const actionType = req.body?.actionType === "LOGOUT" ? "LOGOUT" : "LOGIN";
+  const orgId = identity.sessionDefaultOrganizationId;
+  let ctx: OrgContext | null = null;
+  try { ctx = orgId ? resolveOrganizationContext(sqliteDb, identity, orgId) : null; } catch { ctx = null; }
+  addActivityLog("", "", "", actionType, "AUTH", actionType === "LOGOUT" ? "Signed out" : "Signed in", req, ctx?.organizationId ?? null);
   res.json({ success: true });
 });
 /**
@@ -2593,33 +2090,18 @@ function redactProviderConfig(config: any) {
  * also trusted e-mail addresses supplied in headers, body or query string;
  * the unused `_fallback*` parameters are kept for call-site compatibility.
  */
+/**
+ * Platform-administrator check from the verified identity only. Routes that
+ * call this are already gated by a platform policy; this is defence in depth.
+ * A tenant admin membership never makes this true.
+ */
 async function checkIsAdmin(req: express.Request, _fallbackEmail?: string, _fallbackName?: string) {
-  const session = await getBetterAuthSession(req);
-  const email = String(session?.user?.email || "").toLowerCase().trim();
-  const name = session?.user?.name || "User";
-  if (!email) {
+  try {
+    const identity = resolveIdentity(sqliteDb, req);
+    return { isAdmin: identity.platformRole === "superuser", adminEmail: identity.email, adminName: identity.name || "Admin" };
+  } catch {
     return { isAdmin: false, adminEmail: "", adminName: "" };
   }
-  try {
-    const userRow: any = sqliteDb
-      .prepare("SELECT id, name, role, banned FROM user WHERE LOWER(email) = LOWER(?)")
-      .get(email);
-    if (userRow?.banned === 1) {
-      return { isAdmin: false, adminEmail: email, adminName: name };
-    }
-  } catch (_) {}
-  const allowed = (db.allowedUsers || []).find(
-    (u: any) => (u.email || "").toLowerCase() === email,
-  );
-  if (allowed && (allowed.status === "Inactive" || allowed.status === "Banned")) {
-    return { isAdmin: false, adminEmail: email, adminName: name };
-  }
-  const actorRole = String((req as any).actor?.role || session?.user?.role || "").toLowerCase();
-  return {
-    isAdmin: ["admin", "superuser", "owner"].includes(actorRole),
-    adminEmail: email,
-    adminName: allowed?.name || name,
-  };
 }
 app.get("/api/user/allowed-users", (req: express.Request, res: express.Response) => {
   syncAdderNames();
@@ -2782,7 +2264,7 @@ app.post("/api/user/reset-password", async (req: express.Request, res: express.R
     return res.status(400).json({ error: "Password minimal 6 karakter." });
   }
   try {
-    const authDb = new Database(path.join(process.cwd(), "auth.db"));
+    const authDb = sqliteDb;
     const trimmedEmail = email.trim().toLowerCase();
     let targetUser: any = authDb
       .prepare("SELECT id, name, email FROM user WHERE LOWER(email) = ?")
@@ -2795,7 +2277,7 @@ app.post("/api/user/reset-password", async (req: express.Request, res: express.R
       );
       const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       const userName = allowedUser?.name || email.split("@")[0];
-      const userRole = (allowedUser?.role || "Staff").toLowerCase();
+      const userRole = "user"; // platform role only; organization access comes from memberships
       authDb
         .prepare(
           `
@@ -2872,17 +2354,13 @@ app.post("/api/user/reset-password", async (req: express.Request, res: express.R
       });
   }
 });
+/** Operational activity for the selected organization only (History drawer, tenant.audit.read). */
 app.get("/api/activity-logs", (req: express.Request, res: express.Response) => {
-  res.json(db.activityLogs);
+  const orgId = getRequestTenantId(req);
+  res.json((db.activityLogs || []).filter((log: any) => log?.organizationId === orgId));
 });
 app.get("/api/partners", (req: express.Request, res: express.Response) => {
-  const activeTenantId = getRequestTenantId(req);
-  const filterTenant = !canReadAllTenants(req);
-  const partnerList = filterTenant
-    ? (db.partners || []).filter((p) =>
-        isMatchingOrg(p.organizationId, activeTenantId),
-      )
-    : db.partners || [];
+  const partnerList = scopedRecords(req, "partner", db.partners);
   const normalizedPartners = partnerList.map((p) => ({
     ...p,
     tags: sanitizePartnerTags(p.tags),
@@ -2900,7 +2378,7 @@ function ensureAiAvailable(req: express.Request, res: express.Response): boolean
     return false;
   }
   if (!getEffectiveGeminiApiKey()) {
-    res.status(400).json({ error: "AI_NOT_CONFIGURED", message: "No AI provider key is configured. Add one under Settings > AI." });
+    res.status(400).json({ error: "AI_NOT_CONFIGURED", message: "The AI assistant is not available. Ask your platform administrator to configure a provider." });
     return false;
   }
   return true;
@@ -3165,6 +2643,8 @@ app.post("/api/partners", async (req: express.Request, res: express.Response) =>
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+  const writeDenial = assertRecordWritable(req, "partner", newPartner);
+  if (writeDenial) return res.status(writeDenial.status).json(writeDenial.body);
   db.partners.unshift(newPartner);
   saveDb();
   addActivityLog(
@@ -3207,7 +2687,7 @@ app.put("/api/partners/:id", async (req: express.Request, res: express.Response)
     return res.status(404).json({ error: "Partner tidak ditemukan." });
   }
   const existing = db.partners[partnerIndex];
-  const tenantDenial = assertTenantWriteAccess(req, existing.organizationId);
+  const tenantDenial = assertRecordAccess(req, "partner", existing);
   if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
   const nextCountry = country !== void 0 ? sanitizeCountryCode(country) : existing.country || "";
   const nextDocuments = normalizePartnerDocuments({
@@ -3245,6 +2725,9 @@ app.put("/api/partners/:id", async (req: express.Request, res: express.Response)
         : existing.tanggal_dd_diverifikasi,
     updated_at: new Date().toISOString(),
   };
+  updatedPartner.organizationId = existing.organizationId;
+  const writeDenial = assertRecordWritable(req, "partner", updatedPartner);
+  if (writeDenial) return res.status(writeDenial.status).json(writeDenial.body);
   db.partners[partnerIndex] = updatedPartner;
   saveDb();
   addActivityLog(
@@ -3267,21 +2750,20 @@ app.delete("/api/partners/:id", async (req: express.Request, res: express.Respon
     return res.status(404).json({ error: "Partner tidak ditemukan." });
   }
   const partner = db.partners[partnerIndex];
-  const tenantDenial = assertTenantWriteAccess(req, partner.organizationId);
+  const tenantDenial = assertRecordAccess(req, "partner", partner);
   if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
-  const partnerContracts = db.contracts.filter((c) => c.partner_id === id);
+  const sameOrg = (row: any) => row?.organizationId === partner.organizationId;
+  const partnerContracts = db.contracts.filter((c) => sameOrg(c) && c.partner_id === id);
   const contractIds = partnerContracts.map((c) => c.contract_id);
   const partnerIOs = db.ios.filter(
-    (io) => io.partner_id === id || contractIds.includes(io.contract_id),
+    (io) => sameOrg(io) && (io.partner_id === id || contractIds.includes(io.contract_id)),
   );
   const ioIds = partnerIOs.map((io) => io.io_id);
   db.notifications = db.notifications.filter(
-    (n) => !contractIds.includes(n.parent_id) && !ioIds.includes(n.parent_id),
+    (n) => !(sameOrg(n) && (contractIds.includes(n.parent_id) || ioIds.includes(n.parent_id))),
   );
-  db.ios = db.ios.filter(
-    (io) => io.partner_id !== id && !contractIds.includes(io.contract_id),
-  );
-  db.contracts = db.contracts.filter((c) => c.partner_id !== id);
+  db.ios = db.ios.filter((io) => !partnerIOs.includes(io));
+  db.contracts = db.contracts.filter((c) => !partnerContracts.includes(c));
   db.partners.splice(partnerIndex, 1);
   saveDb();
   addActivityLog(
@@ -3323,13 +2805,7 @@ function computeEvaluationScore(obligationTarget, incidentFreq, comm, pricing) {
   return targetScore + incidentScore + commScore + pricingScore;
 }
 app.get("/api/partner-evaluations", (req: express.Request, res: express.Response) => {
-  const activeTenantId = getRequestTenantId(req);
-  const filterTenant = !canReadAllTenants(req);
-  const list = filterTenant
-    ? (db.evaluations || []).filter((e) =>
-        isMatchingOrg(e.organizationId, activeTenantId),
-      )
-    : db.evaluations || [];
+  const list = scopedRecords(req, "evaluation", db.evaluations);
   res.json(list);
 });
 app.post("/api/partner-evaluations", async (req: express.Request, res: express.Response) => {
@@ -3393,6 +2869,8 @@ app.post("/api/partner-evaluations", async (req: express.Request, res: express.R
     updated_at: new Date().toISOString(),
   };
   if (!db.evaluations) db.evaluations = [];
+  const writeDenial = assertRecordWritable(req, "evaluation", newEval);
+  if (writeDenial) return res.status(writeDenial.status).json(writeDenial.body);
   db.evaluations.unshift(newEval);
   saveDb();
   addActivityLog(
@@ -3430,6 +2908,8 @@ app.put("/api/partner-evaluations/:id", async (req: express.Request, res: expres
     return res.status(404).json({ error: "Data evaluasi tidak ditemukan." });
   }
   const existing = db.evaluations[evalIndex];
+  const accessDenial = assertRecordAccess(req, "evaluation", existing);
+  if (accessDenial) return res.status(accessDenial.status).json(accessDenial.body);
   const calculated_score = computeEvaluationScore(
     obligation_target || existing.obligation_target,
     incident_frequency || existing.incident_frequency,
@@ -3452,6 +2932,9 @@ app.put("/api/partner-evaluations/:id", async (req: express.Request, res: expres
     calculated_score,
     updated_at: new Date().toISOString(),
   };
+  updatedEval.organizationId = existing.organizationId;
+  const writeDenial = assertRecordWritable(req, "evaluation", updatedEval);
+  if (writeDenial) return res.status(writeDenial.status).json(writeDenial.body);
   db.evaluations[evalIndex] = updatedEval;
   saveDb();
   addActivityLog(
@@ -3473,6 +2956,8 @@ app.delete("/api/partner-evaluations/:id", async (req: express.Request, res: exp
     return res.status(404).json({ error: "Data evaluasi tidak ditemukan." });
   }
   const removed = db.evaluations[evalIndex];
+  const accessDenial = assertRecordAccess(req, "evaluation", removed);
+  if (accessDenial) return res.status(accessDenial.status).json(accessDenial.body);
   db.evaluations.splice(evalIndex, 1);
   saveDb();
   addActivityLog(
@@ -3512,13 +2997,7 @@ app.get("/api/exchange-rate-historical", async (req: express.Request, res: expre
   }
 });
 app.get("/api/partner-spendings", (req: express.Request, res: express.Response) => {
-  const activeTenantId = getRequestTenantId(req);
-  const filterTenant = !canReadAllTenants(req);
-  const spendingsList = filterTenant
-    ? (db.spendings || []).filter((s) =>
-        isMatchingOrg(s.organizationId, activeTenantId),
-      )
-    : db.spendings || [];
+  const spendingsList = scopedRecords(req, "spending", db.spendings);
   const list = spendingsList.map((s) => {
     if (s.total_amount_usd === void 0 || s.total_amount_usd === null) {
       const amt = Number(s.total_amount) || 0;
@@ -3706,9 +3185,7 @@ app.post("/api/partner-spendings", async (req: express.Request, res: express.Res
     if (allocationError) return res.status(400).json({ error: "Invalid spending month allocation.", allocation_error: allocationError });
   }
   const targetOrgId = getRequestTenantId(req);
-  const targetTenant = (db.tenants || DEFAULT_TENANTS).find(
-    (t) => t.id === targetOrgId,
-  );
+  const targetTenant = findTenant(targetOrgId);
   const monthsArray = normalizeSpendingMonths(month_allocations !== undefined
     ? allocationInvoiceMonths(month_allocations) : invoice_month);
   const formattedMonthStr =
@@ -3905,6 +3382,8 @@ app.post("/api/partner-spendings", async (req: express.Request, res: express.Res
     updated_at: new Date().toISOString(),
   };
   db.spendings = db.spendings || [];
+  const writeDenial = assertRecordWritable(req, "spending", newSpending);
+  if (writeDenial) return res.status(writeDenial.status).json(writeDenial.body);
   db.spendings.unshift(newSpending);
   saveDb();
   addActivityLog(
@@ -3934,6 +3413,8 @@ app.put("/api/partner-spendings/:id", async (req: express.Request, res: express.
     return res.status(404).json({ error: "Data spending tidak ditemukan." });
   }
   const existing = db.spendings[idx];
+  const accessDenial = assertRecordAccess(req, "spending", existing);
+  if (accessDenial) return res.status(accessDenial.status).json(accessDenial.body);
   const hasAllocations = Object.prototype.hasOwnProperty.call(updates, "month_allocations") || existing.month_allocations !== undefined;
   if (hasAllocations) {
     const rows = Object.prototype.hasOwnProperty.call(updates, "month_allocations") ? updates.month_allocations : existing.month_allocations;
@@ -4119,6 +3600,9 @@ app.put("/api/partner-spendings/:id", async (req: express.Request, res: express.
     }
     updated.billing_file_url = billing_file_url;
   }
+  updated.organizationId = existing.organizationId;
+  const writeDenial = assertRecordWritable(req, "spending", updated);
+  if (writeDenial) return res.status(writeDenial.status).json(writeDenial.body);
   db.spendings[idx] = updated;
   saveDb();
   addActivityLog(
@@ -4141,6 +3625,8 @@ app.delete("/api/partner-spendings/:id", async (req: express.Request, res: expre
     return res.status(404).json({ error: "Data spending tidak ditemukan." });
   }
   const removed = db.spendings[idx];
+  const accessDenial = assertRecordAccess(req, "spending", removed);
+  if (accessDenial) return res.status(accessDenial.status).json(accessDenial.body);
   db.spendings.splice(idx, 1);
   saveDb();
   addActivityLog(
@@ -4171,7 +3657,7 @@ app.post("/api/partners/:id/upload-dd", async (req: express.Request, res: expres
   if (!partner) {
     return res.status(404).json({ error: "Partner tidak ditemukan." });
   }
-  const uploadDenial = assertTenantWriteAccess(req, partner.organizationId);
+  const uploadDenial = assertRecordAccess(req, "partner", partner);
   if (uploadDenial) return res.status(uploadDenial.status).json(uploadDenial.body);
   const token = await resolveActiveGoogleToken(
     req.headers["x-google-access-token"] || req.body.accessToken,
@@ -4339,7 +3825,7 @@ app.delete("/api/partners/:id/dd-file", async (req: express.Request, res: expres
   if (!partner) {
     return res.status(404).json({ error: "Partner tidak ditemukan." });
   }
-  const deleteDenial = assertTenantWriteAccess(req, partner.organizationId);
+  const deleteDenial = assertRecordAccess(req, "partner", partner);
   if (deleteDenial) return res.status(deleteDenial.status).json(deleteDenial.body);
   partner.daftar_dokumen_dd = partner.daftar_dokumen_dd.map((doc) => {
     if (doc.nama === docName) {
@@ -4390,10 +3876,11 @@ app.post("/api/contracts/export-google-docs", async (req: express.Request, res: 
     );
     const targetOrgId = getRequestTenantId(req);
 
-    let targetFolderId = db.googleConfig?.driveFolderId;
+    // Only this organization's folder tree — never the platform master root.
+    let targetFolderId = (await getOrgFolderId(targetOrgId, token)).id;
     if (partnerName) {
       try {
-        const partner = (db.partners || []).find(
+        const partner = scopedRecords(req, "partner", db.partners).find(
           (p: any) => p.nama_partner?.toLowerCase() === String(partnerName).toLowerCase() || p.partner_id === partnerName
         );
         if (partner) {
@@ -4409,6 +3896,9 @@ app.post("/api/contracts/export-google-docs", async (req: express.Request, res: 
       }
     }
 
+    if (!targetFolderId) {
+      return res.status(409).json({ error: "GOOGLE_FOLDER_UNAVAILABLE", message: "This organization has no Google Drive folder mapping." });
+    }
     const docResult = await createGoogleDocInFolder(
       title,
       contentHtml,
@@ -4436,61 +3926,38 @@ app.post("/api/contracts/export-google-docs", async (req: express.Request, res: 
 });
 
 // Aggregation Endpoint for Fast Initial Data Load (replaces multi-endpoint polling)
+/**
+ * Operational workspace payload (PRD §11.4): one verified organization,
+ * department-scoped before any client aggregation, no tenant directory and
+ * no provider configuration — only non-sensitive service availability.
+ */
 app.get("/api/init-data", (req: express.Request, res: express.Response) => {
   refreshContractLifecycles();
-  const activeTenantId = getRequestTenantId(req);
-  const filterTenant = !canReadAllTenants(req);
-
-  const contracts = filterTenant
-    ? (db.contracts || []).filter((c: any) => isMatchingOrg(c.organizationId, activeTenantId))
-    : db.contracts || [];
-
-  const ios = filterTenant
-    ? (db.ios || []).filter((i: any) => isMatchingOrg(i.organizationId, activeTenantId))
-    : db.ios || [];
-
-  const partners = filterTenant
-    ? (db.partners || []).filter((p: any) => isMatchingOrg(p.organizationId, activeTenantId))
-    : db.partners || [];
-
-  const notifications = filterTenant
-    ? (db.notifications || []).filter((n: any) => isMatchingOrg(n.organizationId, activeTenantId))
-    : db.notifications || [];
-
-  const evaluations = filterTenant
-    ? (db.evaluations || []).filter((e: any) => isMatchingOrg(e.organizationId, activeTenantId))
-    : db.evaluations || [];
-
-  const spendings = filterTenant
-    ? (db.spendings || []).filter((s: any) => isMatchingOrg(s.organizationId, activeTenantId))
-    : db.spendings || [];
-
+  const organizationId = getRequestTenantId(req);
+  const settings = getTenantSettings(organizationId);
   res.setHeader("Cache-Control", "no-store");
   res.json({
-    contracts,
-    ios,
-    partners,
-    notifications,
-    googleConfig: redactProviderConfig(db.googleConfig),
-    evaluations,
-    spendings,
-    tenants: db.tenants || [],
-    activeTenantId,
+    organizationId,
+    contracts: scopedRecords(req, "contract", db.contracts),
+    ios: scopedRecords(req, "io", db.ios),
+    partners: scopedRecords(req, "partner", db.partners),
+    notifications: scopedRecords(req, "notification", db.notifications),
+    evaluations: scopedRecords(req, "evaluation", db.evaluations),
+    spendings: scopedRecords(req, "spending", db.spendings),
+    services: {
+      aiAvailable: Boolean(getEffectiveGeminiApiKey()) && settings.modules.aiAssistant,
+      googleUploadsAvailable: Boolean(sanitizeParentFolderId(db.googleConfig?.driveFolderId)) &&
+        Boolean(db.googleConfig?.accessToken || db.googleConfig?.refreshToken || hasServiceAccountCredentials()),
+    },
     timestamp: Date.now(),
   });
 });
 
 app.get("/api/contracts", (req: express.Request, res: express.Response) => {
   refreshContractLifecycles();
-  const activeTenantId = getRequestTenantId(req);
-  const filterTenant = !canReadAllTenants(req);
-  const contractsList = filterTenant
-    ? (db.contracts || []).filter((c) =>
-        isMatchingOrg(c.organizationId, activeTenantId),
-      )
-    : db.contracts || [];
+  const contractsList = scopedRecords(req, "contract", db.contracts);
   const result = contractsList.map((c) => {
-    const p = db.partners.find((part) => part.partner_id === c.partner_id);
+    const p = db.partners.find((part) => part.partner_id === c.partner_id && part.organizationId === c.organizationId);
     const cur = normalizeCurrencyCode(c.currency, tenantDefaultCurrency(c.organizationId));
     const amt = Number(c.nilai_kontrak) || 0;
     const usdVal =
@@ -4681,7 +4148,7 @@ Return strictly one valid JSON object matching the schema. Use "" for any text f
 app.get("/api/contracts/:id/redline-analysis", (req: express.Request, res: express.Response) => {
   const { id } = req.params;
   const contract = db.contracts.find((c) => c.contract_id === id);
-  if (!contract || !isMatchingOrg(contract.organizationId, getRequestTenantId(req))) {
+  if (!contract || assertRecordAccess(req, "contract", contract)) {
     return res.status(404).json({ error: "Contract not found." });
   }
   res.json({
@@ -4694,7 +4161,7 @@ app.get("/api/contracts/:id/redline-analysis", (req: express.Request, res: expre
 app.post("/api/contracts/:id/redline-analysis", async (req: express.Request, res: express.Response) => {
   const { id } = req.params;
   const contract = db.contracts.find((c) => c.contract_id === id);
-  if (!contract || !isMatchingOrg(contract.organizationId, getRequestTenantId(req))) {
+  if (!contract || assertRecordAccess(req, "contract", contract)) {
     return res.status(404).json({ error: "Contract not found." });
   }
   const force = Boolean(req.body.force);
@@ -4710,7 +4177,7 @@ app.post("/api/contracts/:id/redline-analysis", async (req: express.Request, res
     });
   }
   if (!ensureAiAvailable(req, res)) return;
-  const partner = db.partners.find((p) => p.partner_id === contract.partner_id);
+  const partner = db.partners.find((p) => p.partner_id === contract.partner_id && p.organizationId === contract.organizationId);
   try {
     const selectedModel = getValidAiModel(req.body.model);
     const ctx = aiPolicyContext(contract.organizationId);
@@ -5010,10 +4477,9 @@ const AI_TEMPLATE_DOC_TYPES: Record<string, string> = {
   so: "Surat Pesanan / Service Order (SO)",
 };
 app.post("/api/templates/ai-generate", async (req: express.Request, res: express.Response) => {
-  const actor = (req as any).actor;
-  if (!actor) return res.status(401).json({ error: "UNAUTHENTICATED" });
-  if (!["superuser", "admin", "manager"].includes(actor.role)) {
-    return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "Hanya Superuser, Admin, atau Manager yang dapat membuat template dengan AI." });
+  const templateCtx = orgContextOf(req);
+  if (!(templateCtx.accessMode === "platform" || templateCtx.tenantRole === "admin" || templateCtx.tenantRole === "manager")) {
+    return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "Only administrators and managers can generate templates with AI." });
   }
   if (!ensureAiAvailable(req, res)) return;
 
@@ -5199,9 +4665,7 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
       });
   }
   const targetOrgId = getRequestTenantId(req);
-  const targetTenant = (db.tenants || DEFAULT_TENANTS).find(
-    (t) => t.id === targetOrgId,
-  );
+  const targetTenant = findTenant(targetOrgId);
   const partner = db.partners.find((p) => p.partner_id === partner_id);
   const token = await resolveActiveGoogleToken(
     req.headers["x-google-access-token"] || req.body.accessToken,
@@ -5349,6 +4813,8 @@ app.post("/api/contracts", async (req: express.Request, res: express.Response) =
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+  const writeDenial = assertRecordWritable(req, "contract", newContract);
+  if (writeDenial) return res.status(writeDenial.status).json(writeDenial.body);
   db.contracts.unshift(newContract);
   saveDb();
   addActivityLog(
@@ -5372,9 +4838,9 @@ app.put("/api/contracts/:id", async (req: express.Request, res: express.Response
     return res.status(404).json({ error: "Kontrak tidak ditemukan." });
   }
   const existing = db.contracts[idx];
-  const tenantDenial = assertTenantWriteAccess(req, existing.organizationId);
+  const tenantDenial = assertRecordAccess(req, "contract", existing);
   if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
-  if ((req as any).actor?.role !== "superuser") delete (updates as any).organizationId;
+  delete (updates as any).organizationId;
   delete updates.termination_document;
   const updated = {
     ...existing,
@@ -5528,6 +4994,9 @@ app.put("/api/contracts/:id", async (req: express.Request, res: express.Response
   const lifecycle = contractLifecycle(updated, getTenantSettings(updated.organizationId));
   updated.sisa_hari = lifecycle.daysRemaining ?? updated.sisa_hari;
   updated.status = lifecycle.status;
+  updated.organizationId = existing.organizationId;
+  const writeDenial = assertRecordWritable(req, "contract", updated);
+  if (writeDenial) return res.status(writeDenial.status).json(writeDenial.body);
   db.contracts[idx] = updated;
   saveDb();
   addActivityLog(
@@ -5547,9 +5016,9 @@ app.delete("/api/contracts/:id", async (req: express.Request, res: express.Respo
   const { userEmail, userName, userRole } = req.query;
   const ctr = db.contracts.find((c) => c.contract_id === id);
   if (!ctr) return res.status(404).json({ error: "Kontrak tidak ditemukan." });
-  const tenantDenial = assertTenantWriteAccess(req, ctr.organizationId);
+  const tenantDenial = assertRecordAccess(req, "contract", ctr);
   if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
-  db.contracts = db.contracts.filter((c) => c.contract_id !== id);
+  db.contracts = db.contracts.filter((c) => c !== ctr);
   saveDb();
   addActivityLog(
     userEmail || "user@app",
@@ -5564,16 +5033,10 @@ app.delete("/api/contracts/:id", async (req: express.Request, res: express.Respo
   res.json({ success: true });
 });
 app.get("/api/ios", (req: express.Request, res: express.Response) => {
-  const activeTenantId = getRequestTenantId(req);
-  const filterTenant = !canReadAllTenants(req);
-  const iosList = filterTenant
-    ? (db.ios || []).filter((i) =>
-        isMatchingOrg(i.organizationId, activeTenantId),
-      )
-    : db.ios || [];
+  const iosList = scopedRecords(req, "io", db.ios);
   const result = iosList.map((io) => {
-    const p = db.partners.find((part) => part.partner_id === io.partner_id);
-    const c = db.contracts.find((ctr) => ctr.contract_id === io.contract_id);
+    const p = db.partners.find((part) => part.partner_id === io.partner_id && part.organizationId === io.organizationId);
+    const c = db.contracts.find((ctr) => ctr.contract_id === io.contract_id && ctr.organizationId === io.organizationId);
     const cur = normalizeCurrencyCode(io.currency || io.mata_uang, tenantDefaultCurrency(io.organizationId));
     const amt = Number(io.nilai_io) || 0;
     const usdVal =
@@ -5784,9 +5247,7 @@ app.post("/api/ios", async (req: express.Request, res: express.Response) => {
       .json({ error: `Nomor IO '${nomor_io}' sudah terdaftar dalam sistem.` });
   }
   const targetOrgId = getRequestTenantId(req);
-  const targetTenant = (db.tenants || DEFAULT_TENANTS).find(
-    (t) => t.id === targetOrgId,
-  );
+  const targetTenant = findTenant(targetOrgId);
   const partner = db.partners.find((p) => p.partner_id === partner_id);
   const contract = db.contracts.find((c) => c.contract_id === contract_id);
   const token = await resolveActiveGoogleToken(
@@ -5911,6 +5372,8 @@ app.post("/api/ios", async (req: express.Request, res: express.Response) => {
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+  const writeDenial = assertRecordWritable(req, "io", newIO);
+  if (writeDenial) return res.status(writeDenial.status).json(writeDenial.body);
   db.ios.unshift(newIO);
   saveDb();
   addActivityLog(
@@ -5931,9 +5394,9 @@ app.put("/api/ios/:id", async (req: express.Request, res: express.Response) => {
   const idx = db.ios.findIndex((i) => i.io_id === id);
   if (idx === -1) return res.status(404).json({ error: "IO tidak ditemukan." });
   const existing = db.ios[idx];
-  const tenantDenial = assertTenantWriteAccess(req, existing.organizationId);
+  const tenantDenial = assertRecordAccess(req, "io", existing);
   if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
-  if ((req as any).actor?.role !== "superuser") delete (updates as any).organizationId;
+  delete (updates as any).organizationId;
   const updated = {
     ...existing,
     ...updates,
@@ -6072,6 +5535,9 @@ app.put("/api/ios/:id", async (req: express.Request, res: express.Response) => {
   const ioLifecycle = computeLifecycle(updated.organizationId, updated.tanggal_berakhir, updated.status, false);
   updated.sisa_hari = ioLifecycle.daysRemaining ?? updated.sisa_hari;
   updated.status = ioLifecycle.status;
+  updated.organizationId = existing.organizationId;
+  const writeDenial = assertRecordWritable(req, "io", updated);
+  if (writeDenial) return res.status(writeDenial.status).json(writeDenial.body);
   db.ios[idx] = updated;
   saveDb();
   addActivityLog(
@@ -6091,9 +5557,9 @@ app.delete("/api/ios/:id", async (req: express.Request, res: express.Response) =
   const { userEmail, userName, userRole } = req.query;
   const item = db.ios.find((i) => i.io_id === id);
   if (!item) return res.status(404).json({ error: "IO tidak ditemukan." });
-  const tenantDenial = assertTenantWriteAccess(req, item.organizationId);
+  const tenantDenial = assertRecordAccess(req, "io", item);
   if (tenantDenial) return res.status(tenantDenial.status).json(tenantDenial.body);
-  db.ios = db.ios.filter((i) => i.io_id !== id);
+  db.ios = db.ios.filter((i) => i !== item);
   saveDb();
   addActivityLog(
     userEmail || "user@app",
@@ -6108,33 +5574,25 @@ app.delete("/api/ios/:id", async (req: express.Request, res: express.Response) =
   res.json({ success: true });
 });
 app.get("/api/notification-logs", (req: express.Request, res: express.Response) => {
-  res.json(db.notifications);
+  res.json(scopedRecords(req, "notification", db.notifications));
 });
+/** Only notifications attached to records the caller can see are touched (PRD §4.5.2). */
 app.post("/api/notification-logs/mark-read", (req: express.Request, res: express.Response) => {
-  const { notif_id, markAll } = req.body;
-  if (markAll) {
-    db.notifications = db.notifications.map((n) => ({ ...n, is_read: true }));
-  } else if (notif_id) {
-    db.notifications = db.notifications.map((n) =>
-      n.notif_id === notif_id ? { ...n, is_read: true } : n,
-    );
-  }
+  const { notif_id, markAll } = req.body || {};
+  const visible = new Set(scopedRecords(req, "notification", db.notifications));
+  db.notifications = (db.notifications || []).map((n) =>
+    visible.has(n) && (markAll || (notif_id && n.notif_id === notif_id)) ? { ...n, is_read: true } : n,
+  );
   saveDb();
-  res.json({ success: true, notifications: db.notifications });
+  res.json({ success: true, notifications: scopedRecords(req, "notification", db.notifications) });
 });
 app.post("/api/notification-logs/delete", (req: express.Request, res: express.Response) => {
-  const { notif_id, notif_ids, deleteAll } = req.body;
-  if (deleteAll) {
-    db.notifications = [];
-  } else if (Array.isArray(notif_ids) && notif_ids.length > 0) {
-    db.notifications = db.notifications.filter(
-      (n) => !notif_ids.includes(n.notif_id),
-    );
-  } else if (notif_id) {
-    db.notifications = db.notifications.filter((n) => n.notif_id !== notif_id);
-  }
+  const { notif_id, notif_ids, deleteAll } = req.body || {};
+  const visible = new Set(scopedRecords(req, "notification", db.notifications));
+  const ids = new Set<string>(Array.isArray(notif_ids) ? notif_ids : notif_id ? [notif_id] : []);
+  db.notifications = (db.notifications || []).filter((n) => !(visible.has(n) && (deleteAll || ids.has(n.notif_id))));
   saveDb();
-  res.json({ success: true, notifications: db.notifications });
+  res.json({ success: true, notifications: scopedRecords(req, "notification", db.notifications) });
 });
 app.post("/api/cron/trigger-check", (req: express.Request, res: express.Response) => {
   const count = recalculateStatuses();
@@ -6178,19 +5636,8 @@ app.post(
             error: "Gagal mendapatkan Access Token dari Google OAuth server.",
           });
       }
-      db.googleConfig.accessToken = tokens.access_token;
-      if (tokens.refresh_token) {
-        db.googleConfig.refreshToken = tokens.refresh_token;
-      }
-      db.googleConfig.isConnected = true;
-      db.googleConfig.lastSyncTime = new Date().toISOString();
-      saveDb();
-      migrateLocalFilesToGoogleDrive(tokens.access_token).catch((mErr) => {
-        console.warn(
-          "[Google Auth] Background migration error:",
-          mErr?.message,
-        );
-      });
+      // The caller's own tokens are returned to the caller only. Connecting the
+      // platform Google account is a separate, platform-only action (/connect).
       let profile: any = { email: "Google User", name: "Pengguna Google" };
       try {
         const userInfoRes = await fetch(
@@ -6214,7 +5661,7 @@ app.post(
       res.json({
         success: true,
         accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token || db.googleConfig.refreshToken,
+        refreshToken: tokens.refresh_token || undefined,
         expiresAt: tokens.expiry_date,
         profile,
       });
@@ -6231,9 +5678,6 @@ app.post(
 app.get(
   ["/api/auth/google/token", "/api/google-auth/token"],
   async (req: express.Request, res: express.Response) => {
-    if (!(req as any).actor) {
-      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
-    }
     try {
       const freshToken = await getFreshGoogleAccessToken();
       const activeToken = freshToken || db.googleConfig?.accessToken || null;
@@ -6260,9 +5704,6 @@ app.get(
 app.post(
   ["/api/auth/google/refresh-token", "/api/google-auth/refresh-token"],
   async (req: express.Request, res: express.Response) => {
-    if (!(req as any).actor) {
-      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication is required." });
-    }
     try {
       const freshToken = await getFreshGoogleAccessToken();
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -6300,134 +5741,49 @@ app.post(
         });
       }
 
-      // 1. Sync to db.allowedUsers
-      let allowedUser = (db.allowedUsers || []).find((u: any) => (u.email || "").toLowerCase() === cleanEmail);
-      if (!allowedUser) {
-        // Self-service sign-up is off unless explicitly enabled; otherwise an
-        // administrator must invite the user first.
-        if (process.env.ALLOW_GOOGLE_SELF_SIGNUP !== "true") {
+      /*
+       * Onboarding (PRD §8.4): an existing identity signs in; a new one is
+       * created only with an active allowlist entry, a pending invitation, or
+       * explicit self-signup — always as platform `user`, never with a
+       * membership. The caller's Google tokens are never stored as platform
+       * configuration.
+       */
+      let existingUser: any = sqliteDb.prepare(`SELECT id, name, role, banned, banExpires FROM "user" WHERE LOWER(email) = ?`).get(cleanEmail);
+      if (!existingUser) {
+        if (!isOnboardingApproved(cleanEmail) && process.env.ALLOW_GOOGLE_SELF_SIGNUP !== "true") {
           return res.status(403).json({
             success: false,
             error: "NOT_INVITED",
             message: "This Google account has not been invited. Ask an administrator to add you.",
           });
         }
-        allowedUser = {
-          id: `user_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`,
-          organizationId: getDefaultTenantId(),
-          email: cleanEmail,
-          name: userName,
-          role: "Viewer",
-          department: "",
-          status: "Active",
-          addedBy: "Google sign-in (self sign-up)",
-          createdAt: now,
-          lastLoginAt: now,
-        };
-        if (!db.allowedUsers) db.allowedUsers = [];
-        db.allowedUsers.push(allowedUser);
-        saveDb();
-      } else {
-        allowedUser.lastLoginAt = now;
-        if (!allowedUser.name || allowedUser.name === 'User') {
-          allowedUser.name = userName;
-        }
-        saveDb();
-      }
-
-      if (allowedUser.status === 'Inactive' || allowedUser.status === 'Banned') {
-        return res.status(403).json({
-          success: false,
-          error: "Akun Anda telah dinonaktifkan oleh Administrator.",
-        });
-      }
-
-      // 2. Sync to Better Auth SQLite (user, account, session, member)
-      const userRole = (allowedUser.role || 'staff').toLowerCase();
-      let existingUser: any = null;
-      try {
-        existingUser = sqliteDb.prepare("SELECT * FROM user WHERE LOWER(email) = LOWER(?)").get(cleanEmail);
-      } catch (e) {}
-
-      let userId = existingUser?.id;
-      if (!existingUser) {
-        userId = allowedUser.id || `usr_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
-        try {
-          // Upsert, not INSERT OR REPLACE: a REPLACE on an existing id cascades (FKs are on)
-          // and deletes that user's password and sessions.
-          sqliteDb.prepare(`
-            INSERT INTO user (id, name, email, emailVerified, image, role, banned, createdAt, updatedAt)
-            VALUES (?, ?, ?, 1, ?, ?, 0, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET email = excluded.email, image = COALESCE(excluded.image, image), updatedAt = excluded.updatedAt
-          `).run(userId, userName, cleanEmail, photoURL || null, userRole, now, now);
-        } catch (e) {
-          console.warn("Could not insert user to sqlite:", e);
-        }
-      } else {
-        try {
-          // Never overwrite an existing account's name from the Google profile here —
-          // the display name may have been customized via the admin "Edit User" flow,
-          // and every Google sign-in/re-auth must not silently revert it.
-          sqliteDb.prepare(`
-            UPDATE user SET image = COALESCE(?, image), updatedAt = ?
-            WHERE id = ?
-          `).run(photoURL || null, now, userId);
-        } catch (e) {}
-      }
-
-      // Upsert account for google provider
-      try {
-        const existingAcc: any = sqliteDb.prepare("SELECT id FROM account WHERE userId = ? AND providerId = 'google'").get(userId);
-        if (!existingAcc) {
-          const accId = `acc_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
-          sqliteDb.prepare(`
-            INSERT OR REPLACE INTO account (id, accountId, providerId, userId, accessToken, idToken, createdAt, updatedAt)
-            VALUES (?, ?, 'google', ?, ?, ?, ?, ?)
-          `).run(accId, cleanEmail, userId, accessToken || null, idToken || null, now, now);
-        } else {
-          sqliteDb.prepare(`
-            UPDATE account SET accessToken = COALESCE(?, accessToken), idToken = COALESCE(?, idToken), updatedAt = ?
-            WHERE id = ?
-          `).run(accessToken || null, idToken || null, now, existingAcc.id);
-        }
-      } catch (e) {}
-
-      // Ensure membership in organization
-      try {
-        const orgId = allowedUser.organizationId || getDefaultTenantId();
+        const newId = `usr_${crypto.randomUUID()}`;
         sqliteDb.prepare(`
-          INSERT OR IGNORE INTO member (id, organizationId, userId, role, createdAt)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(`mem_${userId}`, orgId, userId, userRole, now);
-      } catch (e) {}
-
-      // 3. Create a fresh session in Better Auth SQLite table
+          INSERT INTO "user" (id, name, email, emailVerified, image, role, banned, createdAt, updatedAt)
+          VALUES (?, ?, ?, 1, ?, 'user', 0, ?, ?)
+        `).run(newId, userName, cleanEmail, photoURL || null, now, now);
+        existingUser = { id: newId, name: userName, role: "user", banned: 0 };
+      } else {
+        if (isIdentityBanned(existingUser)) {
+          return res.status(403).json({ success: false, error: "ACCOUNT_DISABLED", message: "This account is disabled." });
+        }
+        // Google verified this address, so the identity's email is verified.
+        sqliteDb.prepare(`UPDATE "user" SET image = COALESCE(?, image), emailVerified = 1, updatedAt = ? WHERE id = ?`).run(photoURL || null, now, existingUser.id);
+      }
+      const userId = existingUser.id;
+      const existingAcc: any = sqliteDb.prepare("SELECT id FROM account WHERE userId = ? AND providerId = 'google'").get(userId);
+      if (!existingAcc) {
+        sqliteDb.prepare(`
+          INSERT INTO account (id, accountId, providerId, userId, idToken, createdAt, updatedAt, issuer)
+          VALUES (?, ?, 'google', ?, ?, ?, ?, 'google')
+        `).run(`acc_${crypto.randomUUID()}`, cleanEmail, userId, idToken || null, now, now);
+      }
       const sessionToken = crypto.randomBytes(32).toString("hex");
-      const sessionId = `sess_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
       const sessionExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      const ipAddress = (req.headers["x-forwarded-for"] as string) || req.ip || "127.0.0.1";
-      const userAgent = req.headers["user-agent"] || "Browser Client";
-      const orgId = allowedUser.organizationId || getDefaultTenantId();
-
-      try {
-        sqliteDb.prepare(`
-          INSERT INTO session (id, expiresAt, token, createdAt, updatedAt, ipAddress, userAgent, userId, activeOrganizationId)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(sessionId, sessionExpiry, sessionToken, now, now, ipAddress, userAgent, userId, orgId);
-      } catch (sessErr) {
-        console.warn("Could not insert session into Better Auth session table:", sessErr);
-      }
-
-      // 4. Update Google Workspace tokens in server state if provided
-      if (accessToken) {
-        db.googleConfig.accessToken = accessToken;
-        if (refreshToken) {
-          db.googleConfig.refreshToken = refreshToken;
-        }
-        db.googleConfig.isConnected = true;
-        db.googleConfig.lastSyncTime = now;
-        saveDb();
-      }
+      sqliteDb.prepare(`
+        INSERT INTO session (id, expiresAt, token, createdAt, updatedAt, ipAddress, userAgent, userId, activeOrganizationId)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
+      `).run(`sess_${crypto.randomUUID()}`, sessionExpiry, sessionToken, now, now, req.ip || "", String(req.headers["user-agent"] || ""), userId);
 
       // 5. Set session cookie
       res.cookie("better-auth.session_token", sessionToken, {
@@ -6437,34 +5793,10 @@ app.post(
         maxAge: 30 * 24 * 60 * 60 * 1000,
       });
 
-      // 6. Record activity log
-      if (Array.isArray(db.activities)) {
-        db.activities.unshift({
-          id: `act_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`,
-          user: userName,
-          email: cleanEmail,
-          role: allowedUser.role,
-          action: "LOGIN",
-          module: "Autentikasi",
-          description: "Signed in with Google",
-          timestamp: now,
-          ip: (req.headers["x-forwarded-for"] as string) || req.ip || "127.0.0.1",
-        });
-        if (db.activities.length > 500) db.activities = db.activities.slice(0, 500);
-        saveDb();
-      }
-
       return res.json({
         success: true,
         sessionToken,
-        user: {
-          id: userId,
-          email: cleanEmail,
-          name: userName,
-          role: allowedUser.role,
-          department: allowedUser.department,
-          photoURL: photoURL || null,
-        },
+        user: { id: userId, email: cleanEmail, name: existingUser.name || userName, photoURL: photoURL || null },
       });
     } catch (err: any) {
       console.error("Error in /api/auth/google/sync-session:", err);
@@ -6548,215 +5880,161 @@ app.post(
     }
   },
 );
-app.get("/api/google-integration", async (req: express.Request, res: express.Response) => {
-  const session = await getBetterAuthSession(req);
-  const adminCheck = await checkIsAdmin(req);
-  if (!session && !adminCheck.isAdmin) {
-    return res
-      .status(401)
-      .json({ error: "Unauthorized: Harap login terlebih dahulu." });
-  }
-  await getFreshGoogleAccessToken();
-  res.json(redactProviderConfig(db.googleConfig));
-});
-app.post("/api/google-integration", async (req: express.Request, res: express.Response) => {
-  const adminCheck = await checkIsAdmin(req);
-  if (!adminCheck.isAdmin) {
-    return res
-      .status(403)
-      .json({ error: "Forbidden: Only Admins can modify settings." });
-  }
-  const oldConfig = { ...db.googleConfig };
-  const {
-    spreadsheetId,
-    masterSpreadsheetId,
-    masterSpreadsheetUrl,
-    driveFolderId,
-    autoSync,
-    accessToken,
-    refreshToken,
-    isLocked,
-    notificationEmails,
-    legalNotificationEmail,
-    financeNotificationEmail,
-    aiModel,
-    geminiApiKey,
-    smtpEnabled,
-    smtpHost,
-    smtpPort,
-    smtpSecure,
-    smtpUser,
-    smtpPassword,
-    smtpFromEmail,
-    smtpFromName,
-  } = req.body;
-  if (masterSpreadsheetId !== void 0)
-    db.googleConfig.masterSpreadsheetId = masterSpreadsheetId;
-  if (masterSpreadsheetUrl !== void 0)
-    db.googleConfig.masterSpreadsheetUrl = masterSpreadsheetUrl;
-  const token =
-    accessToken ||
-    req.headers["x-google-access-token"] ||
-    db.googleConfig.accessToken;
-  const effectiveRefreshToken =
-    refreshToken !== void 0 ? refreshToken : db.googleConfig.refreshToken;
-  const keepStoredKey = geminiApiKey === void 0 || isMaskedSecret(geminiApiKey);
-  const effectiveApiKey = keepStoredKey
-    ? db.googleConfig.geminiApiKey || ""
-    : String(geminiApiKey).trim();
-  if (!keepStoredKey) {
-    process.env.GEMINI_API_KEY = effectiveApiKey;
-  }
-  db.googleConfig = {
-    ...db.googleConfig,
-    spreadsheetId:
-      spreadsheetId !== void 0 ? spreadsheetId : db.googleConfig.spreadsheetId,
-    masterSpreadsheetId:
-      masterSpreadsheetId !== void 0
-        ? masterSpreadsheetId
-        : db.googleConfig.masterSpreadsheetId,
-    masterSpreadsheetUrl:
-      masterSpreadsheetUrl !== void 0
-        ? masterSpreadsheetUrl
-        : db.googleConfig.masterSpreadsheetUrl,
-    driveFolderId:
-      driveFolderId !== void 0 ? driveFolderId : db.googleConfig.driveFolderId,
-    autoSync: autoSync !== void 0 ? autoSync : db.googleConfig.autoSync,
-    accessToken:
-      accessToken !== void 0
-        ? accessToken
-        : token || db.googleConfig.accessToken,
-    refreshToken: effectiveRefreshToken || "",
-    isLocked: true,
-    notificationEmails:
-      notificationEmails !== void 0
-        ? notificationEmails
-        : db.googleConfig.notificationEmails,
-    legalNotificationEmail:
-      legalNotificationEmail !== void 0
-        ? legalNotificationEmail
-        : db.googleConfig.legalNotificationEmail,
-    financeNotificationEmail:
-      financeNotificationEmail !== void 0
-        ? financeNotificationEmail
-        : db.googleConfig.financeNotificationEmail,
-    aiModel:
-      aiModel !== void 0
-        ? aiModel
-        : db.googleConfig.aiModel || "gemini-3.8-flash",
-    geminiApiKey: effectiveApiKey,
-    smtpEnabled:
-      smtpEnabled !== void 0
-        ? Boolean(smtpEnabled)
-        : db.googleConfig.smtpEnabled,
-    smtpHost: smtpHost !== void 0 ? smtpHost : db.googleConfig.smtpHost,
-    smtpPort: smtpPort !== void 0 ? Number(smtpPort) : db.googleConfig.smtpPort,
-    smtpSecure:
-      smtpSecure !== void 0 ? Boolean(smtpSecure) : db.googleConfig.smtpSecure,
-    smtpUser: smtpUser !== void 0 ? smtpUser : db.googleConfig.smtpUser,
-    smtpPassword:
-      smtpPassword !== void 0 && smtpPassword !== "" && !isMaskedSecret(smtpPassword)
-        ? smtpPassword
-        : db.googleConfig.smtpPassword,
-    smtpFromEmail:
-      smtpFromEmail !== void 0 ? smtpFromEmail : db.googleConfig.smtpFromEmail,
-    smtpFromName:
-      smtpFromName !== void 0 ? smtpFromName : db.googleConfig.smtpFromName,
-    isConnected:
-      accessToken === "" || (!token && !db.googleConfig.accessToken)
-        ? false
-        : true,
-    lastSyncTime: new Date().toISOString(),
+/*
+ * Platform configuration (PRD §7.1, §7.5, §9.4): deployment branding, the
+ * master Google resources, AI provider/model and SMTP relay. Platform-only;
+ * tenant settings never read this. Secrets are write-only: omitted keeps the
+ * stored value, a non-empty string replaces it, explicit null clears it.
+ */
+const GOOGLE_RESOURCE_ID = /^[A-Za-z0-9_-]{10,200}$/;
+function platformConfigError(message: string): never {
+  throw new ApiError(400, "INVALID_INPUT", message);
+}
+function readPlatformConfiguration() {
+  const g = db.googleConfig || {};
+  const b = { ...DEFAULT_BRANDING, ...(db.branding || {}) };
+  return {
+    branding: { appName: b.appName, logoUrl: b.logoUrl, primaryColor: b.primaryColor, footerText: b.footerText, loginHeadline: b.loginHeadline },
+    google: {
+      driveFolderId: g.driveFolderId || "",
+      spreadsheetId: g.spreadsheetId || "",
+      masterSpreadsheetId: g.masterSpreadsheetId || "",
+      masterSpreadsheetUrl: g.masterSpreadsheetId ? `https://docs.google.com/spreadsheets/d/${g.masterSpreadsheetId}/edit` : "",
+      isConnected: Boolean(g.isConnected && (g.accessToken || g.refreshToken)),
+      hasGoogleSession: Boolean(g.accessToken || g.refreshToken),
+      serviceAccountConfigured: hasServiceAccountCredentials(),
+      lastSyncTime: g.lastSyncTime || "",
+    },
+    ai: { aiModel: g.aiModel || "gemini-3.8-flash", hasGeminiApiKey: Boolean(getEffectiveGeminiApiKey()) },
+    smtp: {
+      smtpEnabled: Boolean(g.smtpEnabled), smtpHost: g.smtpHost || "", smtpPort: g.smtpPort ?? null,
+      smtpSecure: Boolean(g.smtpSecure), smtpUser: g.smtpUser || "", smtpFromEmail: g.smtpFromEmail || "",
+      smtpFromName: g.smtpFromName || "", hasSmtpPassword: Boolean(g.smtpPassword),
+    },
   };
-  saveDb();
-  if (db.googleConfig.accessToken) {
-    migrateLocalFilesToGoogleDrive(db.googleConfig.accessToken).catch((e) => {
-      console.warn(
-        "[Google Auth] Migration error in google-integration:",
-        e?.message,
-      );
-    });
-  }
-  let syncWarning;
-  const isSheetChanged =
-    spreadsheetId !== void 0 && spreadsheetId !== oldConfig.spreadsheetId;
-  const isFolderChanged =
-    driveFolderId !== void 0 && driveFolderId !== oldConfig.driveFolderId;
-  if (isFolderChanged && token) {
-    try {
-      const validToken = (await getFreshGoogleAccessToken()) || token;
-      if (validToken) {
-        await ensureAllPartnersFolders(validToken);
-      }
-    } catch (err) {
-      console.warn(
-        "Folder check warning on saving google integration config:",
-        err?.message,
-      );
+}
+const PLATFORM_SECTIONS: Record<string, string[]> = {
+  branding: ["appName", "logoUrl", "primaryColor", "footerText", "loginHeadline"],
+  google: ["driveFolderId", "spreadsheetId", "masterSpreadsheetId"],
+  ai: ["aiModel", "geminiApiKey"],
+  smtp: ["smtpEnabled", "smtpHost", "smtpPort", "smtpSecure", "smtpUser", "smtpPassword", "smtpFromEmail", "smtpFromName"],
+};
+function validatePlatformValue(section: string, key: string, value: unknown): unknown {
+  const str = (max: number) => {
+    if (typeof value !== "string" || value.trim().length > max) platformConfigError(`${key} must be text up to ${max} characters.`);
+    return (value as string).trim();
+  };
+  switch (`${section}.${key}`) {
+    case "branding.appName": case "branding.loginHeadline": return str(200);
+    case "branding.footerText": return str(500);
+    case "branding.primaryColor": {
+      const v = str(7);
+      if (!/^#[0-9a-fA-F]{6}$/.test(v)) platformConfigError("primaryColor must be a six-digit hex color.");
+      return v;
+    }
+    case "branding.logoUrl": {
+      const v = str(2048);
+      if (v && !(v.startsWith("/") && !v.startsWith("//")) && !/^https:\/\//i.test(v)) platformConfigError("logoUrl must be an HTTPS URL or a path on this site.");
+      if (/[<>"'\s]/.test(v)) platformConfigError("logoUrl is invalid.");
+      return v;
+    }
+    case "google.driveFolderId": case "google.spreadsheetId": case "google.masterSpreadsheetId": {
+      if (value === null || value === "") return "";
+      if (typeof value !== "string" || !GOOGLE_RESOURCE_ID.test(value)) platformConfigError(`${key} is not a valid Google resource ID.`);
+      return value;
+    }
+    case "ai.aiModel": return getValidAiModel(str(100));
+    case "smtp.smtpEnabled": case "smtp.smtpSecure":
+      if (typeof value !== "boolean") platformConfigError(`${key} must be true or false.`);
+      return value;
+    case "smtp.smtpPort":
+      if (value === null) return null;
+      if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 65535) platformConfigError("smtpPort must be 1–65535.");
+      return value;
+    case "smtp.smtpHost": case "smtp.smtpUser": case "smtp.smtpFromName": return str(254);
+    case "smtp.smtpFromEmail": {
+      const v = str(254);
+      if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) platformConfigError("smtpFromEmail is not a valid email address.");
+      return v;
     }
   }
-  if (isSheetChanged && db.googleConfig.spreadsheetId) {
-    const defaultOrg = (db.tenants || []).find(
-      (t) => t.isDefault,
-    );
-    if (defaultOrg) {
-      defaultOrg.spreadsheetId = db.googleConfig.spreadsheetId;
-      defaultOrg.spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${db.googleConfig.spreadsheetId}/edit`;
-      try {
-        const orgsDb = new Database(path.join(process.cwd(), "auth.db"));
-        if (orgsDb) {
-          const row: any = orgsDb
-            .prepare("SELECT * FROM organization WHERE id = ? OR slug = ?")
-            .get(defaultOrg.id, defaultOrg.domainSlug || defaultOrg.id);
-          if (row) {
-            let meta: any = {};
-            try {
-              if (row.metadata)
-                meta =
-                  typeof row.metadata === "string"
-                    ? JSON.parse(row.metadata)
-                    : row.metadata;
-            } catch {}
-            meta.spreadsheetId = db.googleConfig.spreadsheetId;
-            orgsDb
-              .prepare(
-                "UPDATE organization SET metadata = ? WHERE id = ? OR slug = ?",
-              )
-              .run(JSON.stringify(meta), defaultOrg.id, defaultOrg.domainSlug || defaultOrg.id);
-          }
-        }
-      } catch (e) {
-        console.warn(
-          "Could not sync sqlite organization metadata on google sheet change:",
-          e?.message,
-        );
-      }
-      saveDb();
+  platformConfigError(`Unknown field: ${section}.${key}`);
+}
+function applyPlatformConfiguration(section: unknown, values: unknown, actor: ReturnType<typeof auditActorFor>) {
+  if (typeof section !== "string" || !PLATFORM_SECTIONS[section]) platformConfigError("section must be branding, google, ai or smtp.");
+  if (!values || typeof values !== "object" || Array.isArray(values)) platformConfigError("values must be an object.");
+  const allowed = PLATFORM_SECTIONS[section as string];
+  const input = values as Record<string, unknown>;
+  const next: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (!allowed.includes(key)) platformConfigError(`Unknown field: ${section}.${key}`);
+    if (key === "geminiApiKey" || key === "smtpPassword") {
+      if (value === undefined) continue;
+      if (value === null) { next[key] = ""; continue; }
+      if (typeof value !== "string" || !value.trim() || value.length > 512) platformConfigError(`${key} must be a non-empty string or null.`);
+      next[key] = value.trim();
+      continue;
     }
+    next[key] = validatePlatformValue(section as string, key, value);
   }
-  if (db.googleConfig.driveFolderId) {
-    try {
-      const shouldForceNew = Boolean(
-        req.body.forceNew ||
-        req.body.forceNewOrgResources ||
-        req.body.provisionOrgResources ||
-        isFolderChanged,
-      );
-      await autoEnsureTenantGoogleResources(token, shouldForceNew);
-    } catch (orgErr) {
-      console.warn(
-        "[Google Integration Save] Auto-ensure tenant folders warning:",
-        orgErr?.message,
-      );
-    }
+  const before = JSON.stringify({ branding: db.branding, googleConfig: db.googleConfig });
+  if (section === "branding") db.branding = { ...DEFAULT_BRANDING, ...(db.branding || {}), ...next };
+  else db.googleConfig = { ...(db.googleConfig || {}), ...next, ...(section === "google" && next.masterSpreadsheetId !== undefined ? { masterSpreadsheetUrl: "" } : {}) };
+  if (section === "ai" && next.geminiApiKey !== undefined) process.env.GEMINI_API_KEY = String(next.geminiApiKey);
+  try {
+    sqliteDb.transaction(() => {
+      syncDbToSqlite(db);
+      appendAudit(sqliteDb, actor, {
+        organizationId: null, action: "platform.configuration.update", targetType: "installation", targetId: "installation",
+        outcome: "success", changedFields: Object.keys(next).map((k) => `${section}.${k}`),
+      });
+    })();
+  } catch (err) {
+    const restored = JSON.parse(before);
+    db.branding = restored.branding;
+    db.googleConfig = restored.googleConfig;
+    throw err;
   }
-  syncTenantsWithSqlite();
-  res.json({
-    success: true,
-    config: redactProviderConfig(db.googleConfig),
-    tenants: db.tenants,
-    syncWarning,
+  return (readPlatformConfiguration() as any)[section as string];
+}
+/** Committed organization change: rebuild projections and re-derive policy-dependent state. */
+function onOrganizationChanged(organizationId: string) {
+  refreshTenantProjection();
+  (db.partners || []).forEach((p: any) => {
+    if (p.organizationId !== organizationId) return;
+    p.daftar_dokumen_dd = normalizePartnerDocuments(p);
+    p.status_dd = computeDueDiligenceStatus(p.daftar_dokumen_dd);
   });
+  recalculateStatuses();
+  saveDb();
+}
+app.get("/api/google-integration", (_req: express.Request, res: express.Response) => {
+  const config = readPlatformConfiguration();
+  res.json({ ...config.google, ...config.ai, ...config.smtp });
+});
+/** Legacy platform write adapter: splits a flat body into strict sections. Tenant fields are rejected. */
+app.post("/api/google-integration", async (req: express.Request, res: express.Response) => {
+  const identity = resolveIdentity(sqliteDb, req);
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  const sections: Record<string, Record<string, unknown>> = {};
+  for (const [key, value] of Object.entries(body)) {
+    const section = Object.keys(PLATFORM_SECTIONS).find((name) => name !== "branding" && PLATFORM_SECTIONS[name].includes(key));
+    if (!section) return sendError(req, res, 400, "INVALID_INPUT", `Unknown or tenant-owned field: ${key}`);
+    if ((key === "geminiApiKey" || key === "smtpPassword") && (value === "" || isMaskedSecret(value))) continue;
+    (sections[section] ||= {})[key] = value;
+  }
+  const previousFolder = db.googleConfig?.driveFolderId;
+  try {
+    for (const [section, values] of Object.entries(sections)) applyPlatformConfiguration(section, values, auditActorFor(req, identity));
+  } catch (err: any) {
+    if (err instanceof ApiError) return sendError(req, res, err.status, err.error, err.message);
+    throw err;
+  }
+  if (!IS_TEST_MODE && db.googleConfig?.driveFolderId && db.googleConfig.driveFolderId !== previousFolder) {
+    autoEnsureTenantGoogleResources(db.googleConfig.accessToken, true).catch((e) => console.warn("[Google Integration Save]", e?.message));
+  }
+  const config = readPlatformConfiguration();
+  res.json({ success: true, config: { ...config.google, ...config.ai, ...config.smtp } });
 });
 app.post("/api/smtp/test", async (req: express.Request, res: express.Response) => {
   const adminCheck = await checkIsAdmin(req);
@@ -6887,35 +6165,12 @@ app.post("/api/ai/test-key", async (req: express.Request, res: express.Response)
     return res.status(400).json({ error: formatGeminiError(err) });
   }
 });
-app.post("/api/google-integration/sync", (req: express.Request, res: express.Response) => {
-  db.googleConfig.isConnected = true;
-  db.googleConfig.lastSyncTime = new Date().toISOString();
-  saveDb();
-  return res.json({
-    success: true,
-    message: "Data tersinkronisasi dan tersimpan penuh di database SQLite (Single Source of Truth).",
-    config: redactProviderConfig(db.googleConfig),
-    counts: {
-      partners: (db.partners || []).length,
-      contracts: (db.contracts || []).length,
-      ios: (db.ios || []).length,
-    },
-  });
-});
+/* Google synchronization is a placeholder in this release (PRD §6.5): honest, scoped, no fake success. */
+app.post(["/api/google-integration/sync", "/api/google-integration/sync-flush"], (req: express.Request, res: express.Response) =>
+  sendError(req, res, 409, "SYNC_UNAVAILABLE", "Google synchronization is not available in this release."));
 app.get("/api/google-integration/sync-status", (req: express.Request, res: express.Response) => {
   res.setHeader("Cache-Control", "no-store");
-  res.json({
-    active: false,
-    queueLength: 0,
-    status: "sqlite-native",
-    message: "SQLite WAL aktif sebagai single source of truth.",
-  });
-});
-app.post("/api/google-integration/sync-flush", (req: express.Request, res: express.Response) => {
-  res.json({
-    success: true,
-    message: "Sinkronisasi antrean bersih. SQLite WAL aktif.",
-  });
+  res.json({ organizationId: getRequestTenantId(req), active: false, queueLength: 0, status: "unavailable", syncSupported: false });
 });
 app.post("/api/google-integration/auto-provision-master", async (req: express.Request, res: express.Response) => {
   const adminCheck = await checkIsAdmin(req);
@@ -7064,18 +6319,11 @@ app.post("/api/partners/provision-folders", provisionFoldersHandler);
  * mode "demo":  wipes all business data and reloads the multi-country demo
  *               dataset, so the product can be explored again.
  *
- * Registered login accounts are kept and re-attached to the (first) new
- * organization; AI and SMTP provider credentials are kept because they are
+ * Non-demo login accounts and platform roles are kept without new
+ * memberships; AI and SMTP provider credentials are kept because they are
  * deployment configuration, not organization data.
  */
 app.post("/api/admin/reset-database", async (req: express.Request, res: express.Response) => {
-  const actor = (req as any).actor;
-  if (actor?.role !== "superuser") {
-    return res.status(403).json({
-      error: "INSUFFICIENT_PERMISSION",
-      message: "Only a superuser can reset the application.",
-    });
-  }
   const { confirmKeyword, mode = "empty", organization = {} } = req.body || {};
   if (confirmKeyword !== "RESET NOW") {
     return res.status(400).json({ error: 'Invalid confirmation. Type "RESET NOW" to reset the application.' });
@@ -7124,60 +6372,30 @@ app.post("/api/admin/reset-database", async (req: express.Request, res: express.
     };
   }
   const primaryTenantId = dataset.tenants[0].id;
+  const identity = resolveIdentity(sqliteDb, req);
 
-  // Remove current and legacy demo logins before rebuilding demo memberships.
-  removeDemoAccounts(sqliteDb, db.allowedUsers || [], actor.id);
-
-  // Keep every registered (non-demo) login account and attach it to the primary tenant.
-  const authUsers: any[] = (() => {
-    try {
-      return sqliteDb.prepare("SELECT id, name, email, role, banned, createdAt FROM user").all() as any[];
-    } catch {
-      return [];
-    }
-  })();
-  // Demo accounts are never carried over: "demo" mode re-adds them from the dataset.
-  const preservedUsers = authUsers
-    .filter((u) => u.email && !isDemoAccountEmail(u.email))
-    .map((u) => ({
-      id: u.id,
-      organizationId: primaryTenantId,
-      email: String(u.email).toLowerCase(),
-      name: u.name || "User",
-      role: u.id === actor.id || String(u.role).toLowerCase() === "superuser"
-        ? "Superuser"
-        : String(u.role || "viewer").replace(/^./, (c: string) => c.toUpperCase()),
-      department: null,
-      status: u.banned ? "Inactive" : "Active",
-      addedBy: "System reset",
-      createdAt: u.createdAt || nowIso,
-    }));
-
+  /*
+   * Application-wide reset (PRD §2.3, §14.5). Non-demo identities, their
+   * credentials and platform roles are kept, but nobody silently gains a
+   * membership in the new organization; the acting superuser manages it in
+   * platform context. The append-only audit log is never cleared.
+   */
   try {
     sqliteDb.transaction(() => {
-      for (const table of ["invitation", "apikey", "teamMember", "team", "member", "organization"]) {
+      removeDemoAccounts(sqliteDb, [], identity.userId);
+      for (const table of ["invitation", "apikey", "teamMember", "team", "member", "organization_settings", "organization_integrations", "organization"]) {
         sqliteDb.prepare(`DELETE FROM ${table}`).run();
       }
-      for (const tenant of dataset.tenants) {
-        sqliteDb.prepare(`
-          INSERT INTO organization (id, name, slug, logo, createdAt, metadata)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(tenant.id, tenant.name, tenant.domainSlug, tenant.logoUrl, nowIso, JSON.stringify({
-          legalEntity: tenant.legalEntity,
-          brandName: tenant.brandName,
-          tagline: tenant.tagline,
-          primaryColor: tenant.primaryColor,
-          currency: tenant.currency,
-          settings: tenant.settings,
-        }));
-      }
-      for (const u of preservedUsers) {
-        sqliteDb.prepare(`
-          INSERT INTO member (id, organizationId, userId, role, createdAt)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(`mem_${u.id}`, primaryTenantId, u.id, u.role === "Superuser" ? "admin" : u.role.toLowerCase(), nowIso);
-      }
-      sqliteDb.prepare("UPDATE session SET activeOrganizationId = ?, activeTeamId = NULL").run(primaryTenantId);
+      seedOrganizationsFromDataset(sqliteDb, {
+        tenants: dataset.tenants,
+        departments: dataset.departments,
+        allowedUsers: mode === "demo" && process.env.NODE_ENV !== "production" ? dataset.allowedUsers : [],
+      });
+      sqliteDb.prepare("UPDATE session SET activeOrganizationId = NULL, activeTeamId = NULL").run();
+      appendAudit(sqliteDb, auditActorFor(req, identity), {
+        organizationId: null, action: "platform.application.reset", targetType: "installation", targetId: "installation",
+        outcome: "success", changedFields: [`mode:${mode}`],
+      });
     })();
   } catch (err) {
     console.error("Error resetting auth organization tables:", err);
@@ -7187,10 +6405,8 @@ app.post("/api/admin/reset-database", async (req: express.Request, res: express.
   // Mutate `db` in place: the auth console holds a reference to this object.
   const provider = db.googleConfig || {};
   Object.assign(db, {
-    tenants: dataset.tenants,
-    activeTenantId: primaryTenantId,
-    departments: dataset.departments,
-    allowedUsers: [...preservedUsers, ...dataset.allowedUsers],
+    tenants: [],
+    allowedUsers: [],
     partners: dataset.partners,
     contracts: dataset.contracts,
     ios: dataset.ios,
@@ -7209,10 +6425,6 @@ app.post("/api/admin/reset-database", async (req: express.Request, res: express.
       masterSpreadsheetUrl: "",
       isConnected: false,
       autoSync: false,
-      isLocked: false,
-      notificationEmails: "",
-      legalNotificationEmail: "",
-      financeNotificationEmail: "",
       aiModel: provider.aiModel || "gemini-3.8-flash",
       geminiApiKey: provider.geminiApiKey || "",
       smtpEnabled: Boolean(provider.smtpEnabled),
@@ -7227,10 +6439,7 @@ app.post("/api/admin/reset-database", async (req: express.Request, res: express.
       accessToken: "",
     },
   });
-  // An empty workspace (and any production server) drops the demo logins; "demo" mode elsewhere reloads them.
-  if (mode === "empty" || process.env.NODE_ENV === "production") {
-    db.allowedUsers = removeDemoAccounts(sqliteDb, db.allowedUsers, actor.id).allowedUsers;
-  }
+  refreshTenantProjection();
 
   if (fs.existsSync(uploadsDir)) {
     try {
@@ -7245,17 +6454,8 @@ app.post("/api/admin/reset-database", async (req: express.Request, res: express.
   migrateLegacyRecords();
   recalculateStatuses();
   saveDb();
-  // Recreate demo users/teams/memberships in the auth tables. Demo accounts get a
-  // password only when DEMO_ADMIN_PASSWORD is set; otherwise set theirs in the admin console.
-  hydrateAuthConsoleFromDataStore(db);
-  await ensureUserAccountsExist();
-  addActivityLog(
-    "", "", "Superuser", "RESET", "SYSTEM",
-    mode === "demo"
-      ? "Reset the application and reloaded the demo dataset."
-      : `Reset the application and set up organization "${dataset.tenants[0].name}" (${dataset.tenants[0].settings.countryCode}, ${dataset.tenants[0].settings.industry}).`,
-    req,
-  );
+  // Demo accounts get a password only when DEMO_ADMIN_PASSWORD is set.
+  if (!IS_TEST_MODE) await ensureUserAccountsExist();
   res.json({
     success: true,
     mode,
@@ -7373,6 +6573,11 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
         } else if (!internalPic && defDept) {
           internalPic = defDept;
         }
+        // Imported references must resolve inside the selected organization (PRD §4.5.2).
+        if (internalPic && !scopeOf(req).teamOf(internalPic)) {
+          failed.push({ rowIndex, identifier: name, message: `Department "${internalPic}" does not exist in this organization.` });
+          continue;
+        }
         const fullPicPartner =
           row.pic_partner ||
           (row.nama_pic
@@ -7485,6 +6690,10 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
           contractPic = defDept;
         } else if (!contractPic && partner?.pic_internal) {
           contractPic = partner.pic_internal;
+        }
+        if (contractPic && !scopeOf(req).teamOf(contractPic)) {
+          failed.push({ rowIndex, identifier: nomor, message: `Department "${contractPic}" does not exist in this organization.` });
+          continue;
         }
         const newContract = {
           contract_id: generateNextContractId(),
@@ -7778,368 +6987,147 @@ app.post("/api/bulk-import", async (req: express.Request, res: express.Response)
   }
   return res.json({ succeeded, skipped, failed });
 });
-function syncTenantsWithSqlite() {
-  try {
-    if (sqliteDb) {
-      const orgRows = sqliteDb
-        .prepare("SELECT * FROM organization ORDER BY createdAt ASC")
-        .all() as any[];
-      if (orgRows && orgRows.length > 0) {
-        const orgIds = new Set(orgRows.map((o: any) => o.id));
-        const orgSlugs = new Set(orgRows.map((o: any) => o.slug));
-        const updatedTenants = [];
-        orgRows.forEach((org: any) => {
-          let meta: any = {};
-          try {
-            if (org.metadata) {
-              meta =
-                typeof org.metadata === "string"
-                  ? JSON.parse(org.metadata)
-                  : org.metadata;
-            }
-          } catch {}
-          const existing: any = (db.tenants || []).find(
-            (t: any) => t.id === org.id || t.domainSlug === org.slug,
-          );
-          const tenantSettings = resolveTenantSettings({
-            settings: existing?.settings || meta.settings,
-            currency: existing?.currency || meta.currency,
-          });
-          const tenantObj = {
-            id: org.id,
-            name: org.name,
-            legalEntity: existing?.legalEntity || meta.legalEntity || "",
-            brandName: org.name,
-            tagline:
-              meta.tagline ||
-              existing?.tagline ||
-              "Contract Lifecycle Management",
-            logoUrl: org.logo || existing?.logoUrl || "/favicon.png",
-            primaryColor:
-              meta.primaryColor || existing?.primaryColor || DEFAULT_BRANDING.primaryColor,
-            currency: tenantSettings.defaultCurrency,
-            settings: tenantSettings,
-            domainSlug: org.slug,
-            isDefault: Boolean(existing?.isDefault),
-            spreadsheetId:
-              existing?.spreadsheetId ||
-              meta.spreadsheetId ||
-              (existing?.isDefault
-                ? db.googleConfig?.spreadsheetId
-                : void 0),
-            spreadsheetUrl:
-              existing?.spreadsheetUrl ||
-              meta.spreadsheetUrl ||
-              (existing?.spreadsheetId ||
-              meta.spreadsheetId ||
-              (existing?.isDefault
-                ? db.googleConfig?.spreadsheetId
-                : void 0)
-                ? `https://docs.google.com/spreadsheets/d/${existing?.spreadsheetId || meta.spreadsheetId || db.googleConfig?.spreadsheetId}/edit`
-                : void 0),
-            driveFolderId:
-              existing?.driveFolderId ||
-              meta.driveFolderId ||
-              (existing?.isDefault
-                ? db.googleConfig?.driveFolderId
-                : void 0),
-            driveFolderLink:
-              existing?.driveFolderLink ||
-              meta.driveFolderLink ||
-              (existing?.driveFolderId ||
-              meta.driveFolderId ||
-              (existing?.isDefault
-                ? db.googleConfig?.driveFolderId
-                : void 0)
-                ? `https://drive.google.com/drive/folders/${existing?.driveFolderId || meta.driveFolderId || db.googleConfig?.driveFolderId}`
-                : void 0),
-          };
-          updatedTenants.push(tenantObj);
-        });
-        db.tenants = updatedTenants;
-        if (!db.tenants.some((t) => t.id === db.activeTenantId)) {
-          db.activeTenantId = db.tenants[0]?.id || getDefaultTenantId();
-        }
-        saveDb();
-      }
-    }
-  } catch (err) {
-    console.warn(
-      "Error reading sqlite organization table in syncTenantsWithSqlite:",
-      err,
-    );
-  }
-}
-app.get("/api/tenants", requirePermission("workspace.view", "tenant"), async (req: express.Request, res: express.Response) => {
-  syncTenantsWithSqlite();
-  if (!db.tenants || !Array.isArray(db.tenants) || db.tenants.length === 0) {
-    db.tenants = [DEFAULT_TENANTS[0]];
-  }
-  if (
-    sanitizeParentFolderId(db.googleConfig?.driveFolderId) &&
-    db.tenants.some(
-      (t) => !t.driveFolderId || t.driveFolderId.startsWith("Folder_"),
-    )
-  ) {
-    try {
-      const token =
-        req.headers["x-google-access-token"] || (db.googleConfig as any)?.accessToken;
-      await autoEnsureTenantGoogleResources(token);
-    } catch (e) {
-      console.warn(
-        "[GET /api/tenants] autoEnsureTenantGoogleResources warning:",
-        e?.message,
-      );
-    }
-  }
-  const clientTenantId = (req.headers["x-tenant-id"] || req.headers["x-organization-id"] || req.query.tenantId || req.query.activeTenantId) as string;
-  if (clientTenantId && db.tenants.some((t) => t.id === clientTenantId || t.domainSlug === clientTenantId)) {
-    const matched = db.tenants.find((t) => t.id === clientTenantId || t.domainSlug === clientTenantId);
-    if (matched) {
-      db.activeTenantId = matched.id;
-      saveDb();
-    }
-  } else if (
-    !db.activeTenantId ||
-    !db.tenants.some((t) => t.id === db.activeTenantId)
-  ) {
-    db.activeTenantId = db.tenants[0]?.id || getDefaultTenantId();
-    saveDb();
-  }
-  const actor = (req as any).actor;
-  const visibleTenants = actor?.role === "superuser"
-    ? db.tenants
-    : db.tenants.filter((tenant) => tenant.id === actor?.tenantId);
-  return res.json({
-    success: true,
-    tenants: visibleTenants,
-    activeTenantId: visibleTenants.some((tenant) => tenant.id === db.activeTenantId)
-      ? db.activeTenantId
-      : visibleTenants[0]?.id || null,
-  });
+/*
+ * /api/tenants adapters (PRD §10.1): listing is side-effect free (no global
+ * active tenant, no provisioning); switching only updates this session's
+ * default; lifecycle writes are platform-only canonical services.
+ */
+app.get("/api/tenants", (req: express.Request, res: express.Response) => {
+  const identity = resolveIdentity(sqliteDb, req);
+  const accessible = accessibleOrganizations(sqliteDb, identity);
+  const ids = new Set(accessible.map((o) => o.organizationId));
+  const tenants = (db.tenants || []).filter((t: any) => ids.has(t.id)).map((t: any) => ({
+    id: t.id, name: t.name, brandName: t.brandName, legalEntity: t.legalEntity, tagline: t.tagline,
+    logoUrl: t.logoUrl, primaryColor: t.primaryColor, currency: t.currency, settings: t.settings,
+    domainSlug: t.domainSlug, createdAt: t.created_at,
+  }));
+  const defaultId = identity.sessionDefaultOrganizationId && ids.has(identity.sessionDefaultOrganizationId)
+    ? identity.sessionDefaultOrganizationId : null;
+  res.setHeader("Cache-Control", "no-store");
+  return res.json({ success: true, tenants, organizations: accessible, activeTenantId: defaultId });
 });
 app.post("/api/tenants/switch", (req: express.Request, res: express.Response) => {
-  const { tenantId } = req.body;
-  if (!tenantId) {
-    return res.status(400).json({ error: "tenantId is required." });
-  }
-  syncTenantsWithSqlite();
-  let exists = (db.tenants || DEFAULT_TENANTS).find((t) => t.id === tenantId || t.domainSlug === tenantId);
-  if (!exists) {
-    try {
-      if (sqliteDb) {
-        const orgInSqlite = sqliteDb.prepare("SELECT * FROM organization WHERE id = ? OR slug = ?").get(tenantId, tenantId) as any;
-        if (orgInSqlite) {
-          syncTenantsWithSqlite();
-          exists = (db.tenants || DEFAULT_TENANTS).find((t) => t.id === orgInSqlite.id || t.domainSlug === orgInSqlite.slug);
-        }
-      }
-    } catch {}
-  }
-  if (!exists) {
-    return res.status(404).json({ error: "Tenant not found." });
-  }
-  const targetId = exists.id;
-  db.activeTenantId = targetId;
-  saveDb();
-
+  const identity = resolveIdentity(sqliteDb, req);
+  const tenantId = typeof req.body?.tenantId === "string" ? req.body.tenantId : req.body?.organizationId;
   try {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ") && sqliteDb) {
-      const token = authHeader.substring(7);
-      sqliteDb.prepare("UPDATE session SET activeOrganizationId = ?, updatedAt = ? WHERE token = ?")
-        .run(targetId, new Date().toISOString(), token);
+    const result = selectActiveOrganization(sqliteDb, identity, Object.assign(Object.create(req), { body: { organizationId: tenantId } }));
+    return res.json({ success: true, activeTenantId: result.organizationId });
+  } catch (err: any) {
+    if (err instanceof RequestDenied || err instanceof ApiError) return sendError(req, res, err.status, err.error, err.message);
+    throw err;
+  }
+});
+app.post("/api/tenants", (req: express.Request, res: express.Response) => {
+  const identity = resolveIdentity(sqliteDb, req);
+  const body = req.body || {};
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  if (!name || name.length > 200) return sendError(req, res, 400, "INVALID_INPUT", "Organization name is required (1–200 characters).");
+  try {
+    const id = sqliteDb.transaction(() => {
+      const orgId = createOrganizationRecord(sqliteDb, {
+        name,
+        slug: typeof body.domainSlug === "string" ? body.domainSlug : undefined,
+        legalEntity: typeof body.legalEntity === "string" ? body.legalEntity.slice(0, 200) : "",
+        brandName: typeof body.brandName === "string" ? body.brandName.slice(0, 200) : name,
+        tagline: typeof body.tagline === "string" ? body.tagline.slice(0, 500) : "",
+        primaryColor: typeof body.primaryColor === "string" ? body.primaryColor : undefined,
+        settings: { countryCode: body.countryCode || body.settings?.countryCode, industry: body.industry || body.settings?.industry, defaultCurrency: body.currency },
+      }, identity.userId);
+      appendAudit(sqliteDb, auditActorFor(req, identity), {
+        organizationId: orgId, action: "organization.create", targetType: "organization", targetId: orgId, outcome: "success", changedFields: ["name"],
+      });
+      return orgId;
+    })();
+    refreshTenantProjection();
+    return res.status(201).json({ success: true, newTenant: findTenant(id), tenants: db.tenants });
+  } catch (err: any) {
+    return sendError(req, res, 400, "INVALID_INPUT", err?.message);
+  }
+});
+app.put("/api/tenants/:id", (req: express.Request, res: express.Response) => {
+  const identity = resolveIdentity(sqliteDb, req);
+  try {
+    const current = readOrganizationSettings(sqliteDb, req.params.id);
+    const body = req.body || {};
+    const patch: any = { expectedVersion: typeof body.expectedVersion === "number" ? body.expectedVersion : current.version };
+    if (typeof body.name === "string") patch.name = body.name;
+    const profile: any = {};
+    for (const key of ["legalEntity", "brandName", "tagline", "logoUrl", "primaryColor"]) if (typeof body[key] === "string") profile[key] = body[key];
+    if (Object.keys(profile).length) patch.profile = profile;
+    if (body.settings && typeof body.settings === "object") patch.policy = body.settings;
+    if (typeof body.domainSlug === "string" && body.domainSlug.trim() && body.domainSlug !== current.slug) {
+      const slug = body.domainSlug.trim().toLowerCase();
+      if (!/^[a-z0-9-]{1,48}$/.test(slug)) return sendError(req, res, 400, "INVALID_INPUT", "Slug may contain lowercase letters, digits and dashes.");
+      if (sqliteDb.prepare("SELECT 1 FROM organization WHERE slug = ? AND id <> ?").get(slug, req.params.id)) return sendError(req, res, 409, "SLUG_EXISTS");
+      sqliteDb.prepare("UPDATE organization SET slug = ? WHERE id = ?").run(slug, req.params.id);
     }
-  } catch (err) {
-    console.warn("Failed to update activeOrganizationId in sqlite session:", err);
+    if (patch.name !== undefined || patch.profile || patch.policy) {
+      patchOrganizationSettings(sqliteDb, req.params.id, patch, auditActorFor(req, identity));
+    }
+    onOrganizationChanged(req.params.id);
+    return res.json({ success: true, tenants: db.tenants });
+  } catch (err: any) {
+    if (err instanceof ApiError) return sendError(req, res, err.status, err.error, err.message);
+    throw err;
   }
-
-  return res.json({ success: true, activeTenantId: targetId });
 });
-app.post("/api/tenants", requirePermission("tenant.create", "global"), (req: express.Request, res: express.Response) => {
-  const tenantData = req.body;
-  if (!tenantData.name) {
-    return res.status(400).json({ error: "Tenant name is required." });
-  }
-  if (!db.tenants) db.tenants = [...DEFAULT_TENANTS];
-  const settings = resolveTenantSettings({
-    settings: {
-      ...(tenantData.settings || {}),
-      ...(tenantData.countryCode ? { countryCode: tenantData.countryCode } : {}),
-      ...(tenantData.industry ? { industry: tenantData.industry } : {}),
-    },
-    currency: tenantData.currency,
-  });
-  const newTenant = {
-    id: `tenant-${Date.now()}`,
-    name: tenantData.name,
-    legalEntity: tenantData.legalEntity || "",
-    brandName: tenantData.brandName || tenantData.name,
-    tagline: tenantData.tagline || "",
-    logoUrl: tenantData.logoUrl || "/favicon.png",
-    primaryColor: tenantData.primaryColor || DEFAULT_BRANDING.primaryColor,
-    currency: settings.defaultCurrency,
-    settings,
-    domainSlug:
-      tenantData.domainSlug ||
-      tenantData.name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
-    isDefault: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-  db.tenants.push(newTenant as any);
-  saveDb();
-  return res.json({ success: true, tenants: db.tenants, newTenant });
-});
-app.put("/api/tenants/:id", requirePermission("tenant.edit", "global"), (req: express.Request, res: express.Response) => {
-  const { id } = req.params;
-  const updates = req.body;
-  if (!db.tenants) db.tenants = [...DEFAULT_TENANTS];
-  const index = db.tenants.findIndex((t) => t.id === id);
-  if (index === -1) {
-    return res.status(404).json({ error: "Tenant not found." });
-  }
-  const { id: _ignoredId, isDefault: _ignoredDefault, settings: incomingSettings, ...safeUpdates } = updates || {};
-  const merged = { ...db.tenants[index], ...safeUpdates };
-  merged.settings = resolveTenantSettings({
-    settings: { ...(db.tenants[index].settings || {}), ...(incomingSettings || {}) },
-    currency: safeUpdates.currency || db.tenants[index].currency,
-  });
-  if (safeUpdates.currency) merged.settings.defaultCurrency = normalizeCurrencyCode(safeUpdates.currency, merged.settings.defaultCurrency);
-  merged.currency = merged.settings.defaultCurrency;
-  merged.updated_at = new Date().toISOString();
-  db.tenants[index] = merged;
-  saveDb();
+app.delete("/api/tenants/:id", (req: express.Request, res: express.Response) => {
+  const identity = resolveIdentity(sqliteDb, req);
+  const id = req.params.id;
+  if (!findTenant(id)) return sendError(req, res, 404, "RESOURCE_NOT_FOUND");
+  // Deleting an organization never cascades into business data (PRD §9.4).
+  const owned = ["partners", "contracts", "ios", "spendings", "evaluations", "notifications", "templates"]
+    .some((key) => (db[key] || []).some((row: any) => row?.organizationId === id));
+  if (owned) return sendError(req, res, 409, "ORGANIZATION_IN_USE", "Move or remove this organization's records first.");
+  sqliteDb.transaction(() => {
+    sqliteDb.prepare("DELETE FROM teamMember WHERE teamId IN (SELECT id FROM team WHERE organizationId = ?)").run(id);
+    for (const table of ["member", "team", "invitation", "organization_settings", "organization_integrations"]) {
+      sqliteDb.prepare(`DELETE FROM ${table} WHERE organizationId = ?`).run(id);
+    }
+    sqliteDb.prepare("UPDATE session SET activeOrganizationId = NULL WHERE activeOrganizationId = ?").run(id);
+    sqliteDb.prepare("DELETE FROM organization WHERE id = ?").run(id);
+    appendAudit(sqliteDb, auditActorFor(req, identity), {
+      organizationId: id, action: "organization.delete", targetType: "organization", targetId: id, outcome: "success", changedFields: [],
+    });
+  })();
+  refreshTenantProjection();
   return res.json({ success: true, tenants: db.tenants });
 });
-app.delete("/api/tenants/:id", requirePermission("tenant.delete", "global"), (req: express.Request, res: express.Response) => {
-  const { id } = req.params;
-  if (!db.tenants) db.tenants = [...DEFAULT_TENANTS];
-  const target = db.tenants.find((t) => t.id === id);
-  if (target?.isDefault) {
-    return res.status(400).json({ error: "Default tenant cannot be deleted." });
-  }
-  db.tenants = db.tenants.filter(
-    (t) => t.id !== id && t.domainSlug !== target?.domainSlug,
-  );
-  if (db.activeTenantId === id) {
-    db.activeTenantId = db.tenants[0]?.id || getDefaultTenantId();
-  }
+/** Legacy Integrations write: validated folder AND sheet mapping through the canonical store. */
+app.post("/api/tenants/:id/setup-google", (req: express.Request, res: express.Response) => {
+  const ctx = orgContextOf(req);
+  const identity = resolveIdentity(sqliteDb, req);
+  const current = readIntegration(sqliteDb, ctx.organizationId);
+  const body: any = { expectedVersion: typeof req.body?.expectedVersion === "number" ? req.body.expectedVersion : current.version };
+  if (req.body?.driveFolderId !== undefined) body.driveFolderId = req.body.driveFolderId || null;
+  if (req.body?.spreadsheetId !== undefined) body.spreadsheetId = req.body.spreadsheetId || null;
   try {
-    if (sqliteDb) {
-      sqliteDb.prepare("DELETE FROM member WHERE organizationId = ?").run(id);
-      sqliteDb.prepare("DELETE FROM team WHERE organizationId = ?").run(id);
-      sqliteDb
-        .prepare("DELETE FROM invitation WHERE organizationId = ?")
-        .run(id);
-      sqliteDb
-        .prepare("DELETE FROM organization WHERE id = ? OR slug = ?")
-        .run(id, target?.domainSlug || "");
-    }
-  } catch (err) {
-    console.warn(
-      "Could not delete sqlite organization record in /api/tenants/:id:",
-      err,
-    );
-  }
-  saveDb();
-  return res.json({
-    success: true,
-    tenants: db.tenants,
-    activeTenantId: db.activeTenantId,
-  });
-});
-app.post("/api/tenants/:id/setup-google", async (req: express.Request, res: express.Response) => {
-  const { id } = req.params;
-  const {
-    driveFolderId,
-    spreadsheetId,
-    createNewFolder,
-    createNewSheet,
-    userEmail,
-    userName,
-    userRole,
-  } = req.body;
-  if (!db.tenants) db.tenants = [...DEFAULT_TENANTS];
-  const tenant = db.tenants.find((t) => t.id === id);
-  if (!tenant) {
-    return res.status(404).json({ error: "Organisasi tidak ditemukan." });
-  }
-  const token = await resolveActiveGoogleToken(
-    req.headers["x-google-access-token"] || req.body.accessToken,
-  );
-  if (!token && !hasServiceAccountCredentials()) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Koneksi Google belum aktif. Hubungkan sesi Google Drive / Service Account terlebih dahulu.",
-      });
-  }
-  try {
-    let finalFolderId = driveFolderId || tenant.driveFolderId;
-    let finalFolderLink = tenant.driveFolderLink;
-    if (createNewFolder || !finalFolderId) {
-      const orgFolder = await getOrgFolderId(tenant, token);
-      finalFolderId = orgFolder.id;
-      finalFolderLink =
-        orgFolder.webViewLink ||
-        `https://drive.google.com/drive/folders/${orgFolder.id}`;
-    } else if (finalFolderId && !finalFolderLink) {
-      finalFolderLink = `https://drive.google.com/drive/folders/${finalFolderId}`;
-    }
-    tenant.driveFolderId = finalFolderId || void 0;
-    tenant.driveFolderLink = finalFolderLink || void 0;
-    (tenant as any).updated_at = new Date().toISOString();
-    saveDb();
-    addActivityLog(
-      userEmail || "user@app",
-      userName || "User",
-      userRole || "Admin",
-      "UPDATE",
-      "TENANT",
-      `Konfigurasi Google Drive Folder Organisasi '${tenant.name}' berhasil diperbarui`,
-      req,
-    );
-    return res.json({
-      success: true,
-      tenant,
-      message: `Berhasil mengonfigurasi folder Google Drive untuk ${tenant.name}.`,
-    });
-  } catch (err) {
-    console.error(
-      `Error setting up Google Drive for tenant ${tenant.name}:`,
-      err,
-    );
-    return res
-      .status(500)
-      .json({
-        error: err.message || "Gagal mengatur Google Drive untuk organisasi.",
-      });
+    patchIntegration(sqliteDb, ctx.organizationId, body, auditActorFor(req, identity, ctx));
+    onOrganizationChanged(ctx.organizationId);
+    return res.json({ success: true, tenant: findTenant(ctx.organizationId) });
+  } catch (err: any) {
+    if (err instanceof ApiError) return sendError(req, res, err.status, err.error, err.message);
+    throw err;
   }
 });
-app.post("/api/tenants/:id/sync-google", async (req: express.Request, res: express.Response) => {
-  const { id } = req.params;
-  const tenant = (db.tenants || DEFAULT_TENANTS).find((t) => t.id === id);
-  if (!tenant) {
-    return res.status(404).json({ error: "Organisasi tidak ditemukan." });
-  }
-  return res.json({
-    success: true,
-    message: `Data organisasi '${tenant.name}' tersimpan aman & tersinkronisasi di database SQLite.`,
-  });
-});
+app.post("/api/tenants/:id/sync-google", (req: express.Request, res: express.Response) =>
+  sendError(req, res, 409, "SYNC_UNAVAILABLE", "Google synchronization is not available in this release."));
+/** Public presentation branding only (PRD §5.5). */
 app.get("/api/branding", (req: express.Request, res: express.Response) => {
-  if (!db.branding) {
-    db.branding = DEFAULT_BRANDING;
-  }
-  return res.json({ success: true, branding: db.branding });
+  const b = { ...DEFAULT_BRANDING, ...(db.branding || {}) };
+  return res.json({
+    success: true,
+    branding: { appName: b.appName, logoUrl: b.logoUrl, primaryColor: b.primaryColor, footerText: b.footerText, loginHeadline: b.loginHeadline },
+  });
 });
 app.post("/api/branding", (req: express.Request, res: express.Response) => {
-  const brandingData = req.body;
-  db.branding = { ...(db.branding || DEFAULT_BRANDING), ...brandingData };
-  saveDb();
-  return res.json({ success: true, branding: db.branding });
+  try {
+    const branding = applyPlatformConfiguration("branding", req.body, auditActorFor(req, resolveIdentity(sqliteDb, req)));
+    return res.json({ success: true, branding });
+  } catch (err: any) {
+    if (err instanceof ApiError) return sendError(req, res, err.status, err.error, err.message);
+    throw err;
+  }
 });
 /** Mask all but the last `keep` characters, e.g. bank account numbers. */
 function maskTail(value: unknown, keep = 4): string {
@@ -8157,7 +7145,9 @@ app.post("/api/chat", async (req: express.Request, res: express.Response) => {
     const tenantId = getRequestTenantId(req);
     const settings = getTenantSettings(tenantId);
     const ctx = aiPolicyContext(tenantId);
-    const inTenant = (row: any) => isMatchingOrg(row?.organizationId, tenantId);
+    const chatScope = scopeOf(req);
+    const ctxForChat = orgContextOf(req);
+    const visibleTo = (kind: RecordKind) => (row: any) => recordVisible(ctxForChat, chatScope, kind, row);
     /*
      * Privacy by design (PRD §3.4.1, §5.1): only the active tenant's records
      * are sent, and direct identifiers — phone numbers, e-mail addresses,
@@ -8166,7 +7156,7 @@ app.post("/api/chat", async (req: express.Request, res: express.Response) => {
      */
     const dbContext = {
       organization: { name: ctx.organizationName, country: ctx.countryName, industry: ctx.industryName },
-      partners: (db.partners || []).filter(inTenant).map((p: any) => ({
+      partners: (db.partners || []).filter(visibleTo("partner")).map((p: any) => ({
         partner_id: p.partner_id || p.id,
         name: p.nama_partner,
         codename: p.codename || p.partner_channel || "",
@@ -8188,7 +7178,7 @@ app.post("/api/chat", async (req: express.Request, res: express.Response) => {
             }))
           : [],
       })),
-      contracts: (db.contracts || []).filter(inTenant).map((c: any) => ({
+      contracts: (db.contracts || []).filter(visibleTo("contract")).map((c: any) => ({
         contract_id: c.contract_id || c.id,
         reference: c.nomor_kontrak,
         title: c.judul_kontrak,
@@ -8213,7 +7203,7 @@ app.post("/api/chat", async (req: express.Request, res: express.Response) => {
         changed_fields: c.field_yang_berubah || [],
         days_remaining: c.sisa_hari,
       })),
-      commercial_documents: (db.ios || []).filter(inTenant).map((i: any) => {
+      commercial_documents: (db.ios || []).filter(visibleTo("io")).map((i: any) => {
         const endDateStr = i.tanggal_berakhir || i.tanggal_selesai || i.period_end || "";
         const lifecycle = computeLifecycle(i.organizationId, endDateStr, i.status);
         return {
@@ -8239,7 +7229,7 @@ app.post("/api/chat", async (req: express.Request, res: express.Response) => {
           days_remaining: lifecycle.daysRemaining,
         };
       }),
-      spendings_and_invoices: (db.spendings || []).filter(inTenant).map((s: any) => ({
+      spendings_and_invoices: (db.spendings || []).filter(visibleTo("spending")).map((s: any) => ({
         spending_id: s.id,
         vendor_name: s.vendor_name || s.partner_name || "",
         vendor_id: s.vendor_id || s.partner_id || "",
@@ -8253,7 +7243,7 @@ app.post("/api/chat", async (req: express.Request, res: express.Response) => {
         payment_status: s.payment_status || "",
         bank: [s.bank_name, maskTail(s.bank_account_number)].filter(Boolean).join(" "),
       })),
-      evaluations: (db.evaluations || []).filter(inTenant).map((e: any) => ({
+      evaluations: (db.evaluations || []).filter(visibleTo("evaluation")).map((e: any) => ({
         evaluation_id: e.id,
         supplier_name: e.supplier_name,
         review_date: e.review_date,
@@ -8339,13 +7329,14 @@ async function isBootstrapPasswordActive(): Promise<boolean> {
 }
 
 /** A fresh install has no Superuser until someone completes the first-run setup page. */
-const needsFirstRunSetup = () => !sqliteDb.prepare(`SELECT 1 FROM user WHERE LOWER(role) = 'superuser' LIMIT 1`).get();
+const needsFirstRunSetup = () => !sqliteDb.prepare(`SELECT 1 FROM "user" WHERE role = 'superuser' LIMIT 1`).get();
 
 // Unauthenticated: tells the sign-in page whether to show the first-run setup form instead.
 app.get("/api/system/public-status", (_req: express.Request, res: express.Response) => {
   res.json({
     appName: db.branding?.appName || DEFAULT_BRANDING.appName,
-    needsSetup: needsFirstRunSetup(),
+    needsSetup: !migrationBlock && needsFirstRunSetup(),
+    migrationRequired: Boolean(migrationBlock),
   });
 });
 
@@ -8379,34 +7370,32 @@ app.post("/api/system/setup", async (req: express.Request, res: express.Response
         VALUES (?, ?, 'credential', ?, ?, ?, ?, 'local:credential')
       `).run(`acc_${id}`, id, id, hashed, now, now);
       return true;
-    })();
+    }).immediate(); // write lock before the check: concurrent setups cannot both pass
     if (!created) {
       return res.status(409).json({ error: "ALREADY_SET_UP", message: "An administrator already exists. Please sign in." });
     }
   } catch (err: any) {
     return res.status(err?.status || 500).json({ error: "SETUP_FAILED", message: err?.message || "Setup failed." });
   }
-  db.allowedUsers = [
-    ...(db.allowedUsers || []),
-    { id, organizationId: getDefaultTenantId(), email, name, role: "Superuser", department: null, status: "Active", addedBy: "First-run setup", createdAt: now },
-  ];
-  saveDb();
+  appendAudit(sqliteDb, { actorId: id, actorPlatformRole: "superuser", accessMode: "platform", requestId: String((req as any).requestId || crypto.randomUUID()) }, {
+    organizationId: null, action: "platform.setup", targetType: "installation", targetId: "installation", outcome: "success", changedFields: ["superuser"],
+  });
   // Outside production the demo-workspace logins stay usable with the same password.
-  await ensureUserAccountsExist(password);
+  if (!IS_TEST_MODE) await ensureUserAccountsExist(password);
   console.log(`First-run setup: created superuser ${email}`);
   res.status(201).json({ success: true });
 });
 
 app.get("/api/system/status", async (req: express.Request, res: express.Response) => {
-  const actor = (req as any).actor;
-  const isSuperuser = actor?.role === "superuser";
+  const identity = resolveIdentity(sqliteDb, req);
+  const isSuperuser = identity.platformRole === "superuser";
   const google = isSuperuser ? googleCredentials.status() : null;
   res.json({
     isSuperuser,
     defaultAdminPasswordActive: isSuperuser ? await isBootstrapPasswordActive() : false,
     // Drives the "finish setup: connect Google" banner for a fresh install's admin.
     googleSetupIncomplete: Boolean(google && (!google.serviceAccount.source || !google.oauthClient.source)),
-    tenantCount: (db.tenants || []).length,
+    tenantCount: isSuperuser ? (db.tenants || []).length : undefined,
   });
 });
 
@@ -8470,56 +7459,62 @@ function tenantSettingsPayload(tenantId: string) {
   };
 }
 
+/** Runtime policy view for operational forms. Not an administrative grant. */
 app.get("/api/tenant-settings", (req: express.Request, res: express.Response) => {
   res.json(tenantSettingsPayload(getRequestTenantId(req)));
 });
-
+/** Legacy write adapter (PRD §10.1): strict policy/legalEntity fields through the settings service. */
 app.put("/api/tenant-settings", (req: express.Request, res: express.Response) => {
-  const actor = (req as any).actor;
-  if (!actor || !["admin", "superuser"].includes(String(actor.role))) {
-    return res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "Only administrators can change organization settings." });
-  }
-  const tenantId = getRequestTenantId(req);
-  const tenant = findTenant(tenantId);
-  if (!tenant) return res.status(404).json({ error: "Organization not found." });
-  const incoming = req.body?.settings && typeof req.body.settings === "object" ? req.body.settings : {};
-  const merged = resolveTenantSettings({
-    settings: { ...(tenant.settings || {}), ...incoming },
-    currency: tenant.currency,
-  });
-  const previous = resolveTenantSettings(tenant);
-  tenant.settings = merged;
-  tenant.currency = merged.defaultCurrency;
-  if (typeof req.body?.legalEntity === "string") tenant.legalEntity = req.body.legalEntity.slice(0, 120);
-  tenant.updated_at = new Date().toISOString();
-  // Policy changes re-derive checklists and lifecycle statuses immediately.
-  (db.partners || []).forEach((p: any) => {
-    if (!isMatchingOrg(p.organizationId, tenant.id)) return;
-    p.daftar_dokumen_dd = normalizePartnerDocuments(p);
-    p.status_dd = computeDueDiligenceStatus(p.daftar_dokumen_dd);
-  });
-  recalculateStatuses();
-  saveDb();
-  try {
-    const row: any = sqliteDb.prepare("SELECT metadata FROM organization WHERE id = ?").get(tenant.id);
-    if (row) {
-      let meta: any = {};
-      try { meta = row.metadata ? JSON.parse(row.metadata) : {}; } catch { meta = {}; }
-      meta.settings = merged;
-      meta.currency = merged.defaultCurrency;
-      if (tenant.legalEntity !== undefined) meta.legalEntity = tenant.legalEntity;
-      sqliteDb.prepare("UPDATE organization SET metadata = ? WHERE id = ?").run(JSON.stringify(meta), tenant.id);
+  const ctx = orgContextOf(req);
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  for (const key of Object.keys(body)) {
+    if (!["settings", "legalEntity", "expectedVersion", "organizationId"].includes(key)) {
+      return sendError(req, res, 400, "INVALID_INPUT", `Unknown field: ${key}`);
     }
-  } catch (err) {
-    console.warn("Could not persist tenant settings to organization metadata:", err);
   }
-  addActivityLog(
-    "", "", actor.role, "UPDATE", "ADMIN",
-    `Updated organization settings for ${tenant.name}: country ${previous.countryCode} → ${merged.countryCode}, industry ${previous.industry} → ${merged.industry}, currency ${merged.defaultCurrency}, timezone ${merged.timezone}.`,
-    req,
-  );
-  res.json({ success: true, ...tenantSettingsPayload(tenant.id) });
+  try {
+    const current = readOrganizationSettings(sqliteDb, ctx.organizationId);
+    const patch: any = { expectedVersion: typeof body.expectedVersion === "number" ? body.expectedVersion : current.version };
+    if (body.settings !== undefined) patch.policy = body.settings;
+    if (typeof body.legalEntity === "string") patch.profile = { legalEntity: body.legalEntity };
+    patchOrganizationSettings(sqliteDb, ctx.organizationId, patch, auditActorFor(req, resolveIdentity(sqliteDb, req), ctx));
+    onOrganizationChanged(ctx.organizationId);
+    res.json({ success: true, ...tenantSettingsPayload(ctx.organizationId) });
+  } catch (err: any) {
+    if (err instanceof ApiError) return sendError(req, res, err.status, err.error, err.message);
+    throw err;
+  }
 });
+
+/* Canonical tenant administration API (PRD §9). */
+app.use("/api", createOrganizationAdminRouter({
+  db: sqliteDb,
+  policyView: (organizationId: string) => tenantSettingsPayload(organizationId),
+  providerConfigured: () => hasServiceAccountCredentials() || Boolean(db.googleConfig?.accessToken || db.googleConfig?.refreshToken),
+  onOrganizationChanged,
+  departmentReferenced: (organizationId: string, department: { id: string; name: string }) => {
+    const key = normalizeDepartmentName(department.name);
+    return ["partners", "contracts"].some((collection) => (db[collection] || []).some((row: any) =>
+      row?.organizationId === organizationId && normalizeDepartmentName(row.pic_internal || row.internal_pic) === key));
+  },
+  inviteUrl: (req: express.Request, token: string) => {
+    const base = (process.env.BETTER_AUTH_URL || "").replace(/\/$/, "") || `${req.protocol}://${req.get("host")}`;
+    return `${base}/?accept_invite=${encodeURIComponent(token)}`;
+  },
+  sendInvitation: async ({ email, organizationName, tenantRole, inviteUrl, expiresAt, inviterName }) => {
+    if (IS_TEST_MODE) return false;
+    return sendPlatformMail({
+      to: email,
+      subject: `Invitation to join ${organizationName} on Legalio`,
+      html: `<p>${escapeHtml(inviterName || "An administrator")} invited you to join <strong>${escapeHtml(organizationName)}</strong> as <strong>${escapeHtml(tenantRole)}</strong>.</p>
+        <p><a href="${escapeHtml(inviteUrl)}">Accept invitation</a> (valid until ${escapeHtml(String(expiresAt).slice(0, 10))}).</p>`,
+    });
+  },
+  platformConfiguration: {
+    read: readPlatformConfiguration,
+    patch: (section: string, values: unknown, actor) => applyPlatformConfiguration(section, values, actor),
+  },
+}));
 
 app.use("/api/auth-console", authConsoleRouter);
 app.all("/api/*", (req: express.Request, res: express.Response) => {

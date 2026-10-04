@@ -1,15 +1,42 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Tenant, TenantBranding } from '../types';
-import { useAuth } from './AuthContext';
-import { authClient } from '../lib/auth-client';
+import { useIdentity } from './AuthContext';
+import { useConfirm } from './ConfirmDialogContext';
+import { useLanguage } from './LanguageContext';
+import { getSavedSelection, setSelectedOrganizationId } from '../lib/organizationSelection';
+import { confirmLeave } from '../lib/unsavedChanges';
+
+/** Accessible organization summary (`GET /api/tenants` → organizations). */
+export interface AccessibleOrganization {
+  organizationId: string;
+  organizationName: string;
+  slug: string;
+  logoUrl: string | null;
+  tenantRole: 'admin' | 'manager' | 'editor' | 'viewer' | null;
+  accessMode: 'membership' | 'platform';
+}
+
+/**
+ * - loading: identity/organizations still resolving
+ * - selected: a validated organization is active in this tab
+ * - choose: several organizations, no valid selection (show chooser)
+ * - none: no accessible organization (no-access state, or System Admin for a superuser)
+ */
+export type SelectionStatus = 'loading' | 'selected' | 'choose' | 'none';
 
 interface TenantContextType {
+  organizations: AccessibleOrganization[];
   tenants: Tenant[];
   activeTenant: Tenant | null;
   activeTenantId: string;
+  selectionStatus: SelectionStatus;
   branding: TenantBranding;
   loading: boolean;
+  /** Validated switch; asks before discarding unsaved changes. */
   switchTenant: (tenantId: string) => Promise<boolean>;
+  /** Leave organization context (superuser "Back to System Admin"). */
+  leaveOrganization: () => Promise<boolean>;
   createTenant: (tenantData: Omit<Tenant, 'id' | 'created_at'>) => Promise<boolean>;
   updateTenant: (id: string, updates: Partial<Tenant>) => Promise<boolean>;
   deleteTenant: (id: string) => Promise<boolean>;
@@ -35,252 +62,185 @@ async function safeJson<T = any>(res: Response): Promise<T | null> {
   }
 }
 
-const getTenantRequestHeaders = (): Record<string, string> => {
-  const token = typeof window !== 'undefined'
-    ? localStorage.getItem('auth_session_token')
-    : null;
-  const activeOrganizationId = typeof window !== 'undefined'
-    ? localStorage.getItem('activeOrganizationId')
-    : null;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-    headers['x-session-token'] = token;
-  }
-  if (activeOrganizationId) {
-    headers['x-organization-id'] = activeOrganizationId;
-    headers['x-tenant-id'] = activeOrganizationId;
-  }
-
-  return headers;
-};
-
+const json = { 'Content-Type': 'application/json' };
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
+/**
+ * Accessible organizations and the tab's validated selection (PRD §11.2).
+ * Initial selection: saved tab choice → valid session default → the only
+ * membership → chooser. Never the "first" organization of several.
+ */
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading: authLoading } = useAuth();
+  const { identity, loading: identityLoading } = useIdentity();
+  const confirm = useConfirm();
+  const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const [organizations, setOrganizations] = useState<AccessibleOrganization[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [activeTenantId, setActiveTenantId] = useState<string>(() => {
-    return localStorage.getItem('activeOrganizationId') || '';
-  });
+  const [activeTenantId, setActiveTenantId] = useState('');
+  const [selectionStatus, setSelectionStatus] = useState<SelectionStatus>('loading');
   const [branding, setBranding] = useState<TenantBranding>(DEFAULT_BRANDING);
-  const [loading, setLoading] = useState<boolean>(true);
+  const switching = useRef(false);
 
-  const fetchTenantsAndBranding = useCallback(async () => {
-    if (!user) {
+  const commit = useCallback((organizationId: string | null) => {
+    setSelectedOrganizationId(organizationId);
+    setActiveTenantId(organizationId || '');
+  }, []);
+
+  /** Server-validated session default; the tab selection is committed only on success. */
+  const validate = useCallback(async (organizationId: string) => {
+    const res = await fetch('/api/me/active-organization', {
+      method: 'POST', headers: json, credentials: 'include', body: JSON.stringify({ organizationId }),
+    });
+    return res.ok;
+  }, []);
+
+  // Public presentation branding is available before sign-in.
+  useEffect(() => {
+    fetch('/api/branding', { cache: 'no-store' })
+      .then((res) => (res.ok ? safeJson(res) : null))
+      .then((data) => { if (data?.branding) setBranding({ ...DEFAULT_BRANDING, ...data.branding }); })
+      .catch(() => {});
+  }, []);
+
+  const load = useCallback(async (options: { keepSelection?: boolean } = {}) => {
+    if (!identity) {
+      setOrganizations([]);
       setTenants([]);
-      setBranding(DEFAULT_BRANDING);
-      setLoading(false);
+      commit(null);
+      setSelectionStatus('none');
       return;
     }
-    try {
-      const [tenantsRes, brandingRes] = await Promise.all([
-        fetch('/api/tenants', {
-          headers: getTenantRequestHeaders(),
-          credentials: 'include',
-          cache: 'no-store',
-        }),
-        fetch('/api/branding', {
-          headers: getTenantRequestHeaders(),
-          credentials: 'include',
-          cache: 'no-store',
-        }),
-      ]);
+    const tenantsRes = await fetch('/api/tenants', { credentials: 'include', cache: 'no-store' });
+    const data = tenantsRes.ok ? await safeJson(tenantsRes) : null;
+    const orgs: AccessibleOrganization[] = Array.isArray(data?.organizations) ? data.organizations : [];
+    setOrganizations(orgs);
+    setTenants(Array.isArray(data?.tenants) ? data.tenants : []);
+    const ids = new Set(orgs.map((o) => o.organizationId));
+    if (options.keepSelection && activeTenantId && ids.has(activeTenantId)) return;
 
-      if (tenantsRes.ok) {
-        const tData = await safeJson(tenantsRes);
-        if (tData?.success && Array.isArray(tData.tenants)) {
-          setTenants(tData.tenants);
-          if (tData.activeTenantId) {
-            setActiveTenantId(tData.activeTenantId);
-            localStorage.setItem('activeOrganizationId', tData.activeTenantId);
-          }
-        }
-      } else if (tenantsRes.status === 401 || tenantsRes.status === 403) {
-        setTenants([]);
-        setActiveTenantId('');
-      }
-
-      if (brandingRes.ok) {
-        const bData = await safeJson(brandingRes);
-        if (bData?.success && bData.branding) {
-          setBranding(bData.branding);
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to load tenants/branding from server:', err);
-    } finally {
-      setLoading(false);
+    const saved = getSavedSelection();
+    const isPlatform = identity.platformRole === 'superuser';
+    const candidate = (saved && ids.has(saved) && saved)
+      || (!isPlatform && data?.activeTenantId && ids.has(data.activeTenantId) && data.activeTenantId)
+      || (!isPlatform && orgs.length === 1 && orgs[0].organizationId)
+      || null;
+    if (candidate && (candidate === data?.activeTenantId || (await validate(candidate)))) {
+      commit(candidate);
+      setSelectionStatus('selected');
+      return;
     }
-  }, [user]);
+    commit(null);
+    setSelectionStatus(orgs.length > 1 && !isPlatform ? 'choose' : 'none');
+  }, [identity, activeTenantId, commit, validate]);
 
   useEffect(() => {
-    if (authLoading) return;
-    fetchTenantsAndBranding();
+    if (identityLoading) return;
+    setSelectionStatus('loading');
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identityLoading, identity?.id]);
 
-    const handleOrgUpdated = () => {
-      fetchTenantsAndBranding();
+  // A denied request (suspended/removed membership) drops this organization from the tab.
+  useEffect(() => {
+    const onLost = (event: Event) => {
+      const lost = (event as CustomEvent).detail;
+      if (lost && lost === activeTenantId) {
+        commit(null);
+        queryClient.removeQueries();
+        void load();
+      }
     };
-    window.addEventListener('organization-updated', handleOrgUpdated);
+    const onUpdated = () => { void load({ keepSelection: true }); };
+    window.addEventListener('organization-access-lost', onLost);
+    window.addEventListener('organization-updated', onUpdated);
     return () => {
-      window.removeEventListener('organization-updated', handleOrgUpdated);
+      window.removeEventListener('organization-access-lost', onLost);
+      window.removeEventListener('organization-updated', onUpdated);
     };
-  }, [authLoading, fetchTenantsAndBranding]);
+  }, [activeTenantId, commit, load, queryClient]);
 
-  const activeTenant = (tenants || []).find((t) => t.id === activeTenantId) || (tenants || [])[0] || null;
+  const askLeave = useCallback(() => confirmLeave(() => confirm({
+    title: t('settings.unsaved_title', 'Unsaved changes'),
+    description: t('settings.unsaved_description', 'You have unsaved changes. Discard them and continue?'),
+    confirmLabel: t('settings.discard_changes', 'Discard changes'),
+    cancelLabel: t('settings.stay', 'Stay'),
+    tone: 'danger',
+  })), [confirm, t]);
 
-  // Apply dynamic document title & favicon
+  const switchTenant = useCallback(async (tenantId: string): Promise<boolean> => {
+    if (switching.current || tenantId === activeTenantId) return tenantId === activeTenantId;
+    if (!(await askLeave())) return false;
+    switching.current = true;
+    try {
+      await queryClient.cancelQueries();
+      if (!(await validate(tenantId))) return false; // old valid selection stays
+      commit(tenantId);
+      setSelectionStatus('selected');
+      window.dispatchEvent(new CustomEvent('organization-switched', { detail: tenantId }));
+      return true;
+    } catch {
+      return false;
+    } finally {
+      switching.current = false;
+    }
+  }, [activeTenantId, askLeave, commit, queryClient, validate]);
+
+  const leaveOrganization = useCallback(async () => {
+    if (!(await askLeave())) return false;
+    await queryClient.cancelQueries();
+    commit(null);
+    setSelectionStatus(identity?.platformRole === 'superuser' || organizations.length <= 1 ? 'none' : 'choose');
+    window.dispatchEvent(new CustomEvent('organization-switched', { detail: null }));
+    return true;
+  }, [askLeave, commit, identity?.platformRole, organizations.length, queryClient]);
+
+  const activeTenant = tenants.find((tenant) => tenant.id === activeTenantId) || null;
+
   useEffect(() => {
-    if (branding?.appName) {
-      document.title = activeTenant?.name
-        ? `${activeTenant.brandName || activeTenant.name} | ${branding.appName}`
-        : branding.appName;
-    }
-    if (branding?.primaryColor) {
-      document.documentElement.style.setProperty('--brand-primary', branding.primaryColor);
-    }
+    document.title = activeTenant?.name ? `${activeTenant.brandName || activeTenant.name} | ${branding.appName}` : branding.appName;
+    if (branding.primaryColor) document.documentElement.style.setProperty('--brand-primary', branding.primaryColor);
   }, [branding, activeTenant]);
 
-  const switchTenant = async (tenantId: string): Promise<boolean> => {
-    const previousTenantId = activeTenantId;
-    setActiveTenantId(tenantId);
-    localStorage.setItem('activeOrganizationId', tenantId);
+  /* Platform organization lifecycle (System Admin). */
+  const platformWrite = async (url: string, method: string, body?: unknown) => {
     try {
-      // Keep Better Auth's active organization in sync with the application
-      // workspace. The server still validates membership before using it.
-      await (authClient.organization as any).setActive({ organizationId: tenantId });
-      const res = await fetch('/api/tenants/switch', {
-        method: 'POST',
-        headers: getTenantRequestHeaders(),
-        credentials: 'include',
-        body: JSON.stringify({ tenantId }),
-      });
-      if (!res.ok) throw new Error(`Failed to switch tenant (${res.status})`);
-      // Also try auth-console endpoint if needed
-      fetch(`/api/auth-console/organizations/${tenantId}/set-active`, {
-        method: 'POST',
-        headers: getTenantRequestHeaders(),
-        credentials: 'include',
-      }).catch(() => {});
-      
-      await fetchTenantsAndBranding();
-      window.dispatchEvent(new CustomEvent('organization-updated'));
+      const res = await fetch(url, { method, headers: json, credentials: 'include', body: body === undefined ? undefined : JSON.stringify(body) });
+      if (!res.ok) return false;
+      await load({ keepSelection: true });
       return true;
-    } catch (e) {
-      console.warn('Error switching tenant:', e);
-      setActiveTenantId(previousTenantId);
-      if (previousTenantId) localStorage.setItem('activeOrganizationId', previousTenantId);
-      else localStorage.removeItem('activeOrganizationId');
-      if (previousTenantId) {
-        await (authClient.organization as any).setActive({ organizationId: previousTenantId }).catch(() => {});
-      }
+    } catch {
       return false;
     }
   };
 
-  const createTenant = async (tenantData: Omit<Tenant, 'id' | 'created_at'>): Promise<boolean> => {
-    try {
-      const res = await fetch('/api/tenants', {
-        method: 'POST',
-        headers: getTenantRequestHeaders(),
-        credentials: 'include',
-        body: JSON.stringify(tenantData),
-      });
-      if (res.ok) {
-        const data = await safeJson(res);
-        if (data?.success && data.tenants) {
-          setTenants(data.tenants);
-          return true;
-        }
-      }
-    } catch (e) {
-      console.warn('Error creating tenant:', e);
-    }
-    return false;
-  };
-
-  const updateTenant = async (id: string, updates: Partial<Tenant>): Promise<boolean> => {
-    try {
-      const res = await fetch(`/api/tenants/${id}`, {
-        method: 'PUT',
-        headers: getTenantRequestHeaders(),
-        credentials: 'include',
-        body: JSON.stringify(updates),
-      });
-      if (res.ok) {
-        const data = await safeJson(res);
-        if (data?.success && data.tenants) {
-          setTenants(data.tenants);
-          return true;
-        }
-      }
-    } catch (e) {
-      console.warn('Error updating tenant:', e);
-    }
-    return false;
-  };
-
-  const deleteTenant = async (id: string): Promise<boolean> => {
-    try {
-      const res = await fetch(`/api/tenants/${id}`, {
-        method: 'DELETE',
-        headers: getTenantRequestHeaders(),
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await safeJson(res);
-        if (data?.success && data.tenants) {
-          setTenants(data.tenants);
-          if (data.activeTenantId) {
-            setActiveTenantId(data.activeTenantId);
-          }
-          return true;
-        }
-      }
-    } catch (e) {
-      console.warn('Error deleting tenant:', e);
-    }
-    return false;
-  };
-
-  const updateBranding = async (brandingData: Partial<TenantBranding>): Promise<boolean> => {
-    try {
-      const res = await fetch('/api/branding', {
-        method: 'POST',
-        headers: getTenantRequestHeaders(),
-        credentials: 'include',
-        body: JSON.stringify(brandingData),
-      });
-      if (res.ok) {
-        const data = await safeJson(res);
-        if (data?.success && data.branding) {
-          setBranding(data.branding);
-          return true;
-        }
-      }
-    } catch (e) {
-      console.warn('Error updating branding:', e);
-    }
-    return false;
+  const updateBranding = async (brandingData: Partial<TenantBranding>) => {
+    const res = await fetch('/api/platform/configuration', {
+      method: 'PATCH', headers: json, credentials: 'include', body: JSON.stringify({ section: 'branding', values: brandingData }),
+    });
+    if (!res.ok) return false;
+    const next = await safeJson(res);
+    if (next) setBranding({ ...DEFAULT_BRANDING, ...next });
+    return true;
   };
 
   return (
     <TenantContext.Provider
       value={{
+        organizations,
         tenants,
         activeTenant,
         activeTenantId,
+        selectionStatus,
         branding,
-        loading,
+        loading: selectionStatus === 'loading',
         switchTenant,
-        createTenant,
-        updateTenant,
-        deleteTenant,
+        leaveOrganization,
+        createTenant: (data) => platformWrite('/api/tenants', 'POST', data),
+        updateTenant: (id, updates) => platformWrite(`/api/tenants/${encodeURIComponent(id)}`, 'PUT', updates),
+        deleteTenant: (id) => platformWrite(`/api/tenants/${encodeURIComponent(id)}`, 'DELETE'),
         updateBranding,
-        refreshTenants: fetchTenantsAndBranding,
+        refreshTenants: () => load({ keepSelection: true }),
       }}
     >
       {children}
@@ -290,8 +250,6 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
 export const useTenant = (): TenantContextType => {
   const context = useContext(TenantContext);
-  if (!context) {
-    throw new Error('useTenant must be used within a TenantProvider');
-  }
+  if (!context) throw new Error('useTenant must be used within a TenantProvider');
   return context;
 };

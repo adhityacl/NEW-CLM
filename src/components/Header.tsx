@@ -3,6 +3,8 @@ import { notificationMessage } from '../lib/notificationText';
 import React, { useState, useRef, useEffect } from 'react';
 import { getActiveFormattingLocale } from '../lib/currencyUtils';
 import { useAuth } from '../context/AuthContext';
+import { AccountSecurityDialog, PreferencesDialog } from './account/AccountDialogs';
+import { KeyRound, SlidersHorizontal } from 'lucide-react';
 import { LANGUAGE_OPTIONS, useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigation } from '../context/NavigationContext';
@@ -38,7 +40,8 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigateToTab,
   onOpenMobileMenu,
 }) => {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isPlatformAdmin } = useAuth();
+  const [accountDialog, setAccountDialog] = useState<null | 'preferences' | 'security'>(null);
   const { language, setLanguage, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { activeTab } = useNavigation();
@@ -104,20 +107,13 @@ export const Header: React.FC<HeaderProps> = ({
         return t('nav.notifications', 'Notifikasi & Log');
       case 'bulk-import':
         return t('nav.bulk_import', 'Import Data');
-      case 'activity-logs':
-        return t('nav.activity_logs', 'Log Aktivitas');
-      case 'settings':
-      case 'settings-region':
-      case 'settings-google':
-      case 'settings-ai':
-      case 'settings-notifications':
-      case 'settings-language':
-      case 'settings-security':
+      case 'settings-organization':
+      case 'settings-access':
+      case 'settings-integrations':
         return t('nav.settings', 'Pengaturan Sistem');
       default:
         // Same labels as the sidebar entries that open these areas.
         if (tab.startsWith('admin-system-')) return t('nav.system_admin', 'System Admin');
-        if (tab.startsWith('admin-organization-')) return t('nav.organization_admin', 'Organization Admin');
         return t('nav.dashboard', 'Dashboard');
     }
   };
@@ -362,10 +358,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="text-xs truncate text-slate-500 dark:text-slate-400 mt-0.5">
                   {user?.email}
                 </div>
-                {isAdmin && (
+                {isPlatformAdmin && (
                   <div className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                     <Shield className="w-3 h-3" />
-                    {t('header.administrator', 'Administrator')}
+                    {t('tb.platform_administrator', 'Platform administrator')}
                   </div>
                 )}
               </div>
@@ -376,12 +372,24 @@ export const Header: React.FC<HeaderProps> = ({
                   role="menuitem"
                   onClick={() => {
                     setShowUserDropdown(false);
-                    onNavigateToTab('settings');
+                    setAccountDialog('preferences');
                   }}
                   className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer flex items-center gap-2"
                 >
-                  <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                  {t('nav.settings', 'Pengaturan Profil & Sistem')}
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                  {t('tb.preferences', 'Preferences')}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    setAccountDialog('security');
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer flex items-center gap-2"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                  {t('tb.account_security', 'Account security')}
                 </button>
 
                 <button
@@ -401,6 +409,8 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
       </div>
+      {accountDialog === 'preferences' && <PreferencesDialog onClose={() => setAccountDialog(null)} />}
+      {accountDialog === 'security' && <AccountSecurityDialog onClose={() => setAccountDialog(null)} />}
     </header>
   );
 };

@@ -1,3 +1,4 @@
+import { getPreferenceUser } from '../lib/userPreferences';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, RotateCcw } from 'lucide-react';
 import { translateStatic as t } from '../context/LanguageContext';
@@ -34,8 +35,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private handleResetCache = () => {
     try {
-      localStorage.removeItem('activeOrganizationId');
-      localStorage.removeItem('app_custom_translations');
+      // Personal browser-local text overrides of the signed-in identity, plus this tab's selection.
+      const userId = getPreferenceUser();
+      if (userId) localStorage.removeItem(`user:${userId}:customTranslations`);
       sessionStorage.clear();
     } catch (e) {
       console.warn('Failed clearing cache:', e);

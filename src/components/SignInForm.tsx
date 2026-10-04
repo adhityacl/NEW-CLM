@@ -9,6 +9,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
+import { capturePendingInvitation, loadInvitationPreview, type InvitationPreview } from './account/InvitationPrompt';
 
 interface SignInFormProps {
   onOpenPrivacyPolicy?: () => void;
@@ -35,6 +36,13 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   // True on a fresh install with no admin yet: this screen becomes "create the admin account".
   const [setupMode, setSetupMode] = useState(false);
+
+  // An invitation link survives sign-in/registration in this tab (PRD §8.4).
+  const [invitation, setInvitation] = useState<InvitationPreview | null>(null);
+  useEffect(() => {
+    const token = capturePendingInvitation();
+    if (token) loadInvitationPreview(token).then(setInvitation).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch('/api/system/public-status', { cache: 'no-store' })
@@ -151,8 +159,9 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
             </div>
             <h1 className="text-2xl font-bold mb-3">{t('login.account_created_title')}</h1>
             <p className="text-[var(--muted-foreground)] mb-6 leading-relaxed">
-              {t('login.account_pending_approval')}
-              <br />{t('login.account_pending_approval_desc')}
+              {invitation
+                ? t('tb.invited_registration_done', 'Your account was created. Verify your email address, then sign in to accept the invitation to {org}.', { org: invitation.organizationName })
+                : <>{t('login.account_pending_approval')}<br />{t('login.account_pending_approval_desc')}</>}
             </p>
             <Button
               variant="link"
@@ -194,6 +203,13 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onOpenPrivacyPolicy, onO
             </p>
           </div>
 
+          {invitation && (
+            <Alert className="mb-6">
+              <AlertDescription>
+                {t('tb.invitation_signin_hint', 'You were invited to join {org} as {role}. Sign in or create an account with the invited email address to accept.', { org: invitation.organizationName, role: invitation.tenantRole })}
+              </AlertDescription>
+            </Alert>
+          )}
           {error && (
             <Alert variant={isPending ? 'warning' : 'destructive'} className="mb-6">
               {isPending && <Clock className="h-4 w-4" />}

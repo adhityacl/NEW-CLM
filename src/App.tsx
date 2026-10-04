@@ -27,7 +27,6 @@ const LazyPartnerSpendingView = lazy(() => import('./components/PartnerSpendingV
 const LazyNotificationsView = lazy(() => import('./components/NotificationsView').then((m) => ({ default: m.NotificationsView })));
 const LazyAdminUsersView = lazy(() => import('./components/AdminUsersView').then((m) => ({ default: m.AdminUsersView })));
 const LazyBulkImportView = lazy(() => import('./components/BulkImportView').then((m) => ({ default: m.BulkImportView })));
-const LazyActivityLogsView = lazy(() => import('./components/ActivityLogsView').then((m) => ({ default: m.ActivityLogsView })));
 const LazySettingsView = lazy(() => import('./components/SettingsView').then((m) => ({ default: m.SettingsView })));
 const LazyPrivacyPolicyView = lazy(() => import('./components/PrivacyPolicyView').then((m) => ({ default: m.PrivacyPolicyView })));
 const LazyTermsOfServiceView = lazy(() => import('./components/TermsOfServiceView').then((m) => ({ default: m.TermsOfServiceView })));
@@ -50,18 +49,20 @@ import { getCachedAccessToken, invalidateGoogleToken } from './lib/googleAuthSer
 import { getAuthHeaders } from './lib/apiFetch';
 import { useWorkspaceData } from './features/workspace/useWorkspaceData';
 import { AIChatLauncher } from './components/AIChatLauncher';
-import { PermissionProvider } from './lib/permissions';
-import { usePermissions } from './lib/permissions';
+import { PermissionProvider, usePermissions } from './lib/permissions';
+import { InvitationPrompt } from './components/account/InvitationPrompt';
+import { SETTINGS_TABS, needsOrganization, resolveRoute, type SettingsTabId, type SystemSubmenu } from './lib/appRoutes';
 
-const STATIC_TABS = new Set([
-  'dashboard', 'hierarchy', 'contracts', 'create-contract', 'ios', 'io', 'partners',
-  'partner-evaluation', 'partner-spending', 'notifikasi', 'bulk-import', 'activity-logs',
-  'settings', 'privacy', 'terms',
-]);
-const TAB_PREFIXES = ['admin-system-', 'admin-organization-', 'admin-users', 'settings-'];
-
-const isKnownTab = (tab: string): boolean =>
-  STATIC_TABS.has(tab) || TAB_PREFIXES.some((prefix) => tab.startsWith(prefix));
+/** Full-page state shown instead of any privileged view (PRD §4.5.4, §6.2, §11.3). */
+const StateScreen: React.FC<{ title: string; message?: string; children?: React.ReactNode; busy?: boolean }> = ({ title, message, children, busy }) => (
+  <div className="flex min-h-[60vh] items-center justify-center p-6" aria-busy={busy || undefined}>
+    <div className="max-w-md space-y-4 text-center" role={busy ? 'status' : undefined}>
+      <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h1>
+      {message && <p className="text-sm text-slate-600 dark:text-slate-300">{message}</p>}
+      {children && <div className="flex flex-wrap justify-center gap-2">{children}</div>}
+    </div>
+  </div>
+);
 
 const MainApp: React.FC = () => {
   const { user, logout } = useAuth();
@@ -71,59 +72,52 @@ const MainApp: React.FC = () => {
     return null;
   }
 
-  const { hasPermission, role, tenantId, loading: permissionsLoading } = usePermissions();
-  const { activeTenantId, activeTenant } = useTenant();
+  const caps = usePermissions();
+  const { hasPermission, hasPlatformPermission } = caps;
+  const isPlatformAdmin = hasPlatformPermission('platform.access');
+  const { activeTenantId, selectionStatus, organizations, switchTenant } = useTenant();
   const { activeTab, setActiveTab, replaceActiveTab } = useNavigation();
   const { policy, status: tenantSettingsStatus } = useTenantSettings();
   const modules = policy.settings.modules;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const confirmDialog = useConfirm();
 
-  // Guards run on every tab change, including tabs coming from `?tab=` in the
-  // URL, so they replace the history entry instead of pushing a new one.
-  useEffect(() => {
-    if (!isKnownTab(activeTab)) {
-      replaceActiveTab('dashboard');
-      return;
+  /*
+   * Route decision runs before any lazy view mounts or loads data. Tabs that
+   * need an organization wait for its capabilities; nothing privileged is
+   * rendered from a previous organization's or a failed capability state.
+   */
+  const orgNeeded = needsOrganization(activeTab, isPlatformAdmin);
+  type Gate = { kind: 'pending' } | { kind: 'no-org' } | { kind: 'caps-error' } | { kind: 'denied' } | { kind: 'allow' } | { kind: 'redirect'; tab: string; intent?: string };
+  const gate: Gate = (() => {
+    if (selectionStatus === 'loading') return { kind: 'pending' };
+    if (orgNeeded) {
+      if (!activeTenantId) return isPlatformAdmin ? { kind: 'redirect', tab: 'admin-system-dashboard' } : { kind: 'no-org' };
+      if (caps.status === 'idle' || caps.status === 'loading') return { kind: 'pending' };
+      if (caps.status === 'error') return { kind: 'caps-error' };
     }
-    // Wait for the real permissions/modules before redirecting, otherwise a
-    // deep link such as /app?tab=settings is bounced to the dashboard on reload.
-    if (permissionsLoading) return;
-    if (activeTab === 'create-contract' && !hasPermission('document.create')) {
-      replaceActiveTab('dashboard');
-    }
-    if (activeTab.startsWith('admin-users')) {
-      replaceActiveTab(role === 'superuser' ? 'admin-system-dashboard' : 'admin-organization-dashboard');
-      return;
-    }
-    if (activeTab.startsWith('admin-system-') && role !== 'superuser') {
-      replaceActiveTab('admin-organization-dashboard');
-    }
-    if (activeTab.startsWith('admin-organization-') && !hasPermission('admin.access')) {
-      replaceActiveTab('dashboard');
-    }
-    if (activeTab === 'admin-organization-dashboard') {
-      replaceActiveTab('admin-organization-users');
-    }
-    if (activeTab === 'bulk-import' && !hasPermission('admin.department.manage')) {
-      replaceActiveTab('dashboard');
-    }
-    if (activeTab === 'activity-logs' && !hasPermission('audit.view')) {
-      replaceActiveTab('dashboard');
-    }
-    if (activeTab === 'settings' && !hasPermission('admin.access')) {
-      replaceActiveTab('dashboard');
-    }
-    // Modules switched off for this organization are not reachable.
-    if (tenantSettingsStatus === 'idle' || tenantSettingsStatus === 'loading') return;
-    if (
+    const decision = resolveRoute(activeTab, { isPlatformAdmin, organizationReady: caps.status === 'ready', can: hasPermission });
+    if (decision.kind !== 'allow') return decision;
+    const moduleOff =
       ((activeTab === 'ios' || activeTab === 'io') && !modules.commercialDocuments) ||
       (activeTab === 'partner-spending' && !modules.spending) ||
-      (activeTab === 'partner-evaluation' && !modules.evaluation)
-    ) {
-      replaceActiveTab('dashboard');
-    }
-  }, [activeTab, hasPermission, role, permissionsLoading, tenantSettingsStatus, replaceActiveTab, modules.commercialDocuments, modules.spending, modules.evaluation]);
+      (activeTab === 'partner-evaluation' && !modules.evaluation);
+    if (moduleOff) return tenantSettingsStatus === 'ready' ? { kind: 'denied' } : { kind: 'pending' };
+    return { kind: 'allow' };
+  })();
+
+  useEffect(() => {
+    if (gate.kind === 'redirect') replaceActiveTab(gate.tab, gate.intent);
+  }, [gate.kind, (gate as any).tab, (gate as any).intent, replaceActiveTab]);
+
+  // After a switch the new organization's role governs; leave tabs it may not open.
+  useEffect(() => {
+    const onSwitched = () => {
+      if (activeTab.startsWith('settings-') || activeTab === 'bulk-import' || activeTab === 'create-contract') replaceActiveTab('dashboard');
+    };
+    window.addEventListener('organization-switched', onSwitched);
+    return () => window.removeEventListener('organization-switched', onSwitched);
+  }, [activeTab, replaceActiveTab]);
 
   const { contracts, ios, partners, notifications, evaluations, spendings, googleConfig,
     timestamp: lastSyncTimestamp, updateData, cancelPendingLoad, loadAllData, workspaceLoading, workspaceError } = useWorkspaceData();
@@ -506,101 +500,8 @@ const MainApp: React.FC = () => {
     }
   };
 
-  // Google Config & Sync Handlers
-  const handleSaveGoogleConfig = async (
-    spreadsheetId: string,
-    driveFolderId: string,
-    autoSync: boolean,
-    isLocked?: boolean,
-    extraConfig?: Partial<GoogleSheetsConfig>
-  ) => {
-    const token = getCachedAccessToken();
-    const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('google_refresh_token') || undefined : undefined;
-    const googleProfileStr = typeof window !== 'undefined' ? localStorage.getItem('google_user_profile') : null;
-    let adminEmail = '';
-    let adminName = '';
-    if (googleProfileStr) {
-      try {
-        const p = JSON.parse(googleProfileStr);
-        adminEmail = p.email || '';
-        adminName = p.name || '';
-      } catch {}
-    }
-    const res = await fetch('/api/google-integration', {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        spreadsheetId,
-        driveFolderId,
-        autoSync,
-        isLocked,
-        ...extraConfig,
-        adminEmail: adminEmail || user?.email,
-        adminName: adminName || user?.name,
-        accessToken: token,
-        refreshToken: refreshToken,
-      }),
-    });
-
-    let data: any = {};
-    try {
-      data = await res.json();
-    } catch {
-      if (!res.ok) {
-        throw new Error(t('app.server_error_gagal_memproses_data', 'Server error ({status}): Gagal memproses data.', { status: res.status }));
-      }
-    }
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        invalidateGoogleToken();
-      }
-      throw new Error(data.error || t('app.gagal_menyimpan_konfigurasi', 'Gagal menyimpan konfigurasi.'));
-    }
-
-    updateData('googleConfig', data.config || { spreadsheetId, driveFolderId, autoSync, isLocked, ...extraConfig, isConnected: true });
-    await loadAllData();
-
-    if (data.syncWarning) {
-      throw new Error(data.syncWarning);
-    }
-  };
-
-  const handleSyncNow = async (mode: "fetch" | "push" = "fetch") => {
-    const token = getCachedAccessToken();
-    const res = await fetch('/api/google-integration/sync', {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        spreadsheetId: googleConfig.masterSpreadsheetId || googleConfig.spreadsheetId,
-        driveFolderId: googleConfig.driveFolderId,
-        accessToken: token,
-        mode: mode,
-      }),
-    });
-
-    let data: any = {};
-    try {
-      const text = await res.text();
-      data = text ? JSON.parse(text) : {};
-    } catch {
-      data = {};
-    }
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        invalidateGoogleToken();
-      }
-      throw new Error(data.error || t('app.gagal_sinkronisasi_dengan_google_sheet_status', 'Gagal sinkronisasi dengan Google Sheet (Status {status}).', { status: res.status }));
-    }
-
-    await fetch('/api/cron/trigger-check', { method: 'POST' });
-    await loadAllData();
-    return data;
-  };
-
+  // Reminder generation is a platform system job; tenant users only refresh their scoped view.
   const handleTriggerCheck = async () => {
-    await fetch('/api/cron/trigger-check', { method: 'POST' });
     loadAllData();
   };
 
@@ -625,25 +526,45 @@ const MainApp: React.FC = () => {
   const expiringContractsCount = contracts.filter((c) => c.status === 'Expiring').length;
   const unreadNotifsCount = notifications.filter((n) => !n.is_read).length;
 
-  if (!permissionsLoading && role !== 'superuser' && !tenantId) {
+  if (gate.kind === 'no-org') {
     return (
       <div className="flex h-screen items-center justify-center bg-[#F3F4F0] p-6 text-slate-900 dark:bg-[#0B0F19] dark:text-slate-100">
-        <div className="max-w-md space-y-4 text-center">
-          <h1 className="text-xl font-semibold">{t('app.pilih_organisasi_aktif', 'Pilih organisasi aktif')}</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            {t('app.sesi_better_auth_anda_belum_memiliki', 'Sesi Better Auth Anda belum memiliki active organization yang tervalidasi.')}
-          </p>
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900"
-          >
-            {t('app.kembali_ke_login', 'Kembali ke login')}
-          </button>
-        </div>
+        {selectionStatus === 'choose' ? (
+          <StateScreen title={t('tb.choose_organization', 'Choose an organization')} message={t('tb.choose_organization_desc', 'You belong to several organizations. Choose the one to work in for this tab.')}>
+            <ul className="w-full space-y-2">
+              {organizations.map((org) => (
+                <li key={org.organizationId}>
+                  <button type="button" onClick={() => void switchTenant(org.organizationId)}
+                    className="flex min-h-11 w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-4 text-left text-sm font-medium hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800">
+                    {org.organizationName}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button type="button" onClick={() => void logout()} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 underline dark:text-slate-300">{t('app.kembali_ke_login', 'Kembali ke login')}</button>
+          </StateScreen>
+        ) : (
+          <StateScreen title={t('tb.no_access_title', 'No organization access')} message={t('tb.no_access_desc', 'Your account is signed in but is not an active member of any organization. Ask an administrator to invite you.')}>
+            <button type="button" onClick={() => void logout()} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900">{t('app.kembali_ke_login', 'Kembali ke login')}</button>
+          </StateScreen>
+        )}
       </div>
     );
   }
+
+  const permittedHome = hasPermission('document.view') ? 'dashboard' : isPlatformAdmin ? 'admin-system-dashboard' : null;
+  const gateScreen =
+    gate.kind === 'pending' || gate.kind === 'redirect' ? (
+      <StateScreen busy title={t('app.memuat_halaman', 'Memuat halaman...')} />
+    ) : gate.kind === 'caps-error' ? (
+      <StateScreen title={t('tb.access_check_failed', 'Your access could not be checked')} message={t('tb.access_check_failed_desc', 'Nothing is shown until your permissions for this organization load.')}>
+        <button type="button" onClick={caps.retry} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900">{t('tb.retry', 'Retry')}</button>
+      </StateScreen>
+    ) : gate.kind === 'denied' ? (
+      <StateScreen title={t('tb.access_denied', 'You do not have access to this page')} message={t('tb.access_denied_desc', 'Your role in this organization does not include this page.')}>
+        {permittedHome && <button type="button" onClick={() => replaceActiveTab(permittedHome)} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900">{t('tb.go_to_permitted', 'Go to an allowed page')}</button>}
+      </StateScreen>
+    ) : null;
 
   return (
     <div className="flex h-screen w-full bg-[#F3F4F0] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden">
@@ -676,11 +597,14 @@ const MainApp: React.FC = () => {
           // The AI chat launcher is fixed bottom-right; reserve room so it never covers the last row's actions.
           className={`flex-1 min-h-0 p-3.5 sm:p-5 md:p-7 ${modules.aiAssistant ? 'pb-24 sm:pb-28 md:pb-28' : ''} overflow-y-auto overflow-x-hidden bg-[#F3F4F0] dark:bg-[#0B0F19] overscroll-contain focus:outline-none`}
         >
-          <DefaultPasswordBanner
-            onOpenSecurity={() => setActiveTab('admin-organization-users')}
-            showGoogleSetup={activeTab === 'dashboard' || activeTab === 'settings' || activeTab.startsWith('settings-')}
-          />
+          {isPlatformAdmin && (
+            <DefaultPasswordBanner
+              onOpenSecurity={() => setActiveTab('admin-system-users')}
+              showGoogleSetup={activeTab === 'admin-system-dashboard' || activeTab === 'admin-system-settings'}
+            />
+          )}
           <Suspense fallback={<div className="flex h-full min-h-70 items-center justify-center text-sm text-slate-500">{t('app.memuat_halaman', 'Memuat halaman...')}</div>}>
+            {gateScreen ?? (
             <section className="w-full space-y-6">
               {activeTab === 'dashboard' && (
                 <LazyDashboardView
@@ -843,18 +767,11 @@ const MainApp: React.FC = () => {
                 />
               )}
 
-              {(activeTab.startsWith('admin-system-') || activeTab.startsWith('admin-organization-')) && (
-                <LazyAdminUsersView
-                  area={activeTab.startsWith('admin-system-') ? 'system' : 'organization'}
-                  initialTab={
-                    activeTab === 'admin-users'
-                      ? (role === 'superuser' ? 'dashboard' : 'users')
-                      : (activeTab.replace(/^admin-(system|organization)-/, '') as ConsoleSubmenu)
-                  }
-                />
+              {activeTab.startsWith('admin-system-') && isPlatformAdmin && (
+                <LazyAdminUsersView initialTab={activeTab.replace(/^admin-system-/, '') as SystemSubmenu} />
               )}
 
-              {activeTab === 'bulk-import' && hasPermission('admin.department.manage') && (
+              {activeTab === 'bulk-import' && hasPermission('tenant.data.import') && (
                 <LazyBulkImportView
                   partners={partners}
                   contracts={contracts}
@@ -866,19 +783,8 @@ const MainApp: React.FC = () => {
                 />
               )}
 
-              {activeTab === 'activity-logs' && hasPermission('audit.view') && <LazyActivityLogsView />}
-
-              {hasPermission('admin.access') && (activeTab === 'settings' || activeTab.startsWith('settings-')) && (
-                <LazySettingsView
-                  config={googleConfig}
-                  onSaveConfig={handleSaveGoogleConfig}
-                  onSyncNow={handleSyncNow}
-                  initialSection={
-                    activeTab.startsWith('settings-')
-                      ? (activeTab.replace('settings-', '') as any)
-                      : undefined
-                  }
-                />
+              {(SETTINGS_TABS as readonly string[]).includes(activeTab) && (
+                <LazySettingsView tab={activeTab as SettingsTabId} />
               )}
 
               {activeTab === 'privacy' && (
@@ -889,6 +795,7 @@ const MainApp: React.FC = () => {
                 <LazyTermsOfServiceView onBack={() => setActiveTab('dashboard')} />
               )}
             </section>
+            )}
           </Suspense>
         </main>
       </div>
@@ -1123,7 +1030,12 @@ const AppContent = () => {
     );
   }
 
-  return <MainApp />;
+  return (
+    <>
+      <InvitationPrompt />
+      <MainApp />
+    </>
+  );
 };
 
 const queryClient = new QueryClient({
@@ -1138,26 +1050,27 @@ const queryClient = new QueryClient({
 
 export default function App() {
   return (
+    // Identity → organization selection → capabilities → runtime policy (PRD §11.1).
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <PermissionProvider>
-            <LanguageProvider>
-              <ConfirmDialogProvider>
-                <AlertToastProvider>
-                  <TenantProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <ConfirmDialogProvider>
+              <AlertToastProvider>
+                <TenantProvider>
+                  <PermissionProvider>
                     <TenantSettingsProvider>
                       <NavigationProvider>
                         <AppContent />
                       </NavigationProvider>
                     </TenantSettingsProvider>
-                  </TenantProvider>
-                </AlertToastProvider>
-              </ConfirmDialogProvider>
-            </LanguageProvider>
-          </PermissionProvider>
-        </AuthProvider>
-      </ThemeProvider>
+                  </PermissionProvider>
+                </TenantProvider>
+              </AlertToastProvider>
+            </ConfirmDialogProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

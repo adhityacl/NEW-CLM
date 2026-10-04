@@ -2,8 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronsUpDown, Check, Building2 } from 'lucide-react';
 import { useTenant } from '../context/TenantContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useAuth } from '../context/AuthContext';
-import { usePermissions } from '../lib/permissions';
 
 export interface WorkspaceItem {
   id: string;
@@ -34,15 +32,14 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
   onNavigateToSettings: _onNavigateToSettings,
   className = '',
 }) => {
-  const { tenants, activeTenant, activeTenantId, loading: tenantLoading, switchTenant } = useTenant();
+  const { organizations, activeTenant, activeTenantId, loading: tenantLoading, switchTenant } = useTenant();
   const { t } = useLanguage();
-  const { user } = useAuth();
-  const { hasPermission } = usePermissions();
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Switch workspace is strictly disabled for non-admin / non-superuser roles (e.g. Manager, Editor, Viewer)
-  const canSwitch = hasPermission('workspace.switch');
+  // Every role may switch between its OWN active memberships (PRD §4.5.1);
+  // a platform administrator sees the organization directory instead.
+  const canSwitch = organizations.length > 1 || (organizations.length === 1 && !activeTenantId);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -75,35 +72,25 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
     };
   }, [isOpen]);
 
-  // Filter tenants: Non-admins only see their assigned organization / tenant
-  const tenantsToDisplay = canSwitch
-    ? tenants
-    : tenants.filter((tenant) => {
-        if (user?.organizationId && tenant.id === user.organizationId) return true;
-        if (user?.allowedTenantIds?.includes(tenant.id)) return true;
-        return tenant.id === activeTenantId;
-      });
-
   // Build workspace list with purposeful badge styling
-  const workspaces: WorkspaceItem[] = tenantsToDisplay.map((tenant, idx) => {
+  const workspaces: WorkspaceItem[] = organizations.map((org, idx) => {
     const badgeClass = BADGE_COLOR_PALETTES[idx % BADGE_COLOR_PALETTES.length];
-    const displayName = tenant.brandName || tenant.name;
+    const displayName = org.organizationName;
     const iconLetter = (displayName || 'W').charAt(0).toUpperCase();
     return {
-      id: tenant.id,
+      id: org.organizationId,
       name: displayName,
-      brandName: tenant.brandName,
       badgeClass,
       iconLetter,
-      logoUrl: tenant.logoUrl && tenant.logoUrl !== '/favicon.png' ? tenant.logoUrl : undefined,
+      logoUrl: org.logoUrl && org.logoUrl !== '/favicon.png' ? org.logoUrl : undefined,
     };
   });
 
+  // Never present the first organization as the current one when none is selected.
   const currentWorkspace =
-    workspaces.find((w) => w.id === activeTenantId) ||
-    workspaces[0] || {
-      id: 'default',
-      name: activeTenant?.brandName || activeTenant?.name || (tenantLoading ? t('common.loading', 'Memuat Data...') : ''),
+    workspaces.find((w) => w.id === activeTenantId) || {
+      id: 'none',
+      name: activeTenant?.brandName || activeTenant?.name || (tenantLoading ? t('common.loading', 'Memuat Data...') : t('tb.choose_organization', 'Choose an organization')),
       badgeClass: BADGE_COLOR_PALETTES[0],
       iconLetter: tenantLoading ? '-' : '?',
       logoUrl: activeTenant?.logoUrl && activeTenant.logoUrl !== '/favicon.png' ? activeTenant.logoUrl : undefined,

@@ -139,9 +139,7 @@ export const signInWithGoogleCodeFlow = async (): Promise<{ accessToken: string;
               localStorage.setItem('google_user_profile', JSON.stringify(profile));
             }
 
-            // Sinkronisasi otomatis token & status ke backend
-            syncTokenToServer(cachedAccessToken!, data.refreshToken, profile).catch(() => {});
-
+            // Signing in never connects the platform Google account; System Admin does that explicitly.
             resolve({ accessToken: cachedAccessToken!, profile });
           } catch (err: any) {
             reject(err);

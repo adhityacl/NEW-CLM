@@ -42,7 +42,7 @@ test('spending POST/PUT persist allocations/title, reject invalid writes and pre
     database.prepare('INSERT INTO user (id,name,email,emailVerified,createdAt,updatedAt,role,banned) VALUES (?,?,?,?,?,?,?,?)').run('spending-test', 'Spending Test', 'spending@example.test', 1, now, now, 'superuser', 0);
     database.prepare('INSERT INTO session (id,expiresAt,token,createdAt,updatedAt,userId) VALUES (?,?,?,?,?,?)').run('spending-session', new Date(Date.now() + 60_000).toISOString(), token, now, now, 'spending-test');
     const send = async (path: string, method = 'GET', body?: unknown) => {
-      const response = await fetch(base + path, { method, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      const response = await fetch(base + path, { method, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'x-organization-id': 'org-demo-bmd' }, body: body ? JSON.stringify(body) : undefined });
       return { status: response.status, data: await response.json() as any };
     };
     const input = { vendor_name: 'Allocation Test Partner', invoice_number: 'ALLOCATION-1', invoice_title: 'Q4 retainer', invoice_description: 'Service details', invoice_date: '2026-09-29', currency: 'USD', total_amount: 100, total_amount_usd: 100,
