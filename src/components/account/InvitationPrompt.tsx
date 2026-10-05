@@ -88,7 +88,7 @@ export const InvitationPrompt: React.FC = () => {
     <ModalFrame onClose={close} className="max-w-md">
       <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
         <ModalTitle className="text-lg font-semibold text-slate-900 dark:text-white">{t('tb.invitation_title', 'Organization invitation')}</ModalTitle>
-        <Button variant="ghost" size="icon" onClick={close} aria-label={t('common.close', 'Close')}><X className="h-4 w-4" aria-hidden="true" /></Button>
+        <Button type="button" variant="ghost" size="icon" onClick={close} aria-label={t('common.close', 'Close')}><X className="h-4 w-4" aria-hidden="true" /></Button>
       </div>
       <div className="flex flex-col gap-4 p-5 text-sm">
         <p className="text-slate-700 dark:text-slate-300">
@@ -109,14 +109,14 @@ export const InvitationPrompt: React.FC = () => {
         )}
         <div className="flex flex-wrap justify-end gap-2">
           {state.kind === 'error' && state.code === 'EMAIL_VERIFICATION_REQUIRED' && (
-            <Button variant="outline" onClick={resendVerification}><Mail className="h-4 w-4" aria-hidden="true" />{t('tb.send_verification', 'Send verification email')}</Button>
+            <Button type="button" variant="outline" onClick={resendVerification}><Mail className="h-4 w-4" aria-hidden="true" />{t('tb.send_verification', 'Send verification email')}</Button>
           )}
           {state.kind === 'done' ? (
-            <Button onClick={close}>{t('tb.done', 'Done')}</Button>
+            <Button type="button" size="lg" onClick={close}>{t('tb.done', 'Done')}</Button>
           ) : (
             <>
-              <Button variant="outline" onClick={close}>{t('tb.not_now', 'Not now')}</Button>
-              <Button onClick={accept} disabled={preview.status !== 'pending' || state.kind === 'busy'}>
+              <Button type="button" size="lg" variant="outline" onClick={close}>{t('tb.not_now', 'Not now')}</Button>
+              <Button type="button" size="lg" onClick={accept} disabled={preview.status !== 'pending' || state.kind === 'busy'}>
                 {state.kind === 'busy' && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}{t('tb.accept_invitation', 'Accept invitation')}
               </Button>
             </>

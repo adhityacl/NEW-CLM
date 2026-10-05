@@ -173,10 +173,11 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div>
             <span className={labelClass} id={`${searchId}-filter`}>{t('tb.show', 'Show')}</span>
-            <div role="radiogroup" aria-labelledby={`${searchId}-filter`} className="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+            {/* Segmented control beside a field: 44 px container, medium segments (docs/button-sizes.md). */}
+            <div role="group" aria-labelledby={`${searchId}-filter`} className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-100 p-[3px] dark:border-slate-700 dark:bg-slate-800">
               {([['active', t('tb.filter_active', 'Active')], ['suspended', t('tb.filter_suspended', 'Suspended')], ...(can('tenant.invitation.read') ? [['pending', t('tb.filter_pending', 'Pending invitations')]] : [])] as Array<[Filter, string]>).map(([value, label]) => (
-                <button key={value} type="button" role="radio" aria-checked={filter === value} onClick={() => { setFilter(value); setPage(0); }}
-                  className={`min-h-9 cursor-pointer rounded-lg px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40 ${filter === value ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>
+                <button key={value} type="button" aria-pressed={filter === value} onClick={() => { setFilter(value); setPage(0); }}
+                  className={`ui-button ui-button-md cursor-pointer font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40 ${filter === value ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-700 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-900'}`}>
                   {label}
                 </button>
               ))}
@@ -191,9 +192,9 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {can('tenant.audit.read') && <Button variant="outline" onClick={() => setDialog({ kind: 'history' })}><History className="h-4 w-4" aria-hidden="true" />{t('tb.history', 'History')}</Button>}
-          {can('department.view') && <Button variant="outline" onClick={() => setDialog({ kind: 'departments' })}><Layers className="h-4 w-4" aria-hidden="true" />{t('tb.departments', 'Departments')}</Button>}
-          {can('tenant.member.invite') && <Button onClick={() => setDialog({ kind: 'invite' })}><Mail className="h-4 w-4" aria-hidden="true" />{t('tb.invite_member', 'Invite member')}</Button>}
+          {can('tenant.audit.read') && <Button type="button" size="lg" variant="outline" onClick={() => setDialog({ kind: 'history' })}><History className="h-4 w-4" aria-hidden="true" />{t('tb.history', 'History')}</Button>}
+          {can('department.view') && <Button type="button" size="lg" variant="outline" onClick={() => setDialog({ kind: 'departments' })}><Layers className="h-4 w-4" aria-hidden="true" />{t('tb.departments', 'Departments')}</Button>}
+          {can('tenant.member.invite') && <Button type="button" size="lg" onClick={() => setDialog({ kind: 'invite' })}><Mail className="h-4 w-4" aria-hidden="true" />{t('tb.invite_member', 'Invite member')}</Button>}
         </div>
       </div>
 
@@ -201,7 +202,7 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
         {failed ? (
           <div role="alert" className="flex flex-col items-start gap-3 p-5 text-sm text-rose-800 dark:text-rose-200">
             {t('tb.members_load_error', 'Members could not be loaded.')}
-            <Button variant="outline" size="sm" onClick={() => refresh()}><RefreshCw className="h-4 w-4" aria-hidden="true" />{t('tb.retry', 'Retry')}</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => refresh()}><RefreshCw className="h-4 w-4" aria-hidden="true" />{t('tb.retry', 'Retry')}</Button>
           </div>
         ) : loading ? (
           <div className="space-y-2 p-4" aria-busy="true"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
@@ -222,8 +223,8 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
                     <TableCell>{new Date(inv.expiresAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        {can('tenant.invitation.resend') && <Button variant="ghost" size="sm" onClick={() => resend(inv)}><RefreshCw className="h-4 w-4" aria-hidden="true" />{t('tb.resend', 'Resend')}</Button>}
-                        {can('tenant.invitation.cancel') && <Button variant="ghost" size="sm" onClick={() => cancel(inv)}><X className="h-4 w-4" aria-hidden="true" />{t('tb.cancel_invitation', 'Cancel invitation')}</Button>}
+                        {can('tenant.invitation.resend') && <Button type="button" variant="ghost" size="sm" onClick={() => resend(inv)}><RefreshCw className="h-4 w-4" aria-hidden="true" />{t('tb.resend', 'Resend')}</Button>}
+                        {can('tenant.invitation.cancel') && <Button type="button" variant="ghost" size="sm" onClick={() => cancel(inv)}><X className="h-4 w-4" aria-hidden="true" />{t('tb.cancel_invitation', 'Cancel invitation')}</Button>}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -256,12 +257,12 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
                         {manage ? (
                           <div className="flex justify-end gap-1">
                             {(can('tenant.member.role.update') || can('tenant.member.departments.update')) && (
-                              <Button variant="ghost" size="sm" onClick={() => setDialog({ kind: 'edit', member: m })} aria-label={t('tb.edit_access_for', 'Edit access for {name}', { name: m.name || m.email })}><Pencil className="h-4 w-4" aria-hidden="true" /></Button>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => setDialog({ kind: 'edit', member: m })} aria-label={t('tb.edit_access_for', 'Edit access for {name}', { name: m.name || m.email })}><Pencil className="h-4 w-4" aria-hidden="true" /></Button>
                             )}
                             {can('tenant.member.status.update') && (m.status === 'active'
-                              ? <Button variant="ghost" size="sm" onClick={() => setStatus(m, 'suspended')} aria-label={t('tb.suspend_for', 'Suspend membership of {name}', { name: m.name || m.email })}><UserX className="h-4 w-4" aria-hidden="true" /></Button>
-                              : <Button variant="ghost" size="sm" onClick={() => setStatus(m, 'active')} aria-label={t('tb.reactivate_for', 'Reactivate membership of {name}', { name: m.name || m.email })}><UserCheck className="h-4 w-4" aria-hidden="true" /></Button>)}
-                            {can('tenant.member.remove') && <Button variant="ghost" size="sm" onClick={() => remove(m)} aria-label={t('tb.remove_for', 'Remove membership of {name}', { name: m.name || m.email })}><UserMinus className="h-4 w-4" aria-hidden="true" /></Button>}
+                              ? <Button type="button" variant="ghost" size="sm" onClick={() => setStatus(m, 'suspended')} aria-label={t('tb.suspend_for', 'Suspend membership of {name}', { name: m.name || m.email })}><UserX className="h-4 w-4" aria-hidden="true" /></Button>
+                              : <Button type="button" variant="ghost" size="sm" onClick={() => setStatus(m, 'active')} aria-label={t('tb.reactivate_for', 'Reactivate membership of {name}', { name: m.name || m.email })}><UserCheck className="h-4 w-4" aria-hidden="true" /></Button>)}
+                            {can('tenant.member.remove') && <Button type="button" variant="ghost" size="sm" onClick={() => remove(m)} aria-label={t('tb.remove_for', 'Remove membership of {name}', { name: m.name || m.email })}><UserMinus className="h-4 w-4" aria-hidden="true" /></Button>}
                           </div>
                         ) : <MoreHorizontal className="ml-auto h-4 w-4 text-slate-300 dark:text-slate-600" aria-hidden="true" />}
                       </TableCell>
@@ -279,8 +280,8 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
           <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-sm dark:border-slate-800">
             <span className="text-slate-600 dark:text-slate-400">{t('tb.page_of', 'Page {page} of {pages}', { page: page + 1, pages })}</span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>{t('tb.previous', 'Previous')}</Button>
-              <Button variant="outline" size="sm" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>{t('tb.next', 'Next')}</Button>
+              <Button type="button" variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>{t('tb.previous', 'Previous')}</Button>
+              <Button type="button" variant="outline" size="sm" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>{t('tb.next', 'Next')}</Button>
             </div>
           </div>
         )}
@@ -310,7 +311,7 @@ const DialogHeader: React.FC<{ title: string; onClose: () => void }> = ({ title,
   return (
     <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
       <ModalTitle className="text-lg font-semibold text-slate-900 dark:text-white">{title}</ModalTitle>
-      <Button variant="ghost" size="icon" onClick={onClose} aria-label={t('common.close', 'Close')}><X className="h-4 w-4" aria-hidden="true" /></Button>
+      <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label={t('common.close', 'Close')}><X className="h-4 w-4" aria-hidden="true" /></Button>
     </div>
   );
 };
@@ -366,8 +367,8 @@ const InviteDialog: React.FC<{
         )}
         {error && <p role="alert" className="flex items-center gap-2 text-sm text-rose-700 dark:text-rose-300"><AlertCircle className="h-4 w-4" aria-hidden="true" />{error}</p>}
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>{t('tb.cancel', 'Cancel')}</Button>
-          <Button type="submit" disabled={busy || !emailValid || !deptValid}>{busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}{t('tb.send_invitation', 'Send invitation')}</Button>
+          <Button type="button" size="lg" variant="outline" onClick={onClose}>{t('tb.cancel', 'Cancel')}</Button>
+          <Button type="submit" size="lg" disabled={busy || !emailValid || !deptValid}>{busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}{t('tb.send_invitation', 'Send invitation')}</Button>
         </div>
       </form>
     </ModalFrame>
@@ -386,10 +387,10 @@ const InviteLinkDialog: React.FC<{ url: string; onClose: () => void }> = ({ url,
         <label htmlFor={id} className={labelClass}>{t('tb.invitation_link', 'Invitation link')}</label>
         <input id={id} readOnly className={`${fieldClass} font-mono text-xs`} value={url} onFocus={(e) => e.currentTarget.select()} />
         <div className="flex justify-end gap-2" aria-live="polite">
-          <Button variant="outline" onClick={async () => { await navigator.clipboard?.writeText(url).catch(() => {}); setCopied(true); }}>
+          <Button type="button" variant="outline" onClick={async () => { await navigator.clipboard?.writeText(url).catch(() => {}); setCopied(true); }}>
             <Copy className="h-4 w-4" aria-hidden="true" />{copied ? t('tb.copied', 'Copied') : t('tb.copy_link', 'Copy link')}
           </Button>
-          <Button onClick={onClose}>{t('tb.done', 'Done')}</Button>
+          <Button type="button" size="lg" onClick={onClose}>{t('tb.done', 'Done')}</Button>
         </div>
       </div>
     </ModalFrame>
@@ -448,8 +449,8 @@ const EditMemberDialog: React.FC<{
         )}
         {error && <p role="alert" className="flex items-center gap-2 text-sm text-rose-700 dark:text-rose-300"><AlertCircle className="h-4 w-4" aria-hidden="true" />{error}</p>}
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>{t('tb.cancel', 'Cancel')}</Button>
-          <Button type="submit" disabled={busy || needsDepartments}>{busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}{t('tb.save', 'Save')}</Button>
+          <Button type="button" size="lg" variant="outline" onClick={onClose}>{t('tb.cancel', 'Cancel')}</Button>
+          <Button type="submit" size="lg" disabled={busy || needsDepartments}>{busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}{t('tb.save', 'Save')}</Button>
         </div>
       </form>
     </ModalFrame>
@@ -492,7 +493,7 @@ const DepartmentsDialog: React.FC<{ organizationId: string; departments: Departm
               <label htmlFor={newId} className={labelClass}>{t('tb.new_department', 'New department')}</label>
               <input id={newId} className={fieldClass} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
             </div>
-            <Button type="submit" disabled={busy || !name.trim()}><Plus className="h-4 w-4" aria-hidden="true" />{t('tb.add', 'Add')}</Button>
+            <Button type="submit" size="lg" disabled={busy || !name.trim()}><Plus className="h-4 w-4" aria-hidden="true" />{t('tb.add', 'Add')}</Button>
           </form>
         )}
         {error && <p role="alert" className="flex items-center gap-2 text-sm text-rose-700 dark:text-rose-300"><AlertCircle className="h-4 w-4" aria-hidden="true" />{error}</p>}
@@ -511,9 +512,9 @@ const DepartmentsDialog: React.FC<{ organizationId: string; departments: Departm
                   <>
                     <span className="text-sm text-slate-900 dark:text-slate-100">{d.name}</span>
                     <span className="flex gap-1">
-                      {hasPermission('department.edit') && <Button variant="ghost" size="sm" onClick={() => setEditing({ id: d.id, name: d.name })} aria-label={t('tb.rename_department', 'Rename {name}', { name: d.name })}><Pencil className="h-4 w-4" aria-hidden="true" /></Button>}
+                      {hasPermission('department.edit') && <Button type="button" variant="ghost" size="sm" onClick={() => setEditing({ id: d.id, name: d.name })} aria-label={t('tb.rename_department', 'Rename {name}', { name: d.name })}><Pencil className="h-4 w-4" aria-hidden="true" /></Button>}
                       {hasPermission('department.delete') && (
-                        <Button variant="ghost" size="sm" aria-label={t('tb.delete_department', 'Delete {name}', { name: d.name })}
+                        <Button type="button" variant="ghost" size="sm" aria-label={t('tb.delete_department', 'Delete {name}', { name: d.name })}
                           onClick={async () => { if (await confirm({ description: t('tb.delete_department_confirm', 'Delete the department {name}?', { name: d.name }), tone: 'danger', confirmLabel: t('tb.delete', 'Delete') })) await act(() => orgApi(orgPath(organizationId, `/departments/${d.id}`), { method: 'DELETE' })); }}>
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
@@ -575,8 +576,8 @@ const HistoryDialog: React.FC<{ organizationId: string; onClose: () => void }> =
                 </Table>
                 {pages > 1 && (
                   <div className="flex justify-end gap-2 pt-3">
-                    <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>{t('tb.previous', 'Previous')}</Button>
-                    <Button variant="outline" size="sm" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>{t('tb.next', 'Next')}</Button>
+                    <Button type="button" variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>{t('tb.previous', 'Previous')}</Button>
+                    <Button type="button" variant="outline" size="sm" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>{t('tb.next', 'Next')}</Button>
                   </div>
                 )}
               </div>

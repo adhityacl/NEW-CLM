@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { buildDemoDataset } from '../../src/data/demoDataset';
-import { buildDueDiligenceChecklist, getCountryPack, getIndustryPack, localize } from '../../src/lib/policy';
+import { buildDueDiligenceChecklist, localize } from '../../src/lib/policy';
 import { translations } from '../../src/context/LanguageContext';
 import type { Locator } from '@playwright/test';
+import { becomeSuperuser, createTenantApi, fulfillTenantApi, openActivityHistory, policyView, workspaceInit } from './fixtures/tenantApi';
+
+let api: ReturnType<typeof createTenantApi>;
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
 
@@ -41,17 +44,13 @@ test.beforeEach(async ({ page }) => {
   const settings = { ...tenant.settings, modules: { ...tenant.settings.modules, newsTicker: true } };
   await page.addInitScript(() => {
     localStorage.setItem('auth_session_token', 'ui-demo');
-    localStorage.setItem('app_language', 'EN');
+    localStorage.setItem('user:fixture-user:language', 'EN');
   });
+  api = createTenantApi({ organizations: [{ ...tenant, settings }] });
   await page.route('**/api/**', async route => {
+    if (await fulfillTenantApi(route, api)) return;
     const fixtures: Record<string, unknown> = {
-      '/api/user/my-role': { email: 'audit@example.com', name: 'UI Audit', role: 'Admin', organizationId: tenant.id },
-      '/api/rbac/me': { actor: { role: 'admin', tenantId: tenant.id }, permissions: ['*'] },
-      '/api/tenants': { success: true, activeTenantId: tenant.id, tenants: [tenant] },
-      '/api/tenant-settings': { settings, tenantId: tenant.id, country: getCountryPack(settings.countryCode), industry: getIndustryPack(settings.industry), dueDiligenceChecklist: [] },
-      '/api/policy-packs': { countries: [], industries: [] },
-      '/api/init-data': Object.fromEntries(Object.entries(data).map(([key, rows]) => [key, rows.filter((row: any) => !row.organizationId || row.organizationId === tenant.id)])),
-      '/api/departments': { success: true, departments: ['Legal', 'Finance'] },
+      '/api/init-data': workspaceInit(tenant.id, data),
       '/api/documents': { documents: [], total: 0 },
       '/api/dashboard/news-ticker': { items: ['Test news'] },
     };
@@ -86,13 +85,8 @@ test('DD names follow the selected language across settings, structure, audit an
   }));
   // Exercise a pre-key document alongside the current keyed documents.
   delete partner.daftar_dokumen_dd[0].key;
-  await page.route('**/api/init-data', route => route.fulfill({ json: {
-    ...data, partners: [partner],
-  } }));
-  await page.route('**/api/tenant-settings', route => route.fulfill({ json: {
-    settings, tenantId: tenant.id, country: getCountryPack(settings.countryCode),
-    industry: getIndustryPack(settings.industry), dueDiligenceChecklist: checklist,
-  } }));
+  await page.route('**/api/init-data', route => route.fulfill({ json: workspaceInit(tenant.id, { ...data, partners: [partner] }) }));
+  await page.route('**/api/organizations/*/policy', route => route.fulfill({ json: policyView({ ...tenant, settings }, { dueDiligenceChecklist: checklist }) }));
   await page.goto('/');
   await expect(page.getByText('Test news').first()).toBeVisible();
 
@@ -103,12 +97,10 @@ test('DD names follow the selected language across settings, structure, audit an
     await expect(page.locator('html')).toHaveAttribute('lang', language === 'ZH' ? 'zh-CN' : language.toLowerCase());
     const names = checklist.map(item => localize(item.label, language));
 
-    const region = page.getByRole('button', { name: text('settings.nav_region'), exact: true });
-    if (!await region.isVisible()) {
-      await page.getByRole('button', { name: text('nav.settings'), exact: true }).locator('..')
-        .getByRole('button', { name: text('nav.buka_submenu'), exact: true }).click();
-    }
-    await region.click();
+    // One Settings entry; the checklist lives in the Organization tab's contract-rules section.
+    await page.getByRole('button', { name: text('nav.settings'), exact: true }).click();
+    await expect(page.getByRole('tab', { name: text('tb.tab_organization'), exact: true })).toHaveAttribute('aria-selected', 'true');
+    await page.getByRole('button', { name: text('tb.section_contracts') }).click();
     for (const name of names) await expect(page.getByRole('list').getByText(name, { exact: true }).last()).toBeVisible();
 
     await page.getByRole('button', { name: text('nav.hierarchy'), exact: true }).click();
@@ -301,14 +293,10 @@ test('large, medium and small actions keep icon-and-text labels inside their but
     await expectReadableAction(currencies.getByRole('button', { name: 'USD', exact: true }), 36);
 
     await page.setViewportSize({ width: 1440, height: 1000 });
-    const regionLink = page.getByRole('button', { name: 'Organization & region', exact: true });
-    if (!await regionLink.isVisible()) {
-      await page.getByRole('button', { name: 'Settings', exact: true }).locator('..')
-        .getByRole('button', { name: 'Open Submenu', exact: true }).click();
-    }
-    await regionLink.click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: /^Contract and due diligence rules/ }).click();
     await page.setViewportSize({ width, height: 1000 });
-    await expectReadableAction(page.getByRole('button', { name: 'Save organization settings', exact: true }), 44);
+    await expectReadableAction(page.getByRole('button', { name: 'Save Profile', exact: true }), 44);
     await expectReadableAction(page.getByRole('button', { name: 'Add checklist item', exact: true }), 44);
 
     await navigate('Partners');
@@ -492,16 +480,17 @@ for (const section of ['Main Dashboard', 'Partners', 'Order Forms', 'Partner Spe
     if (section.startsWith('Partner ')) await page.getByRole('button', { name: 'Partners', exact: true }).click();
     const navigation = section === 'Order Forms' ? /^(Order Forms|Service Orders)(?: \d+)?$/
       : section === 'Notifications' ? /^Notifications(?: \d+)?$/
-      : section === 'Activity Logs' ? /^(Session )?Activity Logs$/
       : section === 'Explorer' ? /^(Explorer|Explore|Document Structure)$/ : section;
-    await page.getByRole('button', { name: navigation, exact: true }).click();
-    await expect(page.locator('main')).toBeVisible();
+    // Operational activity is no longer a page: it opens in the Settings History drawer (PRD §6.4).
+    const scope = section === 'Activity Logs' ? await openActivityHistory(page) : page.locator('main');
+    if (section !== 'Activity Logs') await page.getByRole('button', { name: navigation, exact: true }).click();
+    await expect(scope).toBeVisible();
     if (section === 'Explorer') await page.getByRole('tab', { name: 'Structure Audit', exact: true }).click();
     if (section === 'Import Data') {
       await page.locator('main input[type="file"]').setInputFiles({ name: 'mobile-preview.csv', mimeType: 'text/csv', buffer: Buffer.from('nama_partner,partner_channel,country\nFixture Partner,Procurement,ID\n') });
       await expect(page.locator('main table')).toContainText('Fixture Partner');
     }
-    const controls = page.locator('main .mobile-page-actions, main .mobile-filter-grid');
+    const controls = scope.locator('.mobile-page-actions, .mobile-filter-grid');
     await expect(controls.first()).toBeVisible();
     const desktop = await controls.evaluateAll(elements => elements.map(element => getComputedStyle(element).display));
     for (const width of [320, 390, 430]) {
@@ -517,7 +506,7 @@ for (const section of ['Main Dashboard', 'Partners', 'Order Forms', 'Partner Spe
             expect(bounds.x + bounds.width).toBeLessThanOrEqual(box.x + box.width + 1);
           }
         }
-        for (const table of await page.locator('main table:visible').all()) {
+        for (const table of await scope.locator('table:visible').all()) {
           expect(await table.evaluate(element => getComputedStyle(element.parentElement!).overflowX)).toMatch(/auto|scroll/);
           for (const cell of await table.locator('tbody tr:first-child > td:nth-child(-n+2)').all()) {
             await expect(cell).not.toHaveCSS('position', 'sticky');
@@ -534,12 +523,11 @@ for (const section of ['Main Dashboard', 'Partners', 'Order Forms', 'Partner Spe
 
 test('all admin tabs keep mobile controls contained and tables scrollable', async ({ page }) => {
   test.setTimeout(90_000);
-  await page.route('**/api/user/my-role*', route => route.fulfill({ json: { email: 'audit@example.com', name: 'UI Audit', role: 'Superuser' } }));
-  await page.route('**/api/rbac/me', route => route.fulfill({ json: { actor: { role: 'superuser' }, permissions: ['*'] } }));
-  await page.reload();
+  await becomeSuperuser(page, api);
   await page.getByRole('button', { name: 'System Admin', exact: true }).click();
   await expect(page.getByRole('tablist', { name: 'System Admin' })).toBeVisible();
-  for (const tab of ['Dashboard', 'Users', 'Sessions', 'Organizations', 'Departments', 'Invitations', 'API Keys', 'RBAC Matrix']) {
+  // Departments and invitations are tenant-scoped now (Settings › Members & Access).
+  for (const tab of ['Dashboard', 'Users', 'Sessions', 'Organizations', 'API Keys', 'RBAC Matrix', 'Configuration']) {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.getByRole('tab', { name: new RegExp(`^${tab}(?: \\d+)?$`) }).click();
     const panel = page.getByRole('tabpanel');
@@ -574,24 +562,38 @@ test('all settings pages and UI text modal keep mobile controls contained', asyn
     };
     return route.fulfill({ json: fixtures[path] ?? {} });
   });
-  await page.getByRole('button', { name: 'Settings', exact: true }).locator('..').getByRole('button', { name: 'Open Submenu', exact: true }).click();
-  for (const label of ['Organization & region', 'Google & Database', 'AI Model & Parser', 'Notification Recipients', 'UI Text & Localization', 'Security & Maintenance']) {
+  // Tenant Settings: one entry, three tabs.
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  for (const label of ['Organization', 'Members & Access', 'Integrations']) {
     await page.setViewportSize({ width: 1280, height: 720 });
-    const link = page.getByRole('button', { name: label, exact: true });
-    await link.click();
-    await expect(page.locator('main')).toContainText(label);
-    if (label === 'Google & Database') await expect(page.locator('main table')).toContainText('Fixture contract');
+    await page.getByRole('tab', { name: label, exact: true }).click();
+    await expect(page.getByRole('tabpanel', { name: label })).toBeVisible();
     for (const width of [320, 390, 430]) {
       await page.setViewportSize({ width, height: 844 });
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
-      if (label === 'Google & Database') {
+    }
+  }
+  // Platform configuration moved into System Admin › Configuration (PRD §6.6).
+  await becomeSuperuser(page, api);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.getByRole('button', { name: 'System Admin', exact: true }).click();
+  await page.getByRole('tab', { name: 'Configuration', exact: true }).click();
+  for (const label of ['Google & storage', 'AI Model & Parser', 'SMTP relay', 'UI texts (this browser)', 'Database & reset']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.getByRole('tab', { name: label, exact: true }).click();
+    await expect(page.getByRole('tab', { name: label, exact: true })).toHaveAttribute('aria-selected', 'true');
+    if (label === 'Google & storage') await expect(page.locator('main table')).toContainText('Fixture contract');
+    for (const width of [320, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+      if (label === 'Google & storage') {
         const search = page.locator('.mobile-search-form');
         await expect(search.getByRole('textbox')).toBeVisible();
         expect((await search.getByRole('textbox').boundingBox())!.width).toBeGreaterThan(80);
         expect(await page.locator('main table').evaluate(element => getComputedStyle(element.parentElement!).overflowX)).toBe('auto');
       }
     }
-    if (label === 'UI Text & Localization') {
+    if (label === 'UI texts (this browser)') {
       await page.getByRole('button', { name: 'Open UI Text Editor', exact: true }).click();
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
@@ -791,9 +793,8 @@ async function undersizedPrimaryActions(page: import('@playwright/test').Page) {
 
 test('field rows and primary actions follow the control size scale', async ({ page }) => {
   test.setTimeout(120_000);
-  await page.route('**/api/user/my-role*', route => route.fulfill({ json: { email: 'audit@example.com', name: 'UI Audit', role: 'Superuser' } }));
-  await page.route('**/api/rbac/me', route => route.fulfill({ json: { actor: { role: 'superuser' }, permissions: ['*'] } }));
-  await page.reload();
+  // Platform administrator explicitly managing the organization: operational views, Settings and System Admin.
+  await becomeSuperuser(page, api);
   const issues: string[] = [];
   const check = async (where: string) => {
     await page.waitForTimeout(300);
@@ -806,11 +807,16 @@ test('field rows and primary actions follow the control size scale', async ({ pa
       await page.getByRole('button', { name, exact: true }).first().click();
       await page.setViewportSize({ width, height: 1000 });
     };
-    for (const section of ['Main Dashboard', /^Contracts(?: \d+)?$/, 'Partners', /^(Order Forms|Service Orders)(?: \d+)?$/, 'Partner Spending', 'Partner Evaluation', /^Notifications(?: \d+)?$/, 'My Documents', /^(Session )?Activity Logs$/, 'Import Data']) {
+    for (const section of ['Main Dashboard', /^Contracts(?: \d+)?$/, 'Partners', /^(Order Forms|Service Orders)(?: \d+)?$/, 'Partner Spending', 'Partner Evaluation', /^Notifications(?: \d+)?$/, 'My Documents', 'Import Data']) {
       if (section === 'Partner Spending') await open('Partners');
       await open(section);
       await check(`${width} ${section}`);
     }
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await openActivityHistory(page);
+    await page.setViewportSize({ width, height: 1000 });
+    await check(`${width} Activity history`);
+    await page.keyboard.press('Escape');
     await open(/^Contracts(?: \d+)?$/);
     await page.getByRole('button', { name: 'Add Contract', exact: true }).click();
     await check(`${width} Add Contract`);
@@ -819,17 +825,24 @@ test('field rows and primary actions follow the control size scale', async ({ pa
     await page.getByRole('button', { name: 'Add Partner', exact: true }).click();
     await check(`${width} Add Partner`);
     await page.keyboard.press('Escape');
-    await page.setViewportSize({ width: 1440, height: 1000 });
-    const settings = page.getByRole('button', { name: 'Organization & region', exact: true });
-    if (!await settings.isVisible()) await page.getByRole('button', { name: 'Settings', exact: true }).locator('..').getByRole('button', { name: 'Open Submenu', exact: true }).click();
-    for (const label of ['Organization & region', 'Google & Database', 'AI Model & Parser', 'Notification Recipients', 'UI Text & Localization', 'Security & Maintenance']) {
-      await open(label);
-      await check(`${width} ${label}`);
+    await open('Settings');
+    for (const label of ['Organization', 'Members & Access', 'Integrations']) {
+      await page.getByRole('tab', { name: label, exact: true }).click();
+      if (label === 'Organization') {
+        const collapsed = page.locator('main button[aria-expanded="false"][aria-controls^="org-section-"]');
+        while (await collapsed.count()) await collapsed.first().click();
+      }
+      await check(`${width} settings ${label}`);
     }
     await open('System Admin');
-    for (const tab of ['Dashboard', 'Users', 'Sessions', 'Organizations', 'Departments', 'Invitations', 'API Keys', 'RBAC Matrix']) {
+    for (const tab of ['Dashboard', 'Users', 'Sessions', 'Organizations', 'API Keys', 'RBAC Matrix']) {
       await page.getByRole('tab', { name: new RegExp(`^${tab}(?: \\d+)?$`) }).click();
       await check(`${width} admin ${tab}`);
+    }
+    await page.getByRole('tab', { name: 'Configuration', exact: true }).click();
+    for (const label of ['Google & storage', 'AI Model & Parser', 'SMTP relay', 'UI texts (this browser)', 'Database & reset']) {
+      await page.getByRole('tab', { name: label, exact: true }).click();
+      await check(`${width} configuration ${label}`);
     }
   }
   expect(issues).toEqual([]);

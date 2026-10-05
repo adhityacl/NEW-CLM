@@ -121,7 +121,7 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
     return (
       <div role="alert" className="flex flex-col items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">
         {t('tb.settings_load_error', 'Organization settings could not be loaded.')}
-        <Button variant="outline" size="sm" onClick={() => settingsQuery.refetch()}><RefreshCw className="h-4 w-4" aria-hidden="true" />{t('tb.retry', 'Retry')}</Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => settingsQuery.refetch()}><RefreshCw className="h-4 w-4" aria-hidden="true" />{t('tb.retry', 'Retry')}</Button>
       </div>
     );
   }
@@ -198,7 +198,7 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
               {body}
             </fieldset>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button type="submit" disabled={!canEdit || !dirty[id] || !valid || state.kind === 'saving'}>
+              <Button type="submit" size="lg" disabled={!canEdit || !dirty[id] || !valid || state.kind === 'saving'}>
                 {state.kind === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
                 {state.kind === 'saving' ? t('common.saving', 'Saving…') : t('tb.save_section', 'Save {section}', { section: title })}
               </Button>

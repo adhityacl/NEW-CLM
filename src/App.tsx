@@ -54,15 +54,19 @@ import { InvitationPrompt } from './components/account/InvitationPrompt';
 import { SETTINGS_TABS, needsOrganization, resolveRoute, type SettingsTabId, type SystemSubmenu } from './lib/appRoutes';
 
 /** Full-page state shown instead of any privileged view (PRD §4.5.4, §6.2, §11.3). */
-const StateScreen: React.FC<{ title: string; message?: string; children?: React.ReactNode; busy?: boolean }> = ({ title, message, children, busy }) => (
+/** `standalone` screens have no app header, so they carry the page's only h1. */
+const StateScreen: React.FC<{ title: string; message?: string; children?: React.ReactNode; busy?: boolean; standalone?: boolean }> = ({ title, message, children, busy, standalone }) => {
+  const Heading = standalone ? 'h1' : 'h2';
+  return (
   <div className="flex min-h-[60vh] items-center justify-center p-6" aria-busy={busy || undefined}>
     <div className="max-w-md space-y-4 text-center" role={busy ? 'status' : undefined}>
-      <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h1>
+      <Heading className="text-xl font-semibold text-slate-900 dark:text-white">{title}</Heading>
       {message && <p className="text-sm text-slate-600 dark:text-slate-300">{message}</p>}
       {children && <div className="flex flex-wrap justify-center gap-2">{children}</div>}
     </div>
   </div>
-);
+  );
+};
 
 const MainApp: React.FC = () => {
   const { user, logout } = useAuth();
@@ -110,10 +114,11 @@ const MainApp: React.FC = () => {
     if (gate.kind === 'redirect') replaceActiveTab(gate.tab, gate.intent);
   }, [gate.kind, (gate as any).tab, (gate as any).intent, replaceActiveTab]);
 
-  // After a switch the new organization's role governs; leave tabs it may not open.
+  // After a switch the new organization's role governs: administrative screens close (their drafts are
+  // discarded); operational tabs stay and the route gate re-checks them against the new capabilities.
   useEffect(() => {
     const onSwitched = () => {
-      if (activeTab.startsWith('settings-') || activeTab === 'bulk-import' || activeTab === 'create-contract') replaceActiveTab('dashboard');
+      if (activeTab.startsWith('settings-') || activeTab === 'bulk-import') replaceActiveTab('dashboard');
     };
     window.addEventListener('organization-switched', onSwitched);
     return () => window.removeEventListener('organization-switched', onSwitched);
@@ -530,7 +535,7 @@ const MainApp: React.FC = () => {
     return (
       <div className="flex h-screen items-center justify-center bg-[#F3F4F0] p-6 text-slate-900 dark:bg-[#0B0F19] dark:text-slate-100">
         {selectionStatus === 'choose' ? (
-          <StateScreen title={t('tb.choose_organization', 'Choose an organization')} message={t('tb.choose_organization_desc', 'You belong to several organizations. Choose the one to work in for this tab.')}>
+          <StateScreen standalone title={t('tb.choose_organization', 'Choose an organization')} message={t('tb.choose_organization_desc', 'You belong to several organizations. Choose the one to work in for this tab.')}>
             <ul className="w-full space-y-2">
               {organizations.map((org) => (
                 <li key={org.organizationId}>
@@ -544,7 +549,7 @@ const MainApp: React.FC = () => {
             <button type="button" onClick={() => void logout()} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 underline dark:text-slate-300">{t('app.kembali_ke_login', 'Kembali ke login')}</button>
           </StateScreen>
         ) : (
-          <StateScreen title={t('tb.no_access_title', 'No organization access')} message={t('tb.no_access_desc', 'Your account is signed in but is not an active member of any organization. Ask an administrator to invite you.')}>
+          <StateScreen standalone title={t('tb.no_access_title', 'No organization access')} message={t('tb.no_access_desc', 'Your account is signed in but is not an active member of any organization. Ask an administrator to invite you.')}>
             <button type="button" onClick={() => void logout()} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900">{t('app.kembali_ke_login', 'Kembali ke login')}</button>
           </StateScreen>
         )}

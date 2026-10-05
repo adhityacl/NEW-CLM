@@ -14,7 +14,7 @@ const Header: React.FC<{ title: string; onClose: () => void }> = ({ title, onClo
   return (
     <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
       <ModalTitle className="text-lg font-semibold text-slate-900 dark:text-white">{title}</ModalTitle>
-      <Button variant="ghost" size="icon" onClick={onClose} aria-label={t('common.close', 'Close')}><X className="h-4 w-4" aria-hidden="true" /></Button>
+      <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label={t('common.close', 'Close')}><X className="h-4 w-4" aria-hidden="true" /></Button>
     </div>
   );
 };
@@ -129,7 +129,7 @@ export const AccountSecurityDialog: React.FC<{ onClose: () => void }> = ({ onClo
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={!current || next.length < 8 || state.kind === 'saving'}>
+              <Button type="submit" size="lg" disabled={!current || next.length < 8 || state.kind === 'saving'}>
                 {state.kind === 'saving' && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}{t('tb.change_password', 'Change password')}
               </Button>
               <span aria-live="polite">{state.kind === 'saved' && <span className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{t('tb.password_changed', 'Password changed.')}</span>}</span>
@@ -152,7 +152,7 @@ export const AccountSecurityDialog: React.FC<{ onClose: () => void }> = ({ onClo
                     <span className="block text-xs text-slate-600 dark:text-slate-400">{new Date(s.updatedAt || s.createdAt).toLocaleString()}{s.current ? ` · ${t('tb.this_session', 'This session')}` : ''}</span>
                   </span>
                 </span>
-                {!s.current && <Button variant="ghost" size="sm" onClick={() => revoke(s.id)}><LogOut className="h-4 w-4" aria-hidden="true" />{t('tb.sign_out_session', 'Sign out')}</Button>}
+                {!s.current && <Button type="button" variant="ghost" size="sm" onClick={() => revoke(s.id)}><LogOut className="h-4 w-4" aria-hidden="true" />{t('tb.sign_out_session', 'Sign out')}</Button>}
               </li>
             ))}
           </ul>

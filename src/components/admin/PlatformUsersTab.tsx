@@ -58,7 +58,7 @@ export const PlatformUsersTab: React.FC<{
             <input id={searchId} type="search" className={`${fieldClass} pl-9`} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
-        <Button onClick={() => setDialog({ kind: 'create' })}><Plus className="h-4 w-4" aria-hidden="true" />{t('tb.create_account', 'Create account')}</Button>
+        <Button type="button" size="lg" onClick={() => setDialog({ kind: 'create' })}><Plus className="h-4 w-4" aria-hidden="true" />{t('tb.create_account', 'Create account')}</Button>
       </div>
       <p className="text-sm text-slate-600 dark:text-slate-400">{t('tb.accounts_hint', 'Accounts never receive organization access automatically. Use Organizations → Manage organization to invite people or appoint administrators.')}</p>
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -85,12 +85,12 @@ export const PlatformUsersTab: React.FC<{
                   <TableCell className="text-right">
                     {!self && (
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => setDialog({ kind: 'edit', user: u })} aria-label={t('tb.edit_account_for', 'Edit account of {name}', { name: u.name })}><Pencil className="h-4 w-4" aria-hidden="true" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => setDialog({ kind: 'password', user: u })} aria-label={t('tb.set_password_for', 'Set password for {name}', { name: u.name })}><KeyRound className="h-4 w-4" aria-hidden="true" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => onToggleBan(u)} aria-label={u.banned ? t('tb.enable_account_for', 'Enable account of {name}', { name: u.name }) : t('tb.disable_account_for', 'Disable account of {name}', { name: u.name })}>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setDialog({ kind: 'edit', user: u })} aria-label={t('tb.edit_account_for', 'Edit account of {name}', { name: u.name })}><Pencil className="h-4 w-4" aria-hidden="true" /></Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setDialog({ kind: 'password', user: u })} aria-label={t('tb.set_password_for', 'Set password for {name}', { name: u.name })}><KeyRound className="h-4 w-4" aria-hidden="true" /></Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => onToggleBan(u)} aria-label={u.banned ? t('tb.enable_account_for', 'Enable account of {name}', { name: u.name }) : t('tb.disable_account_for', 'Disable account of {name}', { name: u.name })}>
                           {u.banned ? <UserCheck className="h-4 w-4" aria-hidden="true" /> : <Ban className="h-4 w-4" aria-hidden="true" />}
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => onDelete(u)} aria-label={t('tb.delete_account_for', 'Delete account of {name}', { name: u.name })}><Trash2 className="h-4 w-4" aria-hidden="true" /></Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => onDelete(u)} aria-label={t('tb.delete_account_for', 'Delete account of {name}', { name: u.name })}><Trash2 className="h-4 w-4" aria-hidden="true" /></Button>
                       </div>
                     )}
                   </TableCell>
@@ -116,7 +116,7 @@ const DialogShell: React.FC<{ title: string; onClose: () => void; children: Reac
     <ModalFrame onClose={onClose} className="max-w-lg">
       <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
         <ModalTitle className="text-lg font-semibold text-slate-900 dark:text-white">{title}</ModalTitle>
-        <Button variant="ghost" size="icon" onClick={onClose} aria-label={t('common.close', 'Close')}><X className="h-4 w-4" aria-hidden="true" /></Button>
+        <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label={t('common.close', 'Close')}><X className="h-4 w-4" aria-hidden="true" /></Button>
       </div>
       {children}
     </ModalFrame>
@@ -162,8 +162,8 @@ const AccountDialog: React.FC<{
         )}
         {error && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>{t('tb.cancel', 'Cancel')}</Button>
-          <Button type="submit" disabled={!valid || busy}>{t('tb.save', 'Save')}</Button>
+          <Button type="button" size="lg" variant="outline" onClick={onClose}>{t('tb.cancel', 'Cancel')}</Button>
+          <Button type="submit" size="lg" disabled={!valid || busy}>{t('tb.save', 'Save')}</Button>
         </div>
       </form>
     </DialogShell>
@@ -189,8 +189,8 @@ const PasswordDialog: React.FC<{ user: PlatformUser; onClose: () => void; onSubm
         </div>
         {error && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>{t('tb.cancel', 'Cancel')}</Button>
-          <Button type="submit" disabled={password.length < 8}>{t('tb.save', 'Save')}</Button>
+          <Button type="button" size="lg" variant="outline" onClick={onClose}>{t('tb.cancel', 'Cancel')}</Button>
+          <Button type="submit" size="lg" disabled={password.length < 8}>{t('tb.save', 'Save')}</Button>
         </div>
       </form>
     </DialogShell>

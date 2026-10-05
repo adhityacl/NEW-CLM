@@ -1,26 +1,21 @@
 import { test, expect } from '@playwright/test';
-import { defaultTenantSettings, getCountryPack, getIndustryPack } from '../../src/lib/policy';
+import { becomeSuperuser, createTenantApi, fixtureOrganization, fulfillTenantApi, workspaceInit } from './fixtures/tenantApi';
+
+let api: ReturnType<typeof createTenantApi>;
 
 // These checks never use real sessions or mutate workspace data.
 test.beforeEach(async ({ page }) => {
-  const settings = defaultTenantSettings();
+  api = createTenantApi({ organizations: [fixtureOrganization('audit', 'Audit Workspace')] });
   await page.addInitScript(() => localStorage.setItem('auth_session_token', 'ui-fixture'));
   await page.route('**/api/**', async (route) => {
+    if (await fulfillTenantApi(route, api)) return;
     const path = new URL(route.request().url()).pathname;
     const responses: Record<string, unknown> = {
-      '/api/user/my-role': { email: 'audit@example.com', name: 'UI Audit', role: 'Admin', organizationId: 'audit', allowedTenantIds: ['audit'] },
-      '/api/rbac/me': { actor: { role: 'admin', tenantId: 'audit' }, permissions: ['*'] },
-      '/api/tenants': { success: true, activeTenantId: 'audit', tenants: [{ id: 'audit', name: 'Audit Workspace' }] },
-      '/api/tenant-settings': { tenantId: 'audit', tenantName: 'Audit Workspace', settings, country: getCountryPack(settings.countryCode), industry: getIndustryPack(settings.industry), dueDiligenceChecklist: [] },
-      '/api/policy-packs': { countries: [], industries: [] },
-      '/api/init-data': { contracts: [], ios: [], partners: [{ partner_id: 'p1', nama_partner: 'Demo Partner', jenis_partner: 'Vendor' }], notifications: [], evaluations: [], spendings: [] },
-      '/api/departments': { success: true, departments: [] },
+      '/api/init-data': workspaceInit('audit', { partners: [{ partner_id: 'p1', nama_partner: 'Demo Partner', jenis_partner: 'Vendor' }] }),
       '/api/documents': { documents: [], total: 0 },
       '/api/dashboard/news-ticker': { items: ['UI news one', 'UI news two'] },
       '/api/auth-console/users': { success: true, users: [] },
       '/api/auth-console/organizations': { success: true, organizations: [{ id: 'audit', name: 'Audit Workspace', slug: 'audit' }] },
-      '/api/auth-console/teams': { success: true, teams: [] },
-      '/api/auth-console/invitations': { success: true, invitations: [] },
     };
     await route.fulfill({ json: responses[path] ?? {} });
   });
@@ -28,9 +23,11 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('region', { name: 'Latest Regulatory Updates' }).getByRole('listitem').filter({ hasText: 'UI news one' })).toBeVisible();
 });
 
-test('admin modal names its fields, traps focus and restores the trigger on desktop and mobile', async ({ page }) => {
-  await page.getByRole('button', { name: /^(Organization Admin|Admin Organisasi)$/ }).click();
-  const trigger = page.getByRole('button', { name: /^(Add New User|Tambah Pengguna Baru)$/ });
+test('invite dialog names its fields, traps focus and restores the trigger on desktop and mobile', async ({ page }) => {
+  // Tenant user creation is an invitation from Settings › Members & Access (PRD §6.4, §8.1).
+  await page.getByRole('button', { name: /^(Settings|Pengaturan)$/ }).click();
+  await page.getByRole('tab', { name: /^(Members & Access|Anggota & Akses)$/ }).click();
+  const trigger = page.getByRole('button', { name: /^(Invite member|Undang anggota)$/ });
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     await trigger.click();
@@ -56,9 +53,11 @@ test('admin modal names its fields, traps focus and restores the trigger on desk
 });
 
 test('UI text editor traps keyboard focus and restores focus when closed', async ({ page }) => {
-  await page.getByRole('button', { name: /^(Settings|Pengaturan)$/ }).first().click();
-  await page.getByRole('button', { name: /^(Open Submenu|Buka Submenu)$/ }).last().click();
-  await page.getByRole('button', { name: /^(UI Text & Localization|Teks UI & Lokalisasi)$/ }).first().click();
+  // The browser-local text editor is a platform tool in System Admin › Configuration (PRD §6.6).
+  await becomeSuperuser(page, api);
+  await page.getByRole('button', { name: /^(System Admin|Admin Sistem)$/ }).click();
+  await page.getByRole('tab', { name: /^(Configuration|Konfigurasi)$/ }).click();
+  await page.getByRole('tab', { name: /^(UI texts \(this browser\)|Teks UI \(peramban ini\))$/ }).click();
   const trigger = page.getByRole('button', { name: /^(Open UI Text Editor|Buka Editor Teks UI)$/ });
   await trigger.click();
   const dialog = page.getByRole('dialog');

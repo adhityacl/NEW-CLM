@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { buildDemoDataset } from '../../src/data/demoDataset';
-import { getCountryPack, getIndustryPack } from '../../src/lib/policy';
+import { createTenantApi, fulfillTenantApi, openActivityHistory, workspaceInit } from './fixtures/tenantApi';
 import type { DocumentDetail } from '../../src/lib/documentModel';
 
 const SECOND_TENANT_ID = 'org-fixture-second';
@@ -9,7 +9,11 @@ const SECOND_TENANT_ID = 'org-fixture-second';
 test.beforeEach(async ({ page }) => {
   const data = buildDemoDataset();
   const tenants = [data.tenants[0], { ...data.tenants[0], id: SECOND_TENANT_ID, name: 'Second Workspace', isDefault: false }];
-  let activeTenantId = tenants[0].id;
+  // Admin in both organizations; the first is the session default, so the tab opens there without a chooser.
+  const api = createTenantApi({
+    organizations: tenants.map(tenant => ({ ...tenant, settings: { ...tenant.settings, modules: { ...tenant.settings.modules, newsTicker: true, aiAssistant: true } } })),
+    sessionDefault: tenants[0].id,
+  });
   const documents = new Map<string, DocumentDetail>(tenants.map((tenant, index) => [tenant.id, {
     id: `doc-${index}`, organization_id: tenant.id, name: `Draft Workspace ${index + 1}`,
     content: `<p>Saved content ${index + 1}</p>`, type: 'contract', status: 'pending_review',
@@ -19,19 +23,21 @@ test.beforeEach(async ({ page }) => {
   }]));
   await page.addInitScript(() => {
     localStorage.setItem('auth_session_token', 'refactor-fixture');
-    localStorage.setItem('app_language', 'EN');
+    localStorage.setItem('user:fixture-user:language', 'EN');
   });
   await page.route('**/api/**', async route => {
+    if (await fulfillTenantApi(route, api)) return;
     const request = route.request();
     const url = new URL(request.url());
-    const tenantId = request.headers()['x-organization-id'] || activeTenantId;
-    const tenant = tenants.find(item => item.id === tenantId) || tenants[0];
-    const settings = { ...tenant.settings, modules: { ...tenant.settings.modules, newsTicker: true, aiAssistant: true } };
+    // Legacy tenant routes carry the tab's explicit selector; there is no global active tenant (PRD §5.2).
+    const tenantId = request.headers()['x-organization-id'];
     let response: unknown = {};
-    if (url.pathname === '/api/tenants/switch') {
-      activeTenantId = request.postDataJSON().tenantId;
-      response = { success: true };
-    } else if (url.pathname === '/api/documents') {
+    if (!tenantId && (url.pathname.startsWith('/api/documents') || url.pathname === '/api/init-data')) {
+      response = { error: 'ORGANIZATION_REQUIRED', message: 'Select an organization.', requestId: 'fixture' };
+      await route.fulfill({ status: 409, json: response });
+      return;
+    }
+    if (url.pathname === '/api/documents') {
       if (request.method() === 'POST') {
         const input = request.postDataJSON();
         const doc = { ...documents.get(tenantId)!, ...input, id: `new-${tenantId}`, status: 'draft' as const };
@@ -53,13 +59,7 @@ test.beforeEach(async ({ page }) => {
       response = [];
     } else {
       const fixtures: Record<string, unknown> = {
-        '/api/user/my-role': { email: 'audit@example.com', name: 'UI Audit', role: 'Admin', organizationId: tenants[0].id, allowedTenantIds: tenants.map(item => item.id) },
-        '/api/rbac/me': { actor: { role: 'admin', tenantId }, permissions: ['*'] },
-        '/api/tenants': { success: true, activeTenantId, tenants },
-        '/api/tenant-settings': { tenantId, settings, country: getCountryPack(settings.countryCode), industry: getIndustryPack(settings.industry), dueDiligenceChecklist: [] },
-        '/api/policy-packs': { countries: [], industries: [] },
-        '/api/init-data': Object.fromEntries(Object.entries(data).map(([key, rows]) => [key, rows.filter((row: any) => !row.organizationId || row.organizationId === tenantId)])),
-        '/api/departments': { success: true, departments: ['Legal', 'Finance'] },
+        '/api/init-data': workspaceInit(tenantId!, data),
         '/api/dashboard/news-ticker': { items: ['Refactor fixture ready'] },
       };
       response = fixtures[url.pathname] ?? {};
@@ -120,8 +120,10 @@ for (const section of ['Contracts', 'Order Forms', 'Partners', 'Partner Spending
   test(`View preferences in ${section} support Tab, Escape and focus restoration`, async ({ page }) => {
     if (section.startsWith('Partner ')) await page.getByRole('button', { name: 'Partners', exact: true }).click();
     const name = section === 'Contracts' ? /^Contracts(?: \d+)?$/ : section === 'Order Forms' ? /^(Order Forms|Service Orders)(?: \d+)?$/ : section;
-    await page.getByRole('button', { name, exact: true }).click();
-    const trigger = page.getByRole('button', { name: 'View', exact: true });
+    // Session activity now lives in the Settings History drawer (PRD §6.4).
+    const scope = section === 'Session Activity Logs' ? await openActivityHistory(page) : page;
+    if (section !== 'Session Activity Logs') await page.getByRole('button', { name, exact: true }).click();
+    const trigger = scope.getByRole('button', { name: 'View', exact: true });
     await trigger.focus();
     await page.keyboard.press('Enter');
     const preferences = page.locator('[data-slot="popover-content"]');

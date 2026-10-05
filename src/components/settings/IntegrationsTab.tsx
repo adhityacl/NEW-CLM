@@ -67,7 +67,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
     return (
       <div role="alert" className="flex flex-col items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">
         {t('tb.integration_load_error', 'The integration status could not be loaded.')}
-        <Button variant="outline" size="sm" onClick={() => query.refetch()}><RefreshCw className="h-4 w-4" aria-hidden="true" />{t('tb.retry', 'Retry')}</Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => query.refetch()}><RefreshCw className="h-4 w-4" aria-hidden="true" />{t('tb.retry', 'Retry')}</Button>
       </div>
     );
   }
@@ -99,7 +99,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
       <section aria-labelledby="integration-status" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h3 id="integration-status" className="text-base font-semibold text-slate-900 dark:text-white">{t('tb.google_workspace', 'Google Workspace')}</h3>
-          <Button variant="outline" size="sm" onClick={() => query.refetch()} disabled={query.isFetching}>
+          <Button type="button" variant="outline" size="sm" onClick={() => query.refetch()} disabled={query.isFetching}>
             <RefreshCw className={`h-4 w-4 ${query.isFetching ? 'animate-spin' : ''}`} aria-hidden="true" />{t('tb.refresh_status', 'Refresh status')}
           </Button>
         </div>
@@ -136,7 +136,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
           </div>
         </fieldset>
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button type="submit" disabled={!canEdit || !dirty || !driveValid || !sheetValid || state.kind === 'saving'}>
+          <Button type="submit" size="lg" disabled={!canEdit || !dirty || !driveValid || !sheetValid || state.kind === 'saving'}>
             {state.kind === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
             {t('tb.save_mapping', 'Save mapping')}
           </Button>

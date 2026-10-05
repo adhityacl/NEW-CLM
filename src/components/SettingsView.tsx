@@ -64,9 +64,9 @@ export const SettingsView: React.FC<{ tab: SettingsTabId }> = ({ tab }) => {
     <div className="flex min-w-0 flex-col gap-5">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
             {t('tb.settings_title', 'Settings — {org}', { org: orgName })}
-          </h1>
+          </h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             {accessMode === 'platform'
               ? t('tb.platform_managing', 'Platform administrator managing {org}', { org: orgName })
@@ -74,7 +74,7 @@ export const SettingsView: React.FC<{ tab: SettingsTabId }> = ({ tab }) => {
           </p>
         </div>
         {accessMode === 'platform' && (
-          <Button variant="outline" onClick={async () => { if (await leaveOrganization()) setActiveTab('admin-system-organizations'); }}>
+          <Button type="button" size="lg" variant="outline" onClick={async () => { if (await leaveOrganization()) setActiveTab('admin-system-organizations'); }}>
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />{t('tb.back_to_system_admin', 'Back to System Admin')}
           </Button>
         )}

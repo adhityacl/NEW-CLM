@@ -1,12 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
 import { buildDemoDataset } from '../../src/data/demoDataset';
-import { getCountryPack, getIndustryPack } from '../../src/lib/policy';
-import type { Contract, InsertionOrder, Partner, TenantSettings } from '../../src/types';
+import { createTenantApi, fulfillTenantApi } from './fixtures/tenantApi';
+import type { Contract, InsertionOrder, Partner, Tenant, TenantSettings } from '../../src/types';
 import { contractLifecycle } from '../../src/lib/contractLifecycle';
 
 async function installCalendarFixtures(page: Page, options: { viewer?: boolean; blocked?: boolean; failing?: boolean; commercial?: boolean; expired?: boolean; language?: 'ID' | 'EN' | 'ZH' } = {}) {
   const data = buildDemoDataset();
-  const tenant = data.tenants[0] as { id: string; settings: TenantSettings };
+  const tenant = data.tenants[0] as Tenant & { settings: TenantSettings };
   const legal: Partner = { ...data.partners[0] as Partner, pic_internal: 'Legal', internal_pic: 'Legal' };
   const finance = { ...legal, partner_id: 'calendar-finance', nama_partner: 'Finance Restricted', pic_internal: 'Finance', internal_pic: 'Finance' };
   const contracts: Contract[] = Array.from({ length: 8 }, (_, index) => ({ ...data.contracts[0] as Contract, organizationId: tenant.id,
@@ -24,9 +24,19 @@ async function installCalendarFixtures(page: Page, options: { viewer?: boolean; 
   const language = options.language || 'EN';
   await page.addInitScript(language => {
     localStorage.setItem('auth_session_token', 'calendar-fixture');
-    localStorage.setItem('app_language', language);
-    localStorage.setItem('app_theme', 'light');
+    // Preferences are namespaced by identity (PRD §6.7).
+    localStorage.setItem('user:fixture-user:language', language);
+    localStorage.setItem('user:fixture-user:theme', 'light');
   }, language);
+  const api = createTenantApi({
+    organizations: [{ ...tenant, settings }],
+    roles: { [tenant.id]: options.viewer ? 'viewer' : 'admin' },
+    departments: [{ id: 'dept-legal', name: 'Legal' }, { id: 'dept-finance', name: 'Finance' }],
+    departmentIds: ['dept-legal'],
+    email: 'calendar@example.test', name: 'Calendar User',
+  });
+  // Department scope is applied by the server (PRD §4.4): a Legal viewer never receives the Finance partner's records.
+  const served = options.viewer ? scopedContracts.filter(item => item.partner_id !== finance.partner_id) : scopedContracts;
   await page.clock.setFixedTime(new Date('2026-10-04T12:00:00Z'));
   let releaseLoad = () => {};
   const gate = options.blocked ? new Promise<void>(resolve => { releaseLoad = resolve; }) : Promise.resolve();
@@ -45,14 +55,13 @@ async function installCalendarFixtures(page: Page, options: { viewer?: boolean; 
       await gate;
       if (failing) { await route.fulfill({ status: 503, json: { error: 'Fixture unavailable' } }); return; }
     }
+    if (await fulfillTenantApi(route, api)) return;
     const fixtures: Record<string, unknown> = {
-      '/api/user/my-role': { email: 'calendar@example.com', name: 'Calendar User', role: options.viewer ? 'Viewer' : 'Admin', department: 'Legal', organizationId: tenant.id },
-      '/api/rbac/me': { actor: { role: options.viewer ? 'viewer' : 'admin', tenantId: tenant.id }, permissions: options.viewer ? ['document.view', 'workspace.view'] : ['*'] },
-      '/api/tenants': { success: true, activeTenantId: tenant.id, tenants: [tenant] },
-      '/api/tenant-settings': { tenantId: tenant.id, settings, country: getCountryPack(settings.countryCode), industry: getIndustryPack(settings.industry), dueDiligenceChecklist: [] },
-      '/api/policy-packs': { countries: [], industries: [] },
-      '/api/init-data': { ...data, contracts: scopedContracts, ios, partners: [legal, finance] },
-      '/api/departments': { success: true, departments: ['Legal', 'Finance'] },
+      // Foreign-tenant and draft rows stay in the payload to exercise the client's own visibility rules.
+      '/api/init-data': {
+        organizationId: tenant.id, contracts: served, ios, partners: options.viewer ? [legal] : [legal, finance],
+        notifications: [], evaluations: [], spendings: [], services: { aiAvailable: false, googleUploadsAvailable: false }, timestamp: 1,
+      },
       '/api/dashboard/news-ticker': { items: ['Calendar fixture ready'] },
     };
     await route.fulfill({ json: fixtures[path] ?? {} });

@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { buildDemoDataset } from '../../src/data/demoDataset';
-import { getCountryPack, getIndustryPack } from '../../src/lib/policy';
+import { createTenantApi, fulfillTenantApi, workspaceInit } from './fixtures/tenantApi';
 
 const invoice = { name: 'invoice.png', mimeType: 'image/png', buffer: Buffer.from('same invoice attachment') };
 const allocationRows = (amount = 100) => [{ month: '2026-10', amount }];
@@ -18,17 +18,13 @@ async function setup(page: Page, modern = false) {
   };
   data.spendings = [spending];
   const settings = { ...tenant.settings, modules: { ...tenant.settings.modules, newsTicker: true } };
-  await page.addInitScript(() => { localStorage.setItem('auth_session_token', 'spending-fixture'); localStorage.setItem('app_language', 'EN'); });
+  await page.addInitScript(() => { localStorage.setItem('auth_session_token', 'spending-fixture'); localStorage.setItem('user:fixture-user:language', 'EN'); });
+  const api = createTenantApi({ organizations: [{ ...tenant, settings }] });
   await page.route('**/api/**', async route => {
+    if (await fulfillTenantApi(route, api)) return;
     const path = new URL(route.request().url()).pathname;
     const fixtures: Record<string, unknown> = {
-      '/api/user/my-role': { email: 'audit@example.com', name: 'UI Audit', role: 'Admin', organizationId: tenant.id },
-      '/api/rbac/me': { actor: { role: 'admin', tenantId: tenant.id }, permissions: ['*'] },
-      '/api/tenants': { success: true, activeTenantId: tenant.id, tenants: [tenant] },
-      '/api/tenant-settings': { settings, tenantId: tenant.id, country: getCountryPack(settings.countryCode), industry: getIndustryPack(settings.industry), dueDiligenceChecklist: [] },
-      '/api/policy-packs': { countries: [], industries: [] },
-      '/api/init-data': Object.fromEntries(Object.entries(data).map(([key, rows]) => [key, rows.filter((row: any) => !row.organizationId || row.organizationId === tenant.id)])),
-      '/api/departments': { success: true, departments: ['Legal', 'Finance'] },
+      '/api/init-data': workspaceInit(tenant.id, data),
       '/api/documents': { documents: [], total: 0 }, '/api/activity-logs': [],
       '/api/dashboard/news-ticker': { items: ['Spending fixture ready'] },
       '/api/exchange-rates': { USD: 1, IDR: 0.0001 }, '/api/exchange-rate-historical': { rate: 0.0001 },
