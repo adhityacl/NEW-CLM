@@ -456,7 +456,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="min-w-0 bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 rounded-xl border border-accent/30 shrink-0">
+            <div className="p-2.5 bg-accent-soft text-accent-text rounded-xl border border-accent/30 shrink-0">
               <DollarSign className="w-5 h-5 text-accent-text" />
             </div>
             <div>
@@ -499,7 +499,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </AlphabeticalSelect>
 
             {/* 3. Currency Toggle */}
-            <div role="group" aria-label={t('settings.region.reporting_currency', 'Reporting currency')} className="flex h-11 shrink-0 items-center bg-slate-100 p-[3px] dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div role="group" aria-label={t('settings.region.reporting_currency', 'Reporting currency')} className="flex h-11 shrink-0 items-center bg-slate-100 p-0.75 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
               {currencyViews.map((code) => (
                 <button
                   key={code}
@@ -564,7 +564,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       const formattedTotal = formatView(total);
 
                       return (
-                        <div className="bg-surface border border-hairline rounded-xl p-3 shadow-xl text-xs text-ink min-w-[170px]">
+                        <div className="bg-surface border border-hairline rounded-xl p-3 shadow-xl text-xs text-ink min-w-42.5">
                           <div className="font-extrabold pb-2 mb-2 border-b border-hairline text-ink flex justify-between items-center gap-2">
                             <span>{formatChartMonth(String(label))}</span>
                             <span className="text-accent-text font-black">({formattedTotal})</span>

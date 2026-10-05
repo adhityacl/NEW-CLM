@@ -1,15 +1,18 @@
 import { UserRole } from '../../types';
 
-/** System Admin console sections (platform-only, PRD §6.6). */
-export type ConsoleSubmenu =
+/** Tabs grouped under the System Admin dashboard submenu. */
+export type ConsoleDashboardTab =
   | 'dashboard'
   | 'users'
-  | 'accounts'
   | 'sessions'
   | 'organizations'
-  | 'apikeys'
-  | 'rbac'
-  | 'settings';
+  | 'apikeys';
+
+/** Configuration pages exposed directly in the System Admin sidebar. */
+export type ConsoleConfigurationSection = 'google' | 'ai' | 'smtp' | 'ui-texts' | 'database';
+
+/** System Admin console sections (platform-only, PRD §6.6). */
+export type ConsoleSubmenu = ConsoleDashboardTab | ConsoleConfigurationSection | 'accounts';
 
 export interface ConsoleUser {
   id: string;
@@ -62,6 +65,7 @@ export interface ConsoleSession {
 
 export interface ConsoleOrganization {
   id: string;
+  version?: number;
   name: string;
   slug: string;
   logo?: string;

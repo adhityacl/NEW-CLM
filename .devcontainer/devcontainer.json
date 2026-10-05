@@ -5,7 +5,9 @@
   "portsAttributes": {
     "3000": {
       "label": "Express + Vite (dev)",
-      "onAutoForward": "openBrowser"
+      "onAutoForward": "openBrowser",
+      "visibility": "public",
+      "protocol": "http"
     }
   },
   "postCreateCommand": "npm install",

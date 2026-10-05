@@ -12,8 +12,6 @@ import { ConsoleSession } from './types';
 import { useLanguage } from '../../context/LanguageContext';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Input } from '../ui/input';
-import { Card, CardContent } from '../ui/card';
 import { TableEmptyState } from '../ui/table-empty-state';
 
 interface AdminSessionsTabProps {
@@ -59,33 +57,32 @@ export const AdminSessionsTab: React.FC<AdminSessionsTabProps> = ({
   return (
     <div className="space-y-4">
       {/* Controls Bar */}
-      <Card>
-        <CardContent className="mobile-controls-bar p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="relative flex-1 min-w-[220px] max-w-md">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input
-              type="text"
-              placeholder={t('admin.sess_search_ph', 'Cari sesi berdasarkan email, IP, browser, token...')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 pl-9 text-xs"
-            />
-          </div>
+      <div className="mobile-controls-bar flex flex-col items-stretch justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center">
+        <div className="relative min-w-[220px] max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <input
+            type="text"
+            aria-label={t('admin.sess_search_ph', 'Cari sesi berdasarkan email, IP, browser, token...')}
+            placeholder={t('admin.sess_search_ph', 'Cari sesi berdasarkan email, IP, browser, token...')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-accent dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100"
+          />
+        </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">
-            <Radio className="w-4 h-4 text-emerald-500 animate-pulse" />
-            <span>
-              <strong className="text-slate-900 dark:text-slate-100">{activeSessionCount}</strong> {t('admin.active_sessions_in_database', 'Sesi aktif di database')}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+          <Radio className="h-4 w-4 animate-pulse text-emerald-500" aria-hidden="true" />
+          <span>
+            <strong className="text-slate-900 dark:text-slate-100">{activeSessionCount}</strong> {t('admin.active_sessions_in_database', 'Sesi aktif di database')}
+          </span>
+        </div>
+      </div>
       {copyError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">{copyError}</div>}
 
       {/* Sessions Table */}
-      <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="ds-table-surface bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto bg-white dark:bg-slate-900">
-          <table className="w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
+          <table className="ds-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
                 <th scope="col" className="p-4 text-left text-xs font-bold text-slate-700 dark:text-slate-300 align-middle">

@@ -50,23 +50,34 @@ export const PlatformUsersTab: React.FC<{
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="sm:w-72">
-          <label htmlFor={searchId} className={labelClass}>{t('tb.search_people', 'Search name or email')}</label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input id={searchId} type="search" className={`${fieldClass} pl-9`} value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
+      <div className="mobile-controls-bar flex flex-col items-stretch justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center">
+        <div className="relative min-w-[220px] max-w-md flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <input
+            id={searchId}
+            type="search"
+            aria-label={t('tb.search_accounts', 'Search accounts')}
+            placeholder={t('tb.search_accounts', 'Search accounts...')}
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-accent dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-        <Button type="button" size="lg" onClick={() => setDialog({ kind: 'create' })}><Plus className="h-4 w-4" aria-hidden="true" />{t('tb.create_account', 'Create account')}</Button>
+        <button
+          type="button"
+          onClick={() => setDialog({ kind: 'create' })}
+          className="theme-action ui-button ui-button-lg font-medium text-white shadow-xs transition-colors"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          <span>{t('tb.create_account', 'Create account')}</span>
+        </button>
       </div>
-      <p className="text-sm text-slate-600 dark:text-slate-400">{t('tb.accounts_hint', 'Accounts never receive organization access automatically. Use Organizations → Manage organization to invite people or appoint administrators.')}</p>
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="ds-table-surface overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <Table>
           <TableHeader><TableRow>
             <TableHead>{t('tb.col_name', 'Name')}</TableHead><TableHead>{t('tb.col_email', 'Email')}</TableHead>
             <TableHead>{t('tb.col_platform_role', 'Platform role')}</TableHead><TableHead>{t('tb.col_organizations', 'Organizations')}</TableHead>
-            <TableHead>{t('tb.col_account_status', 'Account status')}</TableHead><TableHead><span className="sr-only">{t('common.actions', 'Actions')}</span></TableHead>
+            <TableHead>{t('tb.col_account_status', 'Account status')}</TableHead><TableHead className="text-right">{t('tb.col_action', 'Action')}</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {filtered.map((u) => {

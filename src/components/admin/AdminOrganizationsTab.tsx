@@ -53,14 +53,14 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
             placeholder={t('admin.org_search_ph', 'Cari nama atau slug organisasi...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-accent"
           />
         </div>
 
         <button
           type="button"
           onClick={onOpenCreateOrg}
-          className="ui-button ui-button-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors shadow-xs"
+          className="theme-action ui-button ui-button-lg text-white font-medium transition-colors shadow-xs"
         >
           <Plus className="w-4 h-4" />
           <span>{t('admin.btn_create_org', 'Buat Organisasi Baru')}</span>
@@ -77,7 +77,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
               key={org.id}
               className={`rounded-xl border p-5 bg-white dark:bg-slate-900 transition-all shadow-xs flex flex-col justify-between overflow-hidden relative ${
                 isActive
-                  ? 'border-emerald-500 ring-1 ring-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-950/10'
+                  ? 'border-accent ring-1 ring-accent/20 bg-accent-soft'
                   : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
@@ -117,7 +117,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                   </div>
 
                   {isActive && (
-                    <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 whitespace-nowrap self-start">
+                    <span className="theme-soft shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap self-start">
                       <Check className="w-3 h-3 shrink-0" />
                       <span>{t('admin.badge_active', 'Aktif')}</span>
                     </span>
@@ -155,7 +155,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
 
                 {/* Storage structure info */}
                 <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-4">
-                  <FolderTree className="w-3.5 h-3.5 text-emerald-600" />
+                  <FolderTree className="w-3.5 h-3.5 text-accent-text" />
                   <span>{t('admin.org_folder_iso', 'Isolasi Folder')}: <strong>{t('admin.vendors_4', '/{name}/[Vendors]', { name: org.name })}</strong></span>
                 </div>
               </div>
@@ -198,7 +198,7 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                   <button
                     type="button"
                     onClick={() => onSelectOrg(org)}
-                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
+                    className="theme-soft px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-accent-soft border transition-colors cursor-pointer"
                   >
                     {t('tb.manage_organization', 'Manage organization')}
                   </button>

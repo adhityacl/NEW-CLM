@@ -18,6 +18,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { TableEmptyMessage, TableEmptyState } from './ui/table-empty-state';
 import { Button } from './ui/button';
+import { AlphabeticalSelect } from './ui/alphabetical-select';
 import { Badge } from './ui/badge';
 import { cn } from '../lib/utils';
 import { getAuthHeaders } from '../lib/apiFetch';
@@ -305,33 +306,24 @@ export const SQLiteDatabaseCard: React.FC = () => {
         <div className="pt-2 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             {/* Table Selector */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
-              {tables.map((t) => (
-                <button
-                  key={t.name}
-                  type="button"
-                  onClick={() => setSelectedTable(t.name)}
-                  className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer shrink-0 flex items-center gap-1.5 border',
-                    selectedTable === t.name
-                      ? 'bg-accent-strong text-white border-accent font-semibold shadow-2xs'
-                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
-                  )}
-                >
-                  <span>{t.name}</span>
-                  <span
-                    className={cn(
-                      'text-xs px-1 rounded',
-                      selectedTable === t.name
-                        ? 'bg-black/20 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                    )}
-                  >
-                    {t.count}
-                  </span>
-                </button>
+            <AlphabeticalSelect
+              aria-label={t('sqlite.tables', 'Tables')}
+              value={selectedTable}
+              onChange={(e) => setSelectedTable(e.target.value)}
+              disabled={tables.length === 0}
+              className="h-8 w-full sm:w-72 min-w-0 max-w-full px-3 text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-accent cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {tables.length === 0 && (
+                <option value="">
+                  {loadingStatus ? t('sqlite.loading', 'Loading...') : t('sqlite.tables', 'Tables')}
+                </option>
+              )}
+              {tables.map((table) => (
+                <option key={table.name} value={table.name}>
+                  {table.name} ({table.count})
+                </option>
               ))}
-            </div>
+            </AlphabeticalSelect>
 
             {/* Search Input */}
             <form onSubmit={handleSearchSubmit} className="mobile-search-form flex items-center gap-1.5 shrink-0">
@@ -358,7 +350,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
           </div>
 
           {/* Data Table */}
-          <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
+          <div className="ds-table-surface border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
             <div className="overflow-x-auto max-h-96">
               {loadingData ? (
                 <div className="p-8 text-center text-slate-400">
@@ -368,7 +360,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
               ) : !tableData ? (
                 <TableEmptyMessage />
               ) : (
-                <table className="w-full text-left border-collapse text-xs font-mono">
+                <table className="ds-table w-full text-left border-collapse text-xs font-mono">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
                       {tableData.columns.map((col) => (
@@ -436,7 +428,7 @@ export const SQLiteDatabaseCard: React.FC = () => {
 
             {/* Pagination Controls */}
             {tableData && tableData.total > 0 && (
-              <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+              <div className="ds-table-pagination p-2.5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
                 <span className="text-slate-500 dark:text-slate-400 font-mono text-xs">
                   {offset + 1} {t('sqlite.of', '- {value} of {total}', { value: Math.min(offset + limit, tableData.total), total: tableData.total })}
                 </span>

@@ -448,7 +448,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
 
             {/* Separated PIC Contact Person Section */}
             <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-3">
-              <div className="text-xs font-extrabold text-accent-text dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+              <div className="text-xs font-extrabold text-accent-text uppercase tracking-wider flex items-center gap-1.5">
                 <User className="w-4 h-4 text-accent-text" />
                 <span>{t('form.partner.contact_section_title', 'Informasi Kontak PIC (Person In Charge)')}</span>
               </div>
@@ -553,13 +553,13 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                 {tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft dark:bg-emerald-950/50 text-accent-text dark:text-emerald-300 border border-accent/30 dark:border-emerald-500/40 rounded-lg text-sm font-semibold shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent-text border border-accent/30 rounded-lg text-sm font-semibold shadow-2xs"
                   >
                     <span>{tag}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
-                      className="text-accent-text hover:text-accent-text dark:hover:text-emerald-200 font-extrabold leading-none cursor-pointer"
+                      className="text-accent-text hover:text-accent-text font-extrabold leading-none cursor-pointer"
                       title={t('partners.hapus_tag', 'Hapus tag')}
                     >
                       ×
@@ -579,7 +579,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                     type="button"
                     onClick={handleGenerateNotes}
                     disabled={isGeneratingNotes || !namaPartner.trim()}
-                    className="px-3 py-1 text-xs font-bold bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 hover:bg-accent/20 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1 text-xs font-bold bg-accent-soft text-accent-text border border-accent/30 hover:bg-accent/20 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     title={t('partners.generate_analisis_due_diligence_ai_senior', 'Generate Analisis Due Diligence (AI Senior Analyst)')}
                   >
                     {isGeneratingNotes ? (
@@ -612,7 +612,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
               <label htmlFor="PartnerModal-field-10" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm">
                 {t('form.partner.upload_label', 'Auto-fill dari Dokumen Kontrak (AI Parse)')}
               </label>
-              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all">
+              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 transition-all">
                 <Upload className="w-6 h-6 text-accent-text mx-auto mb-1.5" />
                 <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
                   {fileName
@@ -625,7 +625,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                       type="button"
                       onClick={handleParsePartner}
                       disabled={isParsing}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 hover:bg-accent/20 font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent-soft text-accent-text hover:bg-accent/20 font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
                       {isParsing ? t('partners.parsing', 'Parsing...') : t('partners.parse_file', 'Parse File')}
                     </button>
@@ -634,7 +634,7 @@ export const PartnerModal: React.FC<PartnerModalProps> = ({
                     type="file"
                     accept=".pdf,.doc,.docx"
                     onChange={handleFileChange}
-                    className="w-[220px] text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-accent-soft dark:file:bg-emerald-950/60 file:text-accent-text dark:file:text-emerald-400 hover:file:bg-accent/20 cursor-pointer"
+                    className="w-[220px] text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-accent-soft file:text-accent-text hover:file:bg-accent/20 cursor-pointer"
                   />
                 </div>
               </div>

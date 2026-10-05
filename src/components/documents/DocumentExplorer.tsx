@@ -332,7 +332,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
         </div>
 
         <section
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden"
+          className="ds-table-surface bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden"
           aria-busy={isFetching}
           aria-live="polite"
         >
@@ -369,7 +369,7 @@ export const DocumentExplorer: React.FC<DocumentExplorerProps> = ({ canEdit, can
           {data && (
             <>
               <div className="relative overflow-x-auto bg-white dark:bg-slate-900">
-                <table className="app-data-table document-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
+                <table className="ds-table app-data-table document-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
                   <caption className="sr-only">{t('documents.explorer.title', 'Dokumen Saya')}</caption>
                   <thead className="bg-slate-50 dark:bg-slate-800/50">
                     <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">

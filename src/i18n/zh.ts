@@ -209,6 +209,7 @@ export const ZH_TRANSLATIONS: Record<string, string> = {
   'admin.err_create_org': '创建组织失败',
   'admin.err_image_size': '图片文件不能超过 2 MB。',
   'admin.err_image_type': '请选择图片文件（PNG、JPG、SVG、WebP）。',
+  'admin.logo_raster_type': 'PNG、JPG 或 WebP。最大 2 MB。',
   'admin.err_org_required': '组织名称和标识（slug）为必填项。',
   'admin.err_pwd_min': '密码至少需要 6 个字符。',
   'admin.err_required': '电子邮件地址和全名为必填项。',

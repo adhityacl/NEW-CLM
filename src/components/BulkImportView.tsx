@@ -259,9 +259,9 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
       label: t('import.succeeded', 'Berhasil Dibuat'),
       items: report?.succeeded ?? [],
       count: report?.succeeded.length ?? 0,
-      rowClass: 'text-accent-text dark:text-emerald-400',
-      headerBg: 'bg-accent-soft dark:bg-emerald-950/40',
-      pillBg: 'bg-accent-soft dark:bg-emerald-950/40 border-accent/30',
+      rowClass: 'text-accent-text ',
+      headerBg: 'bg-accent-soft ',
+      pillBg: 'bg-accent-soft border-accent/30',
       icon: <CheckCircle2 className="w-4 h-4 text-accent-text" />,
       pillIcon: <CheckCircle2 className="w-6 h-6 text-accent-text mb-1" />,
     },
@@ -380,7 +380,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex flex-col justify-between">
           <div className="flex flex-1 flex-col gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-accent-soft dark:bg-emerald-950/60 rounded-xl border border-accent/30 shrink-0">
+              <div className="p-2.5 bg-accent-soft rounded-xl border border-accent/30 shrink-0">
                 <Upload className="w-5 h-5 text-accent-text" />
               </div>
               <div>
@@ -394,7 +394,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
               <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileChange} />
               <FileSpreadsheet className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto mb-2 group-hover:text-accent-text/60 transition-colors" />
               {fileName
-                ? <p className="text-xs font-bold text-accent-text dark:text-emerald-400 truncate px-2">{fileName}</p>
+                ? <p className="text-xs font-bold text-accent-text truncate px-2">{fileName}</p>
                 : <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{t('import.choose_file', 'Pilih File CSV')} {t('bulk_import.csv', '(.csv)')}</p>
               }
             </label>
@@ -407,7 +407,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
             )}
 
             {parsedRows && parsedRows.length > 0 && !parseError && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-accent-soft dark:bg-emerald-950/40 border border-accent/30 text-xs text-accent-text dark:text-emerald-400 font-bold">
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-accent-soft border border-accent/30 text-xs text-accent-text font-bold">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{parsedRows.length} {t('import.preview_rows', 'baris data ditemukan')}</span>
               </div>
@@ -444,7 +444,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
 
       {/* ── CSV Preview ──────────────────────────────────────────────────────── */}
       {parsedRows && parsedRows.length > 0 && !report && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+        <div className="ds-table-surface bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
             <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
               <FileSpreadsheet className="w-4 h-4 text-slate-500 dark:text-slate-400" />
@@ -459,7 +459,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
+            <table className="ds-table w-full text-xs text-left">
               <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                 <tr>
                   <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 w-12">#</th>
@@ -494,9 +494,9 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
 
       {/* ── Import Result Report ─────────────────────────────────────────────── */}
       {report && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+        <div className="ds-table-surface bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-            <div className="p-2.5 bg-accent-soft dark:bg-emerald-950/60 rounded-xl border border-accent/30 shrink-0">
+            <div className="p-2.5 bg-accent-soft rounded-xl border border-accent/30 shrink-0">
               <FileSpreadsheet className="w-5 h-5 text-accent-text" />
             </div>
             <div>
@@ -527,7 +527,7 @@ export const BulkImportView: React.FC<BulkImportViewProps> = ({
                 </span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
+                <table className="ds-table w-full text-xs text-left">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                     <tr>
                       <th className="px-6 py-3 font-bold text-slate-500 dark:text-slate-400 w-16">{t('import.col_row', 'Baris')}</th>

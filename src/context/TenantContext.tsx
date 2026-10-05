@@ -4,6 +4,8 @@ import { Tenant, TenantBranding } from '../types';
 import { useIdentity } from './AuthContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useLanguage } from './LanguageContext';
+import { useTheme } from './ThemeContext';
+import { findAccentPalette, organizationThemeTokens } from '../lib/organizationColors';
 import { getSavedSelection, setSelectedOrganizationId } from '../lib/organizationSelection';
 import { confirmLeave } from '../lib/unsavedChanges';
 
@@ -74,6 +76,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { identity, loading: identityLoading } = useIdentity();
   const confirm = useConfirm();
   const { t } = useLanguage();
+  const { theme } = useTheme();
   const queryClient = useQueryClient();
   const [organizations, setOrganizations] = useState<AccessibleOrganization[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -199,8 +202,20 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     document.title = activeTenant?.name ? `${activeTenant.brandName || activeTenant.name} | ${branding.appName}` : branding.appName;
-    if (branding.primaryColor) document.documentElement.style.setProperty('--brand-primary', branding.primaryColor);
   }, [branding, activeTenant]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!activeTenant) return;
+    const color = activeTenant.primaryColor || branding.primaryColor;
+    const tokens = organizationThemeTokens(color, theme === 'dark');
+    for (const [name, value] of Object.entries(tokens)) root.style.setProperty(name, value);
+    root.dataset.organizationPalette = findAccentPalette(color)?.name || 'custom';
+    return () => {
+      for (const name of Object.keys(tokens)) root.style.removeProperty(name);
+      delete root.dataset.organizationPalette;
+    };
+  }, [activeTenant, branding.primaryColor, theme]);
 
   /* Platform organization lifecycle (System Admin). */
   const platformWrite = async (url: string, method: string, body?: unknown) => {

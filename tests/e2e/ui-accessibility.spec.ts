@@ -53,11 +53,10 @@ test('invite dialog names its fields, traps focus and restores the trigger on de
 });
 
 test('UI text editor traps keyboard focus and restores focus when closed', async ({ page }) => {
-  // The browser-local text editor is a platform tool in System Admin › Configuration (PRD §6.6).
+  // The browser-local text editor is a direct System Admin submenu page (PRD §6.6).
   await becomeSuperuser(page, api);
   await page.getByRole('button', { name: /^(System Admin|Admin Sistem)$/ }).click();
-  await page.getByRole('tab', { name: /^(Configuration|Konfigurasi)$/ }).click();
-  await page.getByRole('tab', { name: /^(UI texts \(this browser\)|Teks UI \(peramban ini\))$/ }).click();
+  await page.locator('aside').getByRole('button', { name: /^(UI texts|Teks UI)$/ }).click();
   const trigger = page.getByRole('button', { name: /^(Open UI Text Editor|Buka Editor Teks UI)$/ });
   await trigger.click();
   const dialog = page.getByRole('dialog');

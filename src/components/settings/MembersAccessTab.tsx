@@ -169,36 +169,42 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div>
-            <span className={labelClass} id={`${searchId}-filter`}>{t('tb.show', 'Show')}</span>
-            {/* Segmented control beside a field: 44 px container, medium segments (docs/button-sizes.md). */}
-            <div role="group" aria-labelledby={`${searchId}-filter`} className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-100 p-[3px] dark:border-slate-700 dark:bg-slate-800">
-              {([['active', t('tb.filter_active', 'Active')], ['suspended', t('tb.filter_suspended', 'Suspended')], ...(can('tenant.invitation.read') ? [['pending', t('tb.filter_pending', 'Pending invitations')]] : [])] as Array<[Filter, string]>).map(([value, label]) => (
-                <button key={value} type="button" aria-pressed={filter === value} onClick={() => { setFilter(value); setPage(0); }}
-                  className={`ui-button ui-button-md cursor-pointer font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40 ${filter === value ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-700 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-900'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
+      <div className="mobile-controls-bar flex flex-col items-stretch justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+          <div
+            role="group"
+            aria-label={t('tb.member_status_filter', 'Member status')}
+            className="flex h-11 shrink-0 items-center rounded-xl border border-slate-200 bg-slate-100 p-0.75 dark:border-slate-700 dark:bg-slate-800"
+          >
+            {([['active', t('tb.filter_active', 'Active')], ['suspended', t('tb.filter_suspended', 'Suspended')], ...(can('tenant.invitation.read') ? [['pending', t('tb.filter_pending', 'Pending invitations')]] : [])] as Array<[Filter, string]>).map(([value, label]) => (
+              <button key={value} type="button" aria-pressed={filter === value} onClick={() => { setFilter(value); setPage(0); }}
+                className={`ui-button ui-button-md cursor-pointer font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ring)/40 ${filter === value ? 'theme-action bg-accent-strong text-white' : 'text-slate-700 hover:bg-accent-soft dark:text-slate-300'}`}>
+                {label}
+              </button>
+            ))}
           </div>
-          <div className="min-w-0 sm:w-64">
-            <label htmlFor={searchId} className={labelClass}>{t('tb.search_people', 'Search name or email')}</label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-              <input id={searchId} type="search" className={`${fieldClass} pl-9`} value={search} maxLength={200} onChange={(e) => setSearch(e.target.value)} />
-            </div>
+          <div className="relative min-w-[220px] max-w-md flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input
+              id={searchId}
+              type="search"
+              aria-label={t('tb.search_members', 'Search members')}
+              placeholder={t('tb.search_members', 'Search members...')}
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-accent dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100"
+              value={search}
+              maxLength={200}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           {can('tenant.audit.read') && <Button type="button" size="lg" variant="outline" onClick={() => setDialog({ kind: 'history' })}><History className="h-4 w-4" aria-hidden="true" />{t('tb.history', 'History')}</Button>}
           {can('department.view') && <Button type="button" size="lg" variant="outline" onClick={() => setDialog({ kind: 'departments' })}><Layers className="h-4 w-4" aria-hidden="true" />{t('tb.departments', 'Departments')}</Button>}
           {can('tenant.member.invite') && <Button type="button" size="lg" onClick={() => setDialog({ kind: 'invite' })}><Mail className="h-4 w-4" aria-hidden="true" />{t('tb.invite_member', 'Invite member')}</Button>}
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="ds-table-surface overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {failed ? (
           <div role="alert" className="flex flex-col items-start gap-3 p-5 text-sm text-rose-800 dark:text-rose-200">
             {t('tb.members_load_error', 'Members could not be loaded.')}
@@ -212,7 +218,7 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
               <TableHeader><TableRow>
                 <TableHead>{t('tb.col_email', 'Email')}</TableHead><TableHead>{t('tb.col_role', 'Role')}</TableHead>
                 <TableHead>{t('tb.col_departments', 'Departments')}</TableHead><TableHead>{t('tb.col_expires', 'Expires')}</TableHead>
-                <TableHead><span className="sr-only">{t('common.actions', 'Actions')}</span></TableHead>
+                <TableHead className="text-right">{t('tb.col_action', 'Action')}</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {(invitationsQuery.data?.invitations || []).map((inv) => (
@@ -241,7 +247,7 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
               <TableHeader><TableRow>
                 <TableHead>{t('tb.col_name', 'Name')}</TableHead><TableHead>{t('tb.col_email', 'Email')}</TableHead><TableHead>{t('tb.col_role', 'Role')}</TableHead>
                 <TableHead>{t('tb.col_departments', 'Departments')}</TableHead><TableHead>{t('tb.col_status', 'Membership status')}</TableHead>
-                <TableHead><span className="sr-only">{t('common.actions', 'Actions')}</span></TableHead>
+                <TableHead className="text-right">{t('tb.col_action', 'Action')}</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {(membersQuery.data?.members || []).map((m) => {
@@ -277,7 +283,7 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
           </div>
         )}
         {pages > 1 && (
-          <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-sm dark:border-slate-800">
+          <div className="ds-table-pagination flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-sm dark:border-slate-800">
             <span className="text-slate-600 dark:text-slate-400">{t('tb.page_of', 'Page {page} of {pages}', { page: page + 1, pages })}</span>
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>{t('tb.previous', 'Previous')}</Button>
@@ -575,7 +581,7 @@ const HistoryDialog: React.FC<{ organizationId: string; onClose: () => void }> =
                   </TableBody>
                 </Table>
                 {pages > 1 && (
-                  <div className="flex justify-end gap-2 pt-3">
+                  <div className="ds-table-pagination flex justify-end gap-2 pt-3">
                     <Button type="button" variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>{t('tb.previous', 'Previous')}</Button>
                     <Button type="button" variant="outline" size="sm" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>{t('tb.next', 'Next')}</Button>
                   </div>

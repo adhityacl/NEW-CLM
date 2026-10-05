@@ -315,7 +315,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
               className={INPUT_CLASS}
             />
             <div className="flex gap-1">
-              <button type="submit" disabled={isBusy || !replyTo.body.trim()} className={`${SMALL_BUTTON} bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700`}>
+              <button type="submit" disabled={isBusy || !replyTo.body.trim()} className={`${SMALL_BUTTON} theme-action border-transparent`}>
                 {t('documents.comments.send', 'Kirim')}
               </button>
               <button type="button" onClick={() => setReplyTo(null)} className={SMALL_BUTTON}>
@@ -410,7 +410,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
             />
           </label>
           <div className="flex gap-1">
-            <button type="submit" disabled={busy === 'composer'} className={`${SMALL_BUTTON} bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700`}>
+            <button type="submit" disabled={busy === 'composer'} className={`${SMALL_BUTTON} theme-action border-transparent`}>
               {busy === 'composer' ? t('common.saving', 'Menyimpan…') : t('documents.comments.send', 'Kirim')}
             </button>
             <button type="button" onClick={() => setComposer(null)} className={SMALL_BUTTON}>

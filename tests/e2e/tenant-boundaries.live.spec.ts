@@ -57,8 +57,9 @@ test.describe('AC-043 platform role visibility', () => {
     await page.getByRole('tab', { name: /^Organizations/ }).click();
     await expect(page.locator('main')).toContainText('Alpha Org');
     await expect(page.locator('main')).toContainText('Beta Org');
-    await page.getByRole('tab', { name: 'Configuration', exact: true }).click();
-    await expect(page.getByRole('tablist', { name: 'Configuration' })).toBeVisible();
+    await sidebar(page).getByRole('button', { name: 'Google & storage', exact: true }).click();
+    await expect(page).toHaveURL(/tab=admin-system-google/);
+    await expect(page.getByRole('heading', { name: 'Google & storage', exact: true })).toBeVisible();
     expect(requests.filter((r) => /\/api\/(init-data|partners|contracts)\b|\/api\/organizations\/[^/]+\/(capabilities|settings)/.test(r))).toEqual([]);
     expect(identityRows('super').members).toEqual([]);
   });
@@ -230,9 +231,17 @@ test('AC-030 superuser manages A without a membership; changes are audited as th
   await page.locator('main div').filter({ hasText: 'Alpha Org' }).filter({ hasNotText: 'Beta Org' })
     .getByRole('button', { name: 'Manage organization', exact: true }).first().click();
   await expect(page).toHaveURL(/tab=settings-organization/);
-  await expect(page.getByText('Platform administrator managing Alpha Org')).toBeVisible();
+  await expect(page.getByText('Platform administrator managing Alpha Org')).toHaveCount(0);
   await expect(page.getByRole('tablist', { name: 'Settings sections' }).getByRole('tab')).toHaveText(['Organization', 'Members & Access', 'Integrations']);
   await expect(sidebar(page).getByRole('button', { name: 'System Admin', exact: true })).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Members & Access', exact: true }).click();
+  await expect(page).toHaveURL(/tab=settings-access/);
+  await expect(page.getByText('Platform administrator managing Alpha Org')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Integrations', exact: true }).click();
+  await expect(page).toHaveURL(/tab=settings-integrations/);
+  await expect(page.getByText('Platform administrator managing Alpha Org')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Organization', exact: true }).click();
 
   const tagline = `Managed by the platform ${Date.now()}`;
   await page.getByLabel('Tagline').fill(tagline);

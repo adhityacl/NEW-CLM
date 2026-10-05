@@ -22,11 +22,7 @@ import {
   Upload,
   X,
   Sliders,
-  Radio,
-  Layers,
   Mail,
-  Lock,
-  Shield,
   Database,
   Languages,
   ShieldAlert,
@@ -209,14 +205,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'admin', title: t('nav.admin_title', 'Administrasi'), items: adminNavItems.filter(visible) },
   ].filter((section) => section.items.length > 0);
 
+  const systemDashboardTabs = [
+    'admin-system-dashboard',
+    'admin-system-users',
+    'admin-system-accounts',
+    'admin-system-sessions',
+    'admin-system-organizations',
+    'admin-system-apikeys',
+  ];
+
   const systemAdminSubItems = [
     { id: 'admin-system-dashboard', label: t('admin.tab_dashboard', 'Dashboard'), icon: Sliders },
-    { id: 'admin-system-users', label: t('admin.tab_users', 'Pengguna'), icon: Users },
-    { id: 'admin-system-sessions', label: t('admin.tab_sessions', 'Sesi Aktif'), icon: Radio },
-    { id: 'admin-system-organizations', label: t('admin.tab_organizations', 'Organisasi'), icon: Building2 },
-    { id: 'admin-system-apikeys', label: t('admin.tab_apikeys', 'API Keys'), icon: Lock },
-    { id: 'admin-system-rbac', label: t('admin.tab_rbac', 'Matriks Hak Akses'), icon: Shield },
-    { id: 'admin-system-settings', label: t('tb.configuration', 'Configuration'), icon: Settings },
+    { id: 'admin-system-google', label: t('tb.config_google', 'Google & storage'), icon: Globe2 },
+    { id: 'admin-system-ai', label: t('settings.nav_ai', 'AI Model & Parser'), icon: AiIcon },
+    { id: 'admin-system-smtp', label: t('tb.config_smtp', 'SMTP relay'), icon: Mail },
+    { id: 'admin-system-ui-texts', label: t('tb.config_texts_short', 'UI texts'), icon: Languages },
+    { id: 'admin-system-database', label: t('tb.config_maintenance', 'Database & reset'), icon: Database },
   ];
 
   // Submenu definition for Partners
@@ -350,7 +354,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   isMobile ? 'min-h-10' : 'min-h-8'
                                 } rounded-lg text-xs font-medium transition-colors cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none ${
                                   isSubActive
-                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold'
+                                    ? 'bg-accent-soft text-accent-text font-semibold'
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
                                 }`}
                               >
@@ -381,6 +385,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       >
                         <button type="button" onClick={() => {
                           handleNavClick('admin-system-dashboard');
+                          setIsAdminExpanded(true);
                         }} className="flex flex-1 self-stretch min-w-0 items-center gap-2.5 text-left">
                           <Icon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{item.label}</span>
@@ -406,7 +411,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           {submenuItems.map((sub) => {
                             const SubIcon = sub.icon;
                             const subTab = sub.id;
-                            const isSubActive = activeTab === subTab;
+                            const isSubActive = subTab === 'admin-system-dashboard'
+                              ? systemDashboardTabs.includes(activeTab)
+                              : activeTab === subTab;
                             return (
                               <button
                                 key={sub.id}
@@ -417,7 +424,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   isMobile ? 'min-h-10' : 'min-h-8'
                                 } rounded-lg text-xs font-medium transition-colors cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none ${
                                   isSubActive
-                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold'
+                                    ? 'bg-accent-soft text-accent-text font-semibold'
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
                                 }`}
                               >

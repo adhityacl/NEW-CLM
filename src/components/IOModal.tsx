@@ -580,10 +580,10 @@ export const IOModal: React.FC<IOModalProps> = ({
             </div>
 
             {/* USD Conversion Info Banner */}
-            <div className="bg-accent/5 dark:bg-emerald-950/20 border border-accent/20 dark:border-emerald-500/20 rounded-xl p-3 text-sm flex flex-wrap items-center justify-between gap-2">
+            <div className="bg-accent/5 border border-accent/20 rounded-xl p-3 text-sm flex flex-wrap items-center justify-between gap-2">
               <div>
                 <span className="font-semibold text-slate-700 dark:text-slate-300">{t('io.estimasi_konversi_usd_kurs', 'Estimasi Konversi USD (Kurs {tanggalMulai}):', { tanggalMulai })}</span>
-                <span className="ml-2 font-bold text-accent-text dark:text-emerald-400">
+                <span className="ml-2 font-bold text-accent-text ">
                   {formatMoney(estimatedUsd, 'USD')}
                 </span>
               </div>
@@ -611,7 +611,7 @@ export const IOModal: React.FC<IOModalProps> = ({
               <label htmlFor="IOModal-field-13" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm">
                 {t('form.io.upload_label', 'Dokumen Asli IO (Drive PDF Upload)')}
               </label>
-              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all">
+              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 transition-all">
                 <Upload className="w-6 h-6 text-accent-text mx-auto mb-1.5" />
                 {fileData || fileName ? (
                   <div className="space-y-1">
@@ -630,7 +630,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                       type="button"
                       onClick={handleParseIO}
                       disabled={isParsing}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 hover:bg-accent/20 font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent-soft text-accent-text hover:bg-accent/20 font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
                       {isParsing ? t('io.parsing', 'Parsing...') : t('io.parse_file', 'Parse File')}
                     </button>
@@ -639,7 +639,7 @@ export const IOModal: React.FC<IOModalProps> = ({
                     type="file"
                     accept=".pdf"
                     onChange={handleFileChange}
-                    className="w-[220px] text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-accent-soft dark:file:bg-emerald-950/60 file:text-accent-text dark:file:text-emerald-400 hover:file:bg-accent/20 cursor-pointer"
+                    className="w-[220px] text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-accent-soft file:text-accent-text hover:file:bg-accent/20 cursor-pointer"
                   />
                 </div>
               </div>

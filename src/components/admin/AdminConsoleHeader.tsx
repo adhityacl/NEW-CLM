@@ -9,9 +9,8 @@ import {
   Radio,
   Mail,
   Lock,
-  Settings,
 } from 'lucide-react';
-import { ConsoleSubmenu } from './types';
+import { ConsoleDashboardTab } from './types';
 import { useLanguage } from '../../context/LanguageContext';
 import { usePermissions } from '../../lib/permissions';
 import { Button } from '../ui/button';
@@ -19,8 +18,8 @@ import { Badge, type BadgeVariant } from '../ui/badge';
 
 interface AdminConsoleHeaderProps {
   area: 'system' | 'organization';
-  activeTab: ConsoleSubmenu;
-  onTabChange: (tab: ConsoleSubmenu) => void;
+  activeTab: ConsoleDashboardTab;
+  onTabChange: (tab: ConsoleDashboardTab) => void;
   onCreateOrgClick: () => void;
   onRefresh: () => void;
   isRefreshing: boolean;
@@ -48,7 +47,7 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
   const isSystemArea = area === 'system';
 
   const navItems: Array<{
-    id: ConsoleSubmenu;
+    id: ConsoleDashboardTab;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     count?: number;
@@ -59,20 +58,15 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
     { id: 'sessions', label: t('admin.tab_sessions', 'Sesi'), icon: Radio, count: userCounts.sessions, badgeVariant: 'success' },
     { id: 'organizations', label: t('admin.tab_organizations', 'Organisasi'), icon: Building2, count: userCounts.orgs },
     { id: 'apikeys', label: t('admin.tab_apikeys', 'API Keys'), icon: Lock, count: userCounts.apiKeys },
-    { id: 'rbac', label: t('admin.tab_rbac', 'RBAC Matrix'), icon: Shield },
-    { id: 'settings', label: t('tb.configuration', 'Configuration'), icon: Settings },
   ];
 
   // Platform console only: each tab needs its explicit platform permission (PRD §9.3).
-  const requiredPermission: Record<ConsoleSubmenu, string> = {
+  const requiredPermission: Record<ConsoleDashboardTab, string> = {
     dashboard: 'platform.access',
     users: 'platform.user.read',
-    accounts: 'platform.user.read',
     sessions: 'platform.session.read',
     organizations: 'platform.organization.read',
     apikeys: 'platform.apikey.read',
-    rbac: 'platform.policy.read',
-    settings: 'platform.configuration.read',
   };
   const visibleNavItems = navItems.filter((item) => isSystemArea && hasPlatformPermission(requiredPermission[item.id]));
 
@@ -93,7 +87,7 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
       <div className="flex min-h-14 items-center justify-between gap-4 border-b border-slate-200 px-4 dark:border-slate-800 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-xs dark:bg-emerald-500">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-strong text-white shadow-xs">
             {isSystemArea ? <Shield className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
           </div>
           <div className="min-w-0">
@@ -118,7 +112,7 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
             aria-label={t('admin.refresh_btn', 'Segarkan Data')}
             title={t('admin.refresh_btn', 'Segarkan Data')}
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-600' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-accent-text' : ''}`} />
           </Button>
         </div>
       </div>
@@ -146,7 +140,7 @@ export const AdminConsoleHeader: React.FC<AdminConsoleHeaderProps> = ({
               onKeyDown={(event) => handleTabKeyDown(event, index)}
               className={
                 isActive
-                  ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-xs font-semibold hover:bg-white dark:hover:bg-slate-800'
+                  ? 'bg-white dark:bg-slate-800 text-accent-text shadow-xs font-semibold hover:bg-white dark:hover:bg-slate-800'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-800/60'
               }
             >

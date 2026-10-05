@@ -6,7 +6,6 @@ import { useTenantSettings } from '../../context/TenantSettingsContext';
 import { usePermissions } from '../../lib/permissions';
 import { SUPPORTED_CURRENCIES, currencyLabel } from '../../lib/currencyUtils';
 import { buildDueDiligenceChecklist, getCountryPack, getIndustryPack, localize, localizeName, type TenantSettings } from '../../lib/policy';
-import { IndustryPackDetails } from './IndustryPackDetails';
 import { DueDiligenceChecklistEditor } from './DueDiligenceChecklistEditor';
 
 type SaveStatus =
@@ -207,8 +206,6 @@ export const OrganizationRegionSettings: React.FC = () => {
           </div>
         </div>
       </fieldset>
-
-      <IndustryPackDetails industryKey={draft.industry} countryCode={draft.countryCode} defaultCurrency={draft.defaultCurrency} />
 
       <fieldset className={fieldsetResetClass} disabled={!canEdit}>
         <legend className={legendClass}>{t('settings.region.lifecycle', 'Lifecycle & reminders')}</legend>

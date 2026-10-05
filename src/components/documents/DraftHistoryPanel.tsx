@@ -177,7 +177,7 @@ export const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
                       />
                     </label>
                     <div className="flex gap-1">
-                      <button type="submit" className={`${ACTION_BUTTON} bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700`}>
+                      <button type="submit" className={`${ACTION_BUTTON} theme-action border-transparent`}>
                         {t('common.save', 'Simpan')}
                       </button>
                       <button type="button" onClick={() => setEditing(null)} className={ACTION_BUTTON}>

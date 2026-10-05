@@ -52,6 +52,7 @@ import { AIChatLauncher } from './components/AIChatLauncher';
 import { PermissionProvider, usePermissions } from './lib/permissions';
 import { InvitationPrompt } from './components/account/InvitationPrompt';
 import { SETTINGS_TABS, needsOrganization, resolveRoute, type SettingsTabId, type SystemSubmenu } from './lib/appRoutes';
+import { tableDesignForTab } from './lib/tableDesign';
 
 /** Full-page state shown instead of any privileged view (PRD §4.5.4, §6.2, §11.3). */
 /** `standalone` screens have no app header, so they carry the page's only h1. */
@@ -540,7 +541,7 @@ const MainApp: React.FC = () => {
               {organizations.map((org) => (
                 <li key={org.organizationId}>
                   <button type="button" onClick={() => void switchTenant(org.organizationId)}
-                    className="flex min-h-11 w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-4 text-left text-sm font-medium hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800">
+                    className="flex min-h-11 w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-4 text-left text-sm font-medium hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ring)/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800">
                     {org.organizationName}
                   </button>
                 </li>
@@ -572,7 +573,7 @@ const MainApp: React.FC = () => {
     ) : null;
 
   return (
-    <div className="flex h-screen w-full bg-[#F3F4F0] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden">
+    <div data-table-design={tableDesignForTab(activeTab)} className="flex h-screen w-full bg-[#F3F4F0] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden">
       <a href="#main-content" className="skip-link">
         {t('app.skip_to_content', 'Lewati ke konten utama')}
       </a>
@@ -605,7 +606,13 @@ const MainApp: React.FC = () => {
           {isPlatformAdmin && (
             <DefaultPasswordBanner
               onOpenSecurity={() => setActiveTab('admin-system-users')}
-              showGoogleSetup={activeTab === 'admin-system-dashboard' || activeTab === 'admin-system-settings'}
+              showGoogleSetup={activeTab === 'admin-system-dashboard' || [
+                'admin-system-google',
+                'admin-system-ai',
+                'admin-system-smtp',
+                'admin-system-ui-texts',
+                'admin-system-database',
+              ].includes(activeTab)}
             />
           )}
           <Suspense fallback={<div className="flex h-full min-h-70 items-center justify-center text-sm text-slate-500">{t('app.memuat_halaman', 'Memuat halaman...')}</div>}>
@@ -931,7 +938,7 @@ const isTermsRoute = (): boolean => {
 
 const AppContent = () => {
   const { user, loading } = useAuth();
-  const { activeTab } = useNavigation();
+  const { activeTab, replaceActiveTab } = useNavigation();
   const { t } = useLanguage();
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState<boolean>(isPrivacyRoute);
   const [showTermsOfService, setShowTermsOfService] = useState<boolean>(isTermsRoute);
@@ -949,6 +956,17 @@ const AppContent = () => {
       window.removeEventListener('hashchange', handleLocationChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (loading || showPrivacyPolicy || showTermsOfService) return;
+    if (!user) {
+      if (activeTab !== 'login') replaceActiveTab('login');
+      return;
+    }
+    if (activeTab === 'login') {
+      replaceActiveTab(user.platformRole === 'superuser' ? 'admin-system-dashboard' : 'dashboard');
+    }
+  }, [activeTab, loading, replaceActiveTab, showPrivacyPolicy, showTermsOfService, user]);
 
   const handleOpenPrivacy = () => {
     if (typeof window !== 'undefined') {
@@ -1032,6 +1050,14 @@ const AppContent = () => {
           />
         </main>
       </InteractiveGridBackground>
+    );
+  }
+
+  if (activeTab === 'login') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F3F4F0] dark:bg-slate-950 text-slate-900 dark:text-white">
+        <p className="text-lg">{t('app.memuat', 'Memuat...')}</p>
+      </div>
     );
   }
 

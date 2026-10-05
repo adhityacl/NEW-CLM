@@ -2,12 +2,354 @@ import { test, expect } from '@playwright/test';
 import { buildDemoDataset } from '../../src/data/demoDataset';
 import { buildDueDiligenceChecklist, localize } from '../../src/lib/policy';
 import { translations } from '../../src/context/LanguageContext';
+import { accentPalettes, contrastRatio, organizationThemeTokens } from '../../src/lib/organizationColors';
 import type { Locator } from '@playwright/test';
 import { becomeSuperuser, createTenantApi, fulfillTenantApi, openActivityHistory, policyView, workspaceInit } from './fixtures/tenantApi';
 
 let api: ReturnType<typeof createTenantApi>;
 
+for (const [palette, color] of [['Iris', '#5B5BD6'], ['Grass', '#46A758']]) {
+  test(`palette audit: ${palette} actions, icons and disabled states stay readable across settings and admin`, async ({ page }) => {
+    test.setTimeout(90_000);
+    const hex = (css: string) => '#' + css.match(/[\d.]+/g)!.slice(0, 3).map(channel => Math.round(Number(channel)).toString(16).padStart(2, '0')).join('');
+    const inspect = async (scope: Locator = page.locator('main')) => {
+      const actions = scope.locator('button.theme-action:visible, button.bg-accent-strong:visible');
+      await expect(actions.first()).toBeVisible();
+      for (const action of await actions.all()) {
+        await expect.poll(() => action.evaluate(element => {
+          const styles = getComputedStyle(element);
+          const root = getComputedStyle(document.documentElement);
+          const disabled = (element as HTMLButtonElement).disabled || element.getAttribute('aria-disabled') === 'true';
+          const probe = document.createElement('span');
+          document.body.appendChild(probe);
+          const resolved = (token: string) => { probe.style.color = root.getPropertyValue(token); return getComputedStyle(probe).color; };
+          const background = resolved(disabled ? '--primary-disabled' : '--primary');
+          const foreground = resolved(disabled ? '--primary-disabled-foreground' : '--primary-foreground');
+          probe.remove();
+          return styles.backgroundColor === background && styles.color === foreground;
+        })).toBe(true);
+        const colors = await action.evaluate(element => ({ background: getComputedStyle(element).backgroundColor, foreground: getComputedStyle(element).color, opacity: getComputedStyle(element).opacity, icons: Array.from(element.querySelectorAll('svg')).map(icon => getComputedStyle(icon).color) }));
+        expect(contrastRatio(hex(colors.background), hex(colors.foreground))).toBeGreaterThanOrEqual(4.5);
+        expect(colors.opacity).toBe('1');
+        expect(colors.icons.every(icon => icon === colors.foreground)).toBe(true);
+      }
+    };
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: 'Choose color palette', exact: true }).click();
+    const picker = page.getByRole('dialog', { name: 'Choose color palette' });
+    await picker.getByRole('button', { name: palette, exact: true }).click();
+    await picker.getByRole('button', { name: 'Apply', exact: true }).click();
+    await page.getByRole('button', { name: 'Save Profile', exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-organization-palette', palette.toLowerCase());
+    expect(api.state.organizations[0].primaryColor).toBe(color);
+    for (const dark of [false, true]) {
+      if (dark) await page.getByRole('button', { name: /Switch to Dark Mode/i }).click();
+      await inspect();
+      await page.getByRole('button', { name: /Region and formatting.*Country/ }).click();
+      await page.getByRole('button', { name: /^Notifications and modules/ }).click();
+      await inspect();
+      await page.screenshot({ path: `/tmp/palette-audit-${palette.toLowerCase()}-${dark ? 'dark' : 'light'}-settings.png` });
+      await page.getByRole('tab', { name: 'Members & Access', exact: true }).click();
+      await inspect();
+      const active = page.getByRole('button', { name: 'Active', exact: true });
+      await active.hover();
+      await expect.poll(() => active.evaluate(element => getComputedStyle(element).backgroundColor)).toBe(await page.evaluate(() => {
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--primary-hover)';
+        document.body.appendChild(probe);
+        const color = getComputedStyle(probe).color;
+        probe.remove();
+        return color;
+      }));
+      expect(await active.evaluate(element => getComputedStyle(element).color)).toBe('rgb(255, 255, 255)');
+      await page.mouse.move(0, 0);
+      await page.getByRole('button', { name: 'History', exact: true }).click();
+      const history = page.getByRole('dialog', { name: 'History' });
+      await history.getByRole('tab', { name: 'Operational activity', exact: true }).click();
+      await inspect(history);
+      await page.keyboard.press('Escape');
+      await page.getByRole('tab', { name: 'Integrations', exact: true }).click();
+      await inspect();
+      await page.getByRole('tab', { name: 'Organization', exact: true }).click();
+    }
+    await page.getByRole('button', { name: 'Partners', exact: true }).first().click();
+    await inspect();
+    await page.getByRole('button', { name: /^(Order Forms|Service Orders)(?: \d+)?$/ }).first().click();
+    await inspect();
+    await page.getByRole('button', { name: 'Partner Evaluation', exact: true }).first().click();
+    await page.getByRole('button', { name: 'Add Evaluation', exact: true }).click();
+    const evaluation = page.getByRole('dialog');
+    const radio = evaluation.locator('input[type="radio"]').first();
+    await expect(radio).toBeAttached();
+    expect(await radio.evaluate(element => {
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--primary)';
+      document.body.appendChild(probe);
+      const matches = getComputedStyle(element).accentColor === getComputedStyle(probe).color;
+      probe.remove();
+      return matches;
+    })).toBe(true);
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: /^(Explorer|Explore|Document Structure)$/ }).first().click();
+    await inspect();
+    await becomeSuperuser(page, api);
+    await page.getByRole('button', { name: 'System Admin', exact: true }).first().click();
+    for (const name of ['Users', 'Organizations', 'API Keys']) {
+      await page.getByRole('tab', { name: new RegExp(`^${name}(?: \\d+)?$`) }).click();
+      await inspect();
+    }
+    await page.screenshot({ path: `/tmp/palette-audit-${palette.toLowerCase()}-admin.png` });
+  });
+}
+
+for (const width of [1440, 390]) {
+  test(`organization Radix palette saves the workspace theme at ${width}px in light and dark modes`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    if (width < 768) await page.getByRole('button', { name: /Open navigation menu/i }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const root = page.locator('html');
+    const original = await root.getAttribute('data-organization-palette');
+    await page.getByRole('button', { name: 'Choose color palette', exact: true }).click();
+    let dialog = page.getByRole('dialog', { name: 'Choose color palette' });
+    await expect(dialog.getByRole('group', { name: 'Choose color palette' }).getByRole('button')).toHaveCount(31);
+    await dialog.getByRole('button', { name: 'Blue', exact: true }).click();
+    await expect(dialog.getByRole('button', { name: 'Blue', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(root).toHaveAttribute('data-organization-palette', original!);
+    await page.getByRole('button', { name: 'Choose color palette', exact: true }).click();
+    dialog = page.getByRole('dialog', { name: 'Choose color palette' });
+    await dialog.getByRole('button', { name: 'Blue', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    await expect(root).toHaveAttribute('data-organization-palette', original!);
+    await page.getByRole('button', { name: 'Save Profile', exact: true }).click();
+    await expect(root).toHaveAttribute('data-organization-palette', 'blue');
+    const blue = accentPalettes.find(palette => palette.name === 'blue')!;
+    expect(api.state.organizations[0].primaryColor).toBe(blue.light[8].toUpperCase());
+    const inspect = async (dark: boolean) => {
+      expect(await root.evaluate(element => getComputedStyle(element).getPropertyValue('--primary').trim())).toBe(organizationThemeTokens(blue.light[8], dark)['--primary']);
+      const selected = page.getByRole('tab', { name: 'Organization', exact: true });
+      const expected = organizationThemeTokens(blue.light[8], dark)['--line-brand-green-text'];
+      await expect.poll(() => selected.evaluate((element, expected) => {
+        const probe = document.createElement('span');
+        probe.style.color = expected;
+        document.body.appendChild(probe);
+        const matches = getComputedStyle(element).color === getComputedStyle(probe).color;
+        probe.remove();
+        return matches;
+      }, expected)).toBe(true);
+      const action = page.getByRole('button', { name: 'Save Profile', exact: true });
+      expect(await action.evaluate(element => {
+        const styles = getComputedStyle(element);
+        const probe = document.createElement('span');
+        probe.style.color = (element as HTMLButtonElement).disabled ? 'var(--primary-disabled-foreground)' : 'var(--primary-foreground)';
+        document.body.appendChild(probe);
+        const matches = styles.color === getComputedStyle(probe).color;
+        probe.remove();
+        return matches;
+      })).toBe(true);
+    };
+    await inspect(false);
+    await page.getByRole('button', { name: /Switch to Dark Mode/i }).click();
+    await inspect(true);
+    await page.reload();
+    await expect(root).toHaveAttribute('data-organization-palette', 'blue');
+    await inspect(true);
+    await page.getByRole('button', { name: 'Choose color palette', exact: true }).click();
+    dialog = page.getByRole('dialog', { name: 'Choose color palette' });
+    await expect(dialog.getByRole('button', { name: 'Blue', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await page.screenshot({ path: `/tmp/organization-colors-${width}.png` });
+    await page.keyboard.press('Escape');
+    await becomeSuperuser(page, api);
+    await page.getByRole('button', { name: 'Back to System Admin', exact: true }).click();
+    await expect(root).not.toHaveAttribute('data-organization-palette', /.+/);
+    expect(await root.evaluate(element => (element as HTMLElement).style.getPropertyValue('--primary'))).toBe('');
+  });
+}
+
+test('organization logo upload uses a dialog and platform editing preserves shared profile fields', async ({ page }) => {
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j4U8AAAAASUVORK5CYII=';
+  const logo = `data:image/png;base64,${png}`;
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Upload Image File', exact: true }).click();
+  let upload = page.getByRole('dialog', { name: 'Organization / Workspace Logo' });
+  await upload.locator('input[type="file"]').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await expect(upload.locator('img')).toHaveAttribute('src', logo);
+  await upload.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.locator('main img[src^="data:"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Upload Image File', exact: true }).click();
+  upload = page.getByRole('dialog', { name: 'Organization / Workspace Logo' });
+  await upload.locator('input[type="file"]').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await expect(upload.locator('img')).toHaveAttribute('src', logo);
+  await upload.getByRole('button', { name: 'Apply', exact: true }).click();
+  await page.getByRole('button', { name: 'Save Profile', exact: true }).click();
+  await expect.poll(() => api.state.organizations[0].logoUrl).toBe(logo);
+  await page.reload();
+  await expect(page.locator('main img[src^="data:"]')).toHaveAttribute('src', logo);
+  const organization = api.state.organizations[0];
+  await page.route('**/api/auth-console/organizations', route => route.fulfill({ json: { organizations: [{ id: organization.id, name: organization.name, slug: organization.domainSlug || organization.id, logo: organization.logoUrl, version: api.state.settingsVersion[organization.id], metadata: { tagline: 'Shared tagline' }, createdAt: new Date().toISOString() }] } }));
+  let submitted: any;
+  await page.route('**/api/auth-console/organizations/*', async route => { submitted = route.request().postDataJSON(); await route.fulfill({ json: { success: true } }); });
+  await becomeSuperuser(page, api);
+  await page.getByRole('button', { name: 'System Admin', exact: true }).first().click();
+  await page.getByRole('tab', { name: /^Organizations/ }).click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+  const edit = page.getByRole('dialog', { name: 'Edit Organization Profile & Settings' });
+  await expect(edit.getByText('Primary Currency', { exact: true })).toHaveCount(0);
+  await expect(edit.locator('img')).toHaveAttribute('src', logo);
+  const tagline = edit.getByLabel('Partnership Type / Tagline', { exact: true });
+  await expect(tagline).toHaveValue('Shared tagline');
+  await tagline.fill('Updated tagline');
+  await edit.getByRole('button', { name: 'Save Changes', exact: true }).click();
+  await expect(edit).toHaveCount(0);
+  expect(submitted.profile).toEqual({ logoUrl: logo, tagline: 'Updated tagline' });
+  expect(submitted).not.toHaveProperty('policy');
+});
+
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+
+test('shared table design covers operational and admin pages while preserving excluded tabs', async ({ page }) => {
+  test.setTimeout(90_000);
+  await becomeSuperuser(page, api);
+  const inspect = async (scope: Locator = page.locator('main')) => {
+    const tables = scope.locator('table.ds-table:visible');
+    await expect(tables.first()).toBeVisible();
+    for (const table of await tables.all()) {
+      const presentation = await table.evaluate(element => {
+        const cell = element.querySelector('thead th')!;
+        const row = element.querySelector('thead tr')!;
+        let surface = element.closest('.ds-table-surface')!;
+        while (surface.parentElement?.closest('.ds-table-surface')) surface = surface.parentElement.closest('.ds-table-surface')!;
+        return { font: getComputedStyle(cell).fontSize, weight: getComputedStyle(cell).fontWeight, transform: getComputedStyle(cell).textTransform, height: cell.getBoundingClientRect().height, header: getComputedStyle(row).backgroundColor, radius: getComputedStyle(surface).borderRadius, scope: element.closest('[data-table-design]')?.getAttribute('data-table-design') };
+      });
+      expect(presentation).toMatchObject({ font: '14px', weight: '600', transform: 'none', radius: '20px', scope: 'standard' });
+      expect(presentation.height).toBeGreaterThanOrEqual(58);
+      expect(['rgb(247, 249, 251)', 'rgb(24, 34, 53)']).toContain(presentation.header);
+    }
+  };
+  const open = async (name: string | RegExp) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.getByRole('button', { name, exact: true }).first().click();
+  };
+  for (const label of ['Partners', 'Partner Evaluation', /^Contracts(?: \d+)?$/, /^(Order Forms|Service Orders)(?: \d+)?$/, /^Notifications(?: \d+)?$/]) {
+    await open(label);
+    await inspect();
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
+      await inspect();
+      await page.setViewportSize({ width: 390, height: 1000 });
+      expect(await page.locator('main').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+      await page.setViewportSize({ width: 1440, height: 1000 });
+    }
+    await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  }
+  await open('Partners');
+  await page.screenshot({ path: '/tmp/shared-table-partners.png' });
+  const checkbox = page.locator('main table.ds-table tbody input[type="checkbox"]').first();
+  await checkbox.check();
+  await expect(checkbox).toBeChecked();
+  await expect.poll(() => checkbox.evaluate(element => {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--table-selected)';
+    document.body.appendChild(probe);
+    const selected = getComputedStyle(element.closest('tr')!).backgroundColor === getComputedStyle(probe).color;
+    probe.remove();
+    return selected;
+  })).toBe(true);
+  await open('Partner Spending');
+  await inspect();
+  await open('Settings');
+  await page.getByRole('tab', { name: 'Members & Access', exact: true }).click();
+  await inspect();
+  await page.screenshot({ path: '/tmp/shared-table-members.png' });
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+  const history = page.getByRole('dialog');
+  await expect(history).toHaveAttribute('data-table-design', 'standard');
+  await inspect(history);
+  await page.keyboard.press('Escape');
+  await open('System Admin');
+  for (const name of ['Users', 'Sessions', 'API Keys']) {
+    await page.getByRole('tab', { name: new RegExp(`^${name}(?: \\d+)?$`) }).click();
+    await inspect();
+  }
+  for (const label of ['Main Dashboard', /^(Explorer|Explore|Document Structure)$/]) {
+    await open(label);
+    await expect(page.locator('[data-table-design="legacy"]').first()).toBeVisible();
+    await expect(page.locator('main table.ds-table')).toHaveCount(0);
+    const pagination = page.locator('main .ds-table-pagination');
+    if (await pagination.count()) expect(await pagination.first().locator('span').first().evaluate(element => getComputedStyle(element).fontSize)).toBe('12px');
+  }
+});
+
+test('Account Profile saves details and photo with separate Profile and Security tabs', async ({ page }) => {
+  let profile = { name: 'John Doe', image: null as string | null, bio: '' };
+  let passwordChanges = 0;
+  await page.route('**/api/me', async route => {
+    const response = api.handle(route.request()) as any;
+    await route.fulfill({ json: { ...response, identity: { ...response.identity, ...profile } } });
+  });
+  await page.route('**/api/auth/update-user', async route => {
+    profile = route.request().postDataJSON();
+    await route.fulfill({ json: { status: true } });
+  });
+  await page.route('**/api/auth/change-password', async route => {
+    passwordChanges++;
+    expect(route.request().postDataJSON()).toMatchObject({ currentPassword: 'current-password', newPassword: 'updated-password' });
+    await route.fulfill({ json: { token: null, user: {} } });
+  });
+  await page.reload();
+  const openProfile = async () => {
+    await page.locator('header button[aria-haspopup="menu"]').click();
+    await page.getByRole('menuitem', { name: 'Account Profile', exact: true }).click();
+  };
+  await openProfile();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('tab')).toHaveCount(2);
+  await expect(dialog.getByRole('tab', { name: 'Notifications', exact: true })).toHaveCount(0);
+  await expect(dialog.getByLabel('First Name', { exact: true })).toHaveValue('John');
+  await expect(dialog.getByLabel('Last Name', { exact: true })).toHaveValue('Doe');
+  await expect(dialog.getByLabel('Email', { exact: true })).toHaveAttribute('readonly', '');
+  await dialog.getByLabel('First Name', { exact: true }).fill('Jane');
+  await dialog.getByLabel('Last Name', { exact: true }).fill('Smith');
+  await dialog.getByLabel('Bio', { exact: true }).fill('Legal operations manager');
+  await dialog.locator('input[type="file"]').setInputFiles({ name: 'large.png', mimeType: 'image/png', buffer: Buffer.alloc(800 * 1024 + 1) });
+  await expect(dialog.getByRole('alert')).toContainText('800 KB');
+  const photo = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1kAAAAASUVORK5CYII=', 'base64');
+  await dialog.locator('input[type="file"]').setInputFiles({ name: 'avatar.png', mimeType: 'image/png', buffer: photo });
+  await expect(dialog.getByRole('img', { name: 'Profile photo' })).toHaveAttribute('src', /^data:image\/png;base64,/);
+  await dialog.getByRole('button', { name: 'Save profile', exact: true }).click();
+  await expect(dialog.getByText('Profile updated.', { exact: true })).toBeVisible();
+  expect(profile).toMatchObject({ name: 'Jane Smith', bio: 'Legal operations manager', image: `data:image/png;base64,${photo.toString('base64')}` });
+  await expect(page.locator('header button[aria-haspopup="menu"] img')).toHaveAttribute('src', profile.image!);
+  await dialog.getByRole('tab', { name: 'Security', exact: true }).click();
+  await dialog.getByLabel('Current password', { exact: true }).fill('current-password');
+  await dialog.getByLabel('New password', { exact: true }).fill('updated-password');
+  await dialog.getByLabel('Confirm Password', { exact: true }).fill('wrong-password');
+  await expect(dialog.getByText('Passwords do not match.')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Update Password', exact: true })).toBeDisabled();
+  expect(passwordChanges).toBe(0);
+  await dialog.getByLabel('Confirm Password', { exact: true }).fill('updated-password');
+  await dialog.getByRole('button', { name: 'Update Password', exact: true }).click();
+  await expect(dialog.getByText('Password changed.', { exact: true })).toBeVisible();
+  expect(passwordChanges).toBe(1);
+  await dialog.getByRole('tab', { name: 'Profile', exact: true }).click();
+  await expect(dialog.getByLabel('Bio', { exact: true })).toHaveValue('Legal operations manager');
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await page.screenshot({ path: `/tmp/account-profile-${width}.png` });
+    await dialog.getByRole('tab', { name: 'Security', exact: true }).click();
+    expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await page.screenshot({ path: `/tmp/account-security-${width}.png` });
+    await dialog.getByRole('tab', { name: 'Profile', exact: true }).click();
+  }
+  await page.keyboard.press('Escape');
+  await page.reload();
+  await openProfile();
+  await expect(dialog.getByLabel('First Name', { exact: true })).toHaveValue('Jane');
+  await expect(dialog.getByLabel('Last Name', { exact: true })).toHaveValue('Smith');
+  await expect(dialog.getByLabel('Bio', { exact: true })).toHaveValue('Legal operations manager');
+});
 
 async function expectReadableAction(button: Locator, height: number) {
   await expect(button).toBeVisible();
@@ -525,9 +867,16 @@ test('all admin tabs keep mobile controls contained and tables scrollable', asyn
   test.setTimeout(90_000);
   await becomeSuperuser(page, api);
   await page.getByRole('button', { name: 'System Admin', exact: true }).click();
-  await expect(page.getByRole('tablist', { name: 'System Admin' })).toBeVisible();
+  const systemTabs = page.getByRole('tablist', { name: 'System Admin' });
+  await expect(systemTabs).toBeVisible();
+  await expect(systemTabs.getByRole('tab')).toHaveText([
+    'Dashboard', /^Users(?:\s*\d+)?$/, /^Sessions(?:\s*\d+)?$/, /^Organizations(?:\s*\d+)?$/, /^API Keys(?:\s*\d+)?$/,
+  ]);
+  for (const submenu of ['Dashboard', 'Google & storage', 'AI Model & Parser', 'SMTP relay', 'UI texts', 'Database & reset']) {
+    await expect(page.locator('aside').getByRole('button', { name: submenu, exact: true })).toBeVisible();
+  }
   // Departments and invitations are tenant-scoped now (Settings › Members & Access).
-  for (const tab of ['Dashboard', 'Users', 'Sessions', 'Organizations', 'API Keys', 'RBAC Matrix', 'Configuration']) {
+  for (const tab of ['Dashboard', 'Users', 'Sessions', 'Organizations', 'API Keys']) {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.getByRole('tab', { name: new RegExp(`^${tab}(?: \\d+)?$`) }).click();
     const panel = page.getByRole('tabpanel');
@@ -573,15 +922,14 @@ test('all settings pages and UI text modal keep mobile controls contained', asyn
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
     }
   }
-  // Platform configuration moved into System Admin › Configuration (PRD §6.6).
+  // Platform configuration sections are direct System Admin submenu pages.
   await becomeSuperuser(page, api);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByRole('button', { name: 'System Admin', exact: true }).click();
-  await page.getByRole('tab', { name: 'Configuration', exact: true }).click();
-  for (const label of ['Google & storage', 'AI Model & Parser', 'SMTP relay', 'UI texts (this browser)', 'Database & reset']) {
+  for (const label of ['Google & storage', 'AI Model & Parser', 'SMTP relay', 'UI texts', 'Database & reset']) {
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.getByRole('tab', { name: label, exact: true }).click();
-    await expect(page.getByRole('tab', { name: label, exact: true })).toHaveAttribute('aria-selected', 'true');
+    await page.locator('aside').getByRole('button', { name: label, exact: true }).click();
+    await expect(page.getByRole('heading', { name: label, exact: true })).toBeVisible();
     if (label === 'Google & storage') await expect(page.locator('main table')).toContainText('Fixture contract');
     for (const width of [320, 390, 430]) {
       await page.setViewportSize({ width, height: 844 });
@@ -593,7 +941,7 @@ test('all settings pages and UI text modal keep mobile controls contained', asyn
         expect(await page.locator('main table').evaluate(element => getComputedStyle(element.parentElement!).overflowX)).toBe('auto');
       }
     }
-    if (label === 'UI texts (this browser)') {
+    if (label === 'UI texts') {
       await page.getByRole('button', { name: 'Open UI Text Editor', exact: true }).click();
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
@@ -835,13 +1183,12 @@ test('field rows and primary actions follow the control size scale', async ({ pa
       await check(`${width} settings ${label}`);
     }
     await open('System Admin');
-    for (const tab of ['Dashboard', 'Users', 'Sessions', 'Organizations', 'API Keys', 'RBAC Matrix']) {
+    for (const tab of ['Dashboard', 'Users', 'Sessions', 'Organizations', 'API Keys']) {
       await page.getByRole('tab', { name: new RegExp(`^${tab}(?: \\d+)?$`) }).click();
       await check(`${width} admin ${tab}`);
     }
-    await page.getByRole('tab', { name: 'Configuration', exact: true }).click();
-    for (const label of ['Google & storage', 'AI Model & Parser', 'SMTP relay', 'UI texts (this browser)', 'Database & reset']) {
-      await page.getByRole('tab', { name: label, exact: true }).click();
+    for (const label of ['Google & storage', 'AI Model & Parser', 'SMTP relay', 'UI texts', 'Database & reset']) {
+      await open(label);
       await check(`${width} configuration ${label}`);
     }
   }

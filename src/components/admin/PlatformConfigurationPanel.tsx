@@ -70,27 +70,25 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '../ui/separator';
 import { ResetWorkspaceDialog } from '../settings/ResetWorkspaceDialog';
 import { clearSelection } from '../../lib/organizationSelection';
-import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 
-type SettingsSection = 'google' | 'ai' | 'notifications' | 'language' | 'security';
+export type PlatformConfigurationSection = 'google' | 'ai' | 'notifications' | 'language' | 'security';
 
 const EMPTY_CONFIG: GoogleSheetsConfig = { driveFolderId: '', spreadsheetId: '', isConnected: false, autoSync: false };
 
 /**
- * System Admin → Configuration (PRD §6.6): deployment-wide Google
+ * System Admin configuration pages (PRD §6.6): deployment-wide Google
  * credentials and master resources, AI provider/model, SMTP relay, the
  * browser-local UI text tool, SQLite maintenance and the application-wide
  * reset. Platform-only; secrets are write-only and never prefilled.
  * Organization-specific settings live in each organization's Settings.
  */
-export const PlatformConfigurationPanel: React.FC = () => {
+export const PlatformConfigurationPanel: React.FC<{ activeSection?: PlatformConfigurationSection }> = ({ activeSection = 'google' }) => {
   const { user } = useAuth();
   // Mounted only inside System Admin for platform administrators; the server enforces it too.
   const isAdmin = true;
   const isSuperuser = true;
   const { language, t, exportToCSV, importFromCSV, resetCustomTranslations } = useLanguage();
   const confirmDialog = useConfirm();
-  const [activeSection, setActiveSection] = useState<SettingsSection>('google');
   const [config, setConfig] = useState<GoogleSheetsConfig>(EMPTY_CONFIG);
 
   const loadConfig = async () => {
@@ -843,13 +841,14 @@ export const PlatformConfigurationPanel: React.FC = () => {
     i.name.toLowerCase().includes(pickerSearch.toLowerCase())
   );
 
-  const sections: Array<{ id: SettingsSection; label: string }> = [
+  const sections: Array<{ id: PlatformConfigurationSection; label: string }> = [
     { id: 'google', label: t('tb.config_google', 'Google & storage') },
-    { id: 'ai', label: t('settings.nav_ai', 'Model AI & Parser') },
+    { id: 'ai', label: t('settings.nav_ai', 'AI Model & Parser') },
     { id: 'notifications', label: t('tb.config_smtp', 'SMTP relay') },
-    { id: 'language', label: t('tb.config_texts', 'UI texts (this browser)') },
+    { id: 'language', label: t('tb.config_texts_short', 'UI texts') },
     { id: 'security', label: t('tb.config_maintenance', 'Database & reset') },
   ];
+  const activeSectionLabel = sections.find((section) => section.id === activeSection)?.label || sections[0].label;
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">
@@ -857,16 +856,11 @@ export const PlatformConfigurationPanel: React.FC = () => {
       <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <span>{t('tb.configuration', 'Configuration')}</span>
+            <span>{activeSectionLabel}</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
             {t('tb.configuration_desc', 'Deployment-wide settings. Organization settings are managed in each organization.')}
           </p>
-          <Tabs value={activeSection} onValueChange={(value) => setActiveSection(value as SettingsSection)} id="platform-config" className="mt-4">
-            <TabsList aria-label={t('tb.configuration', 'Configuration')} className="h-auto flex-wrap justify-start gap-1">
-              {sections.map((section) => <TabsTrigger key={section.id} value={section.id} className="min-h-10">{section.label}</TabsTrigger>)}
-            </TabsList>
-          </Tabs>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
@@ -914,7 +908,7 @@ export const PlatformConfigurationPanel: React.FC = () => {
                   <CardTitle className="text-lg font-bold flex items-center justify-between">
                     <span>{t('settings.google_auth_title', 'Autentikasi Akun Google Workspace')}</span>
                     {isTokenActive ? (
-                      <Badge className="text-xs bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border-transparent hover:bg-accent-soft">
+                      <Badge className="text-xs bg-accent-soft text-accent-text border-transparent hover:bg-accent-soft">
                         {t('settings.oauth_active', 'OAuth Aktif')}
                       </Badge>
                     ) : (

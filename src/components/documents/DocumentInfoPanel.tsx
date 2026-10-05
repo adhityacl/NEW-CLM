@@ -33,7 +33,7 @@ type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; 
 const SECTION_TITLE = 'text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5';
 const LABEL = 'block text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400';
 const BUTTON =
-  'w-full inline-flex items-center justify-center gap-1.5 min-h-11 sm:min-h-8 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 cursor-pointer';
+  'theme-action w-full inline-flex items-center justify-center gap-1.5 min-h-11 sm:min-h-8 rounded-lg text-xs font-bold text-white disabled:opacity-50 cursor-pointer';
 
 export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, organizationName, canEdit, canManageFields, onUpdate }) => {
   const { t, language } = useLanguage();
@@ -133,7 +133,7 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document, 
                 disabled={!canEdit}
                 checked={picked.includes(option)}
                 onChange={(e) => set(e.target.checked ? [...picked, option] : picked.filter((p) => p !== option))}
-                className="w-4 h-4 accent-emerald-600"
+                className="w-4 h-4 accent-accent-strong"
               />
               {option}
             </label>

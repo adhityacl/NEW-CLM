@@ -240,9 +240,9 @@ export const ActivityLogsView: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="ds-table-surface bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto bg-white dark:bg-slate-900">
-          <table className="w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
+          <table className="ds-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
                 <th scope="col" className="pl-6 pr-2 py-4 w-12 text-left align-middle">

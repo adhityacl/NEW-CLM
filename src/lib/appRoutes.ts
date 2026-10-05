@@ -13,7 +13,7 @@ export const OPERATIONAL_TABS = [
 export const SETTINGS_TABS = ['settings-organization', 'settings-access', 'settings-integrations'] as const;
 export type SettingsTabId = (typeof SETTINGS_TABS)[number];
 
-export const SYSTEM_SUBMENUS = ['dashboard', 'users', 'accounts', 'sessions', 'organizations', 'apikeys', 'rbac', 'settings'] as const;
+export const SYSTEM_SUBMENUS = ['dashboard', 'users', 'accounts', 'sessions', 'organizations', 'apikeys', 'google', 'ai', 'smtp', 'ui-texts', 'database'] as const;
 export type SystemSubmenu = (typeof SYSTEM_SUBMENUS)[number];
 export const SYSTEM_TABS = SYSTEM_SUBMENUS.map((s) => `admin-system-${s}`);
 
@@ -76,9 +76,13 @@ export function resolveRoute(tab: string, ctx: RouteContext): RouteDecision {
     case 'settings-google':
       return ctx.can('tenant.integration.read') ? { kind: 'redirect', tab: 'settings-integrations' } : { kind: 'denied' };
     case 'settings-ai':
+      return ctx.isPlatformAdmin ? { kind: 'redirect', tab: 'admin-system-ai' } : { kind: 'denied' };
     case 'settings-security':
+      return ctx.isPlatformAdmin ? { kind: 'redirect', tab: 'admin-system-database' } : { kind: 'denied' };
     case 'settings-language':
-      return ctx.isPlatformAdmin ? { kind: 'redirect', tab: 'admin-system-settings' } : { kind: 'denied' };
+      return ctx.isPlatformAdmin ? { kind: 'redirect', tab: 'admin-system-ui-texts' } : { kind: 'denied' };
+    case 'admin-system-settings':
+      return ctx.isPlatformAdmin ? { kind: 'redirect', tab: 'admin-system-google' } : { kind: 'denied' };
     case 'admin-organization-dashboard':
     case 'admin-organization-users':
     case 'admin-organization-teams':
@@ -100,7 +104,7 @@ export function resolveRoute(tab: string, ctx: RouteContext): RouteDecision {
 
 /** Whether deciding this tab needs the selected organization's capabilities. */
 export function needsOrganization(tab: string, isPlatformAdmin: boolean): boolean {
-  if (tab === 'privacy' || tab === 'terms' || SYSTEM_TABS.includes(tab)) return false;
+  if (tab === 'login' || tab === 'privacy' || tab === 'terms' || SYSTEM_TABS.includes(tab)) return false;
   if (isPlatformAdmin && (['settings-ai', 'settings-security', 'settings-language', 'admin-users'].includes(tab) || tab.startsWith('admin-users-'))) return false;
   return true;
 }

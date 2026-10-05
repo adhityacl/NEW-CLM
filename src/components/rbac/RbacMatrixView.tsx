@@ -151,7 +151,7 @@ export default function RbacMatrixView() {
       </section>
 
       <section aria-label={t('rbac.tabel_matriks', 'Tabel matriks')} className="mt-6">
-        <div className="rounded-[var(--radius-xl)] border border-hairline bg-surface shadow-elevated">
+        <div className="ds-table-surface rounded-[var(--radius-xl)] border border-hairline bg-surface shadow-elevated">
           <Table>
             <TableHeader>
               <TableRow>

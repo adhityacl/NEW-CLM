@@ -4,6 +4,7 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 import './styles/shadcn-tokens.css';
+import './styles/organization-theme.css';
 import { installApiFetchInterceptor } from './lib/apiFetch';
 
 installApiFetchInterceptor();

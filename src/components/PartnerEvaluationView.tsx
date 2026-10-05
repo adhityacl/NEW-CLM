@@ -691,11 +691,11 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
       </div>
     </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="ds-table-surface bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <FilterSummary filters={[{ label: t('ui.search'), value: searchTerm, active: Boolean(searchTerm) }, { label: t('ui.filter_year'), value: selectedYear, active: selectedYear !== String(new Date().getFullYear()) }, { label: t('ui.filter_decision'), value: selectedEvaluationFilter, active: selectedEvaluationFilter !== 'ALL' }, { label: t('ui.filter_target'), value: selectedObligationTarget, active: selectedObligationTarget !== 'ALL' }]} onReset={() => { setSearchTerm(''); setSelectedYear(String(new Date().getFullYear())); setSelectedEvaluationFilter('ALL'); setSelectedObligationTarget('ALL'); }} />
         <p className="mobile-table-hint px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
         <div className="data-table-scroll overflow-x-auto bg-white dark:bg-slate-900" tabIndex={0} role="region" aria-label={t('ui.scroll_table')}>
-          <table className="app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
+          <table className="ds-table app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
                 <th scope="col" className="pl-6 pr-2 py-4 w-12 text-left align-middle">
@@ -942,7 +942,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               {/* BAGIAN 1: Informasi Dasar */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
-                  <span className="w-6 h-6 rounded-full bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 dark:border-emerald-500/40 font-black text-xs flex items-center justify-center shrink-0">
+                  <span className="w-6 h-6 rounded-full bg-accent-soft text-accent-text border border-accent/30 font-black text-xs flex items-center justify-center shrink-0">
                     1
                   </span>
                   <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">{t('eval.section1')}</h3>
@@ -1003,7 +1003,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
                   <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 dark:border-emerald-500/40 font-black text-xs flex items-center justify-center shrink-0">
+                    <span className="w-6 h-6 rounded-full bg-accent-soft text-accent-text border border-accent/30 font-black text-xs flex items-center justify-center shrink-0">
                       2
                     </span>
                     <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">{t('eval.section2')}</h3>
@@ -1025,7 +1025,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         key={opt.value}
                         className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                           formData.obligation_target === opt.value
-                            ? 'bg-accent-soft dark:bg-emerald-950/50 border-accent dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
+                            ? 'bg-accent-soft border-accent text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
                             : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-hairline dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
@@ -1045,7 +1045,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                           />
                           <span className="text-xs">{opt.label}</span>
                         </div>
-                        <span className="text-xs font-bold text-accent-text dark:text-emerald-300 bg-accent-soft dark:bg-emerald-950/60 border border-accent/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-bold text-accent-text bg-accent-soft border border-accent/30 px-2 py-0.5 rounded-md">
                           {opt.points}
                         </span>
                       </label>
@@ -1068,7 +1068,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         key={opt.value}
                         className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                           formData.incident_frequency === opt.value
-                            ? 'bg-accent-soft dark:bg-emerald-950/50 border-accent dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
+                            ? 'bg-accent-soft border-accent text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
                             : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-hairline dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
@@ -1088,7 +1088,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                           />
                           <span className="text-xs">{opt.label}</span>
                         </div>
-                        <span className="text-xs font-bold text-accent-text dark:text-emerald-300 bg-accent-soft dark:bg-emerald-950/60 border border-accent/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-bold text-accent-text bg-accent-soft border border-accent/30 px-2 py-0.5 rounded-md">
                           {opt.points}
                         </span>
                       </label>
@@ -1111,7 +1111,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         key={opt.value}
                         className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                           formData.communication === opt.value
-                            ? 'bg-accent-soft dark:bg-emerald-950/50 border-accent dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
+                            ? 'bg-accent-soft border-accent text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
                             : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-hairline dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
@@ -1131,7 +1131,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                           />
                           <span className="text-xs">{opt.label}</span>
                         </div>
-                        <span className="text-xs font-bold text-accent-text dark:text-emerald-300 bg-accent-soft dark:bg-emerald-950/60 border border-accent/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-bold text-accent-text bg-accent-soft border border-accent/30 px-2 py-0.5 rounded-md">
                           {opt.points}
                         </span>
                       </label>
@@ -1154,7 +1154,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         key={opt.value}
                         className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                           formData.pricing === opt.value
-                            ? 'bg-accent-soft dark:bg-emerald-950/50 border-accent dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
+                            ? 'bg-accent-soft border-accent text-slate-900 dark:text-slate-100 font-bold shadow-2xs'
                             : 'bg-[#F7F8FA] dark:bg-slate-800/80 border-hairline dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
@@ -1174,7 +1174,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                           />
                           <span className="text-xs">{opt.label}</span>
                         </div>
-                        <span className="text-xs font-bold text-accent-text dark:text-emerald-300 bg-accent-soft dark:bg-emerald-950/60 border border-accent/30 dark:border-emerald-500/40 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-bold text-accent-text bg-accent-soft border border-accent/30 px-2 py-0.5 rounded-md">
                           {opt.points}
                         </span>
                       </label>
@@ -1186,7 +1186,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
               {/* BAGIAN 3: Evaluasi Akhir & Catatan */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
-                  <span className="w-6 h-6 rounded-full bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 dark:border-emerald-500/40 font-black text-xs flex items-center justify-center shrink-0">
+                  <span className="w-6 h-6 rounded-full bg-accent-soft text-accent-text border border-accent/30 font-black text-xs flex items-center justify-center shrink-0">
                     3
                   </span>
                   <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
@@ -1195,11 +1195,11 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                 </div>
 
                 {/* Live Score Calculation Display */}
-                <div className="p-4 bg-accent-soft dark:bg-emerald-950/30 border border-accent/30 dark:border-emerald-500/30 rounded-2xl space-y-3">
+                <div className="p-4 bg-accent-soft border border-accent/30 rounded-2xl space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Calculator className="w-4 h-4 text-accent-text dark:text-emerald-400" />
-                      <span className="text-xs font-extrabold text-accent-text dark:text-emerald-300 uppercase tracking-wider">
+                      <Calculator className="w-4 h-4 text-accent-text " />
+                      <span className="text-xs font-extrabold text-accent-text uppercase tracking-wider">
                         {t('eval.calc_score_breakdown')}
                       </span>
                     </div>
@@ -1211,27 +1211,27 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 dark:border-emerald-500/20">
+                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 ">
                       <span className="text-slate-500 dark:text-slate-400 text-xs block font-medium">{t('eval.obligation_target_2', 'Obligation / Target')}</span>
-                      <span className="font-extrabold text-accent-text dark:text-emerald-400">
+                      <span className="font-extrabold text-accent-text ">
                         {liveBreakdown.tScore} {t('eval.points')}
                       </span>
                     </div>
-                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 dark:border-emerald-500/20">
+                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 ">
                       <span className="text-slate-500 dark:text-slate-400 text-xs block font-medium">{t('eval.incident_freq_2', 'Incident Freq')}</span>
-                      <span className="font-extrabold text-accent-text dark:text-emerald-400">
+                      <span className="font-extrabold text-accent-text ">
                         {liveBreakdown.fScore} {t('eval.points')}
                       </span>
                     </div>
-                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 dark:border-emerald-500/20">
+                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 ">
                       <span className="text-slate-500 dark:text-slate-400 text-xs block font-medium">{t('audit_col_evalCommunication', 'Communication')}</span>
-                      <span className="font-extrabold text-accent-text dark:text-emerald-400">
+                      <span className="font-extrabold text-accent-text ">
                         {liveBreakdown.cScore} {t('eval.points')}
                       </span>
                     </div>
-                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 dark:border-emerald-500/20">
+                    <div className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg border border-accent/20 ">
                       <span className="text-slate-500 dark:text-slate-400 text-xs block font-medium">{t('eval.pricing_2', 'Pricing')}</span>
-                      <span className="font-extrabold text-accent-text dark:text-emerald-400">
+                      <span className="font-extrabold text-accent-text ">
                         {liveBreakdown.pScore} {t('eval.points')}
                       </span>
                     </div>
@@ -1249,7 +1249,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                         value: 'Recommended',
                         label: t('eval.status_rec'),
                         desc: t('eval.opt_rec_desc'),
-                        activeClass: 'bg-accent-soft dark:bg-emerald-950/50 border-accent dark:border-emerald-500 text-slate-900 dark:text-slate-100',
+                        activeClass: 'bg-accent-soft border-accent text-slate-900 dark:text-slate-100',
                       },
                       {
                         value: 'Recommended with notes',
@@ -1379,15 +1379,15 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                 </div>
               </div>
 
-              <div className="p-3 bg-accent-soft dark:bg-emerald-950/40 rounded-xl border border-accent/30 dark:border-emerald-500/40 flex items-center justify-between">
+              <div className="p-3 bg-accent-soft rounded-xl border border-accent/30 flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-accent-text dark:text-emerald-300 font-bold uppercase block">
+                  <span className="text-xs text-accent-text font-bold uppercase block">
                     {t('eval.col_calculated_score')}
                   </span>
-                  <span className="text-xs text-accent-text dark:text-emerald-300 font-semibold">{t('eval.auto_score_text')}</span>
+                  <span className="text-xs text-accent-text font-semibold">{t('eval.auto_score_text')}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xl font-black text-accent-text dark:text-emerald-300">
+                  <span className="text-xl font-black text-accent-text ">
                     {viewingDetailItem.calculated_score !== undefined
                       ? viewingDetailItem.calculated_score
                       : computeScoreFromFields(
@@ -1397,7 +1397,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                           viewingDetailItem.pricing
                         )}
                   </span>
-                  <span className="text-xs font-semibold text-accent-text dark:text-emerald-300"> / 100 {t('eval.points')}</span>
+                  <span className="text-xs font-semibold text-accent-text "> / 100 {t('eval.points')}</span>
                 </div>
               </div>
 
@@ -1432,7 +1432,7 @@ export const PartnerEvaluationView: React.FC<PartnerEvaluationViewProps> = ({
                 </span>
                 <div className="font-bold">
                   {viewingDetailItem.final_evaluation === 'Recommended' && (
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 dark:border-emerald-500/40 inline-flex items-center gap-1.5">
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-accent-soft text-accent-text border border-accent/30 inline-flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-accent-text" />
                       <span>{t('eval.status_rec')}</span>
                     </span>

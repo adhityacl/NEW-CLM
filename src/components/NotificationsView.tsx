@@ -385,9 +385,9 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
       )}
 
       {/* 3. Main Standard Table Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="ds-table-surface bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="ds-table w-full text-left text-xs border-collapse">
             {/* Table Header */}
             <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
               <tr>

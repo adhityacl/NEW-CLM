@@ -24,7 +24,7 @@ export function buttonVariants(variant: ButtonVariant = "default", size: ButtonS
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40",
     "disabled:pointer-events-none disabled:opacity-50",
     {
-      "bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95 shadow-xs": variant === "default",
+      "theme-action bg-[var(--primary)] text-[var(--primary-foreground)] shadow-xs": variant === "default",
       "bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:brightness-95 shadow-xs": variant === "destructive",
       "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--muted)] shadow-xs": variant === "outline",
       "bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:brightness-95": variant === "secondary",

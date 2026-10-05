@@ -564,12 +564,22 @@ export function setVerificationMailer(mailer: VerificationMailer | null) {
 }
 
 // --- Better Auth Instance ---
+// Existing databases gain the optional personal bio without changing account data.
+if (!(sqliteDb.prepare('PRAGMA table_info("user")').all() as Array<{ name: string }>).some(column => column.name === 'bio')) {
+  sqliteDb.exec('ALTER TABLE "user" ADD COLUMN bio TEXT');
+}
+
 export const auth = betterAuth({
   // Unset: Better Auth derives the base URL per request from its real
   // Host/X-Forwarded-Proto headers (see the comment above) instead of a
   // fixed host baked in at startup.
   baseURL: publicBaseUrl || undefined,
   database: sqliteDb,
+  user: {
+    additionalFields: {
+      bio: { type: 'string', required: false, input: true },
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },

@@ -66,7 +66,7 @@ const writeTabToUrl = (tab: string, replace: boolean) => {
 
 export const NavigationProvider: React.FC<{ children: ReactNode; defaultTab?: string }> = ({
   children,
-  defaultTab = 'dashboard',
+  defaultTab = 'login',
 }) => {
   const [activeTab, setActiveTabState] = useState<string>(() => readTabFromUrl() ?? defaultTab);
   const [selectedItem, setSelectedItemState] = useState<any | null>(null);
@@ -148,3 +148,6 @@ export const useNavigation = (): NavigationContextType => {
   }
   return context;
 };
+
+/** Allows shared presentation components to work outside the workspace shell. */
+export const useOptionalActiveTab = (): string | undefined => useContext(NavigationContext)?.activeTab;

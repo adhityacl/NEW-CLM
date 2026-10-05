@@ -185,7 +185,7 @@ export const DateInput: React.FC<DateInputProps> = ({
             disabled={disabled}
             title={t('common.buka_kalender', 'Buka Kalender')}
             aria-label={t('common.buka_kalender', 'Buka Kalender')}
-            className="absolute right-2.5 text-slate-400 hover:text-accent-text dark:hover:text-emerald-400 transition-colors cursor-pointer disabled:cursor-not-allowed p-0.5"
+            className="absolute right-2.5 text-slate-400 hover:text-accent-text transition-colors cursor-pointer disabled:cursor-not-allowed p-0.5"
           >
             <CalendarIcon className="w-4 h-4" />
           </button>

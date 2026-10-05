@@ -31,9 +31,25 @@ async function openAs(page: Page, role: SeededRole['role'], path: string) {
 const tabOf = (page: Page) => new URL(page.url()).searchParams.get('tab');
 
 test.describe('SPA routing via ?tab= query parameter', () => {
+  test('signed-out users see the login page at /app?tab=login', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/app\?tab=login$/);
+    await expect(page.getByLabel(/Email/i)).toBeVisible();
+  });
+
   test('root URL is canonicalized to /app?tab=dashboard', async ({ page }) => {
     await openAs(page, 'admin', '/');
     await expect(page).toHaveURL(/\/app\?tab=dashboard$/);
+  });
+
+  test('authenticated non-superuser opening login lands on dashboard', async ({ page }) => {
+    await openAs(page, 'admin', '/app?tab=login');
+    await expect(page).toHaveURL(/\/app\?tab=dashboard$/);
+  });
+
+  test('authenticated superuser opening login lands on System Admin dashboard', async ({ page }) => {
+    await openAs(page, 'superuser', '/app?tab=login');
+    await expect(page).toHaveURL(/\/app\?tab=admin-system-dashboard$/);
   });
 
   test('deep link opens the requested tab and survives a reload', async ({ page }) => {
@@ -68,13 +84,23 @@ test.describe('SPA routing via ?tab= query parameter', () => {
 
   // Regression: right after sign-in a stale or signed-out permission state
   // bounced permitted deep links. Platform tabs need no organization.
-  for (const tab of ['admin-system-rbac', 'admin-system-settings']) {
+  for (const tab of ['admin-system-google', 'admin-system-ai', 'admin-system-smtp', 'admin-system-ui-texts', 'admin-system-database']) {
     test(`superuser deep link to ${tab} is not bounced by stale permissions`, async ({ page }) => {
       await openAs(page, 'superuser', `/app?tab=${tab}`);
       await page.waitForTimeout(500);
       expect(tabOf(page)).toBe(tab);
     });
   }
+
+  test('legacy Configuration deep link opens Google & storage', async ({ page }) => {
+    await openAs(page, 'superuser', '/app?tab=admin-system-settings');
+    await expect.poll(() => tabOf(page)).toBe('admin-system-google');
+  });
+
+  test('removed RBAC Matrix deep link is denied', async ({ page }) => {
+    await openAs(page, 'superuser', '/app?tab=admin-system-rbac');
+    await expect(page.getByRole('heading', { name: 'You do not have access to this page' })).toBeVisible();
+  });
 
   test('admin deep link to a permitted tab is not bounced while capabilities load', async ({ page }) => {
     await openAs(page, 'admin', '/app?tab=create-contract');

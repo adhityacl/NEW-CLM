@@ -468,9 +468,11 @@ authConsoleRouter.get('/organizations', platformHandler((req, res, identity) => 
     FROM organization o ORDER BY o.name COLLATE NOCASE, o.id
   `).all() as any[];
   const isPlatform = identity.platformPermissions.includes('platform.organization.read');
-  const organizations = rows.filter((o) => accessible.has(o.id)).map((o) => isPlatform
-    ? { id: o.id, name: o.name, slug: o.slug, logo: o.logo, createdAt: o.createdAt, memberCount: o.memberCount, teamCount: o.teamCount }
-    : { id: o.id, name: o.name, slug: o.slug, logo: o.logo });
+  const organizations = rows.filter((o) => accessible.has(o.id)).map((o) => {
+    if (!isPlatform) return { id: o.id, name: o.name, slug: o.slug, logo: o.logo };
+    const settings = readOrganizationSettings(sqliteDb, o.id);
+    return { id: o.id, name: o.name, slug: o.slug, logo: o.logo, createdAt: o.createdAt, memberCount: o.memberCount, teamCount: o.teamCount, version: settings.version, metadata: { ...settings.profile } };
+  });
   res.json({ success: true, organizations });
 }));
 
@@ -501,7 +503,7 @@ authConsoleRouter.post('/organizations', platformHandler((req, res, identity) =>
 authConsoleRouter.put('/organizations/:id', platformHandler((req, res, identity) => {
   const current = readOrganizationSettings(sqliteDb, req.params.id);
   const body = req.body || {};
-  for (const key of Object.keys(body)) if (!['name', 'slug', 'expectedVersion'].includes(key)) throw bad(`Unknown field: ${key}`);
+  for (const key of Object.keys(body)) if (!['name', 'slug', 'expectedVersion', 'profile'].includes(key)) throw bad(`Unknown field: ${key}`);
   sqliteDb.transaction(() => {
     if (typeof body.slug === 'string' && body.slug !== current.slug) {
       const slug = body.slug.trim().toLowerCase();
@@ -509,9 +511,9 @@ authConsoleRouter.put('/organizations/:id', platformHandler((req, res, identity)
       if (sqliteDb.prepare('SELECT 1 FROM organization WHERE slug = ? AND id <> ?').get(slug, current.organizationId)) throw new ApiError(409, 'SLUG_EXISTS');
       sqliteDb.prepare('UPDATE organization SET slug = ? WHERE id = ?').run(slug, current.organizationId);
     }
-    if (body.name !== undefined) {
+    if (body.name !== undefined || body.profile !== undefined) {
       patchOrganizationSettings(sqliteDb, current.organizationId,
-        { expectedVersion: typeof body.expectedVersion === 'number' ? body.expectedVersion : current.version, name: body.name },
+        { expectedVersion: typeof body.expectedVersion === 'number' ? body.expectedVersion : current.version, ...(body.name !== undefined ? { name: body.name } : {}), ...(body.profile !== undefined ? { profile: body.profile } : {}) },
         auditActorFor(req, identity));
     }
   })();

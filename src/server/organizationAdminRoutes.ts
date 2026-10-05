@@ -529,9 +529,11 @@ export function identityResponse(db: DB, identity: Identity) {
     ? identity.sessionDefaultOrganizationId : null;
   const signInMethods = (db.prepare(`SELECT DISTINCT providerId FROM account WHERE userId = ?`).all(identity.userId) as any[])
     .map((r) => (r.providerId === 'credential' ? 'password' : String(r.providerId)));
+  const profile = db.prepare('SELECT * FROM "user" WHERE id = ?').get(identity.userId) as { bio?: string | null } | undefined;
   return {
     identity: {
       id: identity.userId, email: identity.email, name: identity.name, image: identity.image,
+      bio: profile?.bio || '',
       emailVerified: identity.emailVerified, platformRole: identity.platformRole,
     },
     signInMethods,

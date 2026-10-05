@@ -540,11 +540,11 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
         </div>
 
           {/* Partners List: TABLE VIEW */}
-          <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+          <div className="ds-table-surface bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
               <FilterSummary filters={[{ label: t('ui.search'), value: searchTerm, active: Boolean(searchTerm) }, { label: t('ui.filter_dd'), value: selectedDDStatus, active: selectedDDStatus !== 'ALL' }, { label: t('ui.filter_country'), value: selectedBadanHukum, active: selectedBadanHukum !== 'ALL' }, { label: t('ui.filter_status'), value: selectedPartnerStatus, active: selectedPartnerStatus !== 'ALL' }, { label: t('ui.filter_department'), value: selectedDepartment, active: selectedDepartment !== 'ALL' }]} onReset={() => { setSearchTerm(''); setSelectedDDStatus('ALL'); setSelectedBadanHukum('ALL'); setSelectedPartnerStatus('ALL'); setSelectedDepartment('ALL'); }} />
         <p className="mobile-table-hint px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
         <div className="data-table-scroll overflow-x-auto bg-white dark:bg-slate-900" tabIndex={0} role="region" aria-label={t('ui.scroll_table')}>
-                <table className="app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
+                <table className="ds-table app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
                   <thead className="bg-slate-50 dark:bg-slate-800/50">
                     <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
                       <th scope="col" className="pl-6 pr-2 py-4 w-12 text-left align-middle">
@@ -780,7 +780,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
               {/* Due Diligence Narrative Profile */}
               {selectedPartnerDetail.catatan && (
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-1.5 shadow-2xs">
-                  <h4 className="text-xs font-bold text-accent-text dark:text-emerald-400 flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-accent-text flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-accent-text" />
                     <span>{t('partners.profil_due_diligence_operasional_vendor_senior', 'Profil Due Diligence & Operasional Vendor (Senior Risk Analyst)')}</span>
                   </h4>
@@ -890,7 +890,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                                     href={f.linkDrive}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-accent-text dark:text-emerald-300 rounded text-xs font-medium transition-colors flex items-center gap-1 border border-emerald-500/30"
+                                    className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-accent-text rounded text-xs font-medium transition-colors flex items-center gap-1 border border-emerald-500/30"
                                   >
                                     <ExternalLink className="w-3 h-3" />
                                     <span>{t('partners.view_file', 'Lihat File')}</span>

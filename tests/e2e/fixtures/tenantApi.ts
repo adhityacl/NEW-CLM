@@ -170,6 +170,7 @@ export function createTenantApi(options: TenantApiOptions) {
           return { status: 409, json: { error: 'VERSION_CONFLICT', message: 'Stale version', requestId: 'fixture' } };
         }
         if (body.name) organization.name = body.name;
+        if (body.profile) Object.assign(organization, body.profile);
         if (body.policy) organization.settings = { ...organization.settings, ...body.policy };
         state.settingsVersion[organization.id] = (state.settingsVersion[organization.id] ?? 1) + 1;
       }

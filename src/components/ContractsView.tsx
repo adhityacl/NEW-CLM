@@ -466,11 +466,11 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
     </div>
 
       {/* Contracts Data Table */}
-      <div className="bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="ds-table-surface bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <FilterSummary filters={[{ label: t('ui.search'), value: searchTerm, active: Boolean(searchTerm) }, { label: t('ui.filter_type'), value: selectedJenisDokumen, active: selectedJenisDokumen !== 'ALL' }, { label: t('ui.filter_category'), value: selectedCategory, active: selectedCategory !== 'ALL' }, { label: t('ui.filter_status'), value: selectedStatus, active: selectedStatus !== 'ALL' }]} onReset={() => { setSearchTerm(''); setSelectedJenisDokumen('ALL'); setSelectedCategory('ALL'); setSelectedStatus('ALL'); }} />
         <p className="mobile-table-hint px-4 py-2 text-xs text-slate-600 dark:text-slate-300 md:hidden">{t('ui.scroll_table')}</p>
         <div className="data-table-scroll overflow-x-auto bg-white dark:bg-slate-900" tabIndex={0} role="region" aria-label={t('ui.scroll_table')}>
-          <table className="app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
+          <table className="ds-table app-data-table w-full text-left border-collapse text-xs bg-white dark:bg-slate-900">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 h-12">
                 <th scope="col" className="pl-6 pr-2 py-4 w-12 text-left align-middle">
@@ -730,7 +730,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block">{t('hierarchy.commercial_value', 'Nilai Komersial:')}</span>
-                  <span className="font-bold text-accent-text dark:text-emerald-400">
+                  <span className="font-bold text-accent-text ">
                     {formatMoney(detailContract.nilai_kontrak, detailContract.currency)}
                     {(detailContract.currency || 'USD') !== 'USD' && (
                       <span className="text-slate-500 dark:text-slate-400 text-xs font-mono ml-1.5 font-normal">

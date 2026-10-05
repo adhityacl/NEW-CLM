@@ -444,6 +444,28 @@ describe('invitations (AC-015, AC-016, AC-017, AC-018)', () => {
 });
 
 describe('settings and integrations (AC-021, AC-022, AC-023, AC-024, AC-038)', () => {
+  it('organization logo and tagline stay synchronized across tenant settings and the platform console', async () => {
+    const logo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j4U8AAAAASUVORK5CYII=';
+    const initial = await server.call(S.adminA, `/api/organizations/${A}/settings`);
+    const saved = await server.call(S.adminA, `/api/organizations/${A}/settings`, { method: 'PATCH', body: { expectedVersion: initial.data.version, profile: { logoUrl: logo, tagline: 'Tenant tagline' } } });
+    assert.equal(saved.status, 200, JSON.stringify(saved.data));
+    const list = await server.call(S.super, '/api/auth-console/organizations');
+    const org = list.data.organizations.find((item: any) => item.id === A);
+    assert.equal(org.logo, logo);
+    assert.equal(org.metadata.tagline, 'Tenant tagline');
+    assert.equal(org.version, saved.data.version);
+    const edited = await server.call(S.super, `/api/auth-console/organizations/${A}`, { method: 'PUT', body: { expectedVersion: org.version, name: initial.data.name, slug: initial.data.slug, profile: { logoUrl: '', tagline: 'Platform tagline' } } });
+    assert.equal(edited.status, 200, JSON.stringify(edited.data));
+    const reloaded = await server.call(S.adminA, `/api/organizations/${A}/settings`);
+    assert.equal(reloaded.data.profile.logoUrl, '');
+    assert.equal(reloaded.data.profile.tagline, 'Platform tagline');
+    assert.deepEqual(reloaded.data.policy, initial.data.policy);
+    const stale = await server.call(S.super, `/api/auth-console/organizations/${A}`, { method: 'PUT', body: { expectedVersion: org.version, name: 'Stale name', slug: 'stale-slug', profile: { logoUrl: logo } } });
+    assert.equal(stale.status, 409);
+    assert.equal((await server.call(S.adminA, `/api/organizations/${A}/settings`)).data.slug, initial.data.slug);
+    const invalid = await server.call(S.adminA, `/api/organizations/${A}/settings`, { method: 'PATCH', body: { expectedVersion: reloaded.data.version, profile: { logoUrl: 'data:image/png;base64,YmFk' } } });
+    assert.equal(invalid.status, 400);
+  });
   it('section saves change only their fields and append audit', async () => {
     const current = await server.call(S.adminA, `/api/organizations/${A}/settings`);
     const res = await server.call(S.adminA, `/api/organizations/${A}/settings`, { method: 'PATCH', body: { expectedVersion: current.data.version, notifications: { notificationEmails: ['legal@example.test'] } } });

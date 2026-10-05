@@ -19,6 +19,13 @@ function sourceFiles(dir: string): string[] {
 
 const FILES = sourceFiles('src').map((path) => ({ path, text: readFileSync(path, 'utf8') }));
 
+test('filled primary buttons use theme tokens rather than a fixed green palette', () => {
+  const offenders = FILES.flatMap(({ path, text }) => text.split('\n')
+    .filter(line => /ui-button/.test(line) && /bg-(emerald|green)-[567]00/.test(line))
+    .map(line => `${path}: ${line.trim()}`));
+  assert.deepEqual(offenders, []);
+});
+
 // Hex utilities that have an exact token (same light and dark value) or whose
 // raw value fails contrast. `dark:text-[#06C755]` is allowed: it passes on dark surfaces.
 const TOKENIZED = /(?<![\w\-[])((?:[a-z0-9-]+:)*)(text-\[#(?:06C755|048C3B|111111|777777)\]|bg-\[#(?:04803D|036B33|06C755|EBFBF0)\]|(?:border|ring)-\[#06C755\]|(?:border|divide)-\[#E5E8EB\])/gi;

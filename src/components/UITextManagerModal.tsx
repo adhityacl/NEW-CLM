@@ -134,14 +134,14 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
       <div className="flex items-center justify-between gap-1 group">
         <span
           lang={LANGUAGE_OPTIONS.find((o) => o.code === lang)?.htmlLang}
-          className={custom ? 'font-medium text-accent-text dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}
+          className={custom ? 'font-medium text-accent-text ' : 'text-slate-700 dark:text-slate-300'}
         >
           {valueOf(key, lang) || <em className="text-rose-600 dark:text-rose-400 not-italic">{t('ui_text.missing', '(belum diterjemahkan)')}</em>}
         </span>
         <button
           type="button"
           onClick={() => setEditing({ key, lang, value: valueOf(key, lang) })}
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-slate-400 hover:text-accent-text dark:hover:text-emerald-400 p-1 cursor-pointer transition-opacity shrink-0"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-slate-400 hover:text-accent-text p-1 cursor-pointer transition-opacity shrink-0"
           aria-label={t('ui_text.edit_in', 'Edit dalam {lang}', { lang: languageName(lang) })}
           title={t('ui_text.edit_in', 'Edit dalam {lang}', { lang: languageName(lang) })}
         >
@@ -182,7 +182,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
             <button
               type="button"
               onClick={exportToCSV}
-              className="ui-button ui-button-lg inline-flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-accent-soft dark:hover:bg-emerald-950/60 hover:text-accent-text dark:hover:text-emerald-300 text-slate-800 dark:text-slate-200 font-bold border border-hairline dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
+              className="ui-button ui-button-lg inline-flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-accent-soft hover:text-accent-text text-slate-800 dark:text-slate-200 font-bold border border-hairline dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
             >
               <Download className="w-4 h-4 text-accent-text" aria-hidden />
               <span>{t('ui_text.export', 'Ekspor CSV')}</span>
@@ -190,7 +190,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="ui-button ui-button-lg inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs transition-colors cursor-pointer"
+              className="theme-action ui-button ui-button-lg inline-flex items-center gap-2 text-white font-semibold shadow-xs transition-colors cursor-pointer"
             >
               <Upload className="w-4 h-4" aria-hidden />
               <span>{t('ui_text.import', 'Unggah CSV Hasil Revisi')}</span>
@@ -275,8 +275,8 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50 dark:bg-slate-900/60">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto shadow-xs">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="ds-table-surface bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto shadow-xs">
+            <table className="ds-table w-full text-left text-xs border-collapse">
               <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
                 <tr>
                   <th scope="col" className="p-4 w-1/5">{t('ui_text.col_key', 'Key teks')}</th>
@@ -317,9 +317,6 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
                 )}
               </tbody>
             </table>
-          </div>
-
-          <div className="mt-3">
             <TablePagination
               currentPage={currentPage}
               totalPages={totalPages}

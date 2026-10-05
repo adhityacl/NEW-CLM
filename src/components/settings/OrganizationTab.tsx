@@ -11,7 +11,9 @@ import { buildDueDiligenceChecklist, getCountryPack, getIndustryPack, localize, 
 import { AlphabeticalDatalist, AlphabeticalSelect } from '../ui/alphabetical-select';
 import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
-import { IndustryPackDetails } from './IndustryPackDetails';
+import { ModalFrame, ModalTitle } from '../ui/modal-frame';
+import { LogoUploadField } from './LogoUploadField';
+import { OrganizationColorPicker } from './OrganizationColorPicker';
 import { DueDiligenceChecklistEditor } from './DueDiligenceChecklistEditor';
 import { OrgApiError, orgApi, orgPath } from './orgApi';
 
@@ -75,6 +77,8 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
   const data = settingsQuery.data;
 
   const [profile, setProfile] = useState<{ name: string } & OrganizationSettingsDto['profile']>();
+  const [logoDialogOpen, setLogoDialogOpen] = useState(false);
+  const [draftLogo, setDraftLogo] = useState('');
   const [policy, setPolicy] = useState<TenantSettings>();
   const [remindersText, setRemindersText] = useState('');
   const [recipients, setRecipients] = useState({ list: '', legal: '', finance: '' });
@@ -260,16 +264,17 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
             <input id={ids.tagline} className={fieldClass} maxLength={500} value={profile.tagline} onChange={(e) => setProfile({ ...profile, tagline: e.target.value })} />
           </div>
           <div>
-            <label htmlFor={ids.logo} className={labelClass}>{t('tb.logo_url', 'Logo URL')}</label>
-            <input id={ids.logo} className={fieldClass} maxLength={2048} value={profile.logoUrl} placeholder="https://" aria-describedby={`${ids.logo}-hint`} onChange={(e) => setProfile({ ...profile, logoUrl: e.target.value })} />
-            <p id={`${ids.logo}-hint`} className={hintClass}>{t('tb.logo_hint', 'An HTTPS address or a path on this site.')}</p>
+            <span className={labelClass}>{t('admin.org_logo_label', 'Logo Organisasi / Workspace')}</span>
+            <div className="flex items-center gap-3">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+                {profile.logoUrl ? <img src={profile.logoUrl} alt={profile.name} className="h-full w-full object-contain p-1" /> : <Building2 className="h-6 w-6 text-accent-text" aria-hidden="true" />}
+              </div>
+              <Button id={ids.logo} type="button" variant="outline" disabled={!canEdit} onClick={() => { setDraftLogo(profile.logoUrl); setLogoDialogOpen(true); }}>{t('admin.logo_mode_upload', 'Unggah File Gambar')}</Button>
+            </div>
           </div>
           <div>
             <label htmlFor={ids.color} className={labelClass}>{t('tb.primary_color', 'Primary color')}</label>
-            <div className="flex items-center gap-2">
-              <input id={ids.color} type="color" className="h-11 w-14 cursor-pointer rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800" value={profile.primaryColor} onChange={(e) => setProfile({ ...profile, primaryColor: e.target.value.toUpperCase() })} />
-              <span className="font-mono text-sm text-slate-700 dark:text-slate-300">{profile.primaryColor}</span>
-            </div>
+            <OrganizationColorPicker id={ids.color} value={profile.primaryColor} disabled={!canEdit} onChange={primaryColor => setProfile({ ...profile, primaryColor })} />
           </div>
         </div>
       ), () => save('profile', {
@@ -327,7 +332,6 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
               </AlphabeticalSelect>
             </div>
           </div>
-          <IndustryPackDetails industryKey={policy.industry} countryCode={policy.countryCode} defaultCurrency={policy.defaultCurrency} />
         </div>
       ), () => save('region', { policy: {
         countryCode: policy.countryCode, industry: policy.industry, language: policy.language,
@@ -423,6 +427,17 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
           financeNotificationEmail: recipients.finance.trim() || null,
         },
       }), remindersValid && emailsValid)}
+      {logoDialogOpen && (
+        <ModalFrame onClose={() => setLogoDialogOpen(false)} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-900">
+          <ModalTitle className="mb-5 text-lg font-semibold">{t('admin.org_logo_label', 'Logo Organisasi / Workspace')}</ModalTitle>
+          <LogoUploadField logo={draftLogo} name={profile.name} onChange={setDraftLogo} />
+          <p className={hintClass}>{t('admin.logo_raster_type', 'PNG, JPG, WebP. Max 2 MB.')}</p>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setLogoDialogOpen(false)}>{t('admin.btn_cancel', 'Batal')}</Button>
+            <Button type="button" disabled={!canEdit} onClick={() => { setProfile({ ...profile, logoUrl: draftLogo }); setLogoDialogOpen(false); }}>{t('admin.btn_apply', 'Terapkan')}</Button>
+          </div>
+        </ModalFrame>
+      )}
     </div>
   );
 };

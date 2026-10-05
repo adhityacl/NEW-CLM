@@ -53,14 +53,14 @@ export const AdminApiKeysTab: React.FC<AdminApiKeysTabProps> = ({
             placeholder={t('admin.key_search_ph', 'Cari nama API Key...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-accent"
           />
         </div>
 
         <button
           type="button"
           onClick={onOpenCreateKey}
-          className="ui-button ui-button-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors shadow-xs"
+          className="theme-action ui-button ui-button-lg text-white font-medium transition-colors shadow-xs"
         >
           <Plus className="w-4 h-4" />
           <span>{t('admin.btn_generate_key', 'Generate API Key')}</span>
@@ -68,9 +68,9 @@ export const AdminApiKeysTab: React.FC<AdminApiKeysTabProps> = ({
       </div>
 
       {/* Keys Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+      <div className="ds-table-surface bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="ds-table w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-xs">
                 <th className="py-3 px-4">{t('admin.col_key_name', 'Nama Kunci')}</th>

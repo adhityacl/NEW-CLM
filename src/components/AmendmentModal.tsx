@@ -292,7 +292,7 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
                       onClick={() => handleFieldToggle(f)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-semibold border cursor-pointer select-none transition-all ${
                         selectedFields.includes(f)
-                          ? 'bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border-accent/40 dark:border-emerald-500/40 font-bold'
+                          ? 'bg-accent-soft text-accent-text border-accent/40 font-bold'
                           : 'bg-[#F7F8FA] dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-hairline dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                       }`}
                     >
@@ -320,7 +320,7 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
 
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-xs">{t('amendments.file_dokumen_addendum_pdf_drive_upload', 'File Dokumen Addendum PDF (Drive Upload)')}</label>
-              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all">
+              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 transition-all">
                 <Upload className="w-6 h-6 text-accent-text mx-auto mb-1.5" />
                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                   {fileName ? t('amendments.file_terpilih', 'File terpilih: {fileName}', { fileName }) : t('amendments.pilih_file_pdf_addendum', 'Pilih File PDF Addendum')}
@@ -331,7 +331,7 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
                       type="button"
                       onClick={handleParseAmendment}
                       disabled={isParsing}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 hover:bg-accent/20 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent-soft text-accent-text hover:bg-accent/20 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
                       {isParsing ? t('amendments.parsing', 'Parsing...') : t('amendments.parse_file', 'Parse File')}
                     </button>
@@ -340,7 +340,7 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
                     type="file"
                     accept=".pdf"
                     onChange={handleFileChange}
-                    className="w-[220px] text-xs text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-accent-soft dark:file:bg-emerald-950/60 file:text-accent-text dark:file:text-emerald-400 hover:file:bg-accent/20 cursor-pointer"
+                    className="w-[220px] text-xs text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-accent-soft file:text-accent-text hover:file:bg-accent/20 cursor-pointer"
                   />
                 </div>
               </div>

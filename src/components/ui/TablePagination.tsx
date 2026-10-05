@@ -35,7 +35,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
 
   return (
     <div
-      className={`mobile-pagination p-4 sm:px-6 sm:py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs select-none ${className}`}
+      className={`ds-table-pagination mobile-pagination p-4 sm:px-6 sm:py-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs select-none ${className}`}
     >
       {/* Left: Rows per page selector */}
       <div className="flex items-center gap-2.5">

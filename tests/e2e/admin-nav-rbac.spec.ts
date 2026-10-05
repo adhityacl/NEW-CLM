@@ -51,6 +51,7 @@ test.describe('Sidebar administration entries match server authority', () => {
   for (const role of ['admin', 'manager'] as const) {
     test(`${role} sees one Settings entry and no System Admin`, async ({ page }) => {
       await loginAs(page, role);
+      await expect(page).toHaveURL(/tab=dashboard/);
       await expect(adminNavSection(page).getByRole('button', { name: SETTINGS, exact: true })).toHaveCount(1);
       await expect(page.getByRole('button', { name: SYSTEM_ADMIN, exact: true })).toHaveCount(0);
       await expect(page.getByRole('button', { name: ORG_ADMIN })).toHaveCount(0);
@@ -60,6 +61,7 @@ test.describe('Sidebar administration entries match server authority', () => {
   for (const role of ['editor', 'viewer'] as const) {
     test(`${role} sees neither Settings nor System Admin`, async ({ page }) => {
       await loginAs(page, role);
+      await expect(page).toHaveURL(/tab=dashboard/);
       await expect(page.getByRole('button', { name: 'Main Dashboard', exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: SYSTEM_ADMIN, exact: true })).toHaveCount(0);
       await expect(page.getByRole('button', { name: SETTINGS, exact: true })).toHaveCount(0);

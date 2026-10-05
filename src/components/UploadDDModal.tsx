@@ -199,7 +199,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-accent-soft dark:bg-emerald-950/60 border border-accent/30 flex items-center justify-center shrink-0 text-accent-text dark:text-emerald-300">
+            <div className="w-10 h-10 rounded-xl bg-accent-soft border border-accent/30 flex items-center justify-center shrink-0 text-accent-text ">
               <Upload className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -207,7 +207,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                 {t('partners.upload_dd_modal_title', 'Upload Dokumen Due Diligence')}
               </ModalTitle>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs font-bold text-accent-text dark:text-emerald-400 truncate">
+                <span className="text-xs font-bold text-accent-text truncate">
                   {displayName}
                 </span>
                 <span className="text-xs text-slate-400">•</span>
@@ -263,7 +263,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
                           href={f.linkDrive}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-accent-text dark:text-emerald-300 rounded-lg text-xs font-medium flex items-center gap-1 border border-emerald-500/30 transition-colors"
+                          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-accent-text rounded-lg text-xs font-medium flex items-center gap-1 border border-emerald-500/30 transition-colors"
                         >
                           <ExternalLink className="w-3 h-3" />
                           <span>{t('settings.org_open_folder', 'Buka')}</span>
@@ -301,9 +301,9 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-4 text-center transition-all cursor-pointer ${
                 isDragOver
-                  ? 'border-accent bg-emerald-50/60 dark:bg-emerald-950/40'
+                  ? 'border-accent bg-emerald-50/60 '
                   : selectedFile
-                  ? 'border-accent/50 bg-accent-soft/40 dark:bg-emerald-950/20'
+                  ? 'border-accent/50 bg-accent-soft/40 '
                   : 'border-slate-300 dark:border-slate-700 hover:border-accent bg-slate-50 dark:bg-slate-800/40'
               }`}
             >
@@ -318,7 +318,7 @@ export const UploadDDModal: React.FC<UploadDDModalProps> = ({
               {selectedFile ? (
                 <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60 shadow-2xs">
                   <div className="flex items-center gap-2.5 min-w-0 text-left">
-                    <div className="w-8 h-8 rounded-lg bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-accent-soft text-accent-text flex items-center justify-center shrink-0">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">

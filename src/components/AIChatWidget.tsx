@@ -267,8 +267,8 @@ export const AIChatWidget: React.FC<{ initiallyOpen?: boolean }> = ({ initiallyO
                           h2: ({ node, ...props }) => <h2 className="text-xs font-bold mb-1 mt-2 text-slate-900 dark:text-white" {...props} />,
                           h3: ({ node, ...props }) => <h3 className="text-xs font-bold mb-1 mt-1.5 text-slate-900 dark:text-white" {...props} />,
                           table: ({ node, ...props }) => (
-                            <div className="overflow-x-auto my-2 border border-slate-200 dark:border-slate-700 rounded-lg">
-                              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-xs" {...props} />
+                            <div className="ds-table-surface overflow-x-auto my-2 border border-slate-200 dark:border-slate-700 rounded-lg">
+                              <table className="ds-table min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-xs" {...props} />
                             </div>
                           ),
                           th: ({ node, ...props }) => <th className="px-2 py-1 bg-slate-100 dark:bg-slate-900 font-bold text-left" {...props} />,

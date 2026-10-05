@@ -316,7 +316,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                         aria-label={`${isPartnerExpanded ? t('nav.tutup_submenu', 'Tutup Submenu') : t('nav.buka_submenu', 'Buka Submenu')}: ${partner.nama_partner}`}
                         aria-expanded={isPartnerExpanded}
                         onClick={() => togglePartner(partner.partner_id)}
-                        className="p-1 hover:bg-accent-soft dark:hover:bg-emerald-950/60 rounded-lg text-accent-text transition-colors cursor-pointer"
+                        className="p-1 hover:bg-accent-soft rounded-lg text-accent-text transition-colors cursor-pointer"
                       >
                         {isPartnerExpanded ? (
                           <ChevronDown className="w-5 h-5 text-accent-text" />
@@ -369,7 +369,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                 key={idx}
                                 className={`p-2.5 rounded-xl border flex items-center justify-between transition-all ${
                                   doc.status === 'Available'
-                                    ? 'bg-accent-soft dark:bg-emerald-950/60 border-accent/30 dark:border-emerald-500/40 text-accent-text dark:text-emerald-300'
+                                    ? 'bg-accent-soft border-accent/30 text-accent-text '
                                     : 'bg-slate-100 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200'
                                 }`}
                               >
@@ -380,7 +380,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                   </span>
                                 </div>
                                 {doc.status === 'Available' ? (
-                                  <CheckCircle2 className="w-4 h-4 text-accent-text dark:text-emerald-400 shrink-0" />
+                                  <CheckCircle2 className="w-4 h-4 text-accent-text shrink-0" />
                                 ) : (
                                   <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
                                 )}
@@ -443,7 +443,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                       className={`p-1 rounded-lg transition-colors cursor-pointer ${
                                         isContractAddendum
                                           ? 'hover:bg-purple-50 dark:hover:bg-purple-950/60 text-purple-600 dark:text-purple-400'
-                                          : 'hover:bg-accent-soft dark:hover:bg-emerald-950/60 text-accent-text'
+                                          : 'hover:bg-accent-soft text-accent-text'
                                       }`}
                                     >
                                       {isContractExpanded ? (
@@ -468,7 +468,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                             {t('hierarchy.agreement_addendum_badge', 'AGREEMENT ADDENDUM')}
                                           </span>
                                         ) : (
-                                          <span className="text-xs font-bold uppercase tracking-wider bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 px-1.5 py-0.5 rounded">
+                                          <span className="text-xs font-bold uppercase tracking-wider bg-accent-soft text-accent-text border border-accent/30 px-1.5 py-0.5 rounded">
                                             {t('hierarchy.master_agreement_badge', 'KONTRAK INDUK (MASTER AGREEMENT)')}
                                           </span>
                                         )}
@@ -598,7 +598,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                               </div>
                                               <div>
                                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                                  <span className="text-xs font-bold uppercase tracking-wider bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/30 px-1.5 py-0.5 rounded">
+                                                  <span className="text-xs font-bold uppercase tracking-wider bg-accent-soft text-accent-text border border-accent/30 px-1.5 py-0.5 rounded">
                                                     {t('hierarchy.insertion_order_badge', 'INSERTION ORDER (IO)')}
                                                   </span>
                                                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-800">
@@ -656,7 +656,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                             <div>
                                               <span className="text-xs text-slate-500 block">{t('hierarchy.pricing_model', 'Model Biaya (Pricing Model):')}</span>
                                               <div className="mt-0.5">
-                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border border-accent/20">
+                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-accent-soft text-accent-text border border-accent/20">
                                                   {io.pricing_model || 'Fixed'}
                                                 </span>
                                               </div>
@@ -674,7 +674,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
                                           {/* IO Notes / Deliverables */}
                                           {ioNoteContent && (
                                             <div className="mt-0.5 pt-2 border-t border-slate-100 dark:border-slate-800 bg-[#F7F8FA] dark:bg-slate-800/60 rounded-lg p-2.5 flex items-start gap-2 text-xs">
-                                              <FileText className="w-3.5 h-3.5 text-accent-text dark:text-emerald-400 mt-0.5 shrink-0" />
+                                              <FileText className="w-3.5 h-3.5 text-accent-text mt-0.5 shrink-0" />
                                               <div className="flex-1 min-w-0">
                                                 <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide block mb-0.5">
                                                   {t('hierarchy.io_notes', 'Catatan Deliverables / Scope IO')}:

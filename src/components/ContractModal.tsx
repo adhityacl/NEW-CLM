@@ -619,7 +619,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                               onClick={() => handleFieldToggle(f)}
                               className={`px-3 py-1 rounded-lg text-sm font-semibold border cursor-pointer select-none transition-colors ${
                                 isSelected
-                                  ? 'bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 border-accent/50 dark:border-emerald-500/50 font-bold'
+                                  ? 'bg-accent-soft text-accent-text border-accent/50 font-bold'
                                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                               }`}
                             >
@@ -728,13 +728,13 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                 {kategoriTags.map((tag) => (
                   <span
                     key={tag}
-                    className="bg-accent-soft dark:bg-emerald-950/50 text-accent-text dark:text-emerald-300 border border-accent/30 dark:border-emerald-500/40 px-3 py-1 rounded-lg text-sm font-semibold flex items-center gap-1.5"
+                    className="bg-accent-soft text-accent-text border border-accent/30 px-3 py-1 rounded-lg text-sm font-semibold flex items-center gap-1.5"
                   >
                     <span>{tag}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
-                      className="text-accent-text hover:text-accent-text dark:hover:text-emerald-200 font-extrabold cursor-pointer"
+                      className="text-accent-text hover:text-accent-text font-extrabold cursor-pointer"
                     >
                       ×
                     </button>
@@ -807,10 +807,10 @@ export const ContractModal: React.FC<ContractModalProps> = ({
             </div>
 
             {/* USD Conversion Info Banner */}
-            <div className="bg-accent/5 dark:bg-emerald-950/20 border border-accent/20 dark:border-emerald-500/20 rounded-xl p-3 text-sm flex flex-wrap items-center justify-between gap-2">
+            <div className="bg-accent/5 border border-accent/20 rounded-xl p-3 text-sm flex flex-wrap items-center justify-between gap-2">
               <div>
                 <span className="font-semibold text-slate-700 dark:text-slate-300">{t('contracts.estimasi_konversi_usd_kurs', 'Estimasi Konversi USD (Kurs {tanggalMulai}):', { tanggalMulai })}</span>
-                <span className="ml-2 font-bold text-accent-text dark:text-emerald-400">
+                <span className="ml-2 font-bold text-accent-text ">
                   {formatMoney(estimatedUsd, 'USD')}
                 </span>
               </div>
@@ -905,7 +905,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
               <label htmlFor="contract-field-16" className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-sm">
                 {t('form.contract.upload_label', 'Dokumen Asli Kontrak (Drive PDF Upload)')}
               </label>
-              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all">
+              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-2xl p-4 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/40 transition-all">
                 <Upload className="w-6 h-6 text-accent-text mx-auto mb-1.5" />
                 {fileData || fileName ? (
                   <div className="space-y-1">
@@ -924,7 +924,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                       type="button"
                       onClick={handleParseContract}
                       disabled={isParsing}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent-soft dark:bg-emerald-950/60 text-accent-text dark:text-emerald-300 hover:bg-accent/20 font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent-soft text-accent-text hover:bg-accent/20 font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
                       {isParsing ? t('contracts.parsing', 'Parsing...') : t('contracts.parse_file', 'Parse File')}
                     </button>
@@ -933,7 +933,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({
                     type="file"
                     accept=".pdf,.doc,.docx"
                     onChange={handleFileChange}
-                    className="w-[220px] max-w-full text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-accent-soft dark:file:bg-emerald-950/60 file:text-accent-text dark:file:text-emerald-400 hover:file:bg-accent/20 cursor-pointer"
+                    className="w-[220px] max-w-full text-sm text-slate-500 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-accent-soft file:text-accent-text hover:file:bg-accent/20 cursor-pointer"
                   />
                 </div>
               </div>

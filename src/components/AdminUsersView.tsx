@@ -5,17 +5,25 @@ import { useConfirm } from '../context/ConfirmDialogContext';
 import { useTenant } from '../context/TenantContext';
 import { useNavigation } from '../context/NavigationContext';
 import type { SystemSubmenu } from '../lib/appRoutes';
-import type { ConsoleAccount, ConsoleApiKey, ConsoleMetrics, ConsoleOrganization, ConsoleSession, ConsoleUser } from './admin/types';
+import type { ConsoleAccount, ConsoleApiKey, ConsoleConfigurationSection, ConsoleDashboardTab, ConsoleMetrics, ConsoleOrganization, ConsoleSession, ConsoleUser } from './admin/types';
+import type { PlatformConfigurationSection } from './admin/PlatformConfigurationPanel';
 import { AdminDashboardTab } from './admin/AdminDashboardTab';
 import { AdminConsoleHeader } from './admin/AdminConsoleHeader';
 import { AdminSessionsTab } from './admin/AdminSessionsTab';
 import { AdminOrganizationsTab } from './admin/AdminOrganizationsTab';
 import { AdminApiKeysTab } from './admin/AdminApiKeysTab';
-import { AdminRbacMatrixTab } from './admin/AdminRbacMatrixTab';
 import { PlatformUsersTab, type PlatformUser } from './admin/PlatformUsersTab';
 import { CreateOrganizationModal, DeleteOrganizationModal, EditOrganizationModal, GenerateApiKeyModal } from './admin/AdminModals';
 
 const LazyPlatformConfigurationPanel = lazy(() => import('./admin/PlatformConfigurationPanel').then((m) => ({ default: m.PlatformConfigurationPanel })));
+
+const CONFIGURATION_SECTIONS: Record<ConsoleConfigurationSection, PlatformConfigurationSection> = {
+  google: 'google',
+  ai: 'ai',
+  smtp: 'notifications',
+  'ui-texts': 'language',
+  database: 'security',
+};
 
 async function consoleApi<T = any>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const res = await fetch(`/api/auth-console${path}`, {
@@ -33,8 +41,8 @@ async function consoleApi<T = any>(path: string, init: { method?: string; body?:
 /**
  * System Admin console (PRD §6.6): platform-only. Global accounts, sessions,
  * the organization directory with "Manage organization", API keys, the full
- * permission matrix and the Configuration tab. Tenant membership, departments
- * and invitations are handled in the managed organization's Settings.
+ * configuration pages. Tenant membership, departments and invitations are
+ * handled in the managed organization's Settings.
  */
 export const AdminUsersView: React.FC<{ initialTab?: SystemSubmenu }> = ({ initialTab = 'dashboard' }) => {
   const { t } = useLanguage();
@@ -53,12 +61,12 @@ export const AdminUsersView: React.FC<{ initialTab?: SystemSubmenu }> = ({ initi
   const [sessions, setSessions] = useState<ConsoleSession[]>([]);
   const [organizations, setOrganizations] = useState<ConsoleOrganization[]>([]);
   const [apiKeys, setApiKeys] = useState<ConsoleApiKey[]>([]);
-  const [matrixData, setMatrixData] = useState<any>(null);
   const [isCreateOrgOpen, setIsCreateOrgOpen] = useState(false);
   const [orgForEdit, setOrgForEdit] = useState<ConsoleOrganization | null>(null);
   const [orgForDelete, setOrgForDelete] = useState<ConsoleOrganization | null>(null);
   const [isCreateApiKeyOpen, setIsCreateApiKeyOpen] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const configurationSection = CONFIGURATION_SECTIONS[activeTab as ConsoleConfigurationSection];
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ type, message });
@@ -74,9 +82,9 @@ export const AdminUsersView: React.FC<{ initialTab?: SystemSubmenu }> = ({ initi
     setIsRefreshing(true);
     setLoadError(null);
     try {
-      const [overview, usersRes, accountsRes, sessionsRes, orgsRes, keysRes, matrixRes] = await Promise.all([
+      const [overview, usersRes, accountsRes, sessionsRes, orgsRes, keysRes] = await Promise.all([
         consoleApi('/overview'), consoleApi('/users'), consoleApi('/accounts'), consoleApi('/sessions'),
-        consoleApi('/organizations'), consoleApi('/api-keys'), consoleApi('/rbac-matrix'),
+        consoleApi('/organizations'), consoleApi('/api-keys'),
       ]);
       setMetrics(overview.data?.metrics || null);
       setUsers(usersRes.users || []);
@@ -84,7 +92,6 @@ export const AdminUsersView: React.FC<{ initialTab?: SystemSubmenu }> = ({ initi
       setSessions(sessionsRes.sessions || []);
       setOrganizations(orgsRes.organizations || []);
       setApiKeys(keysRes.apiKeys || []);
-      setMatrixData(matrixRes.matrix || null);
     } catch (err: any) {
       const message = err?.message || t('admin.toast.load_failed', 'Gagal memuat data konsol autentikasi');
       setLoadError(message);
@@ -130,20 +137,22 @@ export const AdminUsersView: React.FC<{ initialTab?: SystemSubmenu }> = ({ initi
         </div>
       )}
 
-      <AdminConsoleHeader
-        area="system"
-        activeTab={activeTab as any}
-        onTabChange={navigateToTab as any}
-        onCreateOrgClick={() => setIsCreateOrgOpen(true)}
-        onRefresh={() => loadConsoleData(true)}
-        isRefreshing={isRefreshing}
-        userCounts={{ users: users.length, sessions: sessions.length, orgs: organizations.length, teams: 0, invites: 0, apiKeys: apiKeys.length }}
-      />
+      {!configurationSection && (
+        <AdminConsoleHeader
+          area="system"
+          activeTab={activeTab as ConsoleDashboardTab}
+          onTabChange={navigateToTab}
+          onCreateOrgClick={() => setIsCreateOrgOpen(true)}
+          onRefresh={() => loadConsoleData(true)}
+          isRefreshing={isRefreshing}
+          userCounts={{ users: users.length, sessions: sessions.length, orgs: organizations.length, teams: 0, invites: 0, apiKeys: apiKeys.length }}
+        />
+      )}
 
       <div id={`admin-system-${activeTab}-panel`} role="tabpanel" aria-labelledby={`admin-system-${activeTab}-tab`} className="w-full">
-        {activeTab === 'settings' ? (
+        {configurationSection ? (
           <Suspense fallback={<div role="status" className="flex min-h-56 items-center justify-center text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /></div>}>
-            <LazyPlatformConfigurationPanel />
+            <LazyPlatformConfigurationPanel activeSection={configurationSection} />
           </Suspense>
         ) : loadError ? (
           <div role="alert" className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
@@ -205,7 +214,6 @@ export const AdminUsersView: React.FC<{ initialTab?: SystemSubmenu }> = ({ initi
                   await act(() => consoleApi(`/api-keys/${id}`, { method: 'DELETE' }), t('admin.toast.delete_key_success', 'API Key has been deleted.')).catch(() => {});
                 }} />
             )}
-            {activeTab === 'rbac' && <AdminRbacMatrixTab matrixData={matrixData} />}
           </>
         )}
       </div>
@@ -219,7 +227,7 @@ export const AdminUsersView: React.FC<{ initialTab?: SystemSubmenu }> = ({ initi
         }} />
       <EditOrganizationModal org={orgForEdit} isOpen={Boolean(orgForEdit)} onClose={() => setOrgForEdit(null)} onDelete={(org) => setOrgForDelete(org)}
         onSubmit={async (orgId, data) => {
-          await act(() => consoleApi(`/organizations/${orgId}`, { method: 'PUT', body: { name: data.name, slug: data.slug } }), `${t('admin.toast.org', 'Organisasi')} "${data.name}" ${t('admin.toast.updated_success', 'berhasil diperbarui.')}`);
+          await act(() => consoleApi(`/organizations/${orgId}`, { method: 'PUT', body: { name: data.name, slug: data.slug, expectedVersion: orgForEdit?.version, profile: { logoUrl: data.logo || '', tagline: data.metadata?.tagline || '' } } }), `${t('admin.toast.org', 'Organisasi')} "${data.name}" ${t('admin.toast.updated_success', 'berhasil diperbarui.')}`);
           window.dispatchEvent(new CustomEvent('organization-updated'));
         }} />
       <DeleteOrganizationModal isOpen={Boolean(orgForDelete)} org={orgForDelete} isActive={false} onClose={() => setOrgForDelete(null)}

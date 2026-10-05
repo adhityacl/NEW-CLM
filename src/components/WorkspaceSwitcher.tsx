@@ -133,7 +133,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
             className={`w-8 h-8 rounded-lg ${
               currentWorkspace.logoUrl
                 ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-0.5'
-                : `${currentWorkspace.badgeClass} shadow-2xs`
+                : 'bg-accent-strong text-white shadow-2xs'
             } flex items-center justify-center font-bold text-sm shrink-0 select-none overflow-hidden transition-transform`}
           >
             {currentWorkspace.logoUrl ? (
@@ -211,7 +211,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
                       className={`w-7 h-7 rounded-lg ${
                         workspace.logoUrl
                           ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-0.5'
-                          : `${workspace.badgeClass} shadow-2xs`
+                          : `${isSelected ? 'bg-accent-strong text-white' : workspace.badgeClass} shadow-2xs`
                       } flex items-center justify-center font-bold text-xs shrink-0 select-none overflow-hidden`}
                     >
                       {workspace.logoUrl ? (
@@ -231,7 +231,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
                   </div>
 
                   {isSelected && (
-                    <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 stroke-[2.5]" />
+                    <Check className="w-4 h-4 text-accent-text shrink-0 stroke-[2.5]" />
                   )}
                 </button>
               );

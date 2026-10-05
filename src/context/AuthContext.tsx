@@ -21,6 +21,7 @@ export interface Identity {
   email: string;
   name: string;
   image: string | null;
+  bio?: string | null;
   emailVerified: boolean;
   platformRole: 'user' | 'superuser';
   platformPermissions: string[];

@@ -1,4 +1,6 @@
 import { ModalFrame, ModalTitle } from '../ui/modal-frame';
+import { LogoUploadField } from '../settings/LogoUploadField';
+export { LogoUploadField } from '../settings/LogoUploadField';
 import { AlphabeticalSelect } from '../ui/alphabetical-select';
 import React, { useState, useEffect } from 'react';
 import { useTenantSettings } from '../../context/TenantSettingsContext';
@@ -16,10 +18,7 @@ import {
   Check,
   AlertTriangle,
   Pencil,
-  Upload,
-  Image,
   Trash2,
-  Link2,
   Key,
   Eye,
   EyeOff,
@@ -35,7 +34,6 @@ import {
   ConsoleTeam,
 } from './types';
 import { useLanguage } from '../../context/LanguageContext';
-import { useAlertToast } from '../../context/AlertToastContext';
 import { useDepartments } from '../../hooks/useDepartments';
 
 // Add user modal
@@ -161,7 +159,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
 
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <UserPlus className="w-4 h-4 text-emerald-600" />
+            <UserPlus className="w-4 h-4 text-accent-text" />
             <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {t('admin.modal_add_user', 'Tambah Pengguna Sistem Baru')}
             </ModalTitle>
@@ -188,7 +186,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('admin.contoh_rina_melati', 'Contoh: Rina Melati')}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-accent"
             />
           </div>
 
@@ -202,7 +200,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={t('admin.name_example_com', 'name@example.com')}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-accent"
             />
           </div>
 
@@ -213,7 +211,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             <AlphabeticalSelect id="adminmodals-field-3"
               value={role}
               onChange={(e) => handleRoleChange(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-medium"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-accent font-medium"
             >
               {allowedRoles.includes('superuser') && <option value="superuser">{t('admin.superuser', 'Superuser')}</option>}
               {allowedRoles.includes('admin') && <option value="admin">{t('admin.admin', 'Admin')}</option>}
@@ -239,7 +237,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               onChange={(e) => setOrganizationId(e.target.value)}
               disabled={role === 'superuser'}
               required={role !== 'superuser' && role !== 'admin'}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-medium disabled:opacity-60"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-accent font-medium disabled:opacity-60"
             >
               {role === 'superuser' ? (
                 <option value="">{t('admin.all_tenants', 'Semua Tenant / Organisasi (Akses Global)')}</option>
@@ -273,7 +271,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               value={role === 'superuser' || role === 'admin' ? '' : department}
               onChange={(e) => setDepartment(e.target.value)}
               disabled={role === 'superuser' || role === 'admin'}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-medium disabled:opacity-60"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-accent font-medium disabled:opacity-60"
             >
               {role === 'superuser' || role === 'admin' ? (
                 <option value="">{t('admin.all_departments', 'Semua Departemen (Akses Global)')}</option>
@@ -296,7 +294,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t('admin.kosongkan_jika_menggunakan_google_login_sso', 'Kosongkan jika menggunakan Google Login SSO')}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-accent"
             />
           </div>
 
@@ -311,7 +309,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
+              className="theme-action ui-button ui-button-lg font-medium text-white transition-colors disabled:opacity-50"
             >
               {isSubmitting ? t('admin.saving', 'Menyimpan...') : t('admin.btn_save_user', 'Simpan Pengguna')}
             </button>
@@ -663,179 +661,6 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
   );
 };
 
-// Logo upload helper component
-interface LogoUploadFieldProps {
-  logo: string;
-  name: string;
-  onChange: (logo: string) => void;
-  label?: string;
-}
-
-export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
-  logo,
-  name,
-  onChange,
-  label,
-}) => {
-  const { t } = useLanguage();
-  const showAlert = useAlertToast();
-  const [isUrlMode, setIsUrlMode] = useState(false);
-  const [urlInput, setUrlInput] = useState(logo || '');
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const fallbackLetter = (name.trim() || 'O').charAt(0).toUpperCase();
-
-  const handleFileChange = (file?: File | null) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      showAlert({ title: t('admin.err_image_type', 'Harap pilih file gambar (PNG, JPG, SVG, WebP).'), variant: 'warning' });
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      showAlert({ title: t('admin.err_image_size', 'Ukuran file gambar maksimal 2MB.'), variant: 'warning' });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      if (result) {
-        onChange(result);
-        setUrlInput(result);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileChange(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleRemove = () => {
-    onChange('');
-    setUrlInput('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleApplyUrl = () => {
-    onChange(urlInput.trim());
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
-          {label || t('admin.org_logo_label', 'Logo Organisasi / Workspace')}
-        </label>
-        <button
-          type="button"
-          onClick={() => setIsUrlMode(!isUrlMode)}
-          className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
-        >
-          <Link2 className="w-3 h-3" />
-          {isUrlMode
-            ? t('admin.logo_mode_upload', 'Unggah File Gambar')
-            : t('admin.logo_mode_url', 'Gunakan URL Gambar')}
-        </button>
-      </div>
-
-      <div className="flex items-start gap-3.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
-        {/* Preview Container */}
-        <div className="relative shrink-0 group">
-          <div className="w-14 h-14 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center overflow-hidden shadow-xs">
-            {logo ? (
-              <img
-                src={logo}
-                alt={name || t('admin.logo', 'Logo')}
-                className="w-full h-full object-contain p-1"
-                onError={(e) => {
-                  (e.currentTarget as HTMLElement).style.display = 'none';
-                }}
-              />
-            ) : (
-              <div className="w-full h-full bg-linear-to-br from-indigo-500 to-purple-600 text-white font-bold text-lg flex items-center justify-center">
-                {fallbackLetter}
-              </div>
-            )}
-          </div>
-          {logo && (
-            <button
-              type="button"
-              onClick={handleRemove}
-              title={t('admin.btn_remove_logo', 'Hapus Logo')}
-              className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-red-600 text-white hover:bg-red-700 shadow-md transition-all cursor-pointer"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
-          )}
-        </div>
-
-        {/* Input / Dropzone Area */}
-        <div className="flex-1 min-w-0">
-          {!isUrlMode ? (
-            <div
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-2.5 text-center cursor-pointer transition-colors ${
-                isDragging
-                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20'
-                  : 'border-slate-300 dark:border-slate-700 hover:border-emerald-500 hover:bg-white dark:hover:bg-slate-900'
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png, image/jpeg, image/webp, image/svg+xml"
-                onChange={(e) => handleFileChange(e.target.files?.[0])}
-                className="hidden"
-              />
-              <div className="flex items-center justify-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-medium">
-                <Upload className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>{t('admin.logo_upload_cta', 'Pilih atau Tarik Logo')}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <input aria-label={t('admin.org_logo_label', 'Logo Organisasi / Workspace')}
-                  type="url"
-                  placeholder="https://example.com/logo.png"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  className="flex-1 px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-emerald-500 outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyUrl}
-                  className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer"
-                >
-                  {t('admin.btn_apply', 'Terapkan')}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Create organization modal
 interface CreateOrgModalProps {
   isOpen: boolean;
@@ -902,7 +727,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
 
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-emerald-600" />
+            <Building2 className="w-4 h-4 text-accent-text" />
             <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {t('admin.modal_create_org', 'Buat Organisasi Enterprise Baru')}
             </ModalTitle>
@@ -929,7 +754,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder={t('admin.contoh_pt_fintek_digital_mandiri', 'Contoh: PT Fintek Digital Mandiri')}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-emerald-500"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-accent"
             />
           </div>
 
@@ -954,11 +779,11 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                 placeholder="fintek-mandiri"
-                className="w-full pl-7 pr-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono focus:ring-1 focus:ring-emerald-500"
+                className="w-full pl-7 pr-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono focus:ring-1 focus:ring-accent"
               />
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              {t('admin.org_slug_hint', 'Digunakan untuk pemetaan folder root dan tenant routing')}: <code className="font-mono text-emerald-600">{t('admin.vendors', '/{slug}/[vendors]', { slug })}</code>
+              {t('admin.org_slug_hint', 'Digunakan untuk pemetaan folder root dan tenant routing')}: <code className="font-mono text-accent-text">{t('admin.vendors', '/{slug}/[vendors]', { slug })}</code>
             </p>
           </div>
 
@@ -1032,7 +857,7 @@ export const CreateOrganizationModal: React.FC<CreateOrgModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
+              className="theme-action ui-button ui-button-lg font-medium text-white transition-colors disabled:opacity-50"
             >
               {isSubmitting ? t('admin.creating', 'Membuat...') : t('admin.btn_create_org', 'Buat Organisasi')}
             </button>
@@ -1059,11 +884,10 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
   onSubmit,
   onDelete,
 }) => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [logo, setLogo] = useState('');
-  const [currency, setCurrency] = useState('USD');
   const [tagline, setTagline] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1073,7 +897,6 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
       setName(org.name || '');
       setSlug(org.slug || '');
       setLogo(org.logo && org.logo !== '/favicon.png' ? org.logo : '');
-      setCurrency(org.metadata?.settings?.defaultCurrency || org.metadata?.currency || 'USD');
       setTagline(org.metadata?.tagline || '');
       setError(null);
     }
@@ -1098,11 +921,9 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
       await onSubmit(org.id, {
         name: name.trim(),
         slug: slug.trim().toLowerCase(),
-        logo: logo.trim() || '/favicon.png',
+        logo: logo.trim(),
         metadata: {
           ...(org.metadata || {}),
-          currency,
-          settings: { ...(org.metadata?.settings || {}), defaultCurrency: currency },
           tagline: tagline.trim(),
         },
       });
@@ -1119,7 +940,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
 
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
+            <div className="theme-soft w-7 h-7 rounded-lg flex items-center justify-center">
               <Pencil className="w-3.5 h-3.5" />
             </div>
             <div>
@@ -1150,7 +971,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('admin.e_g_acme_holdings_pte_ltd', 'e.g. Acme Holdings Pte. Ltd.')}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-emerald-500 outline-none"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-accent outline-none"
             />
           </div>
 
@@ -1175,41 +996,25 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                 placeholder="acme"
-                className="w-full pl-7 pr-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono focus:ring-1 focus:ring-emerald-500 outline-none"
+                className="w-full pl-7 pr-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono focus:ring-1 focus:ring-accent outline-none"
               />
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              {t('admin.org_slug_hint', 'Pemetaan tenant routing')}: <code className="font-mono text-emerald-600 dark:text-emerald-400">/{slug || 'tenant'}{t('admin.vendors_2', '/[vendors]')}</code>
+              {t('admin.org_slug_hint', 'Pemetaan tenant routing')}: <code className="font-mono text-accent-text">/{slug || 'tenant'}{t('admin.vendors_2', '/[vendors]')}</code>
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="adminmodals-field-17" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                {t('admin.org_currency_label', 'Mata Uang Utama')}
-              </label>
-              <AlphabeticalSelect id="adminmodals-field-17"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 outline-none"
-              >
-                {SUPPORTED_CURRENCIES.map((c) => (
-                  <option key={c.code} value={c.code}>{c.code} — {currencyLabel(c.code, language)}</option>
-                ))}
-              </AlphabeticalSelect>
-            </div>
-            <div>
-              <label htmlFor="adminmodals-field-18" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                {t('admin.org_tagline_label', 'Sifat Kerjasama / Tagline')}
-              </label>
-              <input id="adminmodals-field-18"
-                type="text"
-                value={tagline}
-                onChange={(e) => setTagline(e.target.value)}
-                placeholder={t('admin.legal_commercial_contract_management', 'Legal & Commercial Contract Management')}
-                className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 outline-none"
-              />
-            </div>
+          <div>
+            <label htmlFor="adminmodals-field-18" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              {t('admin.org_tagline_label', 'Sifat Kerjasama / Tagline')}
+            </label>
+            <input id="adminmodals-field-18"
+              type="text"
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
+              placeholder={t('admin.legal_commercial_contract_management', 'Legal & Commercial Contract Management')}
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 outline-none"
+            />
           </div>
 
           <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs space-y-1.5">
@@ -1219,7 +1024,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
             </div>
             <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
               <span>{t('admin.folder_isolasi', 'Folder Isolasi:')}</span>
-              <span className="font-mono text-emerald-600 dark:text-emerald-400">/{name || org.name}{t('admin.vendors_3', '/[Vendors]')}</span>
+              <span className="font-mono text-accent-text">/{name || org.name}{t('admin.vendors_3', '/[Vendors]')}</span>
             </div>
           </div>
 
@@ -1249,7 +1054,7 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
+                className="theme-action ui-button ui-button-lg font-medium text-white transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
               >
                 {isSubmitting ? t('admin.saving', 'Menyimpan...') : t('admin.btn_save_changes', 'Simpan Perubahan')}
               </button>
@@ -1367,7 +1172,7 @@ export const DeleteOrganizationModal: React.FC<DeleteOrganizationModalProps> = (
                 </div>
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
                   <span>{t('admin.slug_tenant', 'Slug Tenant:')}</span>
-                  <code className="font-mono text-emerald-600 dark:text-emerald-400">@{org.slug}</code>
+                  <code className="font-mono text-accent-text">@{org.slug}</code>
                 </div>
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
                   <span>{t('admin.id', 'ID:')}</span>
@@ -1633,7 +1438,7 @@ export const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 cursor-pointer"
+                className="theme-action ui-button ui-button-lg font-medium text-white transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? t('admin.saving', 'Menyimpan...') : t('admin.btn_save_changes', 'Simpan Perubahan')}
               </button>
@@ -1812,7 +1617,7 @@ export const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
 
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-emerald-600" />
+            <Layers className="w-4 h-4 text-accent-text" />
             <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {t('admin.modal_add_team_member', 'Tambah Anggota ke Tim')}
             </ModalTitle>
@@ -1864,7 +1669,7 @@ export const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || !selectedUserId}
-              className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
+              className="theme-action ui-button ui-button-lg font-medium text-white transition-colors disabled:opacity-50"
             >
               {isSubmitting ? t('admin.adding', 'Menambahkan...') : t('admin.btn_add', 'Tambahkan')}
             </button>
@@ -1917,7 +1722,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
 
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Mail className="w-4 h-4 text-emerald-600" />
+            <Mail className="w-4 h-4 text-accent-text" />
             <ModalTitle className="font-semibold text-sm text-slate-900 dark:text-slate-100">
               {t('admin.modal_create_inv', 'Undang Anggota Organisasi')}
             </ModalTitle>
@@ -1930,7 +1735,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs text-slate-600 dark:text-slate-300 space-y-1">
             <p className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-emerald-600" />
+              <Mail className="w-3.5 h-3.5 text-accent-text" />
               <span>{t('admin.pengiriman_via_email_smtp_relay', 'Pengiriman via Email (SMTP Relay)')}</span>
             </p>
             <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
@@ -1998,7 +1803,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="ui-button ui-button-lg font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
+              className="theme-action ui-button ui-button-lg font-medium text-white transition-colors disabled:opacity-50"
             >
               {isSubmitting ? t('admin.sending', 'Mengirim...') : t('admin.btn_send_inv', 'Kirim Undangan')}
             </button>
@@ -2129,7 +1934,7 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="ui-button ui-button-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors flex items-center gap-1 shrink-0"
+                  className="theme-action ui-button ui-button-lg text-white font-medium transition-colors flex items-center gap-1 shrink-0"
                 >
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied ? t('admin.copied', 'Tersalin') : t('admin.copy', 'Salin')}
@@ -2177,7 +1982,7 @@ export const GenerateApiKeyModal: React.FC<GenerateApiKeyModalProps> = ({
                       type="checkbox"
                       checked={selectedScopes.includes(scope.id)}
                       onChange={() => handleToggleScope(scope.id)}
-                      className="rounded text-emerald-600 focus:ring-emerald-500"
+                      className="rounded text-accent-text focus:ring-accent"
                     />
                     <div>
                       <div className="font-medium text-slate-800 dark:text-slate-200 font-mono text-xs">

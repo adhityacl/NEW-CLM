@@ -39,7 +39,7 @@ const before = snapshot();
 const e2e = process.argv.includes('--e2e');
 const command = e2e
   ? ['npx', ['playwright', 'test', '--config', 'playwright.tenant-boundaries.config.ts']]
-  : ['npx', ['tsx', '--test', '--test-concurrency=1', 'tests/tenant-boundaries/api.test.ts', 'tests/tenant-boundaries/migration.test.ts', 'tests/tenant-boundaries/store.test.ts', 'tests/rbac.test.ts']];
+  : ['npx', ['tsx', '--test', '--test-concurrency=1', 'tests/tenant-boundaries/api.test.ts', 'tests/tenant-boundaries/accountProfile.test.ts', 'tests/tenant-boundaries/migration.test.ts', 'tests/tenant-boundaries/store.test.ts', 'tests/rbac.test.ts']];
 const env = { ...process.env };
 delete env.APP_TEST_MODE; // each harness server sets its own isolated paths
 const result = spawnSync(command[0], command[1], { stdio: 'inherit', env });

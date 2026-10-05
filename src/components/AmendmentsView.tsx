@@ -105,7 +105,7 @@ export const AmendmentsView: React.FC<AmendmentsViewProps> = ({
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 bg-accent-soft dark:bg-emerald-950/40 text-accent-text dark:text-emerald-400 rounded-xl">
+                  <div className="p-2 bg-accent-soft text-accent-text rounded-xl">
                     <GitCommit className="w-4 h-4" />
                   </div>
                   <div>
