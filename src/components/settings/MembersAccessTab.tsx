@@ -31,8 +31,8 @@ const labelClass = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-sl
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 /** Department checkboxes limited to the departments this context can see. */
-const DepartmentPicker: React.FC<{ departments: Department[]; value: string[]; onChange: (ids: string[]) => void; disabled?: boolean; legend: string }> = ({ departments, value, onChange, disabled, legend }) => (
-  <fieldset className="m-0 min-w-0 border-0 p-0" disabled={disabled}>
+const DepartmentPicker: React.FC<{ departments: Department[]; value: string[]; onChange: (ids: string[]) => void; disabled?: boolean; legend: string; 'aria-describedby'?: string }> = ({ departments, value, onChange, disabled, legend, 'aria-describedby': ariaDescribedby }) => (
+  <fieldset className="m-0 min-w-0 border-0 p-0" disabled={disabled} aria-describedby={ariaDescribedby}>
     <legend className={labelClass}>{legend}</legend>
     <div className="grid max-h-48 gap-1 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-700 sm:grid-cols-2">
       {departments.map((d) => (
@@ -350,8 +350,8 @@ const InviteDialog: React.FC<{
       <form onSubmit={submit} noValidate className="flex flex-col gap-4 overflow-y-auto p-5">
         <div>
           <label htmlFor={ids.email} className={labelClass}>{t('tb.col_email', 'Email')}</label>
-          <input id={ids.email} type="email" autoComplete="off" className={fieldClass} value={email} aria-invalid={email.length > 0 && !emailValid} onChange={(e) => setEmail(e.target.value)} />
-          {email.length > 0 && !emailValid && <p className="mt-1.5 text-xs text-rose-700 dark:text-rose-300">{t('tb.invalid_email', 'Enter a valid email address.')}</p>}
+          <input id={ids.email} type="email" autoComplete="off" className={fieldClass} value={email} aria-invalid={email.length > 0 && !emailValid} aria-describedby={email.length > 0 && !emailValid ? `${ids.email}-error` : undefined} onChange={(e) => setEmail(e.target.value)} />
+          {email.length > 0 && !emailValid && <p id={`${ids.email}-error`} className="mt-1.5 text-xs text-rose-700 dark:text-rose-300">{t('tb.invalid_email', 'Enter a valid email address.')}</p>}
         </div>
         <div>
           <label htmlFor={ids.role} className={labelClass}>{t('tb.col_role', 'Role')}</label>
@@ -361,8 +361,8 @@ const InviteDialog: React.FC<{
         </div>
         {role !== 'admin' && (
           <div>
-            <DepartmentPicker departments={departments} value={departmentIds} onChange={setDepartmentIds} legend={t('tb.col_departments', 'Departments')} />
-            {!deptValid && <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-400">{t('tb.department_required', 'Choose at least one department.')}</p>}
+            <DepartmentPicker departments={departments} value={departmentIds} onChange={setDepartmentIds} legend={t('tb.col_departments', 'Departments')} aria-describedby={!deptValid ? `invite-dept-error` : undefined} />
+            {!deptValid && <p id="invite-dept-error" className="mt-1.5 text-xs text-slate-600 dark:text-slate-400">{t('tb.department_required', 'Choose at least one department.')}</p>}
           </div>
         )}
         {error && <p role="alert" className="flex items-center gap-2 text-sm text-rose-700 dark:text-rose-300"><AlertCircle className="h-4 w-4" aria-hidden="true" />{error}</p>}
@@ -443,8 +443,8 @@ const EditMemberDialog: React.FC<{
         </div>
         {role !== 'admin' && (
           <div>
-            <DepartmentPicker departments={departments} value={departmentIds} onChange={setDepartmentIds} disabled={!canDepartments} legend={t('tb.col_departments', 'Departments')} />
-            {needsDepartments && <p className="mt-1.5 text-xs text-rose-700 dark:text-rose-300">{t('tb.department_required', 'Choose at least one department.')}</p>}
+            <DepartmentPicker departments={departments} value={departmentIds} onChange={setDepartmentIds} disabled={!canDepartments} legend={t('tb.col_departments', 'Departments')} aria-describedby={needsDepartments ? `edit-dept-error` : undefined} />
+            {needsDepartments && <p id="edit-dept-error" className="mt-1.5 text-xs text-rose-700 dark:text-rose-300">{t('tb.department_required', 'Choose at least one department.')}</p>}
           </div>
         )}
         {error && <p role="alert" className="flex items-center gap-2 text-sm text-rose-700 dark:text-rose-300"><AlertCircle className="h-4 w-4" aria-hidden="true" />{error}</p>}
