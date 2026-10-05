@@ -58,16 +58,17 @@ test.describe('SPA routing via ?tab= query parameter', () => {
     await expect.poll(() => tabOf(page)).toBe('contracts');
   });
 
-  test('unknown tab falls back to the dashboard', async ({ page }) => {
+  // PRD §6.2: unrecognized IDs are rejected with a generic denial, not silently remapped.
+  test('unknown tab shows access denied with a permitted destination', async ({ page }) => {
     await openAs(page, 'admin', '/app?tab=does-not-exist');
+    await expect(page.getByRole('heading', { name: 'You do not have access to this page' })).toBeVisible();
+    await page.getByRole('button', { name: 'Go to an allowed page', exact: true }).click();
     await expect.poll(() => tabOf(page)).toBe('dashboard');
   });
 
-  // Regression: right after sign-in PermissionProvider briefly exposed the
-  // signed-out value (loading: false, viewer permissions), so guards bounced
-  // permitted deep links — e.g. every admin-system-* tab landed on
-  // admin-organization-users and create-contract on the dashboard.
-  for (const tab of ['admin-system-rbac', 'create-contract', 'activity-logs']) {
+  // Regression: right after sign-in a stale or signed-out permission state
+  // bounced permitted deep links. Platform tabs need no organization.
+  for (const tab of ['admin-system-rbac', 'admin-system-settings']) {
     test(`superuser deep link to ${tab} is not bounced by stale permissions`, async ({ page }) => {
       await openAs(page, 'superuser', `/app?tab=${tab}`);
       await page.waitForTimeout(500);
@@ -75,11 +76,24 @@ test.describe('SPA routing via ?tab= query parameter', () => {
     });
   }
 
-  test('tab the role cannot open is replaced, not pushed', async ({ page }) => {
-    await openAs(page, 'viewer', '/app?tab=settings');
-    await expect.poll(() => tabOf(page)).toBe('dashboard');
-    // The guard used replaceState, so there is no settings entry to go back to.
+  test('admin deep link to a permitted tab is not bounced while capabilities load', async ({ page }) => {
+    await openAs(page, 'admin', '/app?tab=create-contract');
+    await page.waitForTimeout(500);
+    expect(tabOf(page)).toBe('create-contract');
+    await expect(page.getByRole('button', { name: 'New Document', exact: true })).toBeVisible();
+  });
+
+  test('legacy alias is replaced, not pushed', async ({ page }) => {
+    await openAs(page, 'admin', '/app?tab=settings-region');
+    await expect.poll(() => tabOf(page)).toBe('settings-organization');
+    // The alias used replaceState, so there is no old entry to go back to.
     const historyLength = await page.evaluate(() => window.history.length);
     expect(historyLength).toBeLessThanOrEqual(2);
+  });
+
+  test('tab the role cannot open is denied before any Settings content mounts', async ({ page }) => {
+    await openAs(page, 'viewer', '/app?tab=settings');
+    await expect(page.getByRole('heading', { name: 'You do not have access to this page' })).toBeVisible();
+    await expect(page.getByRole('tablist', { name: 'Settings sections' })).toHaveCount(0);
   });
 });

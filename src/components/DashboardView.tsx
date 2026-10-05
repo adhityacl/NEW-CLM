@@ -10,6 +10,7 @@ import { convertToUsdWithFallback, getActiveFormattingLocale, getDefaultUsdRate 
 import { Contract, InsertionOrder, Partner, NotificationLog, PartnerSpending } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../lib/permissions';
 import {
   canViewPartner,
   canViewContract,
@@ -76,6 +77,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const caps = usePermissions();
+  // PRD §4.5.3: a non-admin membership without departments sees an explicit state, not an error or org totals.
+  const noDepartmentAccess = caps.status === 'ready' && caps.accessMode === 'membership' && caps.tenantRole !== 'admin' && caps.departmentIds.length === 0;
   const isCompactChart = useMediaQuery('(max-width: 639px)');
 
   // Get time-based dynamic greeting
@@ -105,7 +109,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Department-scoped datasets based on RBAC and Internal PIC of Partner
   const scopedPartners = useMemo(() => (partners || []).filter((p) => canViewPartner(p, user)), [partners, user]);
   const scopedContracts = useMemo(() => (contracts || []).filter((c) => canViewContract(c, partners, user)), [contracts, partners, user]);
-  const scopedIOs = useMemo(() => (ios || []).filter((i) => canViewIO(i, partners, user)), [ios, partners, user]);
+  // Commercial documents disappear from every widget and table while their module is off.
+  const commercialEnabled = useTenantSettings().policy.settings.modules.commercialDocuments;
+  const scopedIOs = useMemo(() => (commercialEnabled ? ios || [] : []).filter((i) => canViewIO(i, partners, user)), [commercialEnabled, ios, partners, user]);
   const scopedSpendings = useMemo(() => (spendings || []).filter((s) => canViewSpending(s, partners, user)), [spendings, partners, user]);
 
   // Stacked Spending Chart State & Filter Controls
@@ -212,13 +218,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalNilaiKontrak = contractTotalInCurrency(activeContracts, viewCurrency);
   return (
     <div className="space-y-4 animate-in fade-in-50 duration-200">
+      {noDepartmentAccess && (
+        <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          {t('tb.no_department_access', 'You are not assigned to a department in this organization, so no records are shown. Ask an administrator to assign one.')}
+        </p>
+      )}
       <DashboardOverview
         greeting={getGreetingText()}
         expiring={expiringContracts.length}
         metrics={[
           { label: t('dashboard.active_partners'), value: activePartnersCount, total: scopedPartners.length, detail: t('dashboard.min_one_contract'), icon: Building2, tone: 'mint', onClick: () => onNavigateTab('partners') },
           { label: t('dashboard.active_contracts'), value: activeContracts.length, total: scopedContracts.length, detail: `${t('dashboard.value')}: ${formatView(totalNilaiKontrak, true)}`, icon: FileText, tone: 'blue', onClick: () => onNavigateTab('contracts') },
-          { label: t('dashboard.insertion_orders'), value: activeIOs.length, total: scopedIOs.length, detail: t('dashboard.from_contracts', 'From {contracts} Contracts', { contracts: scopedContracts.length }), icon: FileSpreadsheet, tone: 'violet', onClick: () => onNavigateTab('ios') },
+          ...(commercialEnabled ? [{ label: t('dashboard.insertion_orders'), value: activeIOs.length, total: scopedIOs.length, detail: t('dashboard.from_contracts', 'From {contracts} Contracts', { contracts: scopedContracts.length }), icon: FileSpreadsheet, tone: 'violet' as const, onClick: () => onNavigateTab('ios') }] : []),
           { label: t('dashboard.expiring_contracts'), value: expiringContracts.length, detail: t('dashboard.extension_termination'), icon: AlertTriangle, tone: 'amber', onClick: () => onNavigateTab('contracts') },
         ]}
       />
@@ -440,7 +451,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Stacked Spending Chart Card (Under Table) */}
+      {/* Stacked Spending Chart Card (Under Table); hidden with the spending module (PRD §4.5.3) */}
+      {policy.settings.modules.spending && (
       <div className="min-w-0 bg-white border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
@@ -602,6 +614,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

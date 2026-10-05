@@ -51,10 +51,11 @@ export class IsolatedServer {
   base = '';
   constructor(public dir: string, public port: number, public serverFile: string) {}
 
-  static async start(): Promise<IsolatedServer> {
+  /** `port` pins the API port (the browser suite's preview proxy needs it up front). */
+  static async start(options: { port?: number } = {}): Promise<IsolatedServer> {
     const dir = await mkdtemp(join(tmpdir(), 'tenant-boundaries-'));
     await mkdir(join(dir, 'data'), { recursive: true });
-    const server = new IsolatedServer(dir, await freePort(), await bundle());
+    const server = new IsolatedServer(dir, options.port ?? await freePort(), await bundle());
     server.base = `http://127.0.0.1:${server.port}`;
     await server.launch();
     server.db = new Database(join(dir, 'auth.db'));

@@ -49,16 +49,23 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<Omit<PermissionContextValue, 'retry' | 'platformPermissions'>>({ ...EMPTY });
   const requestRef = useRef(0);
+  /** `<identity>:<organization>` whose capabilities the ready state holds. */
+  const loadedFor = useRef('');
 
   useEffect(() => {
     const request = ++requestRef.current;
     const selection = getSelectionRevision();
     if (!identity || !activeTenantId) {
+      loadedFor.current = '';
       setState({ ...EMPTY });
       return;
     }
-    // Never keep the previous organization's permissions while loading (§11.3).
-    setState({ ...EMPTY, status: 'loading', loading: true, organizationId: activeTenantId, tenantId: activeTenantId });
+    // Never keep the previous organization's (or identity's) permissions while loading (§11.3).
+    // Refreshing the same identity and organization (after a save) keeps the screen mounted.
+    const key = `${identity.id}:${activeTenantId}`;
+    setState((prev) => (prev.status === 'ready' && loadedFor.current === key
+      ? prev
+      : { ...EMPTY, status: 'loading', loading: true, organizationId: activeTenantId, tenantId: activeTenantId }));
     const controller = new AbortController();
     (async () => {
       try {
@@ -71,6 +78,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
         // Ignore responses for an organization that is no longer selected (AC-026).
         if (request !== requestRef.current || caps.organizationId !== activeTenantId || selection !== getSelectionRevision()) return;
         const names = new Map<string, string>((depts.items || []).map((d: { id: string; name: string }) => [d.id, d.name]));
+        loadedFor.current = key;
         setState({
           status: 'ready',
           loading: false,
@@ -87,6 +95,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
         });
       } catch (err: any) {
         if (controller.signal.aborted || request !== requestRef.current) return;
+        loadedFor.current = '';
         setState({ ...EMPTY, status: 'error', organizationId: activeTenantId, tenantId: activeTenantId });
         if (String(err?.message || '').includes('404')) {
           window.dispatchEvent(new CustomEvent('organization-access-lost', { detail: activeTenantId }));
