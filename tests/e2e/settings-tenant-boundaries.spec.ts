@@ -13,7 +13,7 @@ const B = fixtureOrganization('org-b', 'Beta Org');
 const PRIVILEGED = /^\/api\/organizations\/[^/]+\/(settings|integrations|audit|members|invitations|departments)|^\/api\/platform\//;
 
 /** `routes` registers test-specific handlers after the fixture API, so they take precedence. */
-async function open(page: Page, options: Partial<TenantApiOptions> & { tab?: string; routes?: () => Promise<void> } = {}) {
+async function open(page: Page, options: Partial<TenantApiOptions> & { tab?: string; routes?: () => Promise<unknown>; data?: Record<string, Record<string, unknown[]>> } = {}) {
   const api = createTenantApi({ organizations: [A], ...options });
   const requests: string[] = [];
   page.on('request', request => {
@@ -26,7 +26,7 @@ async function open(page: Page, options: Partial<TenantApiOptions> & { tab?: str
     const url = new URL(route.request().url());
     const organizationId = route.request().headers()['x-organization-id'] || '';
     const fixtures: Record<string, unknown> = {
-      '/api/init-data': workspaceInit(organizationId, {}),
+      '/api/init-data': workspaceInit(organizationId, options.data?.[organizationId] ?? {}),
       '/api/documents': { documents: [], total: 0 },
       '/api/activity-logs': [],
     };
@@ -275,4 +275,58 @@ test('AC-042 loading and save errors are announced accessibly', async ({ page })
   await page.getByRole('button', { name: 'Save Profile', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Someone else changed these settings');
   await expect(page.getByRole('button', { name: 'Reload', exact: true })).toBeVisible();
+});
+
+test('AC-026 a slow response for the previous organization never overwrites the newly selected one', async ({ page }) => {
+  let releaseA = () => {};
+  const heldA = new Promise<void>(resolve => { releaseA = resolve; });
+  let aServed = false;
+  await open(page, {
+    organizations: [A, B], roles: { 'org-a': 'admin', 'org-b': 'admin' }, sessionDefault: 'org-a', tab: 'partners',
+    data: {
+      'org-a': { partners: [{ partner_id: 'pa', nama_partner: 'Alpha Only Partner', organizationId: 'org-a' }] },
+      'org-b': { partners: [{ partner_id: 'pb', nama_partner: 'Beta Only Partner', organizationId: 'org-b' }] },
+    },
+    routes: () => page.route('**/api/init-data', async route => {
+      if (route.request().headers()['x-organization-id'] === 'org-a') {
+        await heldA;
+        aServed = true;
+      }
+      await route.fallback().catch(() => {}); // the app may already have aborted it
+    }),
+  });
+  await expect(page.locator('aside button[aria-haspopup="listbox"]')).toContainText('Alpha Org');
+  await page.locator('aside button[aria-haspopup="listbox"]').click();
+  await page.getByRole('listbox').getByRole('option', { name: /Beta Org/ }).click();
+  await expect(page.locator('main').getByText('Beta Only Partner').first()).toBeVisible();
+  releaseA();
+  await expect.poll(() => aServed).toBe(true);
+  await page.waitForTimeout(500);
+  await expect(page.getByText('Alpha Only Partner')).toHaveCount(0);
+  await expect(page.locator('main').getByText('Beta Only Partner').first()).toBeVisible();
+});
+
+test('AC-034 language and theme preferences belong to the identity, not the browser', async ({ page }) => {
+  const { api } = await open(page, { roles: { 'org-a': 'admin' } });
+  await page.locator('header button').filter({ hasText: /^(EN|ID|ZH)$/ }).click();
+  await page.getByRole('dialog').locator('button[lang="id"]').click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'id');
+  await page.getByRole('button', { name: /Mode Gelap|Dark Mode/i }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  expect(await page.evaluate(() => ({
+    language: localStorage.getItem('user:fixture-user:language'), theme: localStorage.getItem('user:fixture-user:theme'),
+    legacyLanguage: localStorage.getItem('app_language'), legacyTheme: localStorage.getItem('app_theme'),
+  }))).toEqual({ language: 'ID', theme: 'dark', legacyLanguage: null, legacyTheme: null });
+
+  // Another identity in the same browser keeps the product defaults and bundled texts.
+  api.state.userId = 'fixture-other-user';
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
+  await expect(page.getByRole('button', { name: 'Main Dashboard', exact: true })).toBeVisible();
+
+  api.state.userId = undefined;
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'id');
+  await expect(page.locator('html')).toHaveClass(/dark/);
 });

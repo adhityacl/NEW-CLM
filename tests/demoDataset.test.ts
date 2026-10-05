@@ -13,6 +13,11 @@ test('demo dataset is one Indonesian banking organization with 5 unique partners
   assert.equal(data.allowedUsers.length, 1);
   assert.equal(data.allowedUsers[0].role, 'Admin');
 
+  // Seeded partners are department-owned: each internal PIC is an exact department of the organization.
+  const departmentNames = new Set(data.departments.map((d) => d.name));
+  for (const partner of data.partners) assert.ok(departmentNames.has(partner.pic_internal), partner.pic_internal);
+  assert.equal(new Set(data.departments.map((d) => d.id)).size, data.departments.length);
+
   const partnerIds = new Set(data.partners.map((p) => p.partner_id));
   for (const partner of data.partners) {
     assert.equal(data.contracts.filter((c) => c.partner_id === partner.partner_id).length, 1);

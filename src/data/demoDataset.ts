@@ -405,7 +405,9 @@ export function buildDemoDataset(_now: Date = new Date()): DemoDataset {
   const createdAt = '2024-06-01T09:00:00.000Z';
   return {
     tenants: DEMO_TENANTS.map((item) => ({ ...item, settings: { ...item.settings }, created_at: createdAt, updated_at: '2026-10-01T09:00:00.000Z' })),
-    departments: ['Legal', 'Information Technology', 'Credit Risk Management', 'Digital Banking', 'Treasury & Investment', 'Procurement'].map((name, i) => ({
+    // Every demo partner's internal PIC is a department here, so seeded records are department-owned.
+    departments: ['Legal', 'Information Technology', 'Credit Risk Management', 'Digital Banking', 'Treasury & Investment', 'Procurement',
+      'Human Capital & General Affairs', 'Marketing & Corporate Communications'].map((name, i) => ({
       id: `team-demo-bmd-${i + 1}`, organizationId: ORG, name, created_at: createdAt, updated_at: createdAt,
     })),
     allowedUsers: [

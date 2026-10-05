@@ -7,6 +7,8 @@ import { after, before, describe, it } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { IsolatedServer, membershipIdOf, seedFixtures, type Session } from './harness';
+import { betterAuthEndpoints } from '../../tools/gen-endpoint-inventory';
+import { isBetterAuthPathAllowed } from '../../server/routePolicies';
 
 let server: IsolatedServer;
 let ids: Record<string, string>;
@@ -222,6 +224,19 @@ describe('platform boundary (AC-010, AC-011, AC-013, AC-033)', () => {
     assert.equal((server.db.prepare(`SELECT role FROM "user" WHERE id = ?`).get(ids.adminA) as any).role, 'user');
   });
 
+  it('every installed Better Auth route outside the allowlist is denied', async () => {
+    const denied = betterAuthEndpoints().filter(({ path }) => !isBetterAuthPathAllowed(path.replace(/\/:[^/]+$/, '/x')));
+    assert.ok(denied.some(({ family }) => family === 'admin plugin') && denied.some(({ family }) => family === 'organization plugin'));
+    for (const { path } of denied) {
+      const concrete = path.replace(/:[^/]+/g, 'x');
+      for (const who of [S.adminA, S.super]) {
+        const res = await server.call(who, concrete, { method: 'POST', body: { userId: ids.adminA, role: 'superuser', organizationId: A } });
+        assert.equal(res.status, 404, concrete);
+      }
+    }
+    assert.equal((server.db.prepare(`SELECT role FROM "user" WHERE id = ?`).get(ids.adminA) as any).role, 'user');
+  });
+
   it('tenant admins are denied every platform configuration, credential, database and reset route', async () => {
     for (const [method, path] of [
       ['GET', '/api/platform/configuration'], ['PATCH', '/api/platform/configuration'], ['GET', '/api/google-integration'],
@@ -309,6 +324,21 @@ describe('membership administration (AC-012, AC-013, AC-014, AC-031)', () => {
     assert.equal((await server.call(S.super, `/api/auth-console/users/${ids.adminB}/ban`, { method: 'POST', body: { banned: true } })).status, 409);
     const lastSuper = await server.call(S.super, `/api/auth-console/users/${ids.super}/role`, { method: 'PUT', body: { platformRole: 'user' } });
     assert.equal(lastSuper.status, 403); // self-change is never allowed
+
+    // Concurrent demotions of B's only two admins: the invariant lets at most one through.
+    const second = membershipIdOf(server, ids.suspended2, B)!;
+    assert.equal((await server.call(S.super, `/api/organizations/${B}/members/${second}`, { method: 'PATCH', body: { tenantRole: 'admin' } })).status, 200);
+    const demotions = await Promise.all([adminB, second].map((id) => server.call(S.super, `/api/organizations/${B}/members/${id}`, {
+      method: 'PATCH', body: { tenantRole: 'viewer', departmentIds: ['team-b-legal'] },
+    })));
+    assert.deepEqual(demotions.map((r) => r.status).sort(), [200, 409]);
+    const admins = (server.db.prepare(`SELECT COUNT(*) AS n FROM member WHERE organizationId = ? AND role = 'admin' AND status = 'active'`).get(B) as any).n;
+    assert.equal(admins, 1);
+    // Restore the fixture: adminB is B's admin again, suspended2 a Legal viewer.
+    if (demotions[0].status === 200) {
+      assert.equal((await server.call(S.super, `/api/organizations/${B}/members/${adminB}`, { method: 'PATCH', body: { tenantRole: 'admin' } })).status, 200);
+      assert.equal((await server.call(S.super, `/api/organizations/${B}/members/${second}`, { method: 'PATCH', body: { tenantRole: 'viewer', departmentIds: ['team-b-legal'] } })).status, 200);
+    }
   });
 
   it('platform account creation never grants a membership', async () => {

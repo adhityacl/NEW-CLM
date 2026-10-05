@@ -14,7 +14,8 @@ import type { Tenant, TenantSettings } from '../../../src/types';
 export interface FixtureOrganization extends Tenant { settings: TenantSettings }
 
 export interface TenantApiOptions {
-  organizations: FixtureOrganization[];
+  /** Tenant projection rows (synthetic or from buildDemoDataset); each needs `id`, `name` and `settings`. */
+  organizations: Array<Record<string, any>>;
   /** Membership role per organization ID; missing means no membership. */
   roles?: Record<string, TenantRole>;
   platformRole?: 'user' | 'superuser';
@@ -25,6 +26,8 @@ export interface TenantApiOptions {
   departmentIds?: string[];
   email?: string;
   name?: string;
+  /** Identity ID (default `fixture-user`). */
+  userId?: string;
 }
 
 export const FIXTURE_USER_ID = 'fixture-user';
@@ -36,7 +39,7 @@ export function fixtureOrganization(id: string, name: string, settings: Partial<
 }
 
 /** `GET /api/organizations/:id/policy` (TenantPolicyView). */
-export function policyView(organization: FixtureOrganization, overrides: Record<string, unknown> = {}) {
+export function policyView(organization: Record<string, any>, overrides: Record<string, unknown> = {}) {
   const settings = organization.settings;
   return {
     tenantId: organization.id, tenantName: organization.name, settings,
@@ -46,8 +49,8 @@ export function policyView(organization: FixtureOrganization, overrides: Record<
 }
 
 /** `GET /api/init-data` WorkspaceInitResponse with records scoped to one organization. */
-export function workspaceInit(organizationId: string, data: Record<string, unknown[]>, services = { aiAvailable: true, googleUploadsAvailable: false }) {
-  const scoped = (key: string) => (data[key] || []).filter((row: any) => !row.organizationId || row.organizationId === organizationId);
+export function workspaceInit(organizationId: string, data: object, services = { aiAvailable: true, googleUploadsAvailable: false }) {
+  const scoped = (key: string) => ((data as Record<string, unknown[]>)[key] || []).filter((row: any) => !row.organizationId || row.organizationId === organizationId);
   return {
     organizationId,
     contracts: scoped('contracts'), ios: scoped('ios'), partners: scoped('partners'), notifications: scoped('notifications'),
@@ -65,6 +68,7 @@ const ORG_PATH = /^\/api\/organizations\/([^/]+)(\/.*)$/;
 export function createTenantApi(options: TenantApiOptions) {
   const state = {
     ...options,
+    organizations: options.organizations as FixtureOrganization[],
     roles: options.roles ?? Object.fromEntries(options.organizations.map((org) => [org.id, 'admin' as TenantRole])),
     platformRole: options.platformRole ?? 'user',
     sessionDefault: options.sessionDefault === undefined ? (options.organizations.length === 1 ? options.organizations[0].id : null) : options.sessionDefault,
@@ -111,7 +115,7 @@ export function createTenantApi(options: TenantApiOptions) {
     if (path === '/api/me') {
       return {
         identity: {
-          id: FIXTURE_USER_ID, email: state.email ?? 'audit@example.test', name: state.name ?? 'UI Audit', image: null,
+          id: state.userId ?? FIXTURE_USER_ID, email: state.email ?? 'audit@example.test', name: state.name ?? 'UI Audit', image: null,
           emailVerified: true, platformRole: state.platformRole,
         },
         signInMethods: ['password'],
@@ -175,7 +179,7 @@ export function createTenantApi(options: TenantApiOptions) {
       if (!need('tenant.member.read')) return denied;
       return {
         members: [{
-          id: `m-${organization.id}`, userId: FIXTURE_USER_ID, name: state.name ?? 'UI Audit', email: state.email ?? 'audit@example.test',
+          id: `m-${organization.id}`, userId: state.userId ?? FIXTURE_USER_ID, name: state.name ?? 'UI Audit', email: state.email ?? 'audit@example.test',
           tenantRole: state.roles[organization.id] ?? 'admin', status: 'active', departmentIds: deptsFor(state.roles[organization.id] ?? 'admin'), createdAt: new Date(0).toISOString(),
         }],
         total: 1,
