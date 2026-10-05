@@ -239,8 +239,8 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label htmlFor={ids.name} className={labelClass}>{t('tb.org_name', 'Organization name')}</label>
-            <input id={ids.name} className={fieldClass} required maxLength={200} value={profile.name} aria-invalid={!profile.name.trim()} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
-            {!profile.name.trim() && <p className="mt-1.5 text-xs text-rose-700 dark:text-rose-300">{t('tb.name_required', 'Enter the organization name.')}</p>}
+            <input id={ids.name} className={fieldClass} required maxLength={200} value={profile.name} aria-invalid={!profile.name.trim()} aria-describedby={!profile.name.trim() ? `${ids.name}-error` : undefined} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
+            {!profile.name.trim() && <p id={`${ids.name}-error`} className="mt-1.5 text-xs text-rose-700 dark:text-rose-300">{t('tb.name_required', 'Enter the organization name.')}</p>}
           </div>
           <div>
             <label htmlFor={ids.slug} className={labelClass}>{t('tb.slug', 'Slug')}</label>
