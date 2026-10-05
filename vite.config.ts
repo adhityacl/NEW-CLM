@@ -28,6 +28,7 @@ export default defineConfig(() => {
     },
 
     server: {
+      allowedHosts: true as true,
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {
         // SQLite writes to its -wal/-shm files (and the app rewrites
