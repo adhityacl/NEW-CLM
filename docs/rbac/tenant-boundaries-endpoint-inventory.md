@@ -23,13 +23,14 @@ How a request is decided (PRD §5.5):
 | GET | `/api/exchange-rates` | public | — | public reference data | policy table only |
 | GET | `/api/exchange-rate-historical` | public | — | public reference data | policy table only |
 | GET | `/api/branding` | public | — | public presentation fields only | tests/tenant-boundaries/api.test.ts › tenant admins are denied every platform configuration, credential, database and reset route<br>tests/tenant-boundaries/api.test.ts › public branding exposes presentation fields only |
+| GET | `/api/system/ui-texts` | public | — | shared UI dictionary; no platform secrets | tests/uiTranslations.test.ts › platform UI texts reach other users, persist, validate input and restrict writes |
 | GET | `/api/auth/google/client-id` | public | — | OAuth client id for the sign-in button | policy table only |
 | GET | `/api/google-auth/client-id` | public | — | OAuth client id for the sign-in button | policy table only |
 | POST | `/api/auth/google/sync-session` | public | — | Google sign-in: verified Google identity, onboarding rules | policy table only |
 | POST | `/api/google-auth/sync-session` | public | — | Google sign-in: verified Google identity, onboarding rules | policy table only |
 | GET | `/api/invitations/:token/preview` | public | — | token possession; minimal preview | tests/tenant-boundaries/api.test.ts › accepts exactly once for the verified invited identity<br>tests/tenant-boundaries/api.test.ts › refuses unverified, canceled, expired and revoked-inviter invitations |
 | GET | `/api/auth-console/invitations/verify` | public | — | legacy adapter to invitation preview | policy table only |
-| GET | `/api/me` | canonical router | — | — | tests/tenant-boundaries/api.test.ts › rejects missing, expired, revoked and banned sessions on every path family<br>tests/tenant-boundaries/api.test.ts › never trusts identity or role headers |
+| GET | `/api/me` | canonical router | — | — | tests/tenant-boundaries/accountProfile.test.ts › self-service profile stores name, photo and bio across server restarts<br>tests/tenant-boundaries/api.test.ts › rejects missing, expired, revoked and banned sessions on every path family |
 | POST | `/api/me/active-organization` | canonical router | — | session default only | tests/tenant-boundaries/api.test.ts › switching changes only the calling session default; no global active tenant |
 | GET | `/api/me/sessions` | canonical router | — | own sessions only | policy table only |
 | DELETE | `/api/me/sessions/:sessionId` | canonical router | — | own sessions only | policy table only |
@@ -40,7 +41,7 @@ How a request is decided (PRD §5.5):
 | POST | `/api/rbac/check` | self (identity) | — | server-resolved actor in selected organization | policy table only |
 | GET | `/api/tenants` | self (identity) | — | own memberships / platform directory; side-effect free | tests/tenant-boundaries/api.test.ts › repeated GETs create no membership, allowlist row, team, selection or mapping<br>tests/tenant-boundaries/api.test.ts › no-membership identity sees no organizations and no business data |
 | POST | `/api/tenants/switch` | self (identity) | — | adapter to session default selection | policy table only |
-| GET | `/api/auth-console/organizations` | self (identity) | — | accessible organization summaries | policy table only |
+| GET | `/api/auth-console/organizations` | self (identity) | — | accessible organization summaries | tests/tenant-boundaries/api.test.ts › platform organization cards use the canonical default currency before and after region changes<br>tests/tenant-boundaries/api.test.ts › organization logo and tagline stay synchronized across tenant settings and the platform console |
 | GET | `/api/system/status` | self (identity) | — | platform fields only for superuser | tests/tenant-boundaries/api.test.ts › repeated GETs create no membership, allowlist row, team, selection or mapping |
 | GET | `/api/policy-packs` | self (identity) | — | pack catalog (non-secret reference data) | policy table only |
 | POST | `/api/user/log-activity` | self (identity) | — | login/logout activity of the caller | policy table only |
@@ -98,7 +99,7 @@ How a request is decided (PRD §5.5):
 | POST | `/api/auth-console/sessions/revoke-user` | platform | platform.session.revoke | — | policy table only |
 | POST | `/api/auth-console/sessions/revoke-all/:userId` | platform | platform.session.revoke | — | policy table only |
 | POST | `/api/auth-console/organizations` | platform | platform.organization.create | — | policy table only |
-| PUT | `/api/auth-console/organizations/:id` | platform | platform.organization.update | — | policy table only |
+| PUT | `/api/auth-console/organizations/:id` | platform | platform.organization.update | — | tests/tenant-boundaries/api.test.ts › organization logo and tagline stay synchronized across tenant settings and the platform console |
 | DELETE | `/api/auth-console/organizations/:id` | platform | platform.organization.delete | — | policy table only |
 | GET | `/api/auth-console/api-keys` | platform | platform.apikey.read | — | policy table only |
 | POST | `/api/auth-console/api-keys` | platform | platform.apikey.create | — | policy table only |
@@ -179,14 +180,14 @@ Covered by the `* /api/organizations/:organizationId/*` and `/api/me`, `/api/inv
 
 | Method | Path | Permission | Note | Verified by |
 | --- | --- | --- | --- | --- |
-| GET | `/api/me` | identity | own identity, memberships (incl. suspended), platform permissions | tests/tenant-boundaries/api.test.ts › rejects missing, expired, revoked and banned sessions on every path family<br>tests/tenant-boundaries/api.test.ts › never trusts identity or role headers |
+| GET | `/api/me` | identity | own identity, memberships (incl. suspended), platform permissions | tests/tenant-boundaries/accountProfile.test.ts › self-service profile stores name, photo and bio across server restarts<br>tests/tenant-boundaries/api.test.ts › rejects missing, expired, revoked and banned sessions on every path family |
 | POST | `/api/me/active-organization` | identity | validated session default only | tests/tenant-boundaries/api.test.ts › switching changes only the calling session default; no global active tenant |
 | GET | `/api/me/sessions` | identity | own sessions | policy table only |
 | DELETE | `/api/me/sessions/:sessionId` | identity | own sessions | policy table only |
 | GET | `/api/organizations/:organizationId/capabilities` | membership or platform context | capability DTO | tests/tenant-boundaries/api.test.ts › rejects missing, expired, revoked and banned sessions on every path family<br>tests/tenant-boundaries/api.test.ts › repeated GETs create no membership, allowlist row, team, selection or mapping |
 | GET | `/api/organizations/:organizationId/policy` | membership or platform context | non-secret runtime policy | policy table only |
 | GET | `/api/organizations/:organizationId/settings` | tenant.settings.read | — | tests/tenant-boundaries/api.test.ts › uses the standard error envelope with a request id<br>tests/tenant-boundaries/api.test.ts › settings and integration DTOs carry no platform secrets |
-| PATCH | `/api/organizations/:organizationId/settings` | tenant.settings.update | expectedVersion; section merge; audit in same transaction | tests/tenant-boundaries/api.test.ts › disagreeing selectors are rejected without mutation<br>tests/tenant-boundaries/api.test.ts › section saves change only their fields and append audit |
+| PATCH | `/api/organizations/:organizationId/settings` | tenant.settings.update | expectedVersion; section merge; audit in same transaction | tests/tenant-boundaries/api.test.ts › disagreeing selectors are rejected without mutation<br>tests/tenant-boundaries/api.test.ts › organization logo and tagline stay synchronized across tenant settings and the platform console |
 | GET | `/api/organizations/:organizationId/members` | tenant.member.read | manager: self + intersecting departments | tests/tenant-boundaries/api.test.ts › foreign selectors in header, query, body or path reveal nothing<br>tests/tenant-boundaries/api.test.ts › manager lists self plus intersecting departments; editors get no list |
 | PATCH | `/api/organizations/:organizationId/members/:membershipId` | tenant.member.role.update / status.update / departments.update | per changed field + hierarchy (§4.3) | tests/tenant-boundaries/api.test.ts › manager cannot change a partially overlapping target (AC-014)<br>tests/tenant-boundaries/api.test.ts › tenant admin cannot appoint a peer admin or change its own role (AC-013) |
 | DELETE | `/api/organizations/:organizationId/members/:membershipId` | tenant.member.remove | this organization only; last-admin invariant | tests/tenant-boundaries/api.test.ts › removing a multi-organization member touches only that organization (AC-012)<br>tests/tenant-boundaries/api.test.ts › the last usable admin cannot be removed, suspended, demoted or banned (AC-031) |
@@ -261,7 +262,7 @@ Allowed endpoints run Better Auth with the app's hooks (`self` endpoints additio
 | core | `/api/auth/sign-up/email` | allowed (public) | policy table only |
 | core | `/api/auth/unlink-account` | denied — 404 RESOURCE_NOT_FOUND | tests/tenant-boundaries/api.test.ts › every installed Better Auth route outside the allowlist is denied |
 | core | `/api/auth/update-session` | denied — 404 RESOURCE_NOT_FOUND | tests/tenant-boundaries/api.test.ts › every installed Better Auth route outside the allowlist is denied |
-| core | `/api/auth/update-user` | allowed (self) | policy table only |
+| core | `/api/auth/update-user` | allowed (self) | tests/tenant-boundaries/accountProfile.test.ts › self-service profile stores name, photo and bio across server restarts |
 | core | `/api/auth/verify-email` | allowed (public) | policy table only |
 | core | `/api/auth/verify-password` | denied — 404 RESOURCE_NOT_FOUND | tests/tenant-boundaries/api.test.ts › every installed Better Auth route outside the allowlist is denied |
 | infra plugin (dash/sentinel) | `/api/auth/dash/accept-invitation` | denied — 404 RESOURCE_NOT_FOUND | tests/tenant-boundaries/api.test.ts › every installed Better Auth route outside the allowlist is denied |

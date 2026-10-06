@@ -153,7 +153,7 @@ test('responsive annual grid, themes, mobile month view and accessible tab keybo
   const calendar = page.getByRole('region', { name: 'Document calendar', exact: true });
   await page.getByRole('tab', { name: 'Calendar View', exact: true }).focus();
   await page.keyboard.press('Home');
-  await expect(page.getByRole('tab', { name: 'Interactive Tree View', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Tree View', exact: true })).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('End');
   await expect(page.getByRole('tab', { name: 'Calendar View', exact: true })).toBeFocused();
   const grid = calendar.getByTestId('calendar-year-grid');

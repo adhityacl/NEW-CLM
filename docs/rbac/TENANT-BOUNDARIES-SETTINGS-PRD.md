@@ -441,7 +441,7 @@ Keep one System Admin sidebar entry and reuse `AdminUsersView` in system mode. A
 - SMTP relay and test action.
 - SQLite browser/status/optimization.
 - Application-wide reset.
-- Existing browser-only translation override tool, explicitly labeled as local to the current browser/user.
+- Shared UI translation dictionary, edited only by System Admin, persisted on the server and refreshed on active pages every five seconds.
 
 Use grouped cards or collapsible sections within this console. Do not add a new sidebar entry for each category. Existing global user/session/API-key/RBAC management remains in System Admin with platform DTOs and platform permission.
 
@@ -451,7 +451,7 @@ An organization row offers **Manage organization**: select the organization's ex
 
 Reuse theme/language controls. Preferences are local to the authenticated user, using keys `user:<userId>:language` and `user:<userId>:theme`. Cross-device persistence is deferred; no `user_preferences` table or preference API is required here.
 
-Do not automatically import origin-wide `app_language` or `app_custom_translations` into another user's identity. Ignore those legacy keys when no namespaced preference exists and apply the existing product defaults; leave their stored values intact. Do not add an import workflow. Custom translation overrides are available only through the platform's browser-local tool and use `user:<userId>:customTranslations`. Tenant users use bundled dictionaries and have no runtime dictionary editor.
+Do not automatically import origin-wide `app_language` or `app_custom_translations` into another user's identity. Ignore those legacy keys when no namespaced preference exists and apply the existing product defaults; leave their stored values intact. Do not add an import workflow. UI text overrides are platform-wide: System Admin saves them through `PATCH /api/platform/configuration` (`uiTexts`), and all browsers read the non-sensitive dictionary through `GET /api/system/ui-texts`. Language/theme preferences remain personal. Existing local overrides are not automatically published. Tenant users receive the shared dictionary and have no runtime dictionary editor.
 
 Account Security opens a dialog for the current user's password change and own sessions, using Better Auth self-service endpoints. It must not use Admin-plugin reset/set-password for an ordinary user. OAuth-only accounts show their sign-in method and own sessions; do not require a password that does not exist.
 
@@ -1115,7 +1115,7 @@ Every criterion below is **Required**. API/migration verification runs only in t
 | AC-031 | Last tenant admin/superuser is removed, suspended/banned, or demoted | 409; invariant holds under concurrent attempts | DB transaction/concurrency test |
 | AC-032 | Department deletion would orphan members/resources | DEPARTMENT_IN_USE; no orphan/reassignment | API/DB test |
 | AC-033 | Platform config/reset/credential/database action attempted as tenant admin | Hidden in UI and denied by every direct route; existing platform actions work for superuser | Browser/API matrix |
-| AC-034 | Personal language/theme and platform browser dictionary change | Namespaced to identity; another user/tenant does not inherit overrides; bundled translations remain | Browser storage/user-switch tests |
+| AC-034 | Personal language/theme and shared UI dictionary | Language/theme remain namespaced; System Admin text edits reach all users and organizations | Browser storage/user-switch and shared-text tests |
 | AC-035 | Successful admin mutation and persistence/audit failure injection | Either mutation+audit commit together or neither; no success on swallowed DB failure | Transaction/fault-injection tests |
 | AC-036 | Dry-run/apply/reapply legacy migration | Dry-run no mutation; apply preserves valid multi-membership data/config ownership; second apply no semantic change | Isolated migration fixtures |
 | AC-037 | Ambiguous role/ownership/conflicting duplicates in migration | Apply refused with redacted report; no guessed first/default tenant or partial marker | Migration failure fixtures |

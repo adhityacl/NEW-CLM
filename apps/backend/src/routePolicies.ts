@@ -49,6 +49,7 @@ export const ROUTE_POLICIES: PolicyEntry[] = [
   ['GET', '/api/exchange-rates', pub('public reference data')],
   ['GET', '/api/exchange-rate-historical', pub('public reference data')],
   ['GET', '/api/branding', pub('public presentation fields only')],
+  ['GET', '/api/system/ui-texts', pub('shared UI dictionary; no platform secrets')],
   ['GET', '/api/auth/google/client-id', pub('OAuth client id for the sign-in button')],
   ['GET', '/api/google-auth/client-id', pub('OAuth client id for the sign-in button')],
   ['POST', '/api/auth/google/sync-session', pub('Google sign-in: verified Google identity, onboarding rules')],

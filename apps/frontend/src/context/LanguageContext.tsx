@@ -7,9 +7,11 @@ import { readPreference, setPreferenceUser, writePreference } from '../lib/userP
 import { useOptionalIdentity } from './AuthContext';
 import { EXTRA_TRANSLATIONS } from '../i18n/extraTranslations';
 import { ZH_TRANSLATIONS } from '../i18n/zh';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { UITextDictionary, UITextLanguage, UITextOverrides } from '@legalio/types/uiTexts';
 
 /** UI languages. `ZH` is Simplified Chinese, shown as "CN" in the language switcher. */
-export type Language = 'ID' | 'EN' | 'ZH';
+export type Language = UITextLanguage;
 
 export const LANGUAGE_OPTIONS: ReadonlyArray<{ code: Language; label: string; nativeName: string; htmlLang: string }> = [
   { code: 'ID', label: 'ID', nativeName: 'Bahasa Indonesia', htmlLang: 'id' },
@@ -19,6 +21,7 @@ export const LANGUAGE_OPTIONS: ReadonlyArray<{ code: Language; label: string; na
 
 const isLanguage = (value: unknown): value is Language => value === 'ID' || value === 'EN' || value === 'ZH';
 const emptyCatalogs = (): Record<Language, Record<string, string>> => ({ ID: {}, EN: {}, ZH: {} });
+let sharedCustomTranslations = emptyCatalogs();
 
 export interface DocumentTerminology {
   doc: string;
@@ -62,9 +65,11 @@ export interface LanguageContextType {
   translations: Record<Language, Record<string, string>>;
   customTranslations: Record<Language, Record<string, string>>;
   exportToCSV: () => void;
-  importFromCSV: (csvContent: string) => { success: boolean; updatedCount: number; error?: string };
-  resetCustomTranslations: () => void;
-  updateSingleTranslation: (key: string, lang: Language, value: string) => void;
+  importFromCSV: (csvContent: string) => Promise<{ success: boolean; updatedCount: number; error?: string }>;
+  resetCustomTranslations: () => Promise<void>;
+  updateSingleTranslation: (key: string, lang: Language, value: string) => Promise<void>;
+  translationsBusy: boolean;
+  translationsError: string | null;
 }
 
 const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
@@ -206,9 +211,9 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'hierarchy.new_partner': 'Partner Baru',
     'hierarchy.new_contract': 'Kontrak Baru',
     'hierarchy.new_io': 'Insertion Order Baru',
-    'hierarchy.tree_view': 'Tampilan Pohon Interaktif',
+    'hierarchy.tree_view': 'Tampilan Pohon',
     'hierarchy.audit_table_title': 'Tampilan Audit Lengkap',
-    'hierarchy.audit_view': 'Audit Struktur',
+    'hierarchy.audit_view': 'Tampilan Tabel',
     'hierarchy.view_flat': 'Tampilan: Flat (Dapat Diurutkan)',
     'hierarchy.view_grouped': 'Tampilan: Baris Terkelompok',
     'hierarchy.custom_columns': 'Kustomisasi Kolom',
@@ -1254,8 +1259,8 @@ const baseTranslations: Record<'ID' | 'EN', Record<string, string>> = {
     'hierarchy.new_partner': 'New Partner',
     'hierarchy.new_contract': 'New Contract',
     'hierarchy.new_io': 'New IO',
-    'hierarchy.tree_view': 'Interactive Tree View',
-    'hierarchy.audit_view': 'Structure Audit',
+    'hierarchy.tree_view': 'Tree View',
+    'hierarchy.audit_view': 'Table View',
     'hierarchy.audit_table_title': 'Complete Audit View',
     'hierarchy.view_flat': 'View: Flat (Sortable)',
     'hierarchy.view_grouped': 'View: Grouped Row',
@@ -2178,7 +2183,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 /**
  * Translation for code that runs outside the React tree (error boundary, library errors).
- * Reads the chosen language and custom texts from storage; no document terminology.
+ * Uses the personal language and the latest shared dictionary; no document terminology.
  */
 export function translateStatic(key: string, defaultText?: string, vars?: Record<string, string | number>): string {
   let language: Language = 'EN';
@@ -2186,7 +2191,7 @@ export function translateStatic(key: string, defaultText?: string, vars?: Record
   try {
     const saved = readPreference('language');
     if (isLanguage(saved)) language = saved;
-    custom = JSON.parse(readPreference('customTranslations') || '{}')?.[language] || {};
+    custom = sharedCustomTranslations[language];
   } catch {
     /* storage unavailable — English catalog */
   }
@@ -2251,35 +2256,51 @@ function splitCSVLines(text: string): string[] {
   return lines;
 }
 
-const readCustom = (): Record<Language, Record<string, string>> => {
-  try {
-    const saved = readPreference('customTranslations');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return { ID: parsed.ID || {}, EN: parsed.EN || {}, ZH: parsed.ZH || {} };
-    }
-  } catch (e) {
-    console.error('Failed to parse custom translations:', e);
-  }
-  return emptyCatalogs();
-};
-
 /**
- * UI language and the browser-local text overrides are personal, namespaced
- * by the signed-in identity (PRD §6.7). Built-in dictionaries stay shared.
+ * Language stays personal. System Admin edits the server dictionary shared
+ * by all users; active pages refresh it every five seconds and on focus.
  */
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const identity = useOptionalIdentity();
   const userId = identity?.id ?? null;
   const [language, setLanguageState] = useState<Language>('EN');
-  const [customTranslations, setCustomTranslations] = useState<Record<Language, Record<string, string>>>(emptyCatalogs);
+  const queryClient = useQueryClient();
+  const queryKey = ['platform', 'ui-texts'];
+  const dictionary = useQuery<UITextDictionary>({
+    queryKey,
+    queryFn: async () => {
+      const response = await fetch('/api/system/ui-texts', { cache: 'no-store' });
+      if (!response.ok) throw new Error('Could not load shared UI texts.');
+      return response.json();
+    },
+    // ponytail: one read per active browser every 5s; use SSE if polling load becomes significant.
+    refetchInterval: 5_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+  const customTranslations = dictionary.data?.overrides || emptyCatalogs();
+  useEffect(() => { sharedCustomTranslations = customTranslations; }, [customTranslations]);
+  const saveDictionary = useMutation({
+    mutationFn: async (values: { overrides?: Partial<UITextOverrides>; reset?: true }): Promise<UITextDictionary> => {
+      const response = await fetch('/api/platform/configuration', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section: 'uiTexts', values }),
+      });
+      if (!response.ok) throw new Error(translations[language]['tb.texts_save_failed']);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      sharedCustomTranslations = data.overrides;
+      queryClient.setQueryData(queryKey, data);
+    },
+  });
+  const translationsBusy = !dictionary.isSuccess || saveDictionary.isPending;
 
   // Switching identity loads that identity's preferences (or the defaults).
   useEffect(() => {
     setPreferenceUser(userId);
     const saved = readPreference('language');
     setLanguageState((current) => (isLanguage(saved) ? saved : userId ? 'EN' : current));
-    setCustomTranslations(userId ? readCustom() : emptyCatalogs());
   }, [userId]);
 
   const setLanguage = (lang: Language) => {
@@ -2356,7 +2377,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     URL.revokeObjectURL(url);
   };
 
-  const importFromCSV = (csvContent: string): { success: boolean; updatedCount: number; error?: string } => {
+  const importFromCSV = async (csvContent: string): Promise<{ success: boolean; updatedCount: number; error?: string }> => {
     try {
       const cleanContent = csvContent.replace(/^\uFEFF/, '');
       const lines = splitCSVLines(cleanContent);
@@ -2377,11 +2398,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ];
 
       let updatedCount = 0;
-      const newCustom: Record<Language, Record<string, string>> = {
-        ID: { ...customTranslations.ID },
-        EN: { ...customTranslations.EN },
-        ZH: { ...customTranslations.ZH },
-      };
+      const newCustom = emptyCatalogs();
 
       for (let i = 1; i < lines.length; i++) {
         const row = parseCSVRow(lines[i]);
@@ -2390,34 +2407,24 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (!key) continue;
         for (const [code, index] of columns) {
           const value = index < row.length ? row[index]?.replace(/^"|"$/g, '').trim() : undefined;
-          if (value) newCustom[code][key] = value;
+          if (value) newCustom[code][key] = value === translations[code][key] ? '' : value;
         }
         updatedCount++;
       }
 
-      setCustomTranslations(newCustom);
-      writePreference('customTranslations', JSON.stringify(newCustom));
+      await saveDictionary.mutateAsync({ overrides: newCustom });
       return { success: true, updatedCount };
     } catch (err: any) {
       return { success: false, updatedCount: 0, error: err.message || t('ui_text.import_failed', 'Gagal memproses file CSV.') };
     }
   };
 
-  const resetCustomTranslations = () => {
-    setCustomTranslations(emptyCatalogs());
-    writePreference('customTranslations', null);
+  const resetCustomTranslations = async () => {
+    await saveDictionary.mutateAsync({ reset: true });
   };
 
-  const updateSingleTranslation = (key: string, lang: Language, value: string) => {
-    const updated = {
-      ...customTranslations,
-      [lang]: {
-        ...customTranslations[lang],
-        [key]: value,
-      },
-    };
-    setCustomTranslations(updated);
-    writePreference('customTranslations', JSON.stringify(updated));
+  const updateSingleTranslation = async (key: string, lang: Language, value: string) => {
+    await saveDictionary.mutateAsync({ overrides: { [lang]: { [key]: value === translations[lang][key] ? '' : value } } });
   };
 
   return (
@@ -2433,6 +2440,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         importFromCSV,
         resetCustomTranslations,
         updateSingleTranslation,
+        translationsBusy,
+        translationsError: dictionary.isError ? t('tb.texts_load_failed') : null,
       }}
     >
       {children}

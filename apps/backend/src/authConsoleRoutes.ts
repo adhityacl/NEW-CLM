@@ -471,7 +471,7 @@ authConsoleRouter.get('/organizations', platformHandler((req, res, identity) => 
   const organizations = rows.filter((o) => accessible.has(o.id)).map((o) => {
     if (!isPlatform) return { id: o.id, name: o.name, slug: o.slug, logo: o.logo };
     const settings = readOrganizationSettings(sqliteDb, o.id);
-    return { id: o.id, name: o.name, slug: o.slug, logo: o.logo, createdAt: o.createdAt, memberCount: o.memberCount, teamCount: o.teamCount, version: settings.version, metadata: { ...settings.profile } };
+    return { id: o.id, name: o.name, slug: o.slug, logo: o.logo, createdAt: o.createdAt, memberCount: o.memberCount, teamCount: o.teamCount, version: settings.version, metadata: { ...settings.profile, currency: settings.policy.defaultCurrency } };
   });
   res.json({ success: true, organizations });
 }));

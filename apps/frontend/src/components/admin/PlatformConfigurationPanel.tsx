@@ -87,7 +87,7 @@ export const PlatformConfigurationPanel: React.FC<{ activeSection?: PlatformConf
   // Mounted only inside System Admin for platform administrators; the server enforces it too.
   const isAdmin = true;
   const isSuperuser = true;
-  const { language, t, exportToCSV, importFromCSV, resetCustomTranslations } = useLanguage();
+  const { language, t, exportToCSV, importFromCSV, resetCustomTranslations, translationsBusy, translationsError } = useLanguage();
   const confirmDialog = useConfirm();
   const [config, setConfig] = useState<GoogleSheetsConfig>(EMPTY_CONFIG);
 
@@ -821,10 +821,10 @@ export const PlatformConfigurationPanel: React.FC<{ activeSection?: PlatformConf
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
       if (content) {
-        const result = importFromCSV(content);
+        const result = await importFromCSV(content);
         if (result.success) {
           setSuccessMsg(t('settings.berhasil_mengimpor_memperbarui_teks_ui_dari', 'Berhasil mengimpor & memperbarui {updatedCount} teks UI dari file CSV!', { updatedCount: result.updatedCount }));
           setTimeout(() => setSuccessMsg(null), 5000);
@@ -1641,8 +1641,10 @@ export const PlatformConfigurationPanel: React.FC<{ activeSection?: PlatformConf
               </CardHeader>
               <CardContent className="space-y-4 text-xs">
                 <p role="note" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                  {t('tb.texts_local_note', 'Text overrides are stored only in this browser for your account. Other people and organizations keep the built-in texts.')}
+                  {t('tb.texts_shared_note')}
                 </p>
+                {translationsBusy && <p role="status">{t('tb.texts_syncing')}</p>}
+                {translationsError && <p role="alert" className="text-destructive">{translationsError}</p>}
                 <div className="p-4 bg-[#F5F6F6] dark:bg-slate-800/50 rounded-2xl border border-[#EBEBEB] dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
                     <p className="font-semibold text-ink dark:text-slate-100">{t('settings.ui_editor_card_title', 'Editor Teks Antarmuka Lengkap')}</p>
@@ -1664,6 +1666,7 @@ export const PlatformConfigurationPanel: React.FC<{ activeSection?: PlatformConf
                     variant="outline"
                     size="lg"
                     onClick={exportToCSV}
+                    disabled={translationsBusy}
                     className="font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
                   >
                     <Download className="w-3.5 h-3.5 text-ink-soft dark:text-slate-400" />
@@ -1681,6 +1684,7 @@ export const PlatformConfigurationPanel: React.FC<{ activeSection?: PlatformConf
                     variant="outline"
                     size="lg"
                     onClick={() => textFileInputRef.current?.click()}
+                    disabled={translationsBusy}
                     className="h-9 px-4 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-[#EBEBEB] dark:border-slate-700 text-ink dark:text-slate-100 hover:bg-[#F5F6F6] dark:hover:bg-slate-700 cursor-pointer gap-1.5"
                   >
                     <Upload className="w-3.5 h-3.5 text-ink-soft dark:text-slate-400" />
@@ -1697,10 +1701,15 @@ export const PlatformConfigurationPanel: React.FC<{ activeSection?: PlatformConf
                         confirmLabel: t('hierarchy.reset', 'Reset'),
                       });
                       if (ok) {
-                        resetCustomTranslations();
-                        setSuccessMsg(t('settings.kamus_teks_ui_dikembalikan_ke_pengaturan', 'Kamus teks UI dikembalikan ke pengaturan awal.'));
+                        try {
+                          await resetCustomTranslations();
+                          setSuccessMsg(t('settings.kamus_teks_ui_dikembalikan_ke_pengaturan', 'Kamus teks UI dikembalikan ke pengaturan awal.'));
+                        } catch (error) {
+                          setErrorMsg(error instanceof Error ? error.message : t('tb.texts_save_failed'));
+                        }
                       }
                     }}
+                    disabled={translationsBusy}
                     className="h-8 text-xs text-destructive hover:bg-destructive/10 cursor-pointer gap-1.5 ml-auto"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />

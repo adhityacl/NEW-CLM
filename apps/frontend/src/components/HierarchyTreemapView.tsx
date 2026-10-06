@@ -248,7 +248,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
             }`}
           >
             <GitFork className={`w-4 h-4 ${viewMode === 'treemap' ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
-            <span>{t('hierarchy.tree_view', 'Tampilan Pohon Interaktif')}</span>
+            <span>{t('hierarchy.tree_view', 'Tampilan Pohon')}</span>
           </button>
           <button
             type="button" role="tab" id="structure-audit-tab" aria-selected={viewMode === 'audit'} aria-controls="structure-panel" tabIndex={viewMode === 'audit' ? 0 : -1}
@@ -260,7 +260,7 @@ export const HierarchyTreemapView: React.FC<HierarchyTreemapViewProps> = ({
             }`}
           >
             <FileSpreadsheet className={`w-4 h-4 ${viewMode === 'audit' ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
-            <span>{t('hierarchy.audit_view', 'Audit Struktur')}</span>
+            <span>{t('hierarchy.audit_view', 'Tampilan Tabel')}</span>
           </button>
           <button type="button" role="tab" id="structure-calendar-tab" aria-selected={viewMode === 'calendar'} aria-controls="structure-panel" tabIndex={viewMode === 'calendar' ? 0 : -1}
             onClick={() => setViewMode('calendar')}

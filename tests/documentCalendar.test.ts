@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { buildDemoDataset } from '@legalio/shared/data/demoDataset';
 import { LanguageProvider } from '../apps/frontend/src/context/LanguageContext';
 import { EventItem } from '../apps/frontend/src/features/calendar/EventItem';
@@ -113,7 +114,8 @@ test('example covers all six event types, overflowing month/day and completed ta
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => null } });
   try {
-    const markup = renderToStaticMarkup(createElement(LanguageProvider, null, createElement(EventItem, { event: done, onEventClick: () => {} })));
+    const markup = renderToStaticMarkup(createElement(QueryClientProvider, { client: new QueryClient() },
+      createElement(LanguageProvider, null, createElement(EventItem, { event: done, onEventClick: () => {} }))));
     assert.match(markup, /line-through/);
     assert.match(markup, /<button/);
     assert.match(markup, /aria-label=/);

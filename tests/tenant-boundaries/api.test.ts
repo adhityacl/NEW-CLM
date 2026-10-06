@@ -444,6 +444,29 @@ describe('invitations (AC-015, AC-016, AC-017, AC-018)', () => {
 });
 
 describe('settings and integrations (AC-021, AC-022, AC-023, AC-024, AC-038)', () => {
+  it('platform organization cards use the canonical default currency before and after region changes', async () => {
+    const initial = await server.call(S.adminA, `/api/organizations/${A}/settings`);
+    const directoryCurrency = async (id: string) => {
+      const response = await server.call(S.super, '/api/auth-console/organizations');
+      assert.equal(response.status, 200);
+      return response.data.organizations.find((org: any) => org.id === id).metadata.currency;
+    };
+    assert.equal(await directoryCurrency(A), initial.data.policy.defaultCurrency);
+    const other = await directoryCurrency(B);
+    const currency = initial.data.policy.defaultCurrency === 'EUR' ? 'JPY' : 'EUR';
+    const saved = await server.call(S.adminA, `/api/organizations/${A}/settings`, {
+      method: 'PATCH', body: { expectedVersion: initial.data.version, policy: { defaultCurrency: currency } },
+    });
+    assert.equal(saved.status, 200);
+    assert.equal(await directoryCurrency(A), saved.data.policy.defaultCurrency);
+    assert.equal(await directoryCurrency(B), other, 'changing A does not affect B');
+    const summary = await server.call(S.viewerA, '/api/auth-console/organizations');
+    assert.equal(summary.data.organizations.find((org: any) => org.id === A).metadata, undefined, 'ordinary summaries do not expose settings');
+    await server.call(S.adminA, `/api/organizations/${A}/settings`, {
+      method: 'PATCH', body: { expectedVersion: saved.data.version, policy: { defaultCurrency: initial.data.policy.defaultCurrency } },
+    });
+  });
+
   it('organization logo and tagline stay synchronized across tenant settings and the platform console', async () => {
     const logo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j4U8AAAAASUVORK5CYII=';
     const initial = await server.call(S.adminA, `/api/organizations/${A}/settings`);

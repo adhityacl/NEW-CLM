@@ -168,6 +168,22 @@ for (const width of [1440, 390]) {
 }
 
 test('organization logo upload uses a dialog and platform editing preserves shared profile fields', async ({ page }) => {
+  const expectRoundLogo = async (image: Locator) => {
+    await expect.poll(() => image.evaluate(element => {
+      const frame = element.parentElement!;
+      const bounds = frame.getBoundingClientRect();
+      const frameStyles = getComputedStyle(frame);
+      const imageStyles = getComputedStyle(element);
+      const imageBounds = element.getBoundingClientRect();
+      return {
+        square: Math.abs(bounds.width - bounds.height) < 1,
+        round: parseFloat(frameStyles.borderTopLeftRadius) >= bounds.width / 2,
+        fit: imageStyles.objectFit,
+        padding: [frameStyles, imageStyles].every(styles => ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'].every(side => parseFloat(styles[side as keyof CSSStyleDeclaration] as string) === 0)),
+        fills: Math.abs(imageBounds.width - (bounds.width - parseFloat(frameStyles.borderLeftWidth) - parseFloat(frameStyles.borderRightWidth))) < 1 && Math.abs(imageBounds.height - (bounds.height - parseFloat(frameStyles.borderTopWidth) - parseFloat(frameStyles.borderBottomWidth))) < 1,
+      };
+    })).toEqual({ square: true, round: true, fit: 'cover', padding: true, fills: true });
+  };
   const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j4U8AAAAASUVORK5CYII=';
   const logo = `data:image/png;base64,${png}`;
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -175,6 +191,7 @@ test('organization logo upload uses a dialog and platform editing preserves shar
   let upload = page.getByRole('dialog', { name: 'Organization / Workspace Logo' });
   await upload.locator('input[type="file"]').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
   await expect(upload.locator('img')).toHaveAttribute('src', logo);
+  await expectRoundLogo(upload.locator('img'));
   await upload.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.locator('main img[src^="data:"]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Upload Image File', exact: true }).click();
@@ -186,6 +203,8 @@ test('organization logo upload uses a dialog and platform editing preserves shar
   await expect.poll(() => api.state.organizations[0].logoUrl).toBe(logo);
   await page.reload();
   await expect(page.locator('main img[src^="data:"]')).toHaveAttribute('src', logo);
+  await expectRoundLogo(page.locator('main img[src^="data:"]'));
+  await expectRoundLogo(page.locator('aside img[src^="data:"]').first());
   const organization = api.state.organizations[0];
   await page.route('**/api/auth-console/organizations', route => route.fulfill({ json: { organizations: [{ id: organization.id, name: organization.name, slug: organization.domainSlug || organization.id, logo: organization.logoUrl, version: api.state.settingsVersion[organization.id], metadata: { tagline: 'Shared tagline' }, createdAt: new Date().toISOString() }] } }));
   let submitted: any;
@@ -197,6 +216,7 @@ test('organization logo upload uses a dialog and platform editing preserves shar
   const edit = page.getByRole('dialog', { name: 'Edit Organization Profile & Settings' });
   await expect(edit.getByText('Primary Currency', { exact: true })).toHaveCount(0);
   await expect(edit.locator('img')).toHaveAttribute('src', logo);
+  await expectRoundLogo(edit.locator('img'));
   const tagline = edit.getByLabel('Partnership Type / Tagline', { exact: true });
   await expect(tagline).toHaveValue('Shared tagline');
   await tagline.fill('Updated tagline');
@@ -653,7 +673,7 @@ test('large, medium and small actions keep icon-and-text labels inside their but
     await page.keyboard.press('Escape');
 
     await navigate(/^(Explorer|Explore|Document Structure)$/);
-    await page.getByRole('tab', { name: 'Structure Audit', exact: true }).click();
+    await page.getByRole('tab', { name: 'Table View', exact: true }).click();
     for (const button of await page.locator('main .mobile-page-actions:not([role="tablist"]) button').all()) {
       await expectReadableAction(button, 36);
     }
@@ -827,7 +847,7 @@ for (const section of ['Main Dashboard', 'Partners', 'Order Forms', 'Partner Spe
     const scope = section === 'Activity Logs' ? await openActivityHistory(page) : page.locator('main');
     if (section !== 'Activity Logs') await page.getByRole('button', { name: navigation, exact: true }).click();
     await expect(scope).toBeVisible();
-    if (section === 'Explorer') await page.getByRole('tab', { name: 'Structure Audit', exact: true }).click();
+    if (section === 'Explorer') await page.getByRole('tab', { name: 'Table View', exact: true }).click();
     if (section === 'Import Data') {
       await page.locator('main input[type="file"]').setInputFiles({ name: 'mobile-preview.csv', mimeType: 'text/csv', buffer: Buffer.from('nama_partner,partner_channel,country\nFixture Partner,Procurement,ID\n') });
       await expect(page.locator('main table')).toContainText('Fixture Partner');

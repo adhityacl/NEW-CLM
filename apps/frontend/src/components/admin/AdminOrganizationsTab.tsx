@@ -85,12 +85,12 @@ export const AdminOrganizationsTab: React.FC<AdminOrganizationsTabProps> = ({
                 {/* Header info */}
                 <div className="flex items-start justify-between gap-2.5 mb-3">
                   <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-800 dark:text-slate-200 font-bold text-base shrink-0 border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs mt-0.5">
+                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-800 dark:text-slate-200 font-bold text-base shrink-0 border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs mt-0.5">
                       {org.logo && org.logo !== '/favicon.png' ? (
                         <img
                           src={org.logo}
                           alt={org.name || t('documents.info.organization', 'Organization')}
-                          className="w-full h-full object-contain p-1 bg-white dark:bg-slate-900"
+                          className="w-full h-full object-cover"
                           onError={(e) => {
                             (e.currentTarget as HTMLElement).style.display = 'none';
                           }}

@@ -18,7 +18,7 @@ const BADGE = 'text-xs font-normal px-3 py-0.5 rounded-full border inline-flex i
 
 /** Built-in and customised UI texts in every language, with inline editing and CSV round-trip. */
 export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen = true, onClose }) => {
-  const { t, translations, customTranslations, exportToCSV, importFromCSV, resetCustomTranslations, updateSingleTranslation } =
+  const { t, translations, customTranslations, exportToCSV, importFromCSV, resetCustomTranslations, updateSingleTranslation, translationsBusy, translationsError } =
     useLanguage();
   const confirmDialog = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,10 +59,10 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
       if (!content) return;
-      const result = importFromCSV(content);
+      const result = await importFromCSV(content);
       setNotice(
         result.success
           ? { type: 'success', message: t('ui_text.import_success', 'Berhasil mengimpor & memperbarui {n} teks UI dari file CSV.', { n: result.updatedCount }) }
@@ -74,14 +74,18 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
     e.target.value = '';
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editing) return;
-    updateSingleTranslation(editing.key, editing.lang, editing.value);
-    setNotice({
-      type: 'success',
-      message: t('ui_text.saved_label', 'Teks untuk key "{key}" ({lang}) berhasil diperbarui.', { key: editing.key, lang: languageName(editing.lang) }),
-    });
-    setEditing(null);
+    try {
+      await updateSingleTranslation(editing.key, editing.lang, editing.value);
+      setNotice({
+        type: 'success',
+        message: t('ui_text.saved_label', 'Teks untuk key "{key}" ({lang}) berhasil diperbarui.', { key: editing.key, lang: languageName(editing.lang) }),
+      });
+      setEditing(null);
+    } catch (error) {
+      setNotice({ type: 'error', message: error instanceof Error ? error.message : t('tb.texts_save_failed') });
+    }
   };
 
   const handleReset = async () => {
@@ -91,8 +95,12 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
       confirmLabel: t('ui_text.reset_label', 'Reset'),
     });
     if (ok) {
-      resetCustomTranslations();
-      setNotice({ type: 'success', message: t('ui_text.reset_done', 'Seluruh teks UI berhasil dikembalikan ke bawaan sistem.') });
+      try {
+        await resetCustomTranslations();
+        setNotice({ type: 'success', message: t('ui_text.reset_done', 'Seluruh teks UI berhasil dikembalikan ke bawaan sistem.') });
+      } catch (error) {
+        setNotice({ type: 'error', message: error instanceof Error ? error.message : t('tb.texts_save_failed') });
+      }
     }
   };
 
@@ -122,6 +130,8 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
           />
           <button
             type="submit"
+            disabled={translationsBusy}
+            aria-busy={translationsBusy}
             className="ui-button ui-button-lg ui-button-icon p-1 bg-accent-strong text-white hover:bg-accent-strong-hover cursor-pointer shrink-0"
             aria-label={t('common.save', 'Simpan')}
           >
@@ -141,6 +151,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
         <button
           type="button"
           onClick={() => setEditing({ key, lang, value: valueOf(key, lang) })}
+          disabled={translationsBusy}
           className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-slate-400 hover:text-accent-text p-1 cursor-pointer transition-opacity shrink-0"
           aria-label={t('ui_text.edit_in', 'Edit dalam {lang}', { lang: languageName(lang) })}
           title={t('ui_text.edit_in', 'Edit dalam {lang}', { lang: languageName(lang) })}
@@ -182,6 +193,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
             <button
               type="button"
               onClick={exportToCSV}
+              disabled={translationsBusy}
               className="ui-button ui-button-lg inline-flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-accent-soft hover:text-accent-text text-slate-800 dark:text-slate-200 font-bold border border-hairline dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
             >
               <Download className="w-4 h-4 text-accent-text" aria-hidden />
@@ -190,6 +202,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
+              disabled={translationsBusy}
               className="theme-action ui-button ui-button-lg inline-flex items-center gap-2 text-white font-semibold shadow-xs transition-colors cursor-pointer"
             >
               <Upload className="w-4 h-4" aria-hidden />
@@ -200,6 +213,7 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
               <button
                 type="button"
                 onClick={handleReset}
+                disabled={translationsBusy}
                 className="ui-button ui-button-lg inline-flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700 hover:border-rose-200 dark:hover:border-rose-800 text-slate-700 dark:text-slate-300 hover:text-rose-700 dark:hover:text-rose-400 font-semibold transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-rose-500" aria-hidden />
@@ -213,6 +227,8 @@ export const UITextManagerModal: React.FC<UITextManagerModalProps> = ({ isOpen =
           </div>
         </div>
 
+        {translationsBusy && <p role="status" className="px-4 py-2 text-sm">{t('tb.texts_syncing')}</p>}
+        {translationsError && <p role="alert" className="px-4 py-2 text-sm text-destructive">{translationsError}</p>}
         {notice && (
           <div
             role={notice.type === 'error' ? 'alert' : 'status'}

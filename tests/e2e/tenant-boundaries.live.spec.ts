@@ -10,6 +10,33 @@ import { api, ids, newSession, signIn, testDb } from './isolated/state';
 const A = 'org-a';
 const B = 'org-b';
 
+test('organization card currency matches region settings and follows a saved currency change', async ({ page }) => {
+  const token = await signIn(page, 'super', A);
+  const initial = await api(token, `/api/organizations/${A}/settings`);
+  expect(initial.status).toBe(200);
+  const currency = initial.data.policy.defaultCurrency === 'EUR' ? 'JPY' : 'EUR';
+  const card = page.locator('div.rounded-xl.border.p-5').filter({ has: page.getByRole('heading', { name: 'Alpha Org', exact: true }) });
+  try {
+    await page.goto('/app?tab=admin-system-organizations');
+    await expect(card.getByText(initial.data.policy.defaultCurrency, { exact: true })).toBeVisible();
+    await card.getByRole('button', { name: 'Manage organization', exact: true }).click();
+    await page.getByRole('button', { name: /^Region and formatting/ }).click();
+    await expect(page.getByLabel('Default currency', { exact: true })).toHaveValue(initial.data.policy.defaultCurrency);
+    await page.getByLabel('Default currency', { exact: true }).selectOption(currency);
+    await page.getByRole('button', { name: 'Save Region and formatting', exact: true }).click();
+    await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
+    await page.goto('/app?tab=admin-system-organizations');
+    await expect(card.getByText(currency, { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(card.getByText(currency, { exact: true })).toBeVisible();
+  } finally {
+    const current = await api(token, `/api/organizations/${A}/settings`);
+    await api(token, `/api/organizations/${A}/settings`, {
+      method: 'PATCH', body: { expectedVersion: current.data.version, policy: { defaultCurrency: initial.data.policy.defaultCurrency } },
+    });
+  }
+});
+
 function apiRequests(page: Page) {
   const list: string[] = [];
   page.on('request', (request) => {

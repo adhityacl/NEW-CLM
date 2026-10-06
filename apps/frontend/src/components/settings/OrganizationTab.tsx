@@ -258,8 +258,8 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
           <div>
             <span className={labelClass}>{t('admin.org_logo_label', 'Logo Organisasi / Workspace')}</span>
             <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
-                {profile.logoUrl ? <img src={profile.logoUrl} alt={profile.name} className="h-full w-full object-contain p-1" /> : <Building2 className="h-6 w-6 text-accent-text" aria-hidden="true" />}
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+                {profile.logoUrl ? <img src={profile.logoUrl} alt={profile.name} className="h-full w-full object-cover" /> : <Building2 className="h-6 w-6 text-accent-text" aria-hidden="true" />}
               </div>
               <Button id={ids.logo} type="button" variant="outline" disabled={!canEdit} onClick={() => { setDraftLogo(profile.logoUrl); setLogoDialogOpen(true); }}>{t('admin.logo_mode_upload', 'Unggah File Gambar')}</Button>
             </div>

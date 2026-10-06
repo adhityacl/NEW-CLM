@@ -93,15 +93,15 @@ export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
         </button>
       </div>
 
-      <div className="flex items-start gap-3.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
+      <div className="flex items-center gap-3.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
         {/* Preview Container */}
         <div className="relative shrink-0 group">
-          <div className="w-14 h-14 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center overflow-hidden shadow-xs">
+          <div className="w-14 h-14 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center overflow-hidden shadow-xs">
             {logo ? (
               <img
                 src={logo}
                 alt={name || t('admin.logo', 'Logo')}
-                className="w-full h-full object-contain p-1"
+                className="w-full h-full object-cover"
                 onError={(e) => {
                   (e.currentTarget as HTMLElement).style.display = 'none';
                 }}
@@ -132,7 +132,7 @@ export const LogoUploadField: React.FC<LogoUploadFieldProps> = ({
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-2.5 text-center cursor-pointer transition-colors ${
+              className={`flex min-h-14 items-center justify-center border-2 border-dashed rounded-xl p-2.5 text-center cursor-pointer transition-colors ${
                 isDragging
                   ? 'border-accent/30 bg-accent-soft'
                   : 'border-slate-300 dark:border-slate-700 hover:border-accent/30 hover:bg-white dark:hover:bg-slate-900'

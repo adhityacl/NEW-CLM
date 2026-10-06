@@ -130,9 +130,9 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
         <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
           {/* Workspace Monogram / Logo Icon */}
           <div
-            className={`w-8 h-8 rounded-lg ${
+            className={`w-11 h-11 rounded-full ${
               currentWorkspace.logoUrl
-                ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-0.5'
+                ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700'
                 : 'bg-accent-strong text-white shadow-2xs'
             } flex items-center justify-center font-bold text-sm shrink-0 select-none overflow-hidden transition-transform`}
           >
@@ -140,7 +140,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
               <img
                 src={currentWorkspace.logoUrl}
                 alt={currentWorkspace.name}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
                 onError={(e) => {
                   (e.currentTarget as HTMLElement).style.display = 'none';
                 }}
@@ -208,9 +208,9 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
                     <div
-                      className={`w-7 h-7 rounded-lg ${
+                      className={`w-7 h-7 rounded-full ${
                         workspace.logoUrl
-                          ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-0.5'
+                          ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700'
                           : `${isSelected ? 'bg-accent-strong text-white' : workspace.badgeClass} shadow-2xs`
                       } flex items-center justify-center font-bold text-xs shrink-0 select-none overflow-hidden`}
                     >
@@ -218,7 +218,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
                         <img
                           src={workspace.logoUrl}
                           alt={workspace.name}
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-cover"
                           onError={(e) => {
                             (e.currentTarget as HTMLElement).style.display = 'none';
                           }}

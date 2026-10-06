@@ -12,7 +12,7 @@ import { WEB_URL } from './tests/e2e/isolated/state';
  */
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: ['tenant-boundaries.live.spec.ts', 'admin-nav-rbac.spec.ts', 'spa-query-routing.spec.ts'],
+  testMatch: ['tenant-boundaries.live.spec.ts', 'admin-nav-rbac.spec.ts', 'spa-query-routing.spec.ts', 'ui-text-sharing.live.spec.ts'],
   globalSetup: './tests/e2e/isolated/globalSetup.ts',
   fullyParallel: false,
   workers: 1, // tests mutate shared membership state in the one isolated server

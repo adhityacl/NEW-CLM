@@ -1,4 +1,5 @@
 import "dotenv/config";
+import type { UITextOverrides } from '@legalio/types/uiTexts';
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 import express from "express";
@@ -5894,6 +5895,7 @@ function readPlatformConfiguration() {
   const g = db.googleConfig || {};
   const b = { ...DEFAULT_BRANDING, ...(db.branding || {}) };
   return {
+    uiTexts: { overrides: (g.uiTextOverrides || { ID: {}, EN: {}, ZH: {} }) as UITextOverrides },
     branding: { appName: b.appName, logoUrl: b.logoUrl, primaryColor: b.primaryColor, footerText: b.footerText, loginHeadline: b.loginHeadline },
     google: {
       driveFolderId: g.driveFolderId || "",
@@ -5913,7 +5915,11 @@ function readPlatformConfiguration() {
     },
   };
 }
+app.get('/api/system/ui-texts', (_req, res) => {
+  res.set('Cache-Control', 'no-store').json(readPlatformConfiguration().uiTexts);
+});
 const PLATFORM_SECTIONS: Record<string, string[]> = {
+  uiTexts: ['overrides', 'reset'],
   branding: ["appName", "logoUrl", "primaryColor", "footerText", "loginHeadline"],
   google: ["driveFolderId", "spreadsheetId", "masterSpreadsheetId"],
   ai: ["aiModel", "geminiApiKey"],
@@ -5925,6 +5931,23 @@ function validatePlatformValue(section: string, key: string, value: unknown): un
     return (value as string).trim();
   };
   switch (`${section}.${key}`) {
+    case 'uiTexts.reset':
+      if (value !== true) platformConfigError('reset must be true.');
+      return true;
+    case 'uiTexts.overrides': {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) platformConfigError('overrides must be a language dictionary.');
+      const result: Partial<UITextOverrides> = {};
+      for (const [language, catalog] of Object.entries(value)) {
+        if (!['ID', 'EN', 'ZH'].includes(language) || !catalog || typeof catalog !== 'object' || Array.isArray(catalog)) platformConfigError('Supported UI languages are ID, EN and ZH.');
+        const entries = Object.entries(catalog);
+        if (entries.length > 10_000) platformConfigError('A dictionary can contain up to 10000 texts per language.');
+        for (const [textKey, text] of entries) {
+          if (!/^[\w.-]{1,160}$/.test(textKey) || ['__proto__', 'prototype', 'constructor'].includes(textKey) || typeof text !== 'string' || text.length > 10_000) platformConfigError('Each UI text needs a valid key and text up to 10000 characters.');
+        }
+        result[language as keyof UITextOverrides] = Object.fromEntries(entries) as Record<string, string>;
+      }
+      return result;
+    }
     case "branding.appName": case "branding.loginHeadline": return str(200);
     case "branding.footerText": return str(500);
     case "branding.primaryColor": {
@@ -5961,10 +5984,11 @@ function validatePlatformValue(section: string, key: string, value: unknown): un
   platformConfigError(`Unknown field: ${section}.${key}`);
 }
 function applyPlatformConfiguration(section: unknown, values: unknown, actor: ReturnType<typeof auditActorFor>) {
-  if (typeof section !== "string" || !PLATFORM_SECTIONS[section]) platformConfigError("section must be branding, google, ai or smtp.");
+  if (typeof section !== "string" || !Object.hasOwn(PLATFORM_SECTIONS, section)) platformConfigError("section must be branding, google, ai, smtp or uiTexts.");
   if (!values || typeof values !== "object" || Array.isArray(values)) platformConfigError("values must be an object.");
   const allowed = PLATFORM_SECTIONS[section as string];
   const input = values as Record<string, unknown>;
+  if (section === 'uiTexts' && input.reset !== undefined && input.overrides !== undefined) platformConfigError('Choose overrides or reset.');
   const next: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(input)) {
     if (!allowed.includes(key)) platformConfigError(`Unknown field: ${section}.${key}`);
@@ -5978,7 +6002,19 @@ function applyPlatformConfiguration(section: unknown, values: unknown, actor: Re
     next[key] = validatePlatformValue(section as string, key, value);
   }
   const before = JSON.stringify({ branding: db.branding, googleConfig: db.googleConfig });
-  if (section === "branding") db.branding = { ...DEFAULT_BRANDING, ...(db.branding || {}), ...next };
+  if (section === 'uiTexts') {
+    const overrides: UITextOverrides = { ID: {}, EN: {}, ZH: {} };
+    if (!next.reset) {
+      const current = readPlatformConfiguration().uiTexts.overrides;
+      for (const language of ['ID', 'EN', 'ZH'] as const) {
+        const merged = { ...current[language], ...(next.overrides as Partial<UITextOverrides>)?.[language] };
+        overrides[language] = Object.fromEntries(Object.entries(merged).filter(([, text]) => text !== ''));
+        if (Object.keys(overrides[language]).length > 10_000) platformConfigError('A dictionary can contain up to 10000 texts per language.');
+      }
+    }
+    db.googleConfig = { ...(db.googleConfig || {}), uiTextOverrides: overrides };
+  }
+  else if (section === "branding") db.branding = { ...DEFAULT_BRANDING, ...(db.branding || {}), ...next };
   else db.googleConfig = { ...(db.googleConfig || {}), ...next, ...(section === "google" && next.masterSpreadsheetId !== undefined ? { masterSpreadsheetUrl: "" } : {}) };
   if (section === "ai" && next.geminiApiKey !== undefined) process.env.GEMINI_API_KEY = String(next.geminiApiKey);
   try {
