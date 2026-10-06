@@ -1,6 +1,7 @@
 import express from "express";
 import crypto from "crypto";
 import type { Database } from "better-sqlite3";
+import type { Identity } from "./identity";
 import { loadServiceAccountCredentials, type ServiceAccountCredentials } from "./lib/googleServiceAccountAuth";
 import {
   parseOAuthClientFile,
@@ -113,8 +114,8 @@ export function createGoogleCredentialsRouter(store: GoogleCredentialStore) {
   const base = "/integrations/google/credentials";
 
   router.use(base, (req, res, next) => {
-    const actor = (req as unknown as { actor?: { id: string; role: string } | null }).actor;
-    if (actor?.role === "superuser") return next();
+    const identity = (req as unknown as { identity?: Identity }).identity;
+    if (identity?.platformRole === "superuser") return next();
     res.status(403).json({ error: "INSUFFICIENT_PERMISSION", message: "Only a superuser can manage Google credentials." });
   });
 
@@ -132,8 +133,8 @@ export function createGoogleCredentialsRouter(store: GoogleCredentialStore) {
         return res.status(400).json({ error: "invalid_private_key", message: MESSAGES.invalid_private_key });
       }
     }
-    const actor = (req as unknown as { actor: { id: string } }).actor;
-    store.save(kind, parsed.value, actor.id);
+    const identity = (req as unknown as { identity: Identity }).identity;
+    store.save(kind, parsed.value, identity.userId);
     res.json(store.status());
   });
 

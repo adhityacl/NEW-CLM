@@ -3,6 +3,7 @@
  * Run through `npm run test:tenant-boundaries` (tools/run-tenant-boundaries-tests.mjs).
  */
 import assert from 'node:assert/strict';
+import { generateKeyPairSync } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -240,7 +241,7 @@ describe('platform boundary (AC-010, AC-011, AC-013, AC-033)', () => {
   it('tenant admins are denied every platform configuration, credential, database and reset route', async () => {
     for (const [method, path] of [
       ['GET', '/api/platform/configuration'], ['PATCH', '/api/platform/configuration'], ['GET', '/api/google-integration'],
-      ['POST', '/api/google-integration'], ['POST', '/api/smtp/test'], ['POST', '/api/ai/test-key'], ['GET', '/api/google-credentials'],
+      ['POST', '/api/google-integration'], ['POST', '/api/smtp/test'], ['POST', '/api/ai/test-key'], ['GET', '/api/integrations/google/credentials'],
       ['POST', '/api/admin/reset-database'], ['GET', '/api/auth-console/sqlite/status'], ['GET', '/api/auth-console/users'],
       ['PUT', `/api/auth-console/users/${ids.adminA}/role`], ['POST', `/api/auth-console/users/${ids.viewerA}/ban`],
       ['GET', '/api/rbac/matrix'], ['POST', '/api/branding'], ['GET', '/api/auth/google/token'], ['POST', '/api/cron/trigger-check'],
@@ -259,6 +260,47 @@ describe('platform boundary (AC-010, AC-011, AC-013, AC-033)', () => {
     assert.ok(!JSON.stringify(read.data).includes('test-key-123456'));
     assert.equal((await server.call(S.super, '/api/platform/configuration', { method: 'PATCH', body: { section: 'ai', values: { notificationEmails: 'x' } } })).status, 400);
     assert.equal((await server.call(S.super, '/api/platform/configuration', { method: 'PATCH', body: { section: 'tenant', values: {} } })).status, 400);
+  });
+
+  it('System Admin can read, upload and remove Google JSON credentials through the real authorization boundary', async () => {
+    const base = '/api/integrations/google/credentials';
+    const initial = await server.call(S.super, base);
+    assert.equal(initial.status, 200, JSON.stringify(initial.data));
+    assert.equal(initial.data.serviceAccount.source, null);
+    assert.equal(initial.data.oauthClient.source, null);
+    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const serviceAccount = {
+      type: 'service_account', project_id: 'test-project',
+      client_email: 'test@test-project.iam.gserviceaccount.com',
+      private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+    };
+    const oauthClient = { web: { client_id: '42-test.apps.googleusercontent.com', client_secret: 'test-oauth-secret', javascript_origins: ['http://localhost:3000'] } };
+    for (const [method, path] of [['GET', base], ['PUT', `${base}/oauth-client`], ['DELETE', `${base}/oauth-client`]]) {
+      const init = { method, body: method === 'PUT' ? { file: oauthClient } : undefined };
+      assert.equal((await server.call(null, path, init)).status, 401);
+      for (const who of [S.adminA, S.managerA, S.editorA, S.viewerA, S.nomember]) {
+        assert.equal((await server.call(who, path, { ...init, headers: { 'x-user-role': 'superuser' } })).status, 403);
+      }
+    }
+    const invalid = await server.call(S.super, `${base}/service-account`, { method: 'PUT', body: { file: { ...serviceAccount, private_key: '-----BEGIN PRIVATE KEY-----\ninvalid\n-----END PRIVATE KEY-----' } } });
+    assert.equal(invalid.status, 400);
+    assert.equal(invalid.data.error, 'invalid_private_key');
+    for (const [kind, file] of [['service-account', serviceAccount], ['oauth-client', oauthClient]] as const) {
+      const uploaded = await server.call(S.super, `${base}/${kind}`, { method: 'PUT', body: { file } });
+      assert.equal(uploaded.status, 200, JSON.stringify(uploaded.data));
+      const status = await server.call(S.super, base);
+      assert.equal(status.data[kind === 'service-account' ? 'serviceAccount' : 'oauthClient'].source, 'upload');
+      assert.ok(!JSON.stringify(status.data).includes('PRIVATE KEY'));
+      assert.ok(!JSON.stringify(status.data).includes('test-oauth-secret'));
+    }
+    assert.equal((server.db.prepare('SELECT COUNT(*) AS n FROM integration_credentials').get() as any).n, 2);
+    for (const kind of ['service-account', 'oauth-client']) {
+      assert.equal((await server.call(S.super, `${base}/${kind}`, { method: 'DELETE' })).status, 200);
+    }
+    assert.equal((server.db.prepare('SELECT COUNT(*) AS n FROM integration_credentials').get() as any).n, 0);
+    const removed = await server.call(S.super, base);
+    assert.equal(removed.data.serviceAccount.source, null);
+    assert.equal(removed.data.oauthClient.source, null);
   });
 
   it('public branding exposes presentation fields only', async () => {

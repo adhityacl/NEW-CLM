@@ -28,7 +28,7 @@ const NO_SELECTOR = [
   /^\/api\/branding$/,
   /^\/api\/policy-packs$/,
   /^\/api\/google-integration(\/(connect|disconnect|auto-provision-master|provision-folders))?$/,
-  /^\/api\/google-credentials/,
+  /^\/api\/integrations\/google\/credentials(\/|$)/,
   /^\/api\/google-service-account\//,
   /^\/api\/(smtp|ai)\//,
   /^\/api\/admin\//,

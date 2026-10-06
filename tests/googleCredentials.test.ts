@@ -11,6 +11,7 @@ import express from 'express';
 import { createGoogleCredentialStore, createGoogleCredentialsRouter } from '../apps/backend/src/googleCredentials';
 import { getGoogleDriveClient, getGoogleSheetsClient, loadServiceAccountCredentials, setStoredServiceAccountProvider } from '../apps/backend/src/lib/googleServiceAccountAuth';
 import { parseOAuthClientFile, parseServiceAccountFile } from '@legalio/shared/googleCredentialFiles';
+import { needsOrganizationSelector } from '../apps/frontend/src/lib/apiFetch';
 
 for (const key of ['GOOGLE_CLIENT_ID', 'VITE_GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_SERVICE_ACCOUNT_KEY', 'GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY']) {
   delete process.env[key];
@@ -45,7 +46,8 @@ const app = express();
 app.use(express.json());
 app.use((req, _res, next) => {
   const role = String(req.headers['x-test-role'] || '');
-  (req as any).actor = role ? { id: `u-${role}`, role } : null;
+  (req as any).identity = role && role !== 'actor-only' ? { userId: `u-${role}`, platformRole: role === 'superuser' ? 'superuser' : 'user' } : null;
+  (req as any).actor = { id: 'legacy-actor', role: 'superuser' };
   next();
 });
 app.use('/api', createGoogleCredentialsRouter(store));
@@ -74,8 +76,16 @@ test('file parsers reject swapped or malformed files', () => {
 
 test('only a superuser can read or change credentials', async () => {
   assert.equal((await call('admin', 'GET')).status, 403);
+  assert.equal((await call('actor-only', 'GET')).status, 403, 'a legacy actor cannot grant platform access');
   assert.equal((await call('', 'PUT', '/oauth-client', { file: OAUTH_CLIENT })).status, 403);
   assert.equal((await call('superuser', 'GET')).status, 200);
+});
+
+test('platform credential requests never receive an organization selector', () => {
+  for (const path of ['', '/service-account', '/oauth-client']) {
+    assert.equal(needsOrganizationSelector(`/api/integrations/google/credentials${path}`), false);
+  }
+  assert.equal(needsOrganizationSelector('/api/integrations/google/credentials-other'), true);
 });
 
 test('upload, use, and remove both files', async () => {

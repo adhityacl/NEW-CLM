@@ -73,9 +73,9 @@ How a request is decided (PRD §5.5):
 | POST | `/api/google-integration/provision-folders` | platform | platform.configuration.update | — | policy table only |
 | POST | `/api/partners/provision-folders` | platform | platform.configuration.update | — | policy table only |
 | GET | `/api/google-service-account/status` | platform | platform.configuration.read | — | policy table only |
-| GET | `/api/google-credentials` | platform | platform.configuration.read | — | tests/tenant-boundaries/api.test.ts › tenant admins are denied every platform configuration, credential, database and reset route |
-| PUT | `/api/google-credentials/:kind` | platform | platform.configuration.update | — | policy table only |
-| DELETE | `/api/google-credentials/:kind` | platform | platform.configuration.update | — | policy table only |
+| GET | `/api/integrations/google/credentials` | platform | platform.configuration.read | — | tests/tenant-boundaries/api.test.ts › tenant admins are denied every platform configuration, credential, database and reset route<br>tests/tenant-boundaries/api.test.ts › System Admin can read, upload and remove Google JSON credentials through the real authorization boundary |
+| PUT | `/api/integrations/google/credentials/:kind` | platform | platform.configuration.update | — | policy table only |
+| DELETE | `/api/integrations/google/credentials/:kind` | platform | platform.configuration.update | — | policy table only |
 | POST | `/api/admin/reset-database` | platform | platform.application.reset | explicit confirmation retained | tests/tenant-boundaries/api.test.ts › tenant admins are denied every platform configuration, credential, database and reset route |
 | POST | `/api/cron/trigger-check` | platform | platform.database.optimize | all-organization system job | tests/tenant-boundaries/api.test.ts › tenant admins are denied every platform configuration, credential, database and reset route |
 | GET | `/api/user/allowed-users` | platform | platform.user.read | onboarding allowlist | policy table only |

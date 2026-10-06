@@ -7,7 +7,8 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A520.19-339933?logo=node.js&logoColor=white)](package.json)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](package.json)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](apps/frontend/package.json)
+[![Turborepo](https://img.shields.io/badge/Turborepo-2-EF4444?logo=turborepo&logoColor=white)](turbo.json)
 [![Express](https://img.shields.io/badge/Express-black?logo=express&logoColor=white)](apps/backend/src/server.ts)
 [![SQLite](https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
 [![Better Auth](https://img.shields.io/badge/Auth-Better%20Auth-6E56CF)](https://www.better-auth.com/)
@@ -23,6 +24,7 @@
 - 🆕 [What's new](#whats-new)
 - 🧱 [Tech stack](#tech-stack)
 - 📁 [Project layout](#project-layout)
+- 🔧 [Workspace and build commands](#workspace-and-build-commands)
 - 🚀 [Local development](#local-development)
 - ⚙️ [Configuration reference](#configuration-reference)
 - 🔗 [Google integration](#google-integration)
@@ -37,12 +39,14 @@
 ## Features
 
 **📄 Contracts, partners and IOs**
+
 - Full CRUD for contracts, partners, Insertion Orders, spendings and partner evaluations, scoped per organization (tenant) and department.
 - Notice-period tracking, expiry/renewal status, notifications and an activity log.
 - Bulk CSV import, Due Diligence checklists driven by per-country policy packs, and a dashboard with charts.
 - CSV exports open cleanly in Excel (every cell quoted, UTF-8 BOM, `sep=,` for semicolon locales) and can be re-imported as-is.
 
 **✍️ Contract Creator** (sidebar → *Create Contract*)
+
 - **Document explorer**: the page opens on *My Documents*. You can search by name or metadata value, filter by status, type, creator, created date or a metadata field, sort by any column, and page through results 25/50/100 at a time. Each row has quick actions for open, rename, archive and delete.
 - **New document**: *New Document* opens a picker with a *Blank document* card and every available template — the built-in *Master Service Agreement* plus any template your organization saved — with a search box.
 - **Editor**: a [TipTap](https://tiptap.dev/) editor with fillable-slot fields (listed in the *Fields* panel in the order they appear in the document), partner auto-fill, a template library, a preview and Word (`.doc`) export.
@@ -51,40 +55,61 @@
 - **Redlining**: select text, then add a comment or suggest a change. A suggested change shows the original text struck through and the proposed text underlined. You can reply in threads, accept, reject or resolve items one at a time or in bulk, and see a change summary and redline history. *Download with Redlines* exports a `.doc` file with the markup and a comments appendix.
 
 **🛡️ Access control**
-- Five roles (Superuser, Admin, Manager, Editor, Viewer) with tenant and department scope enforcement (`server/rbac.ts`).
-- System Admin and Organization Admin consoles for users, invitations, departments, sessions and the RBAC matrix.
+
+- Platform roles (`user`, `superuser`) are separate from organization membership roles (`admin`, `manager`, `editor`, `viewer`). Permissions are enforced server-side for the selected organization and department; see [apps/backend/src/rbac.ts](apps/backend/src/rbac.ts).
+- **System Admin** manages global accounts, organizations, sessions, the RBAC matrix and platform configuration. Organization **Settings** has capability-filtered **Organization**, **Members & Access** and **Integrations** tabs.
+
+**🎨 Organization settings and shared UI texts**
+
+- Organization profile, logo, color theme, country/industry packs and region formatting use shared settings contracts. The System Admin organization directory displays the same default currency saved in organization settings.
+- Organization logos use circular avatar styling throughout the sidebar, upload preview and organization cards; the sidebar logo is **44 × 44 px**.
+- System Admin can edit, import/export CSV and reset the EN/ID/ZH UI dictionary in **System Admin → Configuration → UI texts**. Saved overrides apply to all users and organizations; active pages refresh every five seconds and when focused. Language and theme preferences remain personal.
+- The dictionary is persisted server-side in SQLite. Existing browser-local overrides are not automatically published; re-save them through the editor to share them. Failed saves show an error and retain the edit for retry.
+- The hierarchy tabs are **Tree View**, **Table View** and **Calendar View**.
 
 **🤖 AI and integrations**
+
 - Google Gemini (`@google/genai`) for contract, partner and IO parsing, Due Diligence notes, redline analysis, AI-generated document templates (Contract, Agreement, SO — from a text prompt; Superuser/Admin/Manager only) and a search-grounded news ticker.
-- Google Drive folder provisioning and Sheets sync. The Google credentials can be uploaded as JSON files in the app instead of being placed in `apps/backend/.env` (see [Google integration](#google-integration)).
-- SMTP e-mail for invitations and notifications, configured in Settings.
-- English, Bahasa Indonesia and Simplified Chinese UI, with in-app text overrides.
+- Google credential uploads and organization-specific Drive/Sheets resource mappings. Google synchronization is marked unavailable in this release; saving a mapping does not enable sync. Credentials can be uploaded as JSON files instead of being placed in `apps/backend/.env` (see [Google integration](#google-integration)).
+- SMTP e-mail for invitations and notifications, configured in **System Admin → Configuration → SMTP relay**.
+- English, Bahasa Indonesia and Simplified Chinese UI, with the shared text dictionary described above.
 
 ---
 
 ## What's new
 
+**Latest updates**
+
+- **Monorepo**: independent `apps/frontend` and `apps/backend`, reusable `packages/*`, npm workspaces and Turborepo build/type-check caching. Each app has its own Dockerfile; GitHub Actions selects verification jobs from changed paths.
+- **Tenant boundaries**: platform authority and organization membership are separate; tenant settings and administration use organization-scoped capabilities and shared API contracts.
+- **Shared UI dictionary**: System Admin text edits, CSV imports and resets now reach other users without reloading their page, with server persistence and retryable save errors.
+- **Organization UI**: synchronized default currency, compact logo upload layout, circular logos, a 44 × 44 px sidebar avatar, and simplified Tree View / Table View labels.
+- **Repository hygiene**: AI instruction files, credentials, runtime databases, dumps, caches and generated reports are excluded by `.gitignore`; these files remain local. Ignore rules do not hide files that are already tracked.
+
 **Early October 2026**
-- **New document picker** (Contract Creator): *New Document* now asks how to start — *Blank document* or a template. Ships a built-in **Master Service Agreement** (`src/data/masterServiceAgreementTemplate.ts`) whose blanks are real fillable slots mapped to the editor's party/date/scope fields (organization = Customer, partner = Supplier), plus custom fields for agreement number, registration numbers, term, survival period and place of signing; governing law and court come from the organization's jurisdiction pack. Templates saved by users appear in the picker automatically.
+
+- **New document picker** (Contract Creator): *New Document* now asks how to start — *Blank document* or a template. Ships a built-in **Master Service Agreement** (`packages/shared/src/data/masterServiceAgreementTemplate.ts`) whose blanks are real fillable slots mapped to the editor's party/date/scope fields (organization = Customer, partner = Supplier), plus custom fields for agreement number, registration numbers, term, survival period and place of signing; governing law and court come from the organization's jurisdiction pack. Templates saved by users appear in the picker automatically.
 - **Fields panel**: built-in and custom fields are listed together in document order; the "Optional" badge and the footer "template active" label were removed, and field cards are more compact (touch devices keep 44px targets).
-- **Demo dataset**: one organization, *Bank Mindiri* (jurisdiction pack Indonesia, industry pack Banking & Investment), with five fictional partners — cloud/colocation, credit bureau, e-KYC, corporate travel and a media agency — each with its own contract, service order and invoices (amounts incl. 11% VAT). Reload it from *Settings → Reset → Reload the demo data*.
-- **Pricing models** standardized to CPM, CPC, CPA, Fixed, Retainer, Hourly, Milestone, Commission and Subscription (`PRICING_MODELS` in `src/types.ts`); custom values are still allowed and stay filterable.
-- **CSV import/export** (`src/lib/csv.ts`): one shared exporter for Partner Spending, Partner Evaluation and the Complete Audit View fixes columns splitting on commas (e.g. `Apr 1, 2025`), broken encoding and truncated files, and neutralises formula-looking cells. The importer now reads BOM/`sep=` files, `;`-delimited Excel files and multi-line cells.
+- **Demo dataset**: one organization, *Bank Mindiri* (jurisdiction pack Indonesia, industry pack Banking & Investment), with five fictional partners — cloud/colocation, credit bureau, e-KYC, corporate travel and a media agency — each with its own contract, service order and invoices (amounts incl. 11% VAT). Reload it from *System Admin → Configuration → Database & reset → Reload the demo data*.
+- **Pricing models** standardized to CPM, CPC, CPA, Fixed, Retainer, Hourly, Milestone, Commission and Subscription (`PRICING_MODELS` in `packages/types/src/index.ts`); custom values are still allowed and stay filterable.
+- **CSV import/export** (`apps/frontend/src/lib/csv.ts`): one shared exporter for Partner Spending, Partner Evaluation and the Complete Audit View fixes columns splitting on commas (e.g. `Apr 1, 2025`), broken encoding and truncated files, and neutralises formula-looking cells. The importer now reads BOM/`sep=` files, `;`-delimited Excel files and multi-line cells.
 - **Bulk import**: templates follow the organization's country and industry (e.g. PT, IDR, NPWP/NIB for Indonesia) and list allowed values; new columns for partner identifiers, contract `auto_renewal`/`status_approval`/`parent_contract_nomor` and spending `invoice_title`/`payment_status`; enum values are validated per row. Fixes: non-USD invoices were imported with a USD amount of 0, evaluations had no organization and no score, and IO/evaluation duplicate checks crossed organizations.
-- **UI**: the regulatory news ticker is a continuous marquee (pauses on hover, static under reduced motion); AI chat answers have a *Copy* button; Privacy Policy and Terms of Service were rewritten as numbered legal documents in EN/ID/ZH (`src/components/legal/`).
+- **UI**: the regulatory news ticker is a continuous marquee (pauses on hover, static under reduced motion); AI chat answers have a *Copy* button; Privacy Policy and Terms of Service were rewritten as numbered legal documents in EN/ID/ZH (`apps/frontend/src/components/legal/`).
 
 **Late September 2026**
-- **Persistent, cross-feature OCR/AI cache**: the document-parsing pipeline (`src/lib/cheapOcrPipeline.ts`, used by the Partner/Spending/Contract/IO "Parse with AI" actions) now caches results in SQLite (table `ai_ocr_cache`) instead of an in-memory map, so cached results survive a server restart. A scanned document's plain-text transcript is also cached independently of which feature first read it — for a scanned file, that costs one Gemini vision call for its lifetime instead of one per feature per call; a digital-text PDF's local extraction is cached the same way at no extra cost.
+
+- **Persistent, cross-feature OCR/AI cache**: the document-parsing pipeline (`apps/backend/src/lib/cheapOcrPipeline.ts`, used by the Partner/Spending/Contract/IO "Parse with AI" actions) now caches results in SQLite (table `ai_ocr_cache`) instead of an in-memory map, so cached results survive a server restart. A scanned document's plain-text transcript is also cached independently of which feature first read it — for a scanned file, that costs one Gemini vision call for its lifetime instead of one per feature per call; a digital-text PDF's local extraction is cached the same way at no extra cost.
 - **Generate Template with AI** (Contract Creator → Templates tab, Superuser/Admin/Manager only): drafts a reusable Contract, Agreement or SO template from a short text prompt via Gemini, inserted into the editor as real fillable-slot fields — reuses the existing "Save Template" flow, so the result is reviewed in the editor before it's persisted to the template library.
 - **Contract Creator fullscreen mode**: a toolbar button (between *Download* and the field panel toggle) expands the editor to fill the browser viewport, hiding the app's sidebar and header. `Esc`, the toggle itself, or navigating back to the document list all exit it.
 - **Dashboard**: a new *Documents Pending Review* table lists documents awaiting review (name, type, modified by, created and last-modified dates) next to the existing expiring-contracts table, with a shortcut into the Contract Creator.
-- **Department-scoped Organization Admin**: Managers, Editors and Viewers opening *Organization Admin → Users* or *→ Departments* now only see themselves and their own department's members/teams, instead of every user and department in the tenant. Enforced server-side in `src/server/authConsoleRoutes.ts`, not just hidden in the UI.
+- **Department-scoped Organization Admin**: Managers, Editors and Viewers opening *Organization Admin → Users* or *→ Departments* now only see themselves and their own department's members/teams, instead of every user and department in the tenant. Enforced server-side in `apps/backend/src/authConsoleRoutes.ts`, not just hidden in the UI. These controls now live in *Settings → Members & Access*.
 - **Fix — admin console breadcrumb**: the header no longer falls back to "Main Dashboard" while inside a System Admin or Organization Admin screen; it was checking a stale `admin-users-*` tab prefix that no longer matched the actual `admin-system-*`/`admin-organization-*` routes.
 - **Fix — stale locale after switching language**: number and date formatting (e.g. the Structure Audit table) no longer lags one render behind right after switching UI language. The active formatting locale used to be set inside a `useEffect`, one tick after the language actually changed; it's now set synchronously in `TenantSettingsProvider`'s render, ahead of every screen that reads it.
 - **RBAC Access Matrix relabeled**: scope badges now read *Global* (Superuser, cross-organization), *Organization* (Admin, every department in one tenant) and *Department* (Manager/Editor, their own department only) — previously Superuser and Admin shared the same ambiguous "Global" badge.
 - Console cleanup: removed the unused "Better Auth Infrastructure" banner, its quick-actions block, and the `instances.config.ts` viewer from the admin dashboard and console header; the Users and Sessions tables now share one visual style, and bulk user selection (which had no remaining trigger) was removed along with it.
 
 **September 2026**
+
 - **Contract Creator**: added the document explorer, autosaved drafts with version history, diff and restore, document metadata with organization custom fields, and redlining (comments, suggested changes, accept/reject, redline export). The data is stored in new SQLite tables that are created automatically on start.
 - **Google credentials without `apps/backend/.env`**: a Superuser can upload the service account and OAuth client JSON files from the first-login banner (*Connect Google*) or from Settings. Uploaded files take priority over the `GOOGLE_*` variables and apply without a restart.
 - **Fix**: `apps/backend/.env` is now loaded before any module reads it. Previously `BETTER_AUTH_SECRET` and the Google OAuth values were read before `apps/backend/.env` was loaded, so development silently used an insecure secret and production crashed at startup even with a correct `apps/backend/.env`.
@@ -99,6 +124,7 @@
 - **Fix**: production builds (`npm run build` / `npm start`) no longer render a blank page. A hand-written vendor chunk split made two bundles import each other, leaving React undefined; Vite's default chunking is used instead and first-load JavaScript is ~20% smaller.
 
 **Earlier**
+
 - Tenant policy packs, i18n and admin settings; hardened session authentication.
 - SQLite became the single source of truth (`data_store.json` is only a one-time import source).
 
@@ -108,9 +134,10 @@
 
 | Layer | Technology |
 | --- | --- |
-| 🎨 Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, Radix UI primitives (`src/components/ui/`), TipTap, Recharts, TanStack Query |
+| 🎨 Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, Radix UI primitives (`packages/ui-components/src/`), TipTap, Recharts, TanStack Query |
 | 🖥️ Backend | Express and TypeScript, API-only (`apps/backend/src/server.ts`), no frontend assets. In development Vite still runs inside Express as middleware for convenience (one server, one port); in production the frontend build is served separately (see [Deploying to a new server](#deploying-to-a-new-server)). |
-| 🔐 Auth | Better Auth (sessions, organizations, teams) plus a custom RBAC engine (`server/rbac.ts`) |
+| 🔐 Auth | Better Auth (sessions, organizations, teams) plus a custom RBAC engine (`apps/backend/src/rbac.ts`) |
+| 🧱 Monorepo | npm workspaces (`apps/*`, `packages/*`) and Turborepo 2 for build and type-check tasks |
 | 💾 Data | SQLite via `better-sqlite3`, stored in one file: `auth.db` |
 | 🔌 Integrations | `@google/genai`, `googleapis`, Google Identity Services (Google Sign-In), `nodemailer`, `docx`, `pdf-lib`, `pdf-parse` |
 | 🧪 Tests | Node's built-in test runner (`node:test`) and Playwright |
@@ -149,7 +176,26 @@ NEW-CLM/
 └── package-lock.json
 ```
 
-Environment and runtime files are **not** tracked by Git. Backend environment lives in `apps/backend/.env`; existing SQLite/uploads retain their repository-root locations by default: `apps/backend/.env`, `auth.db` (plus `auth.db-wal` and `auth.db-shm`), `uploads/`, and the legacy `data_store.json`.
+Backend environment lives in `apps/backend/.env`; frontend public variables belong in `apps/frontend/.env`. Environment and runtime files are **not** tracked by Git. SQLite/uploads retain their repository-root locations by default: `auth.db` (plus `auth.db-wal` and `auth.db-shm`), `uploads/`, and the legacy `data_store.json`. Set absolute `AUTH_DB_PATH` and `APP_DATA_DIR` values to use a dedicated data directory.
+
+---
+
+## Workspace and build commands
+
+Install dependencies once at the repository root. The root lockfile covers both apps and all shared packages.
+
+| Command | Behavior |
+| --- | --- |
+| `npm run build` | `turbo run build`; builds the app dependency graph and caches each app's `dist/**` output. |
+| `npm run lint` | `turbo run lint --concurrency=1`, followed by a root TypeScript check. |
+| `npm run build:frontend` | Builds only `apps/frontend/dist/` directly through its workspace script. |
+| `npm run build:backend` | Builds only `apps/backend/dist/server.cjs` directly through its workspace script. |
+| `npm run dev` | Combined Express + Vite development server on port 3000. |
+| `npm test` | Root `node:test` suites through `tsx`; run separately from Turbo. |
+
+Turbo reuses local cached results when inputs are unchanged. Shared TypeScript configuration is a global cache dependency, and `VITE_*` variables participate in the build cache key. `dev` is configured as persistent with caching disabled, but the root development commands currently invoke workspace scripts directly. To run an app through Turbo, use `npx turbo run build --filter=@legalio/frontend` or `--filter=@legalio/backend`.
+
+CI uses [scripts/affected-apps.mjs](scripts/affected-apps.mjs) to select applications by changed paths, then uses Turbo filters for each selected app. Shared packages/configuration trigger both apps; `packages/ui-components/` triggers frontend. Documentation-only changes skip application verification. CI currently verifies code and builds; deployment is configured separately.
 
 ---
 
@@ -168,7 +214,7 @@ npm run dev
 
 Open **http://localhost:3000**. On the very first visit you'll see *Create admin account*: enter your name, email and a password (8+ characters) and you're signed in as the Superuser. There are no default credentials.
 
-On first start the server creates `auth.db` with all tables and loads a three-country demo workspace. Until the Google credential files are uploaded, a banner offers **Connect Google**. The Gemini key (AI features) and SMTP are set in Settings — nothing goes in `apps/backend/.env`.
+On first start the server creates `auth.db` with all tables and loads the Bank Mindiri demo workspace (Indonesia, Banking & Investment). Until the Google credential files are uploaded, a banner offers **Connect Google**. The Gemini key (AI features) and SMTP are set in **System Admin → Configuration**; backend environment variables are optional fallbacks for those integrations.
 
 ### Running frontend and backend as separate processes
 
@@ -191,12 +237,14 @@ Backend variables are read from `apps/backend/.env`; frontend public variables b
 | --- | --- | --- |
 | `NODE_ENV` | — | Set to `production` on API servers. Enables secure cookies and requires `BETTER_AUTH_SECRET`; nginx serves the frontend separately. |
 | `PORT` | `3000` | HTTP port. |
+| `AUTH_DB_PATH` | Repository-root `auth.db` | Absolute path to the SQLite database. |
+| `APP_DATA_DIR` | Repository root | Absolute directory containing `uploads/` and the legacy `data_store.json` import source. |
 | `BETTER_AUTH_SECRET` | auto-generated | **Required in production.** `npm install`/`npm run setup` fills in a random value if it's still unset or the `apps/backend/.env.example` placeholder. Changing it signs everyone out. |
 | `BETTER_AUTH_URL` | — | Optional: pins the app to one exact public URL, e.g. `https://clm.example.com`. Left unset, the app trusts whatever host/scheme each request actually arrives on (nginx's documented config forwards the real `Host` and `X-Forwarded-Proto`), so login works out of the box on localhost, a Codespace, or any deployed domain — nothing to update when the domain changes or the app moves to a new server. |
 | `TRUSTED_ORIGINS` | — | Optional: additional trusted origins, comma separated — only needed for a genuinely separate origin, such as a standalone front-end domain. |
 | `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` | — | Optional, for automated deploys: pre-creates the first Superuser instead of using the *Create admin account* page. Outside production the six demo-workspace users (`*@example.com`) get the same password. |
 | `SEED_DEMO_ADMIN` | `true` | Only matters when `DEMO_ADMIN_*` are set: `false` stops re-applying them on start once your own admin exists. |
-| `GEMINI_API_KEY` | — | Optional fallback; normally set in Settings → AI Model & Parser. |
+| `GEMINI_API_KEY` | — | Optional fallback; normally set in System Admin → Configuration → AI Model & Parser. |
 | `GOOGLE_*` | — | Optional fallback; normally the JSON files are uploaded in *Connect Google*. |
 | `ALLOW_GOOGLE_SELF_SIGNUP` | `false` | When `true`, any Google account can sign in and gets a user created automatically. Otherwise an administrator must invite the user first. |
 | `BETTER_AUTH_ENABLE_INFRA` / `BETTER_AUTH_API_KEY` | — | Optional Better Auth Infra dashboard and Sentinel. |
@@ -205,12 +253,12 @@ Backend variables are read from `apps/backend/.env`; frontend public variables b
 
 ## Google integration
 
-Two JSON files from [Google Cloud Console](https://console.cloud.google.com/) power Drive and Sheets:
+Two JSON files from [Google Cloud Console](https://console.cloud.google.com/) configure Google access and sign-in:
 
 1. **Service account key**: IAM & Admin → Service Accounts → *account* → Keys → Add key → JSON. After uploading, share the Drive folder and the spreadsheet with the account's `client_email` as **Editor**.
 2. **OAuth client**: APIs & Services → Credentials → OAuth 2.0 Client IDs → Download JSON. Its **Authorized JavaScript origins** must contain the exact URL the app runs on, including `http` vs `https` and the port (e.g. `https://clm.example.com`). The upload dialog warns you when it doesn't.
 
-A Superuser uploads the files from **Connect Google** in the first-login banner, or from **Settings → Google & Database → Manage credential files**.
+A Superuser uploads the files from **Connect Google** in the first-login banner, or from **System Admin → Configuration → Google & storage → Manage credential files**. Organization resource mappings are managed separately in **Settings → Integrations**; Google synchronization is currently unavailable.
 
 - Files are validated when uploaded: a file in the wrong slot or an unreadable private key is rejected.
 - They are stored in `auth.db` (table `integration_credentials`) and take effect immediately.
@@ -224,18 +272,25 @@ A Superuser uploads the files from **Connect Google** in the first-login banner,
 ## Testing
 
 ```bash
-npm run lint              # TypeScript type check
-npm test                  # all node:test suites below, plus demo-account cleanup
+npm run lint              # workspace and root TypeScript checks
+npm test                  # root tests/*.test.ts suites
+npm run test:frontend     # frontend CI selection
+npm run test:backend      # backend CI selection
 npm run test:rbac         # RBAC permission matrix
 npm run test:documents    # Contract Creator API: drafts, explorer, metadata, comments (in-memory SQLite)
 npm run test:credentials  # Google credential upload and priority over apps/backend/.env
-npx tsx --test tests/csv.test.ts tests/masterServiceAgreementTemplate.test.ts tests/demoDataset.test.ts  # CSV round-trip, built-in template, demo data
-npm run test:e2e          # Playwright browser tests (run `npx playwright install` once first)
+npm run test:tenant-boundaries  # isolated API, migration, profile and settings checks
+npx playwright install chromium  # one-time browser installation
+npm run test:e2e          # isolated live browser suite, including shared UI texts
+npm run test:e2e:fixtures  # mocked-API UI regressions
+npm run test:e2e:tenant-boundaries  # live browser suite plus workspace runtime checksums
 ```
 
 GitHub Actions selects frontend/backend jobs from changed paths. Shared contracts/configuration trigger both; UI-package changes trigger frontend. Each job checks its dependency graph, runs the relevant tests and builds only its application; see [.github/workflows/ci.yml](.github/workflows/ci.yml). Browser tests remain available through the commands above.
 
-The settings API contract lives in `packages/types/src/organizationSettings.ts` and is used by both the backend store and the frontend settings page. `npm run lint` checks this contract, including the negative type assertion in `tests/organizationSettingsContract.test.ts`.
+Live tenant-boundaries tests use temporary databases/storage and synthetic fixtures instead of the workspace database. `test:tenant-boundaries` and `test:e2e:tenant-boundaries` also compare workspace runtime checksums before and after running. Mocked-API browser tests serve the frontend without opening the application database.
+
+The settings API contract lives in [packages/types/src/organizationSettings.ts](packages/types/src/organizationSettings.ts) and is used by both the backend store and the frontend settings page. `npm run lint` checks this contract, including the negative type assertion in `tests/organizationSettingsContract.test.ts`. The shared UI dictionary contract lives in [packages/types/src/uiTexts.ts](packages/types/src/uiTexts.ts); validation/persistence and cross-browser editing, CSV import and reset are covered by the tenant-boundaries API and live browser suites.
 
 For containers, run `npm run setup` followed by `docker compose up --build`; frontend is available at `http://localhost:8080`. Backend data uses a named Docker volume. Existing host data is not automatically imported into that volume. Each Dockerfile builds its own application from the repository-root context.
 
@@ -351,9 +406,9 @@ Keep port 3000 closed to the internet; only nginx should reach it.
 ### 6. First-run checklist (in the browser)
 
 1. Open `https://clm.example.com` and fill in **Create admin account** (it only appears while no admin exists — do this right after the site goes live).
-2. **Remove the demo data**: Settings → Security & Maintenance → *Reset System Database* → *Start empty with my organization*. The reset signs you out; sign in again. (The demo login accounts are never created in production, and an empty-workspace reset also deletes them.)
-3. **Connect Google** (banner or Settings): upload the two JSON files (see [Google integration](#google-integration)), and add `https://clm.example.com` to the OAuth client's **Authorized JavaScript origins**.
-4. Optional: set the Gemini key (Settings → AI Model & Parser) and SMTP (Settings → Notification Recipients), and invite your users (Organization Admin → Invitations).
+2. **Remove the demo data**: System Admin → Configuration → Database & reset → *Reset System Database* → *Start empty with my organization*. The reset signs you out; sign in again. (The demo login accounts are never created in production, and an empty-workspace reset also deletes them.)
+3. **Connect Google** (banner or System Admin → Configuration → Google & storage): upload the two JSON files (see [Google integration](#google-integration)), and add `https://clm.example.com` to the OAuth client's **Authorized JavaScript origins**.
+4. Optional: set the Gemini key and SMTP in **System Admin → Configuration**, then manage an organization and invite users from **Settings → Members & Access**.
 
 ---
 
@@ -408,6 +463,8 @@ sudo systemctl restart legalio
 | `BETTER_AUTH_SECRET must be set in production` at startup | `apps/backend/.env` is missing, empty, or not in `WorkingDirectory`. Run `npm run setup` from the repository root (it won't touch a real secret if one is already set), or set a long random value by hand. |
 | `Cannot find module 'vite'` when running `npm run dev` / `dev:backend` | Dependencies were installed with `--omit=dev` on a dev machine. Run `npm ci` without it. Production (`node apps/backend/dist/server.cjs`) never needs `vite`, so this doesn't affect a deployed server. |
 | Blank page or 404 at the site root in production | The Node process no longer serves the frontend build — nginx must serve `apps/frontend/dist/` directly and only proxy `/api/` and `/uploads/` to Node. Check the `location` blocks in step 5 of [Deploying to a new server](#deploying-to-a-new-server). |
+| 404 at `http://localhost:3000` during development | `npm run dev:backend` starts only the API. Use `npm run dev` for the combined app, or also run `npm run dev:frontend` and open the Vite URL it prints. |
+| Other users still see old customized UI text | Save the edit in System Admin → Configuration → UI texts and check for a save error. Active pages refresh every five seconds/on focus; browser-local overrides from older versions must be re-saved to publish them. |
 | `better-sqlite3` / `NODE_MODULE_VERSION` error | Node was upgraded after installing. Run `npm rebuild better-sqlite3`. |
 | Crash mentioning `process.getBuiltinModule` | Node is older than 20.19. Upgrade to Node 22. |
 | Repeated `DECODER routines::unsupported` in the log | The service account private key in `apps/backend/.env` is malformed. Upload the service account JSON in the app, or fix/clear `GOOGLE_PRIVATE_KEY`. |

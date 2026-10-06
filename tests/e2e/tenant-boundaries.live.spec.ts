@@ -5,10 +5,52 @@
  * (tests/e2e/isolated/globalSetup.ts). Tests run in order in one worker.
  */
 import { test, expect, type Page } from '@playwright/test';
+import { generateKeyPairSync } from 'node:crypto';
 import { api, ids, newSession, signIn, testDb } from './isolated/state';
 
 const A = 'org-a';
 const B = 'org-b';
+
+test('Connect Google opens both JSON upload slots, persists uploads and allows removal', async ({ page }) => {
+  const token = await signIn(page, 'super', A);
+  const base = '/api/integrations/google/credentials';
+  const credentialHeaders: Array<Record<string, string>> = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.startsWith(base)) credentialHeaders.push(request.headers());
+  });
+  const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const files = [
+    { type: 'service_account', project_id: 'browser-test', client_email: 'test@browser-test.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() },
+    { web: { client_id: '42-browser.apps.googleusercontent.com', client_secret: 'browser-test-secret', javascript_origins: ['http://localhost:3000'] } },
+  ];
+  const dialog = page.getByRole('dialog', { name: 'Connect Google', exact: true });
+  try {
+    await page.goto('/app?tab=admin-system-google');
+    await page.getByRole('button', { name: 'Manage credential files', exact: true }).click();
+    await expect(dialog.locator('input[type=file]')).toHaveCount(2);
+    for (const [index, file] of files.entries()) {
+      const slot = dialog.locator('section').nth(index);
+      await slot.locator('input[type=file]').setInputFiles({ name: `google-${index}.json`, mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(file)) });
+      await expect(slot).toContainText('Installed from uploaded file');
+      await expect(slot.getByRole('button', { name: 'Reset uploaded file', exact: true })).toBeEnabled();
+    }
+    await page.reload();
+    await page.getByRole('button', { name: 'Manage credential files', exact: true }).click();
+    await expect(dialog).toContainText('test@browser-test.iam.gserviceaccount.com');
+    await expect(dialog).toContainText('42-browser.apps.googleusercontent.com');
+    const oauthSlot = dialog.locator('section').nth(1);
+    await oauthSlot.getByRole('button', { name: 'Reset uploaded file', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(oauthSlot).toContainText('Not configured');
+    expect(credentialHeaders.length).toBeGreaterThanOrEqual(5);
+    for (const headers of credentialHeaders) {
+      expect(headers['x-organization-id']).toBeUndefined();
+      expect(headers['x-tenant-id']).toBeUndefined();
+    }
+  } finally {
+    for (const kind of ['service-account', 'oauth-client']) await api(token, `${base}/${kind}`, { method: 'DELETE' });
+  }
+});
 
 test('organization card currency matches region settings and follows a saved currency change', async ({ page }) => {
   const token = await signIn(page, 'super', A);
