@@ -16,7 +16,7 @@ import { join, resolve } from 'node:path';
 import { createServer } from 'node:net';
 import crypto from 'node:crypto';
 import Database from 'better-sqlite3';
-import { addMembershipRecord, createIdentityRecord, createOrganizationRecord, createTeamRecord } from '../../src/server/organizationProvisioning';
+import { addMembershipRecord, createIdentityRecord, createOrganizationRecord, createTeamRecord } from '../../apps/backend/src/organizationProvisioning';
 
 const ROOT = resolve('.');
 let bundlePromise: Promise<string> | null = null;
@@ -26,7 +26,7 @@ function bundle(): Promise<string> {
   bundlePromise ||= (async () => {
     const dir = await mkdtemp(join(tmpdir(), 'tb-bundle-'));
     const outfile = join(dir, 'server.cjs');
-    await build({ entryPoints: [join(ROOT, 'server.ts')], bundle: true, platform: 'node', format: 'cjs', packages: 'external', outfile, logLevel: 'silent' });
+    await build({ entryPoints: [join(ROOT, 'apps/backend/src/server.ts')], bundle: true, platform: 'node', format: 'cjs', packages: 'external', alias: { '@legalio/shared': resolve(ROOT, 'packages/shared/src'), '@legalio/types': resolve(ROOT, 'packages/types/src') }, outfile, logLevel: 'silent' });
     return outfile;
   })();
   return bundlePromise;

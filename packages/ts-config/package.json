@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "name": "@legalio/ts-config",
+  "exports": {
+    "./base.json": "./base.json",
+    "./frontend.json": "./frontend.json",
+    "./backend.json": "./backend.json"
+  }
+}

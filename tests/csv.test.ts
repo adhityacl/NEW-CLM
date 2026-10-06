@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { csvCell, parseCSV } from '../src/lib/csv';
+import { csvCell, parseCSV } from '../apps/frontend/src/lib/csv';
 
 const build = (rows: string[][]) => '﻿sep=,\r\n' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
 

@@ -14,8 +14,8 @@ import {
   checkMemberRemove, checkMemberUpdate, departmentScope, inDepartmentScope, isKnownPermission, legacyMembershipRole,
   legacyPlatformRole, membershipContext, platformContext, platformPermissionsFor, platformRoleOf, tenantPermissionsFor,
   type MemberTarget, type OrgContext, type TenantRole,
-} from '../server/rbac';
-import { createOrganizationScope, filterRecords, normalizeDepartmentName } from '../server/recordScope';
+} from '../apps/backend/src/rbac';
+import { createOrganizationScope, filterRecords, normalizeDepartmentName } from '../apps/backend/src/recordScope';
 
 const ORG = 'org-a';
 const ctx = (tenantRole: TenantRole, departmentIds: string[] = [], userId = `u-${tenantRole}`): OrgContext =>

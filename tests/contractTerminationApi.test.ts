@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { createServer } from 'node:net';
 import Database from 'better-sqlite3';
-import { todayInTimezone } from '../src/lib/policy';
+import { todayInTimezone } from '@legalio/shared/policy';
 
 test('contract API persists termination date, separate document and reason; rejects invalid writes and preserves evidence', { timeout: 90_000 }, async () => {
   const root = resolve('.');
@@ -17,14 +17,14 @@ test('contract API persists termination date, separate document and reason; reje
   let database: Database.Database | undefined;
   let logs = '';
   try {
-    await build({ entryPoints: [join(root, 'server.ts')], bundle: true, platform: 'node', format: 'cjs', packages: 'external', outfile: join(directory, 'server.cjs'), logLevel: 'silent' });
+    await build({ entryPoints: [join(root, 'apps/backend/src/server.ts')], bundle: true, platform: 'node', format: 'cjs', packages: 'external', alias: { '@legalio/shared': resolve(root, 'packages/shared/src'), '@legalio/types': resolve(root, 'packages/types/src') }, outfile: join(directory, 'server.cjs'), logLevel: 'silent' });
     const probe = createServer(); probe.listen(0, '127.0.0.1'); await once(probe, 'listening');
     const port = (probe.address() as { port: number }).port;
     await new Promise<void>(resolve => probe.close(() => resolve()));
     const launch = async () => {
       logs = '';
       child = spawn(process.execPath, [join(directory, 'server.cjs')], { cwd: directory,
-        env: { PATH: process.env.PATH, NODE_PATH: join(root, 'node_modules'), API_ONLY: 'true', PORT: String(port), SEED_DEMO_ADMIN: 'false', BETTER_AUTH_SECRET: 'isolated-contract-termination-test-32-characters' }, stdio: ['ignore', 'pipe', 'pipe'] });
+        env: { AUTH_DB_PATH: join(directory, 'auth.db'), APP_DATA_DIR: directory, PATH: process.env.PATH, NODE_PATH: join(root, 'node_modules'), API_ONLY: 'true', PORT: String(port), SEED_DEMO_ADMIN: 'false', BETTER_AUTH_SECRET: 'isolated-contract-termination-test-32-characters' }, stdio: ['ignore', 'pipe', 'pipe'] });
       child.stdout!.on('data', chunk => { logs += chunk.toString(); });
       child.stderr!.on('data', chunk => { logs += chunk.toString(); });
       const deadline = Date.now() + 45_000;

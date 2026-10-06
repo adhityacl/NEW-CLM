@@ -8,9 +8,9 @@ import crypto from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import Database from 'better-sqlite3';
 import express from 'express';
-import { createGoogleCredentialStore, createGoogleCredentialsRouter } from '../src/server/googleCredentials';
-import { loadServiceAccountCredentials, setStoredServiceAccountProvider } from '../src/lib/googleServiceAccountAuth';
-import { parseOAuthClientFile, parseServiceAccountFile } from '../src/lib/googleCredentialFiles';
+import { createGoogleCredentialStore, createGoogleCredentialsRouter } from '../apps/backend/src/googleCredentials';
+import { getGoogleDriveClient, getGoogleSheetsClient, loadServiceAccountCredentials, setStoredServiceAccountProvider } from '../apps/backend/src/lib/googleServiceAccountAuth';
+import { parseOAuthClientFile, parseServiceAccountFile } from '@legalio/shared/googleCredentialFiles';
 
 for (const key of ['GOOGLE_CLIENT_ID', 'VITE_GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_SERVICE_ACCOUNT_KEY', 'GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY']) {
   delete process.env[key];
@@ -95,6 +95,12 @@ test('upload, use, and remove both files', async () => {
   assert.equal(sa.body.serviceAccount.client_email, SERVICE_ACCOUNT.client_email);
   assert.ok(!JSON.stringify(sa.body).includes('PRIVATE KEY'), 'the private key is never sent back');
   assert.equal(loadServiceAccountCredentials(undefined, false)?.client_email, SERVICE_ACCOUNT.client_email, 'Drive/Sheets clients now use the upload');
+  const drive = getGoogleDriveClient();
+  const sheets = getGoogleSheetsClient();
+  assert.equal((drive.context._options.auth as any).email, SERVICE_ACCOUNT.client_email);
+  assert.equal((sheets.context._options.auth as any).email, SERVICE_ACCOUNT.client_email);
+  assert.equal(typeof drive.files.list, 'function');
+  assert.equal(typeof sheets.spreadsheets.values.get, 'function');
 
   const oauth = await call('superuser', 'PUT', '/oauth-client', { file: OAUTH_CLIENT });
   assert.equal(oauth.body.oauthClient.client_id, OAUTH_CLIENT.web.client_id);

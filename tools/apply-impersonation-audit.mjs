@@ -16,7 +16,7 @@
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
-const file = process.argv[2] ?? 'src/server/authConsoleRoutes.ts';
+const file = process.argv[2] ?? 'apps/backend/src/authConsoleRoutes.ts';
 const MARK = '/* RBAC-IMPERSONATION-AUDIT-V1 */';
 
 if (!existsSync(file)) {

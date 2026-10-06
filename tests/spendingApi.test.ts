@@ -17,14 +17,14 @@ test('spending POST/PUT persist allocations/title, reject invalid writes and pre
   let database: Database.Database | undefined;
   let logs = '';
   try {
-    await build({ entryPoints: [join(root, 'server.ts')], bundle: true, platform: 'node', format: 'cjs', packages: 'external', outfile: join(directory, 'server.cjs'), logLevel: 'silent' });
+    await build({ entryPoints: [join(root, 'apps/backend/src/server.ts')], bundle: true, platform: 'node', format: 'cjs', packages: 'external', alias: { '@legalio/shared': resolve(root, 'packages/shared/src'), '@legalio/types': resolve(root, 'packages/types/src') }, outfile: join(directory, 'server.cjs'), logLevel: 'silent' });
     const probe = createServer();
     probe.listen(0, '127.0.0.1');
     await once(probe, 'listening');
     const port = (probe.address() as { port: number }).port;
     await new Promise<void>(resolve => probe.close(() => resolve()));
     child = spawn(process.execPath, [join(directory, 'server.cjs')], {
-      cwd: directory, env: { PATH: process.env.PATH, NODE_PATH: join(root, 'node_modules'), API_ONLY: 'true', PORT: String(port), SEED_DEMO_ADMIN: 'false', BETTER_AUTH_SECRET: 'isolated-spending-test-secret-32-characters' },
+      cwd: directory, env: { AUTH_DB_PATH: join(directory, 'auth.db'), APP_DATA_DIR: directory, PATH: process.env.PATH, NODE_PATH: join(root, 'node_modules'), API_ONLY: 'true', PORT: String(port), SEED_DEMO_ADMIN: 'false', BETTER_AUTH_SECRET: 'isolated-spending-test-secret-32-characters' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     child.stdout!.on('data', chunk => { logs += chunk.toString(); });

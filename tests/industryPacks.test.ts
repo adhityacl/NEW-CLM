@@ -13,7 +13,7 @@ import {
   listCountryPacks,
   listIndustryPacks,
   resolveTenantSettings,
-} from '../src/lib/policy';
+} from '@legalio/shared/policy';
 
 const EXPECTED_INDUSTRIES = [
   'Peer-to-Peer Lending', 'Payment Gateway', 'Banking & Investment', 'Enterprise B2B SaaS', 'IT & Development',

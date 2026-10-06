@@ -8,7 +8,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { IsolatedServer, membershipIdOf, seedFixtures, type Session } from './harness';
 import { betterAuthEndpoints } from '../../tools/gen-endpoint-inventory';
-import { isBetterAuthPathAllowed } from '../../server/routePolicies';
+import { isBetterAuthPathAllowed } from '../../apps/backend/src/routePolicies';
 
 let server: IsolatedServer;
 let ids: Record<string, string>;

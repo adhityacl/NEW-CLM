@@ -1,0 +1,21 @@
+{
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "name": "@legalio/shared",
+  "exports": {
+    "./policy": "./src/policy/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@legalio/types": "*"
+  },
+  "devDependencies": {
+    "@legalio/ts-config": "*",
+    "typescript": "~5.8.2",
+    "@types/node": "^22.14.0"
+  }
+}

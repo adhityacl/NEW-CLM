@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { buildDemoDataset } from '../../src/data/demoDataset';
+import { buildDemoDataset } from '@legalio/shared/data/demoDataset';
 import { createTenantApi, fulfillTenantApi, workspaceInit } from './fixtures/tenantApi';
 
 const invoice = { name: 'invoice.png', mimeType: 'image/png', buffer: Buffer.from('same invoice attachment') };

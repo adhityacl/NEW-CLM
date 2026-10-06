@@ -7,9 +7,9 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import Database from 'better-sqlite3';
 import express from 'express';
-import { createDocumentRouter } from '../src/server/documentRoutes';
-import { diffParagraphs } from '../src/lib/paragraphDiff';
-import { tenantPermissionsFor } from '../server/rbac';
+import { createDocumentRouter } from '../apps/backend/src/documentRoutes';
+import { diffParagraphs } from '../apps/frontend/src/lib/paragraphDiff';
+import { tenantPermissionsFor } from '../apps/backend/src/rbac';
 
 const db = new Database(':memory:');
 db.exec(`CREATE TABLE "user" (id TEXT PRIMARY KEY, name TEXT);

@@ -13,8 +13,8 @@
 import { existsSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 
-const ENV_PATH = '.env';
-const EXAMPLE_PATH = '.env.example';
+const ENV_PATH = new URL('../apps/backend/.env', import.meta.url);
+const EXAMPLE_PATH = new URL('../apps/backend/.env.example', import.meta.url);
 const PLACEHOLDER = 'replace-with-a-long-random-secret';
 
 if (!existsSync(ENV_PATH)) {

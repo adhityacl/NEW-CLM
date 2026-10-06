@@ -60,7 +60,7 @@ export default async function globalSetup() {
     }
     let previewLog = '';
     // vite preview reuses server.proxy, which targets localhost:$PORT — the isolated API.
-    const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', String(WEB_PORT), '--strictPort'], {
+    const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', 'apps/frontend', '--host', '127.0.0.1', '--port', String(WEB_PORT), '--strictPort'], {
       env: { ...process.env, PORT: String(API_PORT) }, stdio: ['ignore', 'pipe', 'pipe'],
     });
     preview.stdout!.on('data', (c) => { previewLog += c; });

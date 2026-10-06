@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import Database from 'better-sqlite3';
-import { synchronizeCoreData } from '../src/server/coreDataStore';
+import { synchronizeCoreData } from '../apps/backend/src/coreDataStore';
 
 test('core synchronization writes only changes, preserves tenant records and rolls back invalid replacement', () => {
   const db = new Database(':memory:');

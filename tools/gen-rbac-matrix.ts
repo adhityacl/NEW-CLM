@@ -7,7 +7,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { PLATFORM_PERMISSIONS, PLATFORM_ROLES, TENANT_PERMISSIONS, TENANT_ROLES, platformPermissionsFor, tenantPermissionsFor } from '../server/rbac';
+import { PLATFORM_PERMISSIONS, PLATFORM_ROLES, TENANT_PERMISSIONS, TENANT_ROLES, platformPermissionsFor, tenantPermissionsFor } from '../apps/backend/src/rbac';
 
 const outDir = process.argv[2] ?? 'docs/rbac/generated';
 mkdirSync(outDir, { recursive: true });

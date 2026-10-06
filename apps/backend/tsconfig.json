@@ -1,0 +1,13 @@
+{
+  "extends": "@legalio/ts-config/backend.json",
+  "include": [
+    "src",
+    "*.ts",
+    "../../tests/organizationSettingsContract.test.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    ".vite"
+  ]
+}

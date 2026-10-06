@@ -14,7 +14,7 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { BETTER_AUTH_ALLOWED, ROUTE_POLICIES, isBetterAuthPathAllowed, type RoutePolicy } from '../server/routePolicies';
+import { BETTER_AUTH_ALLOWED, ROUTE_POLICIES, isBetterAuthPathAllowed, type RoutePolicy } from '../apps/backend/src/routePolicies';
 
 const ROOT = process.cwd();
 const OUT = join(ROOT, 'docs/rbac/tenant-boundaries-endpoint-inventory.md');
@@ -90,7 +90,7 @@ const CANONICAL_POLICY: Record<string, [string, string]> = {
 };
 
 function canonicalRoutes(): Array<{ method: string; path: string }> {
-  const source = readFileSync(join(ROOT, 'src/server/organizationAdminRoutes.ts'), 'utf8');
+  const source = readFileSync(join(ROOT, 'apps/backend/src/organizationAdminRoutes.ts'), 'utf8');
   return [...source.matchAll(/router\.(get|post|put|patch|delete)\(\s*[`'"]([^`'"]+)[`'"]/g)].map((m) => ({
     method: m[1].toUpperCase(),
     path: `/api${m[2].replace('${org}', '/organizations/:organizationId')}`,

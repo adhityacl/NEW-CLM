@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
-import { analyze, applyMigration, validateMapping } from '../server/migrations/002_tenant_boundaries';
+import { analyze, applyMigration, validateMapping } from '../apps/backend/src/migrations/002_tenant_boundaries';
 
 const ALLOWED = new Set(['--db', '--report', '--mapping', '--backup', '--dry-run', '--apply']);
 const VALUE_FLAGS = new Set(['--db', '--report', '--mapping', '--backup']);

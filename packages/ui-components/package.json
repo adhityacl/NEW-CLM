@@ -1,0 +1,30 @@
+{
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "name": "@legalio/ui-components",
+  "exports": {
+    "./utils": "./src/utils.ts",
+    "./*": "./src/*.tsx"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.6.0",
+    "class-variance-authority": "^0.7.1",
+    "radix-ui": "^1.6.7",
+    "@radix-ui/react-separator": "^1.1.15",
+    "lucide-react": "^0.546.0",
+    "react-day-picker": "^10.0.1"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@legalio/ts-config": "*",
+    "typescript": "~5.8.2"
+  }
+}

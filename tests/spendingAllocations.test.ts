@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { allocationInvoiceMonths, hydrateSpendingAllocations, parsedSpendingAllocations, splitSpendingEqually, validateSpendingAllocations } from '../src/lib/spendingAllocations';
+import { allocationInvoiceMonths, hydrateSpendingAllocations, parsedSpendingAllocations, splitSpendingEqually, validateSpendingAllocations } from '@legalio/shared/spendingAllocations';
 
 const rows = (amount = 100) => [{ month: '2026-10', amount }];
 

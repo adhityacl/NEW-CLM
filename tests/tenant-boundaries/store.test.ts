@@ -5,10 +5,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import Database from 'better-sqlite3';
-import { ensureTenantBoundarySchema, patchIntegration, patchOrganizationSettings, readOrganizationSettings } from '../../src/server/organizationSettingsStore';
-import { addMembershipRecord, createIdentityRecord, createOrganizationRecord, createTeamRecord } from '../../src/server/organizationProvisioning';
-import { updateMember } from '../../src/server/organizationAdminRoutes';
-import { platformContext } from '../../server/rbac';
+import { ensureTenantBoundarySchema, patchIntegration, patchOrganizationSettings, readOrganizationSettings } from '../../apps/backend/src/organizationSettingsStore';
+import { addMembershipRecord, createIdentityRecord, createOrganizationRecord, createTeamRecord } from '../../apps/backend/src/organizationProvisioning';
+import { updateMember } from '../../apps/backend/src/organizationAdminRoutes';
+import { platformContext } from '../../apps/backend/src/rbac';
 
 const actor = { actorId: 'u-admin', actorPlatformRole: 'user' as const, accessMode: 'membership' as const, requestId: 'req-test' };
 

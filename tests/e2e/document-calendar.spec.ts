@@ -1,8 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
-import { buildDemoDataset } from '../../src/data/demoDataset';
+import { buildDemoDataset } from '@legalio/shared/data/demoDataset';
 import { createTenantApi, fulfillTenantApi } from './fixtures/tenantApi';
-import type { Contract, InsertionOrder, Partner, Tenant, TenantSettings } from '../../src/types';
-import { contractLifecycle } from '../../src/lib/contractLifecycle';
+import type { Contract, InsertionOrder, Partner, Tenant, TenantSettings } from '@legalio/types';
+import { contractLifecycle } from '@legalio/shared/contractLifecycle';
 
 async function installCalendarFixtures(page: Page, options: { viewer?: boolean; blocked?: boolean; failing?: boolean; commercial?: boolean; expired?: boolean; language?: 'ID' | 'EN' | 'ZH' } = {}) {
   const data = buildDemoDataset();

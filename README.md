@@ -8,7 +8,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A520.19-339933?logo=node.js&logoColor=white)](package.json)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](package.json)
-[![Express](https://img.shields.io/badge/Express-black?logo=express&logoColor=white)](server.ts)
+[![Express](https://img.shields.io/badge/Express-black?logo=express&logoColor=white)](apps/backend/src/server.ts)
 [![SQLite](https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
 [![Better Auth](https://img.shields.io/badge/Auth-Better%20Auth-6E56CF)](https://www.better-auth.com/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](#license)
@@ -56,7 +56,7 @@
 
 **🤖 AI and integrations**
 - Google Gemini (`@google/genai`) for contract, partner and IO parsing, Due Diligence notes, redline analysis, AI-generated document templates (Contract, Agreement, SO — from a text prompt; Superuser/Admin/Manager only) and a search-grounded news ticker.
-- Google Drive folder provisioning and Sheets sync. The Google credentials can be uploaded as JSON files in the app instead of being placed in `.env` (see [Google integration](#google-integration)).
+- Google Drive folder provisioning and Sheets sync. The Google credentials can be uploaded as JSON files in the app instead of being placed in `apps/backend/.env` (see [Google integration](#google-integration)).
 - SMTP e-mail for invitations and notifications, configured in Settings.
 - English, Bahasa Indonesia and Simplified Chinese UI, with in-app text overrides.
 
@@ -86,14 +86,14 @@
 
 **September 2026**
 - **Contract Creator**: added the document explorer, autosaved drafts with version history, diff and restore, document metadata with organization custom fields, and redlining (comments, suggested changes, accept/reject, redline export). The data is stored in new SQLite tables that are created automatically on start.
-- **Google credentials without `.env`**: a Superuser can upload the service account and OAuth client JSON files from the first-login banner (*Connect Google*) or from Settings. Uploaded files take priority over the `GOOGLE_*` variables and apply without a restart.
-- **Fix**: `.env` is now loaded before any module reads it. Previously `BETTER_AUTH_SECRET` and the Google OAuth values were read before `.env` was loaded, so development silently used an insecure secret and production crashed at startup even with a correct `.env`.
-- **Fix**: the bootstrap Superuser's login now works on any host without editing `.env`. `BETTER_AUTH_URL`/`TRUSTED_ORIGINS` were previously required to match the exact deploy domain or login would fail; they're now optional overrides, since the app trusts whatever host/scheme each request actually arrives on. The bootstrap account's password is also now kept in sync with `DEMO_ADMIN_PASSWORD` on every restart (while `SEED_DEMO_ADMIN` isn't `false`), instead of only on first creation.
+- **Google credentials without `apps/backend/.env`**: a Superuser can upload the service account and OAuth client JSON files from the first-login banner (*Connect Google*) or from Settings. Uploaded files take priority over the `GOOGLE_*` variables and apply without a restart.
+- **Fix**: `apps/backend/.env` is now loaded before any module reads it. Previously `BETTER_AUTH_SECRET` and the Google OAuth values were read before `apps/backend/.env` was loaded, so development silently used an insecure secret and production crashed at startup even with a correct `apps/backend/.env`.
+- **Fix**: the bootstrap Superuser's login now works on any host without editing `apps/backend/.env`. `BETTER_AUTH_URL`/`TRUSTED_ORIGINS` were previously required to match the exact deploy domain or login would fail; they're now optional overrides, since the app trusts whatever host/scheme each request actually arrives on. The bootstrap account's password is also now kept in sync with `DEMO_ADMIN_PASSWORD` on every restart (while `SEED_DEMO_ADMIN` isn't `false`), instead of only on first creation.
 - **Fix**: login no longer fails with "Invalid origin" on Cloud Run (or similar managed proxies) that present the container with an internal `Host` different from the public `*.run.app` URL. The origin check now also accepts the real host from `X-Forwarded-Host`, and Express trusts proxy headers (`app.set("trust proxy", true)`) so `req.ip`/`req.protocol` are correct behind one too.
 - **Fix**: `npm install` no longer force-rebuilds `better-sqlite3` from source. That `postinstall` step needed a full native build toolchain (Python, a C/C++ compiler); minimal environments without one — e.g. Google Cloud's build images — failed to install at all, even though `better-sqlite3`'s own prebuilt binary already installs correctly on its own. Run `npm rebuild better-sqlite3` by hand only if you see a `NODE_MODULE_VERSION` error after upgrading Node (see Troubleshooting).
 - **Security**: demo-workspace logins (`*@example.com`, which share `DEMO_ADMIN_PASSWORD`) are no longer created with `NODE_ENV=production`, are removed on start from production servers that already have them, and are deleted by an empty-workspace reset.
 - **Security**: the SQLite browser in System Admin masks uploaded credentials. Its search no longer matches masked columns, which previously allowed their contents to be guessed from the number of results.
-- **Plug-and-play install, no default credentials**: nothing in `.env` has to be filled in. The first visit to a new install shows a *Create admin account* page, the Google credentials are uploaded as JSON files, and the Gemini key and SMTP are set in Settings. The old shipped login (`admin@legalio.com` / `123456789`) no longer exists; installs upgraded from it keep working and still get a banner asking to change it.
+- **Plug-and-play install, no default credentials**: nothing in `apps/backend/.env` has to be filled in. The first visit to a new install shows a *Create admin account* page, the Google credentials are uploaded as JSON files, and the Gemini key and SMTP are set in Settings. The old shipped login (`admin@legalio.com` / `123456789`) no longer exists; installs upgraded from it keep working and still get a banner asking to change it.
 - **Security**: users without a password are no longer given a shared default one on start (previously every such user, including invited colleagues, got `123456789`), and the first account registered on an empty install is no longer made an admin automatically.
 - **Firebase removed**: "Sign in with Google" uses the OAuth Client JSON you upload in *Connect Google*, so there is no Firebase project or `firebase-applet-config.json` to configure. This also fixes a fresh install crashing on load with `auth/invalid-api-key`.
 - **Fix**: production builds (`npm run build` / `npm start`) no longer render a blank page. A hand-written vendor chunk split made two bundles import each other, leaving React undefined; Vite's default chunking is used instead and first-load JavaScript is ~20% smaller.
@@ -109,7 +109,7 @@
 | Layer | Technology |
 | --- | --- |
 | 🎨 Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, Radix UI primitives (`src/components/ui/`), TipTap, Recharts, TanStack Query |
-| 🖥️ Backend | Express and TypeScript, API-only (`server.ts`), no frontend assets. In development Vite still runs inside Express as middleware for convenience (one server, one port); in production the frontend build is served separately (see [Deploying to a new server](#deploying-to-a-new-server)). |
+| 🖥️ Backend | Express and TypeScript, API-only (`apps/backend/src/server.ts`), no frontend assets. In development Vite still runs inside Express as middleware for convenience (one server, one port); in production the frontend build is served separately (see [Deploying to a new server](#deploying-to-a-new-server)). |
 | 🔐 Auth | Better Auth (sessions, organizations, teams) plus a custom RBAC engine (`server/rbac.ts`) |
 | 💾 Data | SQLite via `better-sqlite3`, stored in one file: `auth.db` |
 | 🔌 Integrations | `@google/genai`, `googleapis`, Google Identity Services (Google Sign-In), `nodemailer`, `docx`, `pdf-lib`, `pdf-parse` |
@@ -120,24 +120,36 @@
 ## Project layout
 
 ```text
-server.ts                    Express app: API routes, auth middleware, Vite/static serving
-server/                      RBAC engine and routes, Better Auth CLI config
-src/
-  App.tsx, main.tsx          SPA entry
-  components/                Views (ContractsView, ContractCreatorView, SettingsView, ...)
-    documents/               Contract Creator explorer, history, info/metadata, comments panels
-    icons/                   Inline SVG icon components (currentColor, swap-in-place for lucide icons)
-    settings/                Settings dialogs (Google credentials, reset workspace, ...)
-    ui/                      Shared UI primitives
-  context/                   Auth, language, tenant, toast and confirm providers
-  lib/                       Shared logic (auth, Google clients, document model, TipTap extensions)
-  server/                    Extra API routers (auth console, documents, Google credentials)
-  i18n/                      Translation catalogs (EN + ID additions, plus the full ZH/Simplified Chinese catalog)
-tests/                       node:test suites and Playwright e2e (tests/e2e)
-docs/                        Product requirements, RBAC documentation and audits
+NEW-CLM/
+├── .github/workflows/ci.yml
+├── apps/
+│   ├── backend/                 # Express API
+│   │   ├── src/
+│   │   ├── .env.example
+│   │   ├── package.json
+│   │   └── Dockerfile
+│   └── frontend/                # React + Vite
+│       ├── src/
+│       ├── public/
+│       ├── .env.example
+│       ├── package.json
+│       └── Dockerfile
+├── packages/
+│   ├── ui-components/           # Reusable UI primitives
+│   ├── ts-config/               # Shared TypeScript configuration
+│   ├── types/                   # Domain and API contracts
+│   └── shared/                  # Shared policy, currency, lifecycle and templates
+├── tests/
+├── scripts/
+├── tools/
+├── docs/
+├── compose.yaml
+├── turbo.json
+├── package.json                 # npm workspaces and root commands
+└── package-lock.json
 ```
 
-Runtime files are created next to `server.ts` and are **not** tracked by Git: `.env`, `auth.db` (plus `auth.db-wal` and `auth.db-shm`), `uploads/`, and the legacy `data_store.json`.
+Environment and runtime files are **not** tracked by Git. Backend environment lives in `apps/backend/.env`; existing SQLite/uploads retain their repository-root locations by default: `apps/backend/.env`, `auth.db` (plus `auth.db-wal` and `auth.db-shm`), `uploads/`, and the legacy `data_store.json`.
 
 ---
 
@@ -152,11 +164,11 @@ npm install
 npm run dev
 ```
 
-`npm install` creates `.env` from `.env.example` and generates a random `BETTER_AUTH_SECRET` automatically (via its `postinstall` script), so there's no `.env` to hand-edit for local development. Re-run it any time with `npm run setup` — it never touches `.env` once `BETTER_AUTH_SECRET` has a real value, so it's safe on an `.env` carried over from another server (see [Moving an existing installation to a new server](#moving-an-existing-installation-to-a-new-server)).
+`npm install` creates `apps/backend/.env` from `apps/backend/.env.example` and generates a random `BETTER_AUTH_SECRET` automatically (via its `postinstall` script), so there's no `apps/backend/.env` to hand-edit for local development. Re-run it any time with `npm run setup` — it never touches `apps/backend/.env` once `BETTER_AUTH_SECRET` has a real value, so it's safe on an `apps/backend/.env` carried over from another server (see [Moving an existing installation to a new server](#moving-an-existing-installation-to-a-new-server)).
 
 Open **http://localhost:3000**. On the very first visit you'll see *Create admin account*: enter your name, email and a password (8+ characters) and you're signed in as the Superuser. There are no default credentials.
 
-On first start the server creates `auth.db` with all tables and loads a three-country demo workspace. Until the Google credential files are uploaded, a banner offers **Connect Google**. The Gemini key (AI features) and SMTP are set in Settings — nothing goes in `.env`.
+On first start the server creates `auth.db` with all tables and loads a three-country demo workspace. Until the Google credential files are uploaded, a banner offers **Connect Google**. The Gemini key (AI features) and SMTP are set in Settings — nothing goes in `apps/backend/.env`.
 
 ### Running frontend and backend as separate processes
 
@@ -173,13 +185,13 @@ Open the URL `dev:frontend` prints (not `:3000`). No code changes needed either 
 
 ## Configuration reference
 
-All variables are read from `.env` in the working directory (see `.env.example`).
+Backend variables are read from `apps/backend/.env`; frontend public variables belong in `apps/frontend/.env`. Never put secrets in `VITE_*` variables.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `NODE_ENV` | — | Set to `production` on servers. In production the app serves the built `dist/` and uses secure cookies, and requires `BETTER_AUTH_SECRET`. |
+| `NODE_ENV` | — | Set to `production` on API servers. Enables secure cookies and requires `BETTER_AUTH_SECRET`; nginx serves the frontend separately. |
 | `PORT` | `3000` | HTTP port. |
-| `BETTER_AUTH_SECRET` | auto-generated | **Required in production.** `npm install`/`npm run setup` fills in a random value if it's still unset or the `.env.example` placeholder. Changing it signs everyone out. |
+| `BETTER_AUTH_SECRET` | auto-generated | **Required in production.** `npm install`/`npm run setup` fills in a random value if it's still unset or the `apps/backend/.env.example` placeholder. Changing it signs everyone out. |
 | `BETTER_AUTH_URL` | — | Optional: pins the app to one exact public URL, e.g. `https://clm.example.com`. Left unset, the app trusts whatever host/scheme each request actually arrives on (nginx's documented config forwards the real `Host` and `X-Forwarded-Proto`), so login works out of the box on localhost, a Codespace, or any deployed domain — nothing to update when the domain changes or the app moves to a new server. |
 | `TRUSTED_ORIGINS` | — | Optional: additional trusted origins, comma separated — only needed for a genuinely separate origin, such as a standalone front-end domain. |
 | `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` | — | Optional, for automated deploys: pre-creates the first Superuser instead of using the *Create admin account* page. Outside production the six demo-workspace users (`*@example.com`) get the same password. |
@@ -202,7 +214,7 @@ A Superuser uploads the files from **Connect Google** in the first-login banner,
 
 - Files are validated when uploaded: a file in the wrong slot or an unreadable private key is rejected.
 - They are stored in `auth.db` (table `integration_credentials`) and take effect immediately.
-- They take priority over `.env`. Removing an upload falls back to `.env`.
+- They take priority over `apps/backend/.env`. Removing an upload falls back to `apps/backend/.env`.
 - Secret values are never sent back to the browser.
 
 "Sign in with Google" on the login page uses the same uploaded OAuth client, so it works as soon as that file is uploaded and the domain is in its **Authorized JavaScript origins**. Google accounts must be invited first unless `ALLOW_GOOGLE_SELF_SIGNUP=true`.
@@ -216,16 +228,22 @@ npm run lint              # TypeScript type check
 npm test                  # all node:test suites below, plus demo-account cleanup
 npm run test:rbac         # RBAC permission matrix
 npm run test:documents    # Contract Creator API: drafts, explorer, metadata, comments (in-memory SQLite)
-npm run test:credentials  # Google credential upload and priority over .env
+npm run test:credentials  # Google credential upload and priority over apps/backend/.env
 npx tsx --test tests/csv.test.ts tests/masterServiceAgreementTemplate.test.ts tests/demoDataset.test.ts  # CSV round-trip, built-in template, demo data
 npm run test:e2e          # Playwright browser tests (run `npx playwright install` once first)
 ```
+
+GitHub Actions selects frontend/backend jobs from changed paths. Shared contracts/configuration trigger both; UI-package changes trigger frontend. Each job checks its dependency graph, runs the relevant tests and builds only its application; see [.github/workflows/ci.yml](.github/workflows/ci.yml). Browser tests remain available through the commands above.
+
+The settings API contract lives in `packages/types/src/organizationSettings.ts` and is used by both the backend store and the frontend settings page. `npm run lint` checks this contract, including the negative type assertion in `tests/organizationSettingsContract.test.ts`.
+
+For containers, run `npm run setup` followed by `docker compose up --build`; frontend is available at `http://localhost:8080`. Backend data uses a named Docker volume. Existing host data is not automatically imported into that volume. Each Dockerfile builds its own application from the repository-root context.
 
 ---
 
 ## Deploying to a new server
 
-The guide below assumes a Linux server (Ubuntu or Debian), a domain pointing at it, systemd, and nginx for HTTPS. The frontend is a static build (`dist/`, minus `dist/server.cjs`) served directly by nginx; the backend is a Node API process (`dist/server.cjs`) that nginx reverse-proxies `/api/` and `/uploads/` to. They can live on the same server (as below) or be deployed and scaled independently.
+The guide below assumes a Linux server (Ubuntu or Debian), a domain pointing at it, systemd, and nginx for HTTPS. The frontend is a static build (`apps/frontend/dist/`) served directly by nginx; the backend is a Node API process (`apps/backend/dist/server.cjs`) that nginx reverse-proxies `/api/` and `/uploads/` to. They can live on the same server (as below) or be deployed and scaled independently.
 
 ### 1. Install the prerequisites
 
@@ -242,17 +260,17 @@ sudo useradd --system --create-home --home-dir /opt/legalio legalio
 sudo -u legalio git clone <repository-url> /opt/legalio/app
 cd /opt/legalio/app
 sudo -u legalio npm ci
-sudo -u legalio npm run build   # dist/ (frontend static files) + dist/server.cjs (backend)
+sudo -u legalio npm run build   # apps/frontend/dist/ (static files) + apps/backend/dist/server.cjs (API)
 ```
 
-`npm run build:frontend` and `npm run build:backend` also run independently — useful if the two are built or deployed on separate machines/pipelines.
+`npm run build:frontend` and `npm run build:backend` also run independently, in either order, without deleting each other's output. Vite preview uses `apps/frontend/dist/` automatically. When upgrading an existing installation, update the systemd `ExecStart` and nginx static root to the paths below, then reload nginx and restart the service.
 
-### 3. Create `.env`
+### 3. Create `apps/backend/.env`
 
-There is nothing to fill in: `npm ci` already created `.env` with a random `BETTER_AUTH_SECRET` (its `postinstall` script). Just restrict its permissions:
+There is nothing to fill in: `npm ci` already created `apps/backend/.env` with a random `BETTER_AUTH_SECRET` (its `postinstall` script). Just restrict its permissions:
 
 ```bash
-sudo -u legalio chmod 600 .env
+sudo -u legalio chmod 600 apps/backend/.env
 ```
 
 `NODE_ENV=production` comes from the service file in step 4, the admin account is created in the browser in step 6, and the Google credentials are uploaded there too.
@@ -268,7 +286,7 @@ After=network.target
 
 [Service]
 User=legalio
-WorkingDirectory=/opt/legalio/app
+WorkingDirectory=/opt/legalio/app/apps/backend
 ExecStart=/usr/bin/env node dist/server.cjs
 Restart=on-failure
 Environment=NODE_ENV=production
@@ -277,7 +295,7 @@ Environment=NODE_ENV=production
 WantedBy=multi-user.target
 ```
 
-`WorkingDirectory` matters: `.env`, `auth.db` and `uploads/` are read from and written to the current directory.
+`WorkingDirectory` points to `apps/backend` so dotenv reads the backend environment. SQLite and uploads retain their repository-root defaults; set absolute `AUTH_DB_PATH` and `APP_DATA_DIR` for a dedicated data directory.
 
 ```bash
 sudo systemctl daemon-reload
@@ -308,8 +326,7 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # `dist/` also holds the backend bundle (server.cjs, server.cjs.map) —
-    # never serve those as static files, they'd leak server source/secrets.
+    # Defense in depth: never serve backend bundles or their source maps.
     location ~* \.cjs(\.map)?$ {
         deny all;
     }
@@ -317,7 +334,7 @@ server {
     # Everything else is the frontend's static build — nginx serves it
     # directly, the Node process is never involved.
     location / {
-        root /opt/legalio/app/dist;
+        root /opt/legalio/app/apps/frontend/dist;
         try_files $uri /index.html;
     }
 }
@@ -350,10 +367,10 @@ All application data lives in `auth.db`, including users, organizations, contrac
    sudo systemctl stop legalio
    cd /opt/legalio/app
    node -e "require('better-sqlite3')('auth.db').backup('auth-migrate.db').then(() => console.log('ok'))"
-   tar czf legalio-data.tgz auth-migrate.db uploads .env
+   tar czf legalio-data.tgz auth-migrate.db uploads apps/backend/.env
    ```
-3. Copy `legalio-data.tgz` to the new server and unpack it into `/opt/legalio/app`. Rename `auth-migrate.db` to `auth.db`, then run `chown -R legalio: .` and `chmod 600 .env`.
-4. If the old `.env` pinned `BETTER_AUTH_URL`/`TRUSTED_ORIGINS` to the old domain, remove or update them (unset, the app just follows the new host). Keep the same `BETTER_AUTH_SECRET` so existing sessions stay valid; a new secret only signs everyone out. Users and credentials come with `auth.db`, so no setup page appears.
+3. Copy `legalio-data.tgz` to the new server and unpack it into `/opt/legalio/app`. Rename `auth-migrate.db` to `auth.db`, then run `chown -R legalio: .` and `chmod 600 apps/backend/.env`.
+4. If the old `apps/backend/.env` pinned `BETTER_AUTH_URL`/`TRUSTED_ORIGINS` to the old domain, remove or update them (unset, the app just follows the new host). Keep the same `BETTER_AUTH_SECRET` so existing sessions stay valid; a new secret only signs everyone out. Users and credentials come with `auth.db`, so no setup page appears.
 5. Continue with steps 4–5 above (service and nginx). New tables and columns are created automatically on start.
 6. If the domain changed, add it to the Google OAuth client's **Authorized JavaScript origins**.
 
@@ -388,12 +405,12 @@ sudo systemctl restart legalio
 
 | Symptom | Cause and fix |
 | --- | --- |
-| `BETTER_AUTH_SECRET must be set in production` at startup | `.env` is missing, empty, or not in `WorkingDirectory`. Run `npm run setup` in that directory (it won't touch a real secret if one is already set), or set a long random value by hand. |
-| `Cannot find module 'vite'` when running `npm run dev` / `dev:backend` | Dependencies were installed with `--omit=dev` on a dev machine. Run `npm ci` without it. Production (`node dist/server.cjs`) never needs `vite`, so this doesn't affect a deployed server. |
-| Blank page or 404 at the site root in production | The Node process no longer serves the frontend build — nginx must serve `dist/` directly and only proxy `/api/` and `/uploads/` to Node. Check the `location` blocks in step 5 of [Deploying to a new server](#deploying-to-a-new-server). |
+| `BETTER_AUTH_SECRET must be set in production` at startup | `apps/backend/.env` is missing, empty, or not in `WorkingDirectory`. Run `npm run setup` from the repository root (it won't touch a real secret if one is already set), or set a long random value by hand. |
+| `Cannot find module 'vite'` when running `npm run dev` / `dev:backend` | Dependencies were installed with `--omit=dev` on a dev machine. Run `npm ci` without it. Production (`node apps/backend/dist/server.cjs`) never needs `vite`, so this doesn't affect a deployed server. |
+| Blank page or 404 at the site root in production | The Node process no longer serves the frontend build — nginx must serve `apps/frontend/dist/` directly and only proxy `/api/` and `/uploads/` to Node. Check the `location` blocks in step 5 of [Deploying to a new server](#deploying-to-a-new-server). |
 | `better-sqlite3` / `NODE_MODULE_VERSION` error | Node was upgraded after installing. Run `npm rebuild better-sqlite3`. |
 | Crash mentioning `process.getBuiltinModule` | Node is older than 20.19. Upgrade to Node 22. |
-| Repeated `DECODER routines::unsupported` in the log | The service account private key in `.env` is malformed. Upload the service account JSON in the app, or fix/clear `GOOGLE_PRIVATE_KEY`. |
+| Repeated `DECODER routines::unsupported` in the log | The service account private key in `apps/backend/.env` is malformed. Upload the service account JSON in the app, or fix/clear `GOOGLE_PRIVATE_KEY`. |
 | Google popup fails with `origin_mismatch` / `redirect_uri_mismatch` | The app URL is not in the OAuth client's Authorized JavaScript origins. Add it, then download and upload the JSON again. |
 | Users are signed out after a restart | `BETTER_AUTH_SECRET` changed. Keep it stable across deployments. |
 | Upload fails with 413 | Raise `client_max_body_size` in nginx (the app accepts up to 30 MB). |

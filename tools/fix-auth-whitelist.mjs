@@ -18,7 +18,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const file = process.argv[2] ?? 'server.ts';
+const file = process.argv[2] ?? 'apps/backend/src/server.ts';
 const FROM = '    req.path.startsWith("/api/auth") ||';
 const TO = '    /* RBAC-INTEGRATION-V1-STRICT2 */\n    (req.path === "/api/auth" || req.path.startsWith("/api/auth/")) ||';
 

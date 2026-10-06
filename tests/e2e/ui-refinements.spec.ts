@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { buildDemoDataset } from '../../src/data/demoDataset';
-import { buildDueDiligenceChecklist, localize } from '../../src/lib/policy';
-import { translations } from '../../src/context/LanguageContext';
-import { accentPalettes, contrastRatio, organizationThemeTokens } from '../../src/lib/organizationColors';
+import { buildDemoDataset } from '@legalio/shared/data/demoDataset';
+import { buildDueDiligenceChecklist, localize } from '@legalio/shared/policy';
+import { translations } from '../../apps/frontend/src/context/LanguageContext';
+import { accentPalettes, contrastRatio, organizationThemeTokens } from '../../apps/frontend/src/lib/organizationColors';
 import type { Locator } from '@playwright/test';
 import { becomeSuperuser, createTenantApi, fulfillTenantApi, openActivityHistory, policyView, workspaceInit } from './fixtures/tenantApi';
 

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSpendingSeries, contractTotalInCurrency } from '../src/lib/dashboardMetrics';
-import { formatBusinessDate } from '../src/lib/displayDate';
-import type { Contract, PartnerSpending } from '../src/types';
+import { buildSpendingSeries, contractTotalInCurrency } from '../apps/frontend/src/lib/dashboardMetrics';
+import { formatBusinessDate } from '../apps/frontend/src/lib/displayDate';
+import type { Contract, PartnerSpending } from '@legalio/types';
 const row = (id: string, months: string[], amount: number) => ({ vendor_id: id, vendor_name: id, invoice_month: months, total_amount: amount }) as PartnerSpending;
 const chart = (rows: PartnerSpending[], year = 'ALL') => buildSpendingSeries(rows, year, 'ALL', () => [], r => r.total_amount, 'Other');
 

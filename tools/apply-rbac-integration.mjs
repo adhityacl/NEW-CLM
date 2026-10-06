@@ -15,7 +15,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const file = process.argv[2] ?? 'server.ts';
+const file = process.argv[2] ?? 'apps/backend/src/server.ts';
 const tierArg = process.argv.find((a) => a.startsWith('--tier='));
 const tier = (tierArg ? tierArg.split('=')[1] : 'additive');
 const dryRun = process.argv.includes('--dry-run');

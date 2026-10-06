@@ -12,6 +12,11 @@ dist/
 dist-ssr/
 build/
 .vite/
+.turbo/
+.cache/
+*.tsbuildinfo
+tmp/
+temp/
 
 # 3. Databases & Runtime Data (SANGAT KRUSIAL: Berisi data login, token, & kredensial Google)
 *.db
@@ -20,6 +25,17 @@ build/
 *.db-journal
 *.sqlite
 *.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
+*.dump
+*.dump.sql
+*.sql.gz
+*.sql.zip
+dumps/
 auth.db
 auth.db-wal
 auth.db-shm
@@ -32,6 +48,8 @@ uploads/*
 
 # 5. Secrets, Environment Variables & Credentials
 .env
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
@@ -39,8 +57,31 @@ uploads/*
 *.pem
 *.key
 *.cert
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+id_ecdsa
+id_dsa
+.ssh/
+.aws/
+secrets/
+.secrets/
+.netrc
+.npmrc
+.kube/
+*.tfstate
+*.tfstate.*
+*.secret
 *service-account*.json
+*service_account*.json
 *credentials*.json
+*client_secret*.json
+oauth-client*.json
+token.json
+tokens.json
 
 # 6. Test Reports & Coverage
 test-results/
@@ -48,6 +89,9 @@ playwright-report/
 blob-report/
 playwright/.cache/
 coverage/
+/docs/rbac/qc/
+/docs/rbac/generated/
+/docs/rbac/rbac-matrix.generated.json
 
 # 7. Logs
 logs/
@@ -72,6 +116,22 @@ Thumbs.db
 .cursor/
 .claude/
 .aistudio/
+.agents/
+.codex/
+.gemini/
+.windsurf/
+.roo/
+.continue/
+.mcp.json
+.cursorrules
+.cursorignore
+.windsurfrules
+.aider*
+.github/copilot-instructions.md
+.github/instructions/
+.github/prompts/
+.github/agents/
 CLAUDE.md
 AGENTS.md
+GEMINI.md
 .migration/

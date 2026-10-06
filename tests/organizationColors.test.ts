@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { accentPalettes, contrastRatio, findAccentPalette, organizationThemeTokens } from '../src/lib/organizationColors';
+import { accentPalettes, contrastRatio, findAccentPalette, organizationThemeTokens } from '../apps/frontend/src/lib/organizationColors';
 
 test('all Radix families persist unambiguously and supply readable solid action labels in both themes', () => {
   assert.equal(accentPalettes.length, 31);

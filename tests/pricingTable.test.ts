@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Schema } from '@tiptap/pm/model';
-import { computePricingTableEdits } from '../src/lib/tiptapPricingTable';
+import { computePricingTableEdits } from '../apps/frontend/src/lib/tiptapPricingTable';
 
 // Minimal schema covering just the node shapes pricingTableHtml() produces — real cell/header
 // content is 'block+' (normally one paragraph), which is the part the position math depends on.

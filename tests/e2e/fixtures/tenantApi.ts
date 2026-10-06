@@ -7,9 +7,9 @@
  * database or reaches a real server.
  */
 import type { Request } from '@playwright/test';
-import { PLATFORM_ORGANIZATION_PERMISSIONS, PLATFORM_PERMISSIONS, TENANT_ROLES, tenantPermissionsFor, type TenantRole } from '../../../server/rbac';
-import { defaultTenantSettings, getCountryPack, getIndustryPack } from '../../../src/lib/policy';
-import type { Tenant, TenantSettings } from '../../../src/types';
+import { PLATFORM_ORGANIZATION_PERMISSIONS, PLATFORM_PERMISSIONS, TENANT_ROLES, tenantPermissionsFor, type TenantRole } from '../../../apps/backend/src/rbac';
+import { defaultTenantSettings, getCountryPack, getIndustryPack } from '@legalio/shared/policy';
+import type { Tenant, TenantSettings } from '@legalio/types';
 
 export interface FixtureOrganization extends Tenant { settings: TenantSettings }
 

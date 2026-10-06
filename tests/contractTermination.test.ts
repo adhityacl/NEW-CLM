@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { contractLifecycle, validateContractTermination } from '../src/lib/contractLifecycle';
-import { parseTerminationFile } from '../src/server/contractTermination';
+import { contractLifecycle, validateContractTermination } from '@legalio/shared/contractLifecycle';
+import { parseTerminationFile } from '../apps/backend/src/contractTermination';
 
 const settings = { timezone: 'Asia/Bangkok', expiryWarningDays: 30 };
 const now = new Date('2026-10-04T12:00:00Z');

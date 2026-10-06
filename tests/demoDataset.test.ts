@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDemoDataset } from '../src/data/demoDataset';
+import { buildDemoDataset } from '@legalio/shared/data/demoDataset';
 
 test('demo dataset is one Indonesian banking organization with 5 unique partners', () => {
   const data = buildDemoDataset();

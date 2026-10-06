@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "name": "@legalio/types",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@legalio/ts-config": "*",
+    "typescript": "~5.8.2"
+  }
+}

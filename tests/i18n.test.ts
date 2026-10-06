@@ -8,13 +8,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { translations } from '../src/context/LanguageContext';
-import { COUNTRY_PACKS, CORE_DUE_DILIGENCE } from '../src/lib/policy/countryPacks';
-import { INDUSTRY_PACKS } from '../src/lib/policy/industryPacks';
-import { localize, localizeName, matchesRequirement, resolveTenantSettings } from '../src/lib/policy';
-import { localizeDueDiligenceDocument } from '../src/lib/dueDiligence';
-import { PACK_NAMES, PACK_ZH } from '../src/lib/policy/zh';
-import { translateServerMessage } from '../src/server/serverMessages';
+import { translations } from '../apps/frontend/src/context/LanguageContext';
+import { COUNTRY_PACKS, CORE_DUE_DILIGENCE } from '@legalio/shared/policy/countryPacks';
+import { INDUSTRY_PACKS } from '@legalio/shared/policy/industryPacks';
+import { localize, localizeName, matchesRequirement, resolveTenantSettings } from '@legalio/shared/policy';
+import { localizeDueDiligenceDocument } from '@legalio/shared/dueDiligence';
+import { PACK_NAMES, PACK_ZH } from '@legalio/shared/policy/zh';
+import { translateServerMessage } from '../apps/backend/src/serverMessages';
 
 const LANGS = ['ID', 'EN', 'ZH'] as const;
 const vars = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
@@ -37,7 +37,8 @@ test('every literal t() key used in src/ is in the catalog', () => {
       else if (/\.tsx?$/.test(name) && !path.includes('lib/policy')) files.push(path);
     }
   };
-  walk(new URL('../src', import.meta.url).pathname);
+  walk(new URL('../apps/frontend/src', import.meta.url).pathname);
+  walk(new URL('../packages/ui-components/src', import.meta.url).pathname);
   const missing: string[] = [];
   for (const file of files) {
     for (const m of readFileSync(file, 'utf8').matchAll(/\bt\(\s*'([\w.]+)'/g)) {

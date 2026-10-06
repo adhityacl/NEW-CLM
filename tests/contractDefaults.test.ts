@@ -5,8 +5,8 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { listCountryPacks } from '../src/lib/policy';
-import { jurisdictionFromSettings } from '../src/data/cooperationAgreementTemplate';
+import { listCountryPacks } from '@legalio/shared/policy';
+import { jurisdictionFromSettings } from '@legalio/shared/data/cooperationAgreementTemplate';
 
 const EXPECTED: Record<string, [string, string]> = {
   INTL: ['Singapore Law', 'SIAC Arbitration, Singapore'],

@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
-import { DEMO_ACCOUNT_EMAILS, isDemoAccountEmail, removeDemoAccounts } from '../src/server/demoAccounts';
+import { DEMO_ACCOUNT_EMAILS, isDemoAccountEmail, removeDemoAccounts } from '../apps/backend/src/demoAccounts';
 
 function authDb() {
   const db = new Database(':memory:');

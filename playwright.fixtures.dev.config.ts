@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   use: { ...base.use, baseURL: 'http://127.0.0.1:4180' },
   webServer: {
-    command: 'npx vite --host 127.0.0.1 --port 4180 --strictPort',
+    command: 'npx vite apps/frontend --host 127.0.0.1 --port 4180 --strictPort',
     url: 'http://127.0.0.1:4180',
     reuseExistingServer: false,
     timeout: 120_000,

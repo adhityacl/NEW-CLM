@@ -8,7 +8,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
-import { analyze, applyMigration, sourceDigest } from '../../server/migrations/002_tenant_boundaries';
+import { analyze, applyMigration, sourceDigest } from '../../apps/backend/src/migrations/002_tenant_boundaries';
 import { main as cli, parseArgs } from '../../tools/migrate-tenant-boundaries';
 
 let dir: string;

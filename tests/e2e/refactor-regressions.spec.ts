@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { buildDemoDataset } from '../../src/data/demoDataset';
+import { buildDemoDataset } from '@legalio/shared/data/demoDataset';
 import { createTenantApi, fulfillTenantApi, openActivityHistory, workspaceInit } from './fixtures/tenantApi';
-import type { DocumentDetail } from '../../src/lib/documentModel';
+import type { DocumentDetail } from '@legalio/types/documents';
 
 const SECOND_TENANT_ID = 'org-fixture-second';
 

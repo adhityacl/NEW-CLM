@@ -5,10 +5,10 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readableTextOn } from '../src/lib/utils';
-import { formatDateTime } from '../src/lib/displayDate';
-import { notificationMessage } from '../src/lib/notificationText';
-import type { NotificationLog } from '../src/types';
+import { readableTextOn } from '@legalio/ui-components/utils';
+import { formatDateTime } from '../apps/frontend/src/lib/displayDate';
+import { notificationMessage } from '../apps/frontend/src/lib/notificationText';
+import type { NotificationLog } from '@legalio/types';
 
 test('readableTextOn picks dark text on the bright brand green and white on dark colors', () => {
   assert.equal(readableTextOn('#06C755'), '#111111'); // white would be 2.26:1

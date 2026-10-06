@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { jurisdictionFromSettings, COOPERATION_AGREEMENT_FIELDS } from '../src/data/cooperationAgreementTemplate';
-import { buildMasterServiceAgreementHtml, MASTER_SERVICE_AGREEMENT_CUSTOM_FIELDS } from '../src/data/masterServiceAgreementTemplate';
+import { jurisdictionFromSettings, COOPERATION_AGREEMENT_FIELDS } from '@legalio/shared/data/cooperationAgreementTemplate';
+import { buildMasterServiceAgreementHtml, MASTER_SERVICE_AGREEMENT_CUSTOM_FIELDS } from '@legalio/shared/data/masterServiceAgreementTemplate';
 
 test('built-in MSA uses editor fields for every blank and the tenant jurisdiction', () => {
   const jurisdiction = jurisdictionFromSettings({ countryCode: 'ID' } as any);

@@ -9,9 +9,9 @@ Dokumen ini adalah panduan awal untuk engineer yang melanjutkan pengembangan Leg
 Baca sumber berikut sebelum mengubah sistem:
 
 1. [`README.md`](README.md) — setup lokal, environment, integrasi Google, test, backup, dan deployment.
-2. [`src/lib/appRoutes.ts`](src/lib/appRoutes.ts) — daftar route SPA, alias lama, dan keputusan akses halaman.
-3. [`server/routePolicies.ts`](server/routePolicies.ts) — daftar izin untuk setiap endpoint API. Endpoint yang tidak terdaftar ditolak.
-4. [`server/rbac.ts`](server/rbac.ts) — katalog permission, role platform/tenant, dan aturan scope organisasi/departemen.
+2. [`apps/frontend/src/lib/appRoutes.ts`](apps/frontend/src/lib/appRoutes.ts) — daftar route SPA, alias lama, dan keputusan akses halaman.
+3. [`apps/backend/src/routePolicies.ts`](apps/backend/src/routePolicies.ts) — daftar izin untuk setiap endpoint API. Endpoint yang tidak terdaftar ditolak.
+4. [`apps/backend/src/rbac.ts`](apps/backend/src/rbac.ts) — katalog permission, role platform/tenant, dan aturan scope organisasi/departemen.
 5. [`docs/button-sizes.md`](docs/button-sizes.md) — standar tinggi field dan tombol.
 6. [`docs/AUDIT-GLOBAL-OSS-READINESS.md`](docs/AUDIT-GLOBAL-OSS-READINESS.md) — inventori risiko dan asumsi lokal.
 
@@ -33,28 +33,26 @@ Audit OSS dibuat pada 24 September 2026. Gunakan sebagai daftar pemeriksaan hist
 ### Struktur penting
 
 ```text
-src/
-  components/       Halaman, panel, modal, dan komponen UI
-  context/          Auth, tenant, permission, language, navigation, theme
-  lib/              Routing, policy, utilitas domain, integrasi frontend
-  server/           Router dan service backend yang sudah diekstrak
-server/
-  auth.ts           Konfigurasi Better Auth
-  identity.ts       Resolusi identity dan organization context
-  rbac.ts           Permission dan aturan scope
-  routePolicies.ts  Allowlist keamanan semua endpoint /api
-  recordScope.ts    Filter record berdasarkan organisasi/departemen
-  runtimePaths.ts   Lokasi database dan file runtime
-server.ts           Entry point Express dan sejumlah route legacy
-tests/               Unit, integration, RBAC, tenant boundary, dan browser test
-docs/                PRD, audit, dan keputusan UI/domain
+apps/
+  frontend/src/     Halaman React, context, fitur dan integrasi browser
+  backend/src/      Entry point Express, router, layanan, RBAC dan migrasi
+packages/
+  ui-components/    Komponen UI mandiri
+  types/            Kontrak domain dan API
+  shared/           Policy, currency, lifecycle dan template bersama
+  ts-config/        Konfigurasi TypeScript frontend/backend
+.github/workflows/  CI yang memilih aplikasi berdasarkan perubahan
+tests/              Unit, integration, tenant boundary dan browser test
+scripts/            Setup environment dan utilitas workspace
+tools/              Migrasi data dan verifikasi
+docs/               PRD, audit dan keputusan UI/domain
 ```
 
-`server.ts` masih besar. Fitur backend baru sebaiknya ditempatkan dalam router/service terpisah di `src/server/` atau `server/`, lalu dipasang dari entry point. Hindari menambah blok besar baru langsung ke `server.ts`.
+`apps/backend/src/server.ts` masih besar. Fitur backend baru sebaiknya ditempatkan dalam router/service terpisah di `apps/backend/src/`, lalu dipasang dari entry point. Hindari menambah blok besar baru langsung ke `apps/backend/src/server.ts`.
 
 ## 3. Alur aplikasi frontend
 
-Urutan provider di [`src/App.tsx`](src/App.tsx) penting:
+Urutan provider di [`apps/frontend/src/App.tsx`](apps/frontend/src/App.tsx) penting:
 
 ```text
 QueryClient
@@ -81,7 +79,7 @@ Aplikasi tidak memakai React Router. Halaman aktif disimpan pada query parameter
 /app?tab=admin-system-dashboard
 ```
 
-Kontrak routing berada di [`src/context/NavigationContext.tsx`](src/context/NavigationContext.tsx) dan [`src/lib/appRoutes.ts`](src/lib/appRoutes.ts).
+Kontrak routing berada di [`apps/frontend/src/context/NavigationContext.tsx`](apps/frontend/src/context/NavigationContext.tsx) dan [`apps/frontend/src/lib/appRoutes.ts`](apps/frontend/src/lib/appRoutes.ts).
 
 Aturan saat ini:
 
@@ -128,7 +126,7 @@ Bagian ini tidak boleh dianggap sebagai detail UI.
 
 ### Aturan endpoint
 
-Setiap operasi `/api` harus terdaftar di [`server/routePolicies.ts`](server/routePolicies.ts). Pilih policy yang paling sempit:
+Setiap operasi `/api` harus terdaftar di [`apps/backend/src/routePolicies.ts`](apps/backend/src/routePolicies.ts). Pilih policy yang paling sempit:
 
 - `public`: benar-benar tidak memerlukan identity.
 - `identity`: hanya data milik identity tersebut.
@@ -159,12 +157,12 @@ Checklist endpoint baru:
 
 ## 5. Data dan file runtime
 
-Lokasi runtime dikendalikan oleh [`server/runtimePaths.ts`](server/runtimePaths.ts):
+Lokasi runtime dikendalikan oleh [`apps/backend/src/runtimePaths.ts`](apps/backend/src/runtimePaths.ts):
 
 - `auth.db`, `auth.db-wal`, dan `auth.db-shm` untuk SQLite.
 - `uploads/` untuk file lokal.
 - `data_store.json` sebagai data legacy/kompatibilitas.
-- `.env` untuk konfigurasi proses.
+- `apps/backend/.env` untuk konfigurasi proses.
 
 Semua file tersebut adalah data deployment dan tidak boleh di-commit. Jangan menjalankan test yang membuka database workspace secara langsung. Suite tenant-boundary memakai `APP_TEST_MODE=1` dan direktori sementara agar database, upload, dan data lokal tidak berubah.
 
@@ -187,7 +185,7 @@ npm install
 npm run dev
 ```
 
-`npm install` menjalankan `scripts/setup-env.mjs`. Script ini membuat `.env` dari `.env.example` dan mengisi `BETTER_AUTH_SECRET` lokal bila belum tersedia. Jangan menimpa secret deployment yang sudah aktif; menggantinya akan mengakhiri seluruh sesi login.
+`npm install` menjalankan `scripts/setup-env.mjs`. Script ini membuat `apps/backend/.env` dari `apps/backend/.env.example` dan mengisi `BETTER_AUTH_SECRET` lokal bila belum tersedia. Jangan menimpa secret deployment yang sudah aktif; menggantinya akan mengakhiri seluruh sesi login.
 
 Mode pengembangan:
 
@@ -207,8 +205,9 @@ npm run build
 
 Hasil penting:
 
-- Frontend Vite berada di `dist/`.
-- Backend dibundle menjadi `dist/server.cjs` beserta sourcemap.
+- Frontend Vite berada di `apps/frontend/dist/`.
+- Backend dibundle menjadi `apps/backend/dist/server.cjs` beserta sourcemap, di luar static root frontend.
+- Saat upgrade instalasi lama, ubah `ExecStart` systemd dan static root nginx mengikuti README sebelum reload/restart layanan.
 - Package eksternal backend tidak dibundle; deployment tetap memerlukan dependency production yang sesuai.
 
 Menjalankan hasil build:
@@ -267,7 +266,7 @@ Jangan mengarahkan suite E2E ke database produksi atau `auth.db` workspace.
 
 ### Design system
 
-- Gunakan token di `src/index.css`; jangan menambah warna brand mentah bila token sudah tersedia.
+- Gunakan token di `apps/frontend/src/index.css`; jangan menambah warna brand mentah bila token sudah tersedia.
 - Gunakan komponen `src/components/ui/` sebelum membuat primitive baru.
 - Ikuti [`docs/button-sizes.md`](docs/button-sizes.md).
 - Field satu baris dan primary/form actions berukuran 44 px.
@@ -327,7 +326,7 @@ Credential upload dalam aplikasi memiliki prioritas atas environment. Jangan com
 - Date/time harus mempertimbangkan timezone tenant; jangan bergantung pada timezone proses secara tidak sengaja.
 - Nilai uang harus selalu membawa kode currency dan metadata konversi bila dikonversi.
 - Route legacy masih ada untuk kompatibilitas. Jangan menghapusnya tanpa inventori bookmark, test, dan rencana migrasi.
-- `server.ts`, model legacy, dan katalog bahasa masih memiliki technical debt. Refactor secara bertahap dengan tes karakterisasi.
+- `apps/backend/src/server.ts`, model legacy, dan katalog bahasa masih memiliki technical debt. Refactor secara bertahap dengan tes karakterisasi.
 - Selalu periksa `git diff` sebelum mengubah file besar. Repository sering memiliki pekerjaan paralel yang belum di-commit.
 
 ## 11. Hal yang harus dihindari
@@ -347,7 +346,7 @@ Credential upload dalam aplikasi memiliki prioritas atas environment. Jangan com
 
 Area yang perlu perhatian khusus:
 
-1. `server.ts` masih memuat banyak route dan logika domain legacy.
+1. `apps/backend/src/server.ts` masih memuat banyak route dan logika domain legacy.
 2. Ada jalur kompatibilitas antara data core lama dan SQLite.
 3. Bundle utama frontend masih besar; lakukan code splitting berdasarkan halaman/fitur.
 4. Katalog terjemahan dan fallback belum sepenuhnya modular.

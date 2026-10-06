@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 
-const sqlFile = process.argv[2] ?? 'server/migrations/001_rbac_alignment.sql';
+const sqlFile = process.argv[2] ?? 'apps/backend/src/migrations/001_rbac_alignment.sql';
 const sql = readFileSync(sqlFile, 'utf8');
 
 const tmp = 'qc-output/_migration_test.db';
