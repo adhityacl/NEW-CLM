@@ -546,16 +546,6 @@ try {
 // Organizations are not seeded here: server startup hydrates them from the
 // tenant list (the demo dataset on first run, or the admin's own setup).
 
-/** Active allowlist entry or a pending, unexpired invitation for this email. */
-export function isOnboardingApproved(email: string): boolean {
-  const normalized = String(email || '').trim().toLowerCase();
-  const allowed = sqliteDb.prepare("SELECT status FROM allowed_users WHERE LOWER(email) = ?").get(normalized) as any;
-  if (allowed?.status === 'Active') return true;
-  return Boolean(sqliteDb.prepare(
-    "SELECT 1 FROM invitation WHERE LOWER(email) = ? AND status = 'pending' AND expiresAt > ?",
-  ).get(normalized, new Date().toISOString()));
-}
-
 type VerificationMailer = (input: { email: string; name: string; url: string }) => Promise<void>;
 let verificationMailer: VerificationMailer | null = null;
 /** server.ts installs the platform mailer; tests leave it unset (no delivery). */
@@ -582,6 +572,7 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    autoSignIn: false,
   },
   // Google sign-in is optional and only enabled when credentials exist.
   socialProviders: googleClientId && googleClientSecret
@@ -590,7 +581,7 @@ export const auth = betterAuth({
   emailVerification: {
     // Delivery uses the platform mailer (set by server.ts). Failure never
     // marks an account verified; the user can request another email.
-    sendOnSignUp: true,
+    sendOnSignUp: false,
     sendVerificationEmail: async ({ user, url }) => {
       try {
         await verificationMailer?.({ email: user.email, name: user.name, url });
@@ -630,21 +621,11 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        // Ordinary account creation is always platform `user` (PRD §8.4). An
-        // active allowlist entry or a pending invitation only lets the account
-        // sign in for onboarding; neither grants a role or a membership.
+        // Every self-registered account waits for manual superuser approval.
+        // An invitation never approves an account or grants platform privileges.
         before: async (user) => ({
-          data: { ...user, role: "user", banned: false, banReason: null },
+          data: { ...user, role: "user", banned: true, banReason: "PENDING_APPROVAL", banExpires: null },
         }),
-        after: async (user) => {
-          try {
-            if (!isOnboardingApproved(user.email)) {
-              sqliteDb.prepare("UPDATE user SET banned = 1, banReason = 'PENDING_APPROVAL' WHERE id = ?").run(user.id);
-            }
-          } catch (err) {
-            console.error('Error applying pending approval:', err);
-          }
-        },
       },
     },
   },

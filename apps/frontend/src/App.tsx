@@ -25,7 +25,6 @@ const LazyIOView = lazy(() => import('./components/IOView').then((m) => ({ defau
 const LazyPartnersView = lazy(() => import('./components/PartnersView').then((m) => ({ default: m.PartnersView })));
 const LazyPartnerSpendingView = lazy(() => import('./components/PartnerSpendingView').then((m) => ({ default: m.PartnerSpendingView })));
 const LazyNotificationsView = lazy(() => import('./components/NotificationsView').then((m) => ({ default: m.NotificationsView })));
-const LazyAdminUsersView = lazy(() => import('./components/AdminUsersView').then((m) => ({ default: m.AdminUsersView })));
 const LazyBulkImportView = lazy(() => import('./components/BulkImportView').then((m) => ({ default: m.BulkImportView })));
 const LazySettingsView = lazy(() => import('./components/SettingsView').then((m) => ({ default: m.SettingsView })));
 const LazyPrivacyPolicyView = lazy(() => import('./components/PrivacyPolicyView').then((m) => ({ default: m.PrivacyPolicyView })));
@@ -50,8 +49,9 @@ import { getAuthHeaders } from './lib/apiFetch';
 import { useWorkspaceData } from './features/workspace/useWorkspaceData';
 import { AIChatLauncher } from './components/AIChatLauncher';
 import { PermissionProvider, usePermissions } from './lib/permissions';
+import { OrganizationOnboarding } from './components/account/OrganizationOnboarding';
 import { InvitationPrompt } from './components/account/InvitationPrompt';
-import { SETTINGS_TABS, needsOrganization, resolveRoute, type SettingsTabId, type SystemSubmenu } from './lib/appRoutes';
+import { SETTINGS_TABS, SYSTEM_TABS, needsOrganization, resolveRoute, type SettingsTabId } from './lib/appRoutes';
 import { tableDesignForTab } from './lib/tableDesign';
 
 /** Full-page state shown instead of any privileged view (PRD §4.5.4, §6.2, §11.3). */
@@ -82,6 +82,12 @@ const MainApp: React.FC = () => {
   const isPlatformAdmin = hasPlatformPermission('platform.access');
   const { activeTenantId, selectionStatus, organizations, switchTenant } = useTenant();
   const { activeTab, setActiveTab, replaceActiveTab } = useNavigation();
+  useEffect(() => {
+    if (isPlatformAdmin && SYSTEM_TABS.includes(activeTab)) {
+      window.location.assign(`/sys?tab=${encodeURIComponent(activeTab)}`);
+    }
+  }, [isPlatformAdmin, activeTab]);
+
   const { policy, status: tenantSettingsStatus } = useTenantSettings();
   const modules = policy.settings.modules;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -534,7 +540,7 @@ const MainApp: React.FC = () => {
 
   if (gate.kind === 'no-org') {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#F3F4F0] p-6 text-slate-900 dark:bg-[#0B0F19] dark:text-slate-100">
+      <div className="flex min-h-dvh items-center justify-center bg-(--background) text-(--foreground)">
         {selectionStatus === 'choose' ? (
           <StateScreen standalone title={t('tb.choose_organization', 'Choose an organization')} message={t('tb.choose_organization_desc', 'You belong to several organizations. Choose the one to work in for this tab.')}>
             <ul className="w-full space-y-2">
@@ -550,9 +556,7 @@ const MainApp: React.FC = () => {
             <button type="button" onClick={() => void logout()} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 underline dark:text-slate-300">{t('app.kembali_ke_login', 'Kembali ke login')}</button>
           </StateScreen>
         ) : (
-          <StateScreen standalone title={t('tb.no_access_title', 'No organization access')} message={t('tb.no_access_desc', 'Your account is signed in but is not an active member of any organization. Ask an administrator to invite you.')}>
-            <button type="button" onClick={() => void logout()} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900">{t('app.kembali_ke_login', 'Kembali ke login')}</button>
-          </StateScreen>
+          <OrganizationOnboarding />
         )}
       </div>
     );
@@ -780,7 +784,7 @@ const MainApp: React.FC = () => {
               )}
 
               {activeTab.startsWith('admin-system-') && isPlatformAdmin && (
-                <LazyAdminUsersView initialTab={activeTab.replace(/^admin-system-/, '') as SystemSubmenu} />
+                <StateScreen title={t('sys.opening', 'Opening System Console…')} busy />
               )}
 
               {activeTab === 'bulk-import' && hasPermission('tenant.data.import') && (

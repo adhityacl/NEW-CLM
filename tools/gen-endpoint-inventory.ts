@@ -60,10 +60,12 @@ export function betterAuthEndpoints(): Array<{ family: AuthFamily; path: string 
 
 /** PRD §9.2 / §9.4 policy per canonical route (the router enforces it; see organizationAdminRoutes.ts). */
 const CANONICAL_POLICY: Record<string, [string, string]> = {
+  'POST /api/me/organization': ['approved identity without active membership', 'explicit onboarding; creator becomes tenant admin; atomic settings, membership and audit'],
   'GET /api/me': ['identity', 'own identity, memberships (incl. suspended), platform permissions'],
   'POST /api/me/active-organization': ['identity', 'validated session default only'],
   'GET /api/me/sessions': ['identity', 'own sessions'],
   'DELETE /api/me/sessions/:sessionId': ['identity', 'own sessions'],
+  'POST /api/organizations/:organizationId/invite-codes': ['tenant admin or platform context', 'single-use code; expires after 24 hours; no recipient email required'],
   'GET /api/organizations/:organizationId/capabilities': ['membership or platform context', 'capability DTO'],
   'GET /api/organizations/:organizationId/policy': ['membership or platform context', 'non-secret runtime policy'],
   'GET /api/organizations/:organizationId/settings': ['tenant.settings.read', ''],

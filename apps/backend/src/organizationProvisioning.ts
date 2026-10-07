@@ -3,7 +3,7 @@
  *
  * The only code that creates organizations, identities and memberships
  * outside the request-scoped administration API: first-run seeding,
- * demo/empty reset, and platform organization creation. Memberships are
+ * demo/empty reset, platform creation, and explicit self-service onboarding. Memberships are
  * always explicit — an identity never gains organization access because it
  * exists, signed up first, or was approved.
  */

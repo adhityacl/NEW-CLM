@@ -39,6 +39,7 @@ export class RequestDenied extends Error {
 const MESSAGES: Record<string, string> = {
   UNAUTHENTICATED: 'Authentication is required.',
   ACCOUNT_DISABLED: 'This account is disabled.',
+  ACCOUNT_PENDING_APPROVAL: 'Your account is waiting for manual superuser approval.',
   RESOURCE_NOT_FOUND: 'Resource not found.',
   INSUFFICIENT_PERMISSION: 'You do not have permission to perform this action.',
   ORGANIZATION_SELECTOR_CONFLICT: 'The request names more than one organization.',
@@ -105,9 +106,9 @@ export function resolveIdentity(db: DB, req: express.Request): Identity {
   if (!session) throw new RequestDenied(401, 'UNAUTHENTICATED');
   const expires = parseTimestamp(session.expiresAt);
   if (expires === null || expires <= Date.now()) throw new RequestDenied(401, 'UNAUTHENTICATED');
-  const user = db.prepare(`SELECT id, email, name, image, emailVerified, role, banned, banExpires FROM "user" WHERE id = ?`).get(session.userId) as any;
+  const user = db.prepare(`SELECT id, email, name, image, emailVerified, role, banned, banReason, banExpires FROM "user" WHERE id = ?`).get(session.userId) as any;
   if (!user) throw new RequestDenied(401, 'UNAUTHENTICATED');
-  if (isIdentityBanned(user)) throw new RequestDenied(403, 'ACCOUNT_DISABLED');
+  if (isIdentityBanned(user)) throw new RequestDenied(403, user.banReason === 'PENDING_APPROVAL' ? 'ACCOUNT_PENDING_APPROVAL' : 'ACCOUNT_DISABLED');
   const platformRole = platformRoleOf(user.role);
   const identity: Identity = {
     userId: user.id,

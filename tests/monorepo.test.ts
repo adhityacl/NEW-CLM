@@ -7,7 +7,7 @@ import ts from 'typescript';
 
 const root = resolve('.');
 const json = (path: string) => JSON.parse(readFileSync(join(root, path), 'utf8'));
-const dirs = ['apps/backend', 'apps/frontend', 'packages/ui-components', 'packages/ts-config', 'packages/types', 'packages/shared'];
+const dirs = ['apps/backend', 'apps/frontend', 'apps/system-console', 'packages/platform-console', 'packages/ui-components', 'packages/ts-config', 'packages/types', 'packages/shared'];
 
 test('deployable apps and shared packages are real npm workspaces with isolated environment and build output', () => {
   assert.deepEqual(json('package.json').workspaces, ['apps/*', 'packages/*']);

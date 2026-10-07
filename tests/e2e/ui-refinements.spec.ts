@@ -217,12 +217,10 @@ test('organization logo upload uses a dialog and platform editing preserves shar
   await expect(edit.getByText('Primary Currency', { exact: true })).toHaveCount(0);
   await expect(edit.locator('img')).toHaveAttribute('src', logo);
   await expectRoundLogo(edit.locator('img'));
-  const tagline = edit.getByLabel('Partnership Type / Tagline', { exact: true });
-  await expect(tagline).toHaveValue('Shared tagline');
-  await tagline.fill('Updated tagline');
+  await expect(edit.getByLabel(/Tagline/i)).toHaveCount(0);
   await edit.getByRole('button', { name: 'Save Changes', exact: true }).click();
   await expect(edit).toHaveCount(0);
-  expect(submitted.profile).toEqual({ logoUrl: logo, tagline: 'Updated tagline' });
+  expect(submitted.profile).toEqual({ logoUrl: logo });
   expect(submitted).not.toHaveProperty('policy');
 });
 

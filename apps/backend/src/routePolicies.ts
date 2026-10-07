@@ -59,10 +59,11 @@ export const ROUTE_POLICIES: PolicyEntry[] = [
 
   /* ---------------- identity-scoped ---------------- */
   ['GET', '/api/me', router()],
+  ['POST', '/api/me/organization', router('explicit onboarding: approved creator becomes tenant admin')],
   ['POST', '/api/me/active-organization', router('session default only')],
   ['GET', '/api/me/sessions', router('own sessions only')],
   ['DELETE', '/api/me/sessions/:sessionId', router('own sessions only')],
-  ['POST', '/api/invitations/:token/accept', router('verified matching identity')],
+  ['POST', '/api/invitations/:token/accept', router('approved identity; matching email or valid invite code')],
   ['POST', '/api/auth-console/invitations/accept', self('legacy adapter to invitation acceptance')],
   ['GET', '/api/user/my-role', self('identity adapter to /api/me')],
   ['GET', '/api/rbac/me', self('identity + optional selected-organization capabilities')],

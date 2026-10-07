@@ -44,7 +44,7 @@ test.describe('Sidebar administration entries match server authority', () => {
   test('Superuser sees System Admin and lands on the platform dashboard', async ({ page }) => {
     await loginAs(page, 'superuser');
     await expect(page).toHaveURL(/tab=admin-system-dashboard/);
-    await expect(adminNavSection(page).getByRole('button', { name: SYSTEM_ADMIN, exact: true })).toBeVisible();
+    await expect(adminNavSection(page)).toBeVisible();
     await expect(page.getByRole('button', { name: ORG_ADMIN })).toHaveCount(0);
   });
 

@@ -61,12 +61,15 @@ test('organization card currency matches region settings and follows a saved cur
   try {
     await page.goto('/app?tab=admin-system-organizations');
     await expect(card.getByText(initial.data.policy.defaultCurrency, { exact: true })).toBeVisible();
+    const popupPromise = page.waitForEvent('popup');
     await card.getByRole('button', { name: 'Manage organization', exact: true }).click();
-    await page.getByRole('button', { name: /^Region and formatting/ }).click();
-    await expect(page.getByLabel('Default currency', { exact: true })).toHaveValue(initial.data.policy.defaultCurrency);
-    await page.getByLabel('Default currency', { exact: true }).selectOption(currency);
-    await page.getByRole('button', { name: 'Save Region and formatting', exact: true }).click();
-    await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
+    const organizationPage = await popupPromise;
+    await organizationPage.getByRole('button', { name: /^Region and formatting/ }).click();
+    await expect(organizationPage.getByLabel('Default currency', { exact: true })).toHaveValue(initial.data.policy.defaultCurrency);
+    await organizationPage.getByLabel('Default currency', { exact: true }).selectOption(currency);
+    await organizationPage.getByRole('button', { name: 'Save Region and formatting', exact: true }).click();
+    await expect(organizationPage.getByText('Saved.', { exact: true })).toBeVisible();
+    await organizationPage.close();
     await page.goto('/app?tab=admin-system-organizations');
     await expect(card.getByText(currency, { exact: true })).toBeVisible();
     await page.reload();
@@ -122,11 +125,11 @@ test.describe('AC-043 platform role visibility', () => {
     await page.goto('/');
     await expect(page).toHaveURL(/tab=admin-system-dashboard/);
     await expect(page.getByRole('tablist', { name: 'System Admin' })).toBeVisible();
-    await expect(sidebar(page).getByRole('button', { name: 'System Admin', exact: true })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'ADMIN NAVIGATION' })).toBeVisible();
     await page.getByRole('tab', { name: /^Organizations/ }).click();
     await expect(page.locator('main')).toContainText('Alpha Org');
     await expect(page.locator('main')).toContainText('Beta Org');
-    await sidebar(page).getByRole('button', { name: 'Google & storage', exact: true }).click();
+    await page.getByRole('navigation', { name: 'ADMIN NAVIGATION' }).getByRole('button', { name: 'Google & storage', exact: true }).click();
     await expect(page).toHaveURL(/tab=admin-system-google/);
     await expect(page.getByRole('heading', { name: 'Google & storage', exact: true })).toBeVisible();
     expect(requests.filter((r) => /\/api\/(init-data|partners|contracts)\b|\/api\/organizations\/[^/]+\/(capabilities|settings)/.test(r))).toEqual([]);
@@ -137,7 +140,7 @@ test.describe('AC-043 platform role visibility', () => {
     const requests = apiRequests(page);
     const token = await signIn(page, 'nomember');
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'No organization access', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Set up your organization', level: 1 })).toBeVisible();
     await expect(page.getByRole('button', { name: 'System Admin', exact: true })).toHaveCount(0);
     await page.goto('/app?tab=admin-system-dashboard');
     await expect(page.getByRole('tablist', { name: 'System Admin' })).toHaveCount(0);
@@ -297,25 +300,30 @@ test('AC-030 superuser manages A without a membership; changes are audited as th
   await signIn(page, 'super');
   await page.goto('/');
   await page.getByRole('tab', { name: /^Organizations/ }).click();
+  const popupPromise = page.waitForEvent('popup');
   await page.locator('main div').filter({ hasText: 'Alpha Org' }).filter({ hasNotText: 'Beta Org' })
     .getByRole('button', { name: 'Manage organization', exact: true }).first().click();
-  await expect(page).toHaveURL(/tab=settings-organization/);
-  await expect(page.getByText('Platform administrator managing Alpha Org')).toHaveCount(0);
-  await expect(page.getByRole('tablist', { name: 'Settings sections' }).getByRole('tab')).toHaveText(['Organization', 'Members & Access', 'Integrations']);
-  await expect(sidebar(page).getByRole('button', { name: 'System Admin', exact: true })).toBeVisible();
+  const organizationPage = await popupPromise;
+  await expect(organizationPage).toHaveURL(/tab=settings-organization/);
+  await expect(organizationPage.getByText('Platform administrator managing Alpha Org')).toHaveCount(0);
+  await expect(organizationPage.getByRole('tablist', { name: 'Settings sections' }).getByRole('tab')).toHaveText(['Organization', 'Members & Access', 'Integrations']);
+  await expect(organizationPage.getByRole('button', { name: 'System Admin', exact: true })).toHaveCount(0);
+  await expect(sidebar(organizationPage).getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
+  await expect(sidebar(organizationPage).getByRole('button', { name: 'Import Data', exact: true })).toBeVisible();
 
-  await page.getByRole('tab', { name: 'Members & Access', exact: true }).click();
-  await expect(page).toHaveURL(/tab=settings-access/);
-  await expect(page.getByText('Platform administrator managing Alpha Org')).toHaveCount(0);
-  await page.getByRole('tab', { name: 'Integrations', exact: true }).click();
-  await expect(page).toHaveURL(/tab=settings-integrations/);
-  await expect(page.getByText('Platform administrator managing Alpha Org')).toHaveCount(0);
-  await page.getByRole('tab', { name: 'Organization', exact: true }).click();
+  await organizationPage.getByRole('tab', { name: 'Members & Access', exact: true }).click();
+  await expect(organizationPage).toHaveURL(/tab=settings-access/);
+  await expect(organizationPage.getByText('Platform administrator managing Alpha Org')).toHaveCount(0);
+  await organizationPage.getByRole('tab', { name: 'Integrations', exact: true }).click();
+  await expect(organizationPage).toHaveURL(/tab=settings-integrations/);
+  await expect(organizationPage.getByText('Platform administrator managing Alpha Org')).toHaveCount(0);
+  await organizationPage.getByRole('tab', { name: 'Organization', exact: true }).click();
 
-  const tagline = `Managed by the platform ${Date.now()}`;
-  await page.getByLabel('Tagline').fill(tagline);
-  await page.getByRole('button', { name: 'Save Profile', exact: true }).click();
-  await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
+  await expect(organizationPage.getByLabel('Tagline', { exact: true })).toHaveCount(0);
+  const legalEntity = `Managed by the platform ${Date.now()}`;
+  await organizationPage.getByLabel('Legal entity', { exact: true }).fill(legalEntity);
+  await organizationPage.getByRole('button', { name: 'Save Profile', exact: true }).click();
+  await expect(organizationPage.getByText('Saved.', { exact: true })).toBeVisible();
 
   const db = testDb();
   try {
@@ -324,13 +332,15 @@ test('AC-030 superuser manages A without a membership; changes are audited as th
     expect(event.actor_id).toBe(ids().super);
     expect(JSON.parse(event.metadata)).toMatchObject({ accessMode: 'platform', actorPlatformRole: 'superuser', outcome: 'success' });
     const profile = JSON.parse((db.prepare(`SELECT payload FROM organization_settings WHERE organizationId = ?`).get(A) as { payload: string }).payload).profile;
-    expect(profile.tagline).toBe(tagline);
+    expect(profile.legalEntity).toBe(legalEntity);
   } finally {
     db.close();
   }
 
-  await page.getByRole('button', { name: 'Back to System Admin', exact: true }).click();
+  await organizationPage.getByRole('button', { name: 'Back to System Admin', exact: true }).click();
+  await expect(organizationPage).toHaveURL(/tab=admin-system-organizations/);
   await expect(page).toHaveURL(/tab=admin-system-organizations/);
+  await organizationPage.close();
 });
 
 test('AC-019 a membership suspended after capabilities load is dropped on the next request; other access and the session remain', async ({ page }) => {

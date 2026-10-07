@@ -1,3 +1,4 @@
+import { mountSystemConsole } from './systemConsoleHosting';
 import "dotenv/config";
 import type { UITextOverrides } from '@legalio/types/uiTexts';
 var __defProp = Object.defineProperty;
@@ -32,7 +33,6 @@ import {
   syncDbToSqlite,
   loadCoreDataFromSqlite,
   setVerificationMailer,
-  isOnboardingApproved,
 } from "./lib/auth";
 import {
   authConsoleRouter,
@@ -5744,29 +5744,24 @@ app.post(
 
       /*
        * Onboarding (PRD §8.4): an existing identity signs in; a new one is
-       * created only with an active allowlist entry, a pending invitation, or
-       * explicit self-signup — always as platform `user`, never with a
+       * created pending manual superuser approval — always as platform
+       * `user`, never with a
        * membership. The caller's Google tokens are never stored as platform
        * configuration.
        */
-      let existingUser: any = sqliteDb.prepare(`SELECT id, name, role, banned, banExpires FROM "user" WHERE LOWER(email) = ?`).get(cleanEmail);
+      let existingUser: any = sqliteDb.prepare(`SELECT id, name, role, banned, banReason, banExpires FROM "user" WHERE LOWER(email) = ?`).get(cleanEmail);
       if (!existingUser) {
-        if (!isOnboardingApproved(cleanEmail) && process.env.ALLOW_GOOGLE_SELF_SIGNUP !== "true") {
-          return res.status(403).json({
-            success: false,
-            error: "NOT_INVITED",
-            message: "This Google account has not been invited. Ask an administrator to add you.",
-          });
-        }
         const newId = `usr_${crypto.randomUUID()}`;
         sqliteDb.prepare(`
-          INSERT INTO "user" (id, name, email, emailVerified, image, role, banned, createdAt, updatedAt)
-          VALUES (?, ?, ?, 1, ?, 'user', 0, ?, ?)
+          INSERT INTO "user" (id, name, email, emailVerified, image, role, banned, banReason, createdAt, updatedAt)
+          VALUES (?, ?, ?, 1, ?, 'user', 1, 'PENDING_APPROVAL', ?, ?)
         `).run(newId, userName, cleanEmail, photoURL || null, now, now);
-        existingUser = { id: newId, name: userName, role: "user", banned: 0 };
+        return res.status(403).json({ success: false, error: "ACCOUNT_PENDING_APPROVAL", message: "Your account is waiting for manual superuser approval." });
       } else {
         if (isIdentityBanned(existingUser)) {
-          return res.status(403).json({ success: false, error: "ACCOUNT_DISABLED", message: "This account is disabled." });
+          const pending = existingUser.banReason === 'PENDING_APPROVAL';
+          return res.status(403).json({ success: false, error: pending ? "ACCOUNT_PENDING_APPROVAL" : "ACCOUNT_DISABLED",
+            message: pending ? "Your account is waiting for manual superuser approval." : "This account is disabled." });
         }
         // Google verified this address, so the identity's email is verified.
         sqliteDb.prepare(`UPDATE "user" SET image = COALESCE(?, image), emailVerified = 1, updatedAt = ? WHERE id = ?`).run(photoURL || null, now, existingUser.id);
@@ -7574,6 +7569,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   next(err);
 });
 async function startServer() {
+  mountSystemConsole(app, process.env.SYSTEM_CONSOLE_DIR || path.join(REPOSITORY_DIR, "apps/system-console/dist"));
   let viteServer;
   // API_ONLY=true (set by `npm run dev:backend`) skips Vite entirely, for
   // running the backend as its own process against a separate `npm run

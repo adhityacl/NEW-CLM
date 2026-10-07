@@ -49,7 +49,7 @@ test.describe('SPA routing via ?tab= query parameter', () => {
 
   test('authenticated superuser opening login lands on System Admin dashboard', async ({ page }) => {
     await openAs(page, 'superuser', '/app?tab=login');
-    await expect(page).toHaveURL(/\/app\?tab=admin-system-dashboard$/);
+    await expect(page).toHaveURL(/\/sys\?tab=admin-system-dashboard$/);
   });
 
   test('deep link opens the requested tab and survives a reload', async ({ page }) => {

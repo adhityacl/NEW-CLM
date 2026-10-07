@@ -22,12 +22,14 @@ import {
 } from './identity';
 import {
   ApiError, appendAudit, integrationDto, invalid, listAudit, normalizeEmail, patchIntegration,
-  patchOrganizationSettings, readIntegration, readOrganizationSettings, type AuditActor,
+  patchOrganizationSettings, readIntegration, readOrganizationSettings, defaultSettingsPayload, validateProfilePatch, validatePolicyPatch, type AuditActor,
 } from './organizationSettingsStore';
+
+import { addMembershipRecord, createOrganizationRecord } from './organizationProvisioning';
 
 type DB = Database.Database;
 
-export const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
 
 /* ------------------------------------------------------------------ */
 /* Shared helpers                                                       */
@@ -387,18 +389,20 @@ async function deliver(db: DB, req: express.Request, hooks: InvitationHooks, row
   const org = db.prepare(`SELECT name FROM organization WHERE id = ?`).get(row.organizationId) as any;
   let sent = false;
   try {
-    sent = await hooks.sendInvitation({
+    sent = Boolean(row.email) && await hooks.sendInvitation({
       email: row.email, organizationName: org?.name || '', tenantRole: row.role, inviteUrl, expiresAt: row.expiresAt, inviterName: identity.name,
     });
   } catch {
     sent = false;
   }
-  return { invitation: invitationDto(row), inviteUrl, delivery: sent ? 'sent' as const : 'not_sent' as const };
+  return { invitation: invitationDto(row), inviteUrl, delivery: sent ? 'sent' as const : 'not_sent' as const,
+    ...(!row.email ? { inviteCode: row.id, expiresAt: row.expiresAt } : {}) };
 }
 
-export function createInvitation(db: DB, ctx: OrgContext, actor: AuditActor, body: unknown) {
-  const input = onlyBodyKeys(body, ['email', 'tenantRole', 'departmentIds']);
-  const email = normalizeEmail(input.email);
+export function createInvitation(db: DB, ctx: OrgContext, actor: AuditActor, body: unknown, codeOnly = false) {
+  if (codeOnly && ctx.tenantRole !== 'admin' && ctx.accessMode !== 'platform') throw new ApiError(403, 'INSUFFICIENT_PERMISSION');
+  const input = onlyBodyKeys(body, codeOnly ? ['tenantRole', 'departmentIds'] : ['email', 'tenantRole', 'departmentIds']);
+  const email = codeOnly ? '' : normalizeEmail(input.email);
   const departmentIds = validateDepartmentIds(db, ctx.organizationId, input.departmentIds ?? []);
   enforce(checkInvite(ctx, input.tenantRole, departmentIds));
   return db.transaction(() => {
@@ -408,7 +412,7 @@ export function createInvitation(db: DB, ctx: OrgContext, actor: AuditActor, bod
     if (existingMember) throw new ApiError(409, 'MEMBERSHIP_EXISTS', 'This person is already a member of the organization.');
     const pending = (db.prepare(`SELECT status, expiresAt FROM invitation WHERE organizationId = ? AND LOWER(email) = ? AND status = 'pending'`).all(ctx.organizationId, email) as any[])
       .some((row) => invitationStatus(row) === 'pending');
-    if (pending) throw new ApiError(409, 'INVITATION_EXISTS', 'A pending invitation already exists for this email.');
+    if (email && pending) throw new ApiError(409, 'INVITATION_EXISTS', 'A pending invitation already exists for this email.');
     const id = crypto.randomBytes(24).toString('base64url'); // 192-bit opaque token
     const now = new Date();
     db.prepare(`
@@ -469,6 +473,7 @@ function inviterStillAuthorized(db: DB, row: any): boolean {
   if (inviter.role === 'superuser') return true;
   const membership = membershipOf(db, inviter.id, row.organizationId);
   if (!membership || membership.status !== 'active' || !isTenantRole(membership.role)) return false;
+  if (!row.email && membership.role !== 'admin') return false;
   const ctx = membershipContext({
     organizationId: row.organizationId, userId: inviter.id, platformRole: 'user', membershipId: membership.id,
     tenantRole: membership.role, departmentIds: departmentIdsOf(db, inviter.id, row.organizationId),
@@ -482,8 +487,7 @@ export function acceptInvitation(db: DB, identity: Identity, token: string, req:
     const row = db.prepare(`SELECT * FROM invitation WHERE id = ?`).get(token) as any;
     if (!row) throw new ApiError(404, 'RESOURCE_NOT_FOUND');
     if (invitationStatus(row) !== 'pending') throw new ApiError(409, 'INVITATION_NOT_ACCEPTABLE', 'This invitation can no longer be accepted.');
-    if (identity.email !== String(row.email).toLowerCase()) throw new ApiError(403, 'INVITATION_IDENTITY_MISMATCH', 'This invitation was issued to a different account.');
-    if (!identity.emailVerified) throw new ApiError(403, 'EMAIL_VERIFICATION_REQUIRED', 'Verify your email address before accepting.');
+    if (row.email && identity.email !== String(row.email).toLowerCase()) throw new ApiError(403, 'INVITATION_IDENTITY_MISMATCH', 'This invitation was issued to a different account.');
     if (!isTenantRole(row.role)) throw new ApiError(409, 'INVITATION_NOT_ACCEPTABLE', 'This invitation can no longer be accepted.');
     const departmentIds = invitationDepartmentIds(row);
     const departmentsValid = departmentIds.every((id) => db.prepare(`SELECT 1 FROM team WHERE id = ? AND organizationId = ?`).get(id, row.organizationId));
@@ -612,6 +616,33 @@ export function createOrganizationAdminRouter(options: OrganizationAdminRouterOp
   };
 
   router.get('/me', handle((req, res) => res.json(identityResponse(db, identityOf(req)))));
+  router.post('/me/organization', handle((req, res) => {
+    const identity = identityOf(req);
+    const body = req.body;
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw invalid('Organization must be an object.');
+    const fields = ['name', 'legalEntity', 'brandName', 'countryCode', 'industry', 'language'];
+    for (const key of Object.keys(body)) if (!fields.includes(key)) throw invalid(`Unknown field: ${key}`);
+    for (const key of fields) if (typeof body[key] !== 'string' || !body[key].trim()) throw invalid(`${key} is required.`);
+    const name = body.name.trim();
+    if (name.length > 200) throw invalid('Organization name must be at most 200 characters.');
+    const defaults = defaultSettingsPayload();
+    const { profile } = validateProfilePatch({ legalEntity: body.legalEntity, brandName: body.brandName }, defaults.profile);
+    const { policy } = validatePolicyPatch({ countryCode: body.countryCode, industry: body.industry, language: body.language }, defaults.policy);
+    const organizationId = db.transaction(() => {
+      if (db.prepare("SELECT 1 FROM member WHERE userId = ? AND status = 'active'").get(identity.userId)) {
+        throw new ApiError(409, 'MEMBERSHIP_EXISTS', 'You already have an organization.');
+      }
+      const id = createOrganizationRecord(db, { name, legalEntity: profile.legalEntity, brandName: profile.brandName,
+        settings: { countryCode: policy.countryCode, industry: policy.industry, language: policy.language } }, identity.userId);
+      addMembershipRecord(db, { userId: identity.userId, organizationId: id, tenantRole: 'admin' });
+      appendAudit(db, auditActorFor(req, identity), { organizationId: id, action: 'organization.create', targetType: 'organization', targetId: id,
+        outcome: 'success', changedFields: [...fields, 'admin'] });
+      return id;
+    })();
+    changed(organizationId);
+    res.status(201).json({ organizationId });
+  }));
+
   router.post('/me/active-organization', handle((req, res) => res.json(selectActiveOrganization(db, identityOf(req), req))));
   /* Account Security: the caller's own sessions only (PRD §6.7). */
   router.get('/me/sessions', handle((req, res) => {
@@ -678,6 +709,11 @@ export function createOrganizationAdminRouter(options: OrganizationAdminRouterOp
   }));
 
   router.get(`${org}/invitations`, handle((req, res) => res.json(listInvitations(db, contextOf(req).ctx, req.query))));
+  router.post(`${org}/invite-codes`, handle(async (req, res) => {
+    const { identity, ctx, actor } = contextOf(req);
+    const row = createInvitation(db, ctx, actor, req.body, true);
+    res.status(201).json(await deliver(db, req, options, row, identity));
+  }));
   router.post(`${org}/invitations`, handle(async (req, res) => {
     const { identity, ctx, actor } = contextOf(req);
     const row = createInvitation(db, ctx, actor, req.body);

@@ -444,16 +444,14 @@ describe('invitations (AC-015, AC-016, AC-017, AC-018)', () => {
     assert.equal((await server.call(S.nomember, `/api/invitations/${token}/accept`, { method: 'POST' })).status, 409);
   });
 
-  it('refuses unverified, canceled, expired and revoked-inviter invitations', async () => {
+  it('refuses canceled, expired and revoked-inviter invitations without email verification', async () => {
     const make = async (who: Session, email: string, role = 'viewer') => {
       const res = await server.call(who, `/api/organizations/${A}/invitations`, { method: 'POST', body: { email, tenantRole: role, departmentIds: ['team-a-legal'] } });
       assert.equal(res.status, 201, JSON.stringify(res.data));
       return { id: res.data.invitation.id as string, token: new URL(res.data.inviteUrl).searchParams.get('accept_invite')! };
     };
     const unverified = await make(S.adminA, 'unverified@example.test');
-    assert.equal((await server.call(S.unverified, `/api/invitations/${unverified.token}/accept`, { method: 'POST' })).data.error, 'EMAIL_VERIFICATION_REQUIRED');
     assert.equal((await server.call(S.adminA, `/api/organizations/${A}/invitations/${unverified.id}`, { method: 'DELETE' })).status, 204);
-    server.db.prepare(`UPDATE "user" SET emailVerified = 1 WHERE id = ?`).run(ids.unverified);
     assert.equal((await server.call(S.unverified, `/api/invitations/${unverified.token}/accept`, { method: 'POST' })).data.error, 'INVITATION_NOT_ACCEPTABLE');
     const expired = await make(S.adminA, 'unverified@example.test');
     server.db.prepare(`UPDATE invitation SET expiresAt = ? WHERE id = ?`).run(new Date(Date.now() - 1000).toISOString(), expired.id);
@@ -470,17 +468,18 @@ describe('invitations (AC-015, AC-016, AC-017, AC-018)', () => {
     assert.equal((await server.call(null, '/api/invitations/not-a-token-xyz/preview')).status, 404);
   });
 
-  it('email/password signup creates a pending platform user unless invited (AC-018)', async () => {
+  it('email/password signup always waits for superuser approval, including invited accounts', async () => {
     const signup = async (email: string) => fetch(`${server.base}/api/auth/sign-up/email`, {
       method: 'POST', headers: { 'content-type': 'application/json', origin: server.base }, body: JSON.stringify({ name: 'Sign Up', email, password: 'correct-horse-9' }),
     });
     await signup('stranger@example.test');
-    const stranger = server.db.prepare(`SELECT role, banned, banReason, emailVerified FROM "user" WHERE email = ?`).get('stranger@example.test') as any;
+    const stranger = server.db.prepare(`SELECT id, role, banned, banReason, emailVerified FROM "user" WHERE email = ?`).get('stranger@example.test') as any;
     assert.deepEqual([stranger.role, stranger.banned, stranger.banReason, stranger.emailVerified], ['user', 1, 'PENDING_APPROVAL', 0]);
+    assert.equal((server.db.prepare('SELECT COUNT(*) AS n FROM member WHERE userId = ?').get(stranger.id) as any).n, 0);
     await server.call(S.adminA, `/api/organizations/${A}/invitations`, { method: 'POST', body: { email: 'invited.signup@example.test', tenantRole: 'viewer', departmentIds: ['team-a-legal'] } });
     await signup('invited.signup@example.test');
     const invited = server.db.prepare(`SELECT id, role, banned, emailVerified FROM "user" WHERE email = ?`).get('invited.signup@example.test') as any;
-    assert.deepEqual([invited.role, invited.banned, invited.emailVerified], ['user', 0, 0]);
+    assert.deepEqual([invited.role, invited.banned, invited.emailVerified], ['user', 1, 0]);
     assert.equal((server.db.prepare('SELECT COUNT(*) AS n FROM member WHERE userId = ?').get(invited.id) as any).n, 0);
   });
 });

@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: apps/backend/Dockerfile
     env_file: apps/backend/.env
+    ports:
+      - "127.0.0.1:3000:3000"
     volumes:
       - legalio-data:/data
     restart: unless-stopped

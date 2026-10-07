@@ -31,7 +31,7 @@ jobs:
           if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             apps=$(git diff --name-only "$BASE" HEAD | node scripts/affected-apps.mjs)
           else
-            apps='["frontend","backend"]'
+            apps='["frontend","backend","system-console"]'
           fi
           echo "apps=$apps" >> "$GITHUB_OUTPUT"
 

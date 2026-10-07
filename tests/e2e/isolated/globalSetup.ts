@@ -10,6 +10,7 @@
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
+import { resolve } from 'node:path';
 import { IsolatedServer, seedFixtures } from '../../tenant-boundaries/harness';
 import { API_PORT, WEB_URL, WEB_PORT, type LiveState } from './state';
 
@@ -26,7 +27,7 @@ async function waitFor(url: string, child: ChildProcess, log: () => string) {
 }
 
 export default async function globalSetup() {
-  const server = await IsolatedServer.start({ port: API_PORT });
+  const server = await IsolatedServer.start({ port: API_PORT, systemConsoleDir: resolve('apps/system-console/dist') });
   try {
     const ids = seedFixtures(server);
     await server.restart(); // rebuild the read projection from the seeded canonical rows
@@ -55,6 +56,8 @@ export default async function globalSetup() {
     await contract(superuser, 'org-b', ids.pB, 'Beta Legal Agreement');
 
     if (process.env.TB_E2E_SKIP_BUILD !== '1') {
+      const consoleBuild = spawnSync('npm', ['run', 'build:sys'], { stdio: 'inherit' });
+      if (consoleBuild.status !== 0) throw new Error('npm run build:sys failed');
       const build = spawnSync('npm', ['run', 'build:frontend'], { stdio: 'inherit' });
       if (build.status !== 0) throw new Error('npm run build:frontend failed');
     }

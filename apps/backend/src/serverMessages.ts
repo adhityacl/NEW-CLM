@@ -10,6 +10,7 @@ type Entry = readonly [en: string, id: string, zh: string];
 
 /** `{0}`, `{1}`… stand for the values the route puts in the message, in the order they appear in the original. */
 const MESSAGES: Entry[] = [
+  ['Your account is waiting for manual superuser approval.', 'Akun Anda menunggu persetujuan manual superuser.', '您的账户正在等待超级用户手动批准。'],
   ['Forbidden: Account Banned', 'Ditolak: Akun Dicekal', '禁止访问：账户已被封禁'],
   ['Your account has been deactivated/banned by an Administrator. Please contact the IT/Admin team.', 'Akun Anda telah dinonaktifkan/banned oleh Administrator. Silakan hubungi tim IT/Admin.', '您的账户已被管理员停用 / 封禁。请联系 IT / 管理团队。'],
   ['Authentication is required.', 'Autentikasi diperlukan.', '需要身份验证。'],

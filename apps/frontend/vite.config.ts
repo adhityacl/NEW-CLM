@@ -55,6 +55,7 @@ export default defineConfig(() => {
       // before a request ever reaches Vite's middleware, so this proxy is
       // simply never consulted — safe to always define.
       proxy: {
+        '/sys': `http://localhost:${process.env.PORT || 3000}`,
         '/api': `http://localhost:${process.env.PORT || 3000}`,
         '/uploads': `http://localhost:${process.env.PORT || 3000}`,
       },

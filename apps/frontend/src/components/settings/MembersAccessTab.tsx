@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect, useId, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, Copy, History, Layers, Loader2, Mail, MoreHorizontal, Pencil, Plus, RefreshCw, Search, Trash2, UserMinus, UserCheck, UserX, X } from 'lucide-react';
+import { AlertCircle, Copy, KeyRound, History, Layers, Loader2, Mail, MoreHorizontal, Pencil, Plus, RefreshCw, Search, Trash2, UserMinus, UserCheck, UserX, X } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useIdentity } from '../../context/AuthContext';
 import { useConfirm } from '../../context/ConfirmDialogContext';
@@ -67,7 +67,7 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [page, setPage] = useState(0);
-  const [dialog, setDialog] = useState<null | { kind: 'invite' } | { kind: 'departments' } | { kind: 'history' } | { kind: 'edit'; member: Member } | { kind: 'link'; url: string }>(
+  const [dialog, setDialog] = useState<null | { kind: 'invite'; codeOnly?: boolean } | { kind: 'departments' } | { kind: 'history' } | { kind: 'edit'; member: Member } | { kind: 'link'; url: string; code?: string; expiresAt?: string }>(
     intent === 'departments' ? { kind: 'departments' } : intent === 'history' ? { kind: 'history' } : null,
   );
   const searchId = useId();
@@ -148,10 +148,10 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
 
   const resend = async (inv: Invitation) => {
     try {
-      const result = await orgApi<{ inviteUrl: string; delivery: 'sent' | 'not_sent' }>(orgPath(organizationId, `/invitations/${inv.id}/resend`), { method: 'POST' });
+      const result = await orgApi<{ inviteUrl: string; delivery: 'sent' | 'not_sent'; inviteCode?: string; expiresAt?: string }>(orgPath(organizationId, `/invitations/${inv.id}/resend`), { method: 'POST' });
       await refresh();
       if (result.delivery === 'sent') toast.success(t('tb.invitation_resent', 'Invitation sent again.'));
-      else setDialog({ kind: 'link', url: result.inviteUrl });
+      else setDialog({ kind: 'link', url: result.inviteUrl, code: result.inviteCode, expiresAt: result.expiresAt });
     } catch (err) {
       toast.error(errorText(err));
     }
@@ -176,7 +176,7 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
             aria-label={t('tb.member_status_filter', 'Member status')}
             className="flex h-11 shrink-0 items-center rounded-xl border border-slate-200 bg-slate-100 p-0.75 dark:border-slate-700 dark:bg-slate-800"
           >
-            {([['active', t('tb.filter_active', 'Active')], ['suspended', t('tb.filter_suspended', 'Suspended')], ...(can('tenant.invitation.read') ? [['pending', t('tb.filter_pending', 'Pending invitations')]] : [])] as Array<[Filter, string]>).map(([value, label]) => (
+            {([['active', t('tb.filter_active', 'Active')], ['suspended', t('tb.filter_suspended', 'Suspended')], ...(can('tenant.invitation.read') ? [['pending', t('tb.filter_pending', 'Pending')]] : [])] as Array<[Filter, string]>).map(([value, label]) => (
               <button key={value} type="button" aria-pressed={filter === value} onClick={() => { setFilter(value); setPage(0); }}
                 className={`ui-button ui-button-md cursor-pointer font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ring)/40 ${filter === value ? 'theme-action bg-accent-strong text-white' : 'text-slate-700 hover:bg-accent-soft dark:text-slate-300'}`}>
                 {label}
@@ -200,6 +200,7 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
         <div className="flex shrink-0 flex-wrap gap-2">
           {can('tenant.audit.read') && <Button type="button" size="lg" variant="outline" onClick={() => setDialog({ kind: 'history' })}><History className="h-4 w-4" aria-hidden="true" />{t('tb.history', 'History')}</Button>}
           {can('department.view') && <Button type="button" size="lg" variant="outline" onClick={() => setDialog({ kind: 'departments' })}><Layers className="h-4 w-4" aria-hidden="true" />{t('tb.departments', 'Departments')}</Button>}
+          {(myRole === 'admin' || isPlatform) && <Button type="button" size="lg" variant="outline" onClick={() => setDialog({ kind: 'invite', codeOnly: true })}><KeyRound className="h-4 w-4" aria-hidden="true" />{t('onboarding.generate_code', 'Generate invite code')}</Button>}
           {can('tenant.member.invite') && <Button type="button" size="lg" onClick={() => setDialog({ kind: 'invite' })}><Mail className="h-4 w-4" aria-hidden="true" />{t('tb.invite_member', 'Invite member')}</Button>}
         </div>
       </div>
@@ -223,10 +224,10 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
               <TableBody>
                 {(invitationsQuery.data?.invitations || []).map((inv) => (
                   <TableRow key={inv.id}>
-                    <TableCell className="font-medium">{inv.email}</TableCell>
+                    <TableCell className="font-medium">{inv.email || t('onboarding.invite_code', 'Invite code')}</TableCell>
                     <TableCell>{roleLabel(inv.tenantRole)}</TableCell>
                     <TableCell>{names(inv.departmentIds)}</TableCell>
-                    <TableCell>{new Date(inv.expiresAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(inv.expiresAt).toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {can('tenant.invitation.resend') && <Button type="button" variant="ghost" size="sm" onClick={() => resend(inv)}><RefreshCw className="h-4 w-4" aria-hidden="true" />{t('tb.resend', 'Resend')}</Button>}
@@ -294,11 +295,11 @@ export const MembersAccessTab: React.FC<{ organizationId: string; intent?: strin
       </div>
 
       {dialog?.kind === 'invite' && (
-        <InviteDialog organizationId={organizationId} departments={departments} assignable={caps.assignableTenantRoles} roleLabel={roleLabel}
-          onClose={() => setDialog(null)}
-          onCreated={(result) => { void refresh(); if (result.delivery === 'sent') { toast.success(t('tb.invitation_sent', 'Invitation sent.')); setDialog(null); } else setDialog({ kind: 'link', url: result.inviteUrl }); }} />
+        <InviteDialog codeOnly={dialog.codeOnly} organizationId={organizationId} departments={departments} assignable={caps.assignableTenantRoles} roleLabel={roleLabel}
+          onClose={() => { setDialog(null); void refresh(); }}
+          onCreated={(result) => { void refresh(); if (result.delivery === 'sent') { toast.success(t('tb.invitation_sent', 'Invitation sent.')); setDialog(null); } else setDialog({ kind: 'link', url: result.inviteUrl, code: result.inviteCode, expiresAt: result.expiresAt }); }} />
       )}
-      {dialog?.kind === 'link' && <InviteLinkDialog url={dialog.url} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'link' && <InviteLinkDialog url={dialog.url} code={dialog.code} expiresAt={dialog.expiresAt} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'edit' && (
         <EditMemberDialog organizationId={organizationId} member={dialog.member} departments={departments} roleLabel={roleLabel}
           assignable={caps.assignableTenantRoles} canDepartments={can('tenant.member.departments.update')} canRole={can('tenant.member.role.update')}
@@ -323,9 +324,9 @@ const DialogHeader: React.FC<{ title: string; onClose: () => void }> = ({ title,
 };
 
 const InviteDialog: React.FC<{
-  organizationId: string; departments: Department[]; assignable: TenantRole[]; roleLabel: (r: string) => string;
-  onClose: () => void; onCreated: (result: { inviteUrl: string; delivery: 'sent' | 'not_sent' }) => void;
-}> = ({ organizationId, departments, assignable, roleLabel, onClose, onCreated }) => {
+  organizationId: string; codeOnly?: boolean; departments: Department[]; assignable: TenantRole[]; roleLabel: (r: string) => string;
+  onClose: () => void; onCreated: (result: { inviteUrl: string; delivery: 'sent' | 'not_sent'; inviteCode?: string; expiresAt?: string }) => void;
+}> = ({ organizationId, codeOnly = false, departments, assignable, roleLabel, onClose, onCreated }) => {
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<TenantRole>(assignable.includes('viewer') ? 'viewer' : assignable[0]);
@@ -333,7 +334,7 @@ const InviteDialog: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const ids = { email: useId(), role: useId() };
-  const emailValid = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email.trim());
+  const emailValid = codeOnly || /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email.trim());
   const deptValid = role === 'admin' ? true : departmentIds.length > 0;
 
   const submit = async (event: React.FormEvent) => {
@@ -342,7 +343,7 @@ const InviteDialog: React.FC<{
     setBusy(true);
     setError(null);
     try {
-      onCreated(await orgApi(orgPath(organizationId, '/invitations'), { method: 'POST', body: { email: email.trim(), tenantRole: role, departmentIds: role === 'admin' ? [] : departmentIds } }));
+      onCreated(await orgApi(orgPath(organizationId, codeOnly ? '/invite-codes' : '/invitations'), { method: 'POST', body: { ...(!codeOnly ? { email: email.trim() } : {}), tenantRole: role, departmentIds: role === 'admin' ? [] : departmentIds } }));
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -352,13 +353,13 @@ const InviteDialog: React.FC<{
 
   return (
     <ModalFrame onClose={onClose} className="max-w-xl">
-      <DialogHeader title={t('tb.invite_member', 'Invite member')} onClose={onClose} />
+      <DialogHeader title={codeOnly ? t('onboarding.generate_code', 'Generate invite code') : t('tb.invite_member', 'Invite member')} onClose={onClose} />
       <form onSubmit={submit} noValidate className="flex flex-col gap-4 overflow-y-auto p-5">
-        <div>
+        {!codeOnly && <div>
           <label htmlFor={ids.email} className={labelClass}>{t('tb.col_email', 'Email')}</label>
           <input id={ids.email} type="email" autoComplete="off" className={fieldClass} value={email} aria-invalid={email.length > 0 && !emailValid} aria-describedby={email.length > 0 && !emailValid ? `${ids.email}-error` : undefined} onChange={(e) => setEmail(e.target.value)} />
           {email.length > 0 && !emailValid && <p id={`${ids.email}-error`} className="mt-1.5 text-xs text-rose-700 dark:text-rose-300">{t('tb.invalid_email', 'Enter a valid email address.')}</p>}
-        </div>
+        </div>}
         <div>
           <label htmlFor={ids.role} className={labelClass}>{t('tb.col_role', 'Role')}</label>
           <select id={ids.role} className={fieldClass} value={role} onChange={(e) => setRole(e.target.value as TenantRole)}>
@@ -374,28 +375,31 @@ const InviteDialog: React.FC<{
         {error && <p role="alert" className="flex items-center gap-2 text-sm text-rose-700 dark:text-rose-300"><AlertCircle className="h-4 w-4" aria-hidden="true" />{error}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" size="lg" variant="outline" onClick={onClose}>{t('tb.cancel', 'Cancel')}</Button>
-          <Button type="submit" size="lg" disabled={busy || !emailValid || !deptValid}>{busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}{t('tb.send_invitation', 'Send invitation')}</Button>
+          <Button type="submit" size="lg" disabled={busy || !emailValid || !deptValid}>{busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}{codeOnly ? t('onboarding.generate_code', 'Generate invite code') : t('tb.send_invitation', 'Send invitation')}</Button>
         </div>
       </form>
     </ModalFrame>
   );
 };
 
-const InviteLinkDialog: React.FC<{ url: string; onClose: () => void }> = ({ url, onClose }) => {
+const InviteLinkDialog: React.FC<{ url: string; code?: string; expiresAt?: string; onClose: () => void }> = ({ url, code, expiresAt, onClose }) => {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const id = useId();
   return (
     <ModalFrame onClose={onClose} className="max-w-xl">
-      <DialogHeader title={t('tb.invitation_not_sent_title', 'Invitation created; email not sent')} onClose={onClose} />
+      <DialogHeader title={code ? t('onboarding.code_created', 'Invite code created') : t('tb.invitation_not_sent_title', 'Invitation created; email not sent')} onClose={onClose} />
       <div className="flex flex-col gap-3 p-5">
-        <p className="text-sm text-slate-700 dark:text-slate-300">{t('tb.invitation_not_sent', 'The invitation is saved, but no email was delivered. Share this link with the invited person yourself.')}</p>
-        <label htmlFor={id} className={labelClass}>{t('tb.invitation_link', 'Invitation link')}</label>
-        <input id={id} readOnly className={`${fieldClass} font-mono text-xs`} value={url} onFocus={(e) => e.currentTarget.select()} />
-        <div className="flex justify-end gap-2" aria-live="polite">
-          <Button type="button" variant="outline" onClick={async () => { await navigator.clipboard?.writeText(url).catch(() => {}); setCopied(true); }}>
-            <Copy className="h-4 w-4" aria-hidden="true" />{copied ? t('tb.copied', 'Copied') : t('tb.copy_link', 'Copy link')}
+        <p className="text-sm text-slate-700 dark:text-slate-300">{code ? t('onboarding.code_hint', 'Share this code with an approved account. It expires in 24 hours and can be used once.') : t('tb.invitation_not_sent', 'The invitation is saved, but no email was delivered. Share this link with the invited person yourself.')}</p>
+        <label htmlFor={id} className={labelClass}>{code ? t('onboarding.invite_code', 'Invite code') : t('tb.invitation_link', 'Invitation link')}</label>
+        <div className="flex items-center rounded-xl border border-slate-200 bg-white pr-1 focus-within:border-accent dark:border-slate-700 dark:bg-slate-800">
+          <input id={id} readOnly className="min-h-11 min-w-0 flex-1 rounded-xl bg-transparent px-3 py-2.5 font-mono text-xs text-slate-900 focus:outline-none dark:text-slate-100" value={code || url} onFocus={(e) => e.currentTarget.select()} />
+          <Button type="button" variant="ghost" className="min-h-11 shrink-0" aria-live="polite" onClick={async () => { await navigator.clipboard?.writeText(code || url).catch(() => {}); setCopied(true); }}>
+            <Copy className="h-4 w-4" aria-hidden="true" />{copied ? t('tb.copied', 'Copied') : code ? t('onboarding.copy_code', 'Copy code') : t('tb.copy_link', 'Copy link')}
           </Button>
+        </div>
+        {expiresAt && <p className="text-sm text-slate-600 dark:text-slate-400">{t('tb.col_expires', 'Expires')}: {new Date(expiresAt).toLocaleString()}</p>}
+        <div className="flex justify-end gap-2">
           <Button type="button" size="lg" onClick={onClose}>{t('tb.done', 'Done')}</Button>
         </div>
       </div>

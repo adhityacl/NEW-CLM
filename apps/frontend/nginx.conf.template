@@ -2,6 +2,16 @@ server {
     listen 80;
     client_max_body_size 32m;
     root /usr/share/nginx/html;
+    location = /sys {
+        proxy_pass ${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    location /sys/ {
+        proxy_pass ${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
     location /api/ {
         proxy_pass ${API_UPSTREAM};
         proxy_set_header Host $host;

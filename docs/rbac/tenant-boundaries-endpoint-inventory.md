@@ -17,7 +17,7 @@ How a request is decided (PRD §5.5):
 
 | Method | Path | Classification | Permission | Note | Verified by |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/health` | public | — | — | policy table only |
+| GET | `/api/health` | public | — | — | tests/systemConsoleHosting.test.ts › serves the console without a frontend server and isolates its assets and legacy links |
 | GET | `/api/system/public-status` | public | — | first-run probe: app name + needsSetup only | policy table only |
 | POST | `/api/system/setup` | public | — | atomic; only while no superuser exists | policy table only |
 | GET | `/api/exchange-rates` | public | — | public reference data | policy table only |
@@ -28,13 +28,14 @@ How a request is decided (PRD §5.5):
 | GET | `/api/google-auth/client-id` | public | — | OAuth client id for the sign-in button | policy table only |
 | POST | `/api/auth/google/sync-session` | public | — | Google sign-in: verified Google identity, onboarding rules | policy table only |
 | POST | `/api/google-auth/sync-session` | public | — | Google sign-in: verified Google identity, onboarding rules | policy table only |
-| GET | `/api/invitations/:token/preview` | public | — | token possession; minimal preview | tests/tenant-boundaries/api.test.ts › accepts exactly once for the verified invited identity<br>tests/tenant-boundaries/api.test.ts › refuses unverified, canceled, expired and revoked-inviter invitations |
+| GET | `/api/invitations/:token/preview` | public | — | token possession; minimal preview | tests/tenant-boundaries/api.test.ts › accepts exactly once for the verified invited identity<br>tests/tenant-boundaries/api.test.ts › refuses canceled, expired and revoked-inviter invitations without email verification |
 | GET | `/api/auth-console/invitations/verify` | public | — | legacy adapter to invitation preview | policy table only |
 | GET | `/api/me` | canonical router | — | — | tests/tenant-boundaries/accountProfile.test.ts › self-service profile stores name, photo and bio across server restarts<br>tests/tenant-boundaries/api.test.ts › rejects missing, expired, revoked and banned sessions on every path family |
+| POST | `/api/me/organization` | canonical router | — | explicit onboarding: approved creator becomes tenant admin | tests/organizationOnboarding.test.ts › onboarding requires a valid session and manual approval and never changes platform privileges<br>tests/organizationOnboarding.test.ts › validates all onboarding fields before writing anything |
 | POST | `/api/me/active-organization` | canonical router | — | session default only | tests/tenant-boundaries/api.test.ts › switching changes only the calling session default; no global active tenant |
 | GET | `/api/me/sessions` | canonical router | — | own sessions only | policy table only |
 | DELETE | `/api/me/sessions/:sessionId` | canonical router | — | own sessions only | policy table only |
-| POST | `/api/invitations/:token/accept` | canonical router | — | verified matching identity | tests/tenant-boundaries/api.test.ts › accepts exactly once for the verified invited identity<br>tests/tenant-boundaries/api.test.ts › refuses unverified, canceled, expired and revoked-inviter invitations |
+| POST | `/api/invitations/:token/accept` | canonical router | — | approved identity; matching email or valid invite code | tests/tenant-boundaries/api.test.ts › accepts exactly once for the verified invited identity<br>tests/tenant-boundaries/api.test.ts › refuses canceled, expired and revoked-inviter invitations without email verification |
 | POST | `/api/auth-console/invitations/accept` | self (identity) | — | legacy adapter to invitation acceptance | policy table only |
 | GET | `/api/user/my-role` | self (identity) | — | identity adapter to /api/me | tests/tenant-boundaries/api.test.ts › repeated GETs create no membership, allowlist row, team, selection or mapping |
 | GET | `/api/rbac/me` | self (identity) | — | identity + optional selected-organization capabilities | policy table only |
@@ -181,6 +182,7 @@ Covered by the `* /api/organizations/:organizationId/*` and `/api/me`, `/api/inv
 | Method | Path | Permission | Note | Verified by |
 | --- | --- | --- | --- | --- |
 | GET | `/api/me` | identity | own identity, memberships (incl. suspended), platform permissions | tests/tenant-boundaries/accountProfile.test.ts › self-service profile stores name, photo and bio across server restarts<br>tests/tenant-boundaries/api.test.ts › rejects missing, expired, revoked and banned sessions on every path family |
+| POST | `/api/me/organization` | approved identity without active membership | explicit onboarding; creator becomes tenant admin; atomic settings, membership and audit | tests/organizationOnboarding.test.ts › onboarding requires a valid session and manual approval and never changes platform privileges<br>tests/organizationOnboarding.test.ts › validates all onboarding fields before writing anything |
 | POST | `/api/me/active-organization` | identity | validated session default only | tests/tenant-boundaries/api.test.ts › switching changes only the calling session default; no global active tenant |
 | GET | `/api/me/sessions` | identity | own sessions | policy table only |
 | DELETE | `/api/me/sessions/:sessionId` | identity | own sessions | policy table only |
@@ -196,11 +198,12 @@ Covered by the `* /api/organizations/:organizationId/*` and `/api/me`, `/api/inv
 | PATCH | `/api/organizations/:organizationId/departments/:departmentId` | department.edit | rename blocked while referenced | policy table only |
 | DELETE | `/api/organizations/:organizationId/departments/:departmentId` | department.delete | DEPARTMENT_IN_USE | tests/tenant-boundaries/api.test.ts › creates, rejects duplicates case-insensitively, and refuses to delete a department in use |
 | GET | `/api/organizations/:organizationId/invitations` | tenant.invitation.read | role/department scope | policy table only |
+| POST | `/api/organizations/:organizationId/invite-codes` | tenant admin or platform context | single-use code; expires after 24 hours; no recipient email required | policy table only |
 | POST | `/api/organizations/:organizationId/invitations` | tenant.member.invite | hierarchy + department scope | tests/tenant-boundaries/api.test.ts › rejects invalid targets before any invitation exists<br>tests/tenant-boundaries/api.test.ts › accepts exactly once for the verified invited identity |
-| POST | `/api/organizations/:organizationId/invitations/:invitationId/resend` | tenant.invitation.resend | target scope | tests/tenant-boundaries/api.test.ts › refuses unverified, canceled, expired and revoked-inviter invitations |
-| DELETE | `/api/organizations/:organizationId/invitations/:invitationId` | tenant.invitation.cancel | marks canceled | tests/tenant-boundaries/api.test.ts › refuses unverified, canceled, expired and revoked-inviter invitations |
-| GET | `/api/invitations/:token/preview` | public (token possession) | minimal preview | tests/tenant-boundaries/api.test.ts › accepts exactly once for the verified invited identity<br>tests/tenant-boundaries/api.test.ts › refuses unverified, canceled, expired and revoked-inviter invitations |
-| POST | `/api/invitations/:token/accept` | identity | verified matching email | tests/tenant-boundaries/api.test.ts › accepts exactly once for the verified invited identity<br>tests/tenant-boundaries/api.test.ts › refuses unverified, canceled, expired and revoked-inviter invitations |
+| POST | `/api/organizations/:organizationId/invitations/:invitationId/resend` | tenant.invitation.resend | target scope | tests/tenant-boundaries/api.test.ts › refuses canceled, expired and revoked-inviter invitations without email verification |
+| DELETE | `/api/organizations/:organizationId/invitations/:invitationId` | tenant.invitation.cancel | marks canceled | tests/tenant-boundaries/api.test.ts › refuses canceled, expired and revoked-inviter invitations without email verification |
+| GET | `/api/invitations/:token/preview` | public (token possession) | minimal preview | tests/tenant-boundaries/api.test.ts › accepts exactly once for the verified invited identity<br>tests/tenant-boundaries/api.test.ts › refuses canceled, expired and revoked-inviter invitations without email verification |
+| POST | `/api/invitations/:token/accept` | identity | verified matching email | tests/tenant-boundaries/api.test.ts › accepts exactly once for the verified invited identity<br>tests/tenant-boundaries/api.test.ts › refuses canceled, expired and revoked-inviter invitations without email verification |
 | GET | `/api/organizations/:organizationId/integrations/google` | tenant.integration.read | syncSupported: false | tests/tenant-boundaries/api.test.ts › settings and integration DTOs carry no platform secrets<br>tests/tenant-boundaries/api.test.ts › integration mappings are validated, unique across organizations, and survive restart |
 | PATCH | `/api/organizations/:organizationId/integrations/google` | tenant.integration.update | unique validated IDs; expectedVersion | tests/tenant-boundaries/api.test.ts › integration mappings are validated, unique across organizations, and survive restart |
 | GET | `/api/organizations/:organizationId/audit` | tenant.audit.read | sanitized projection | tests/tenant-boundaries/api.test.ts › section saves change only their fields and append audit |
@@ -256,10 +259,10 @@ Allowed endpoints run Better Auth with the app's hooks (`self` endpoints additio
 | core | `/api/auth/revoke-session` | allowed (self) | policy table only |
 | core | `/api/auth/revoke-sessions` | denied — 404 RESOURCE_NOT_FOUND | tests/tenant-boundaries/api.test.ts › every installed Better Auth route outside the allowlist is denied |
 | core | `/api/auth/send-verification-email` | allowed (public) | policy table only |
-| core | `/api/auth/sign-in/email` | allowed (public) | policy table only |
+| core | `/api/auth/sign-in/email` | allowed (public) | tests/organizationOnboarding.test.ts › registration needs superuser approval; approved users can onboard without verifying email |
 | core | `/api/auth/sign-in/social` | allowed (public) | policy table only |
 | core | `/api/auth/sign-out` | allowed (public) | policy table only |
-| core | `/api/auth/sign-up/email` | allowed (public) | policy table only |
+| core | `/api/auth/sign-up/email` | allowed (public) | tests/organizationOnboarding.test.ts › registration needs superuser approval; approved users can onboard without verifying email |
 | core | `/api/auth/unlink-account` | denied — 404 RESOURCE_NOT_FOUND | tests/tenant-boundaries/api.test.ts › every installed Better Auth route outside the allowlist is denied |
 | core | `/api/auth/update-session` | denied — 404 RESOURCE_NOT_FOUND | tests/tenant-boundaries/api.test.ts › every installed Better Auth route outside the allowlist is denied |
 | core | `/api/auth/update-user` | allowed (self) | tests/tenant-boundaries/accountProfile.test.ts › self-service profile stores name, photo and bio across server restarts |

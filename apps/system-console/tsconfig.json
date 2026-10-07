@@ -1,0 +1,1 @@
+{"extends":"@legalio/ts-config/frontend.json","include":["src","*.ts"],"exclude":["dist","node_modules"]}

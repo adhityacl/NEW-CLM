@@ -49,13 +49,13 @@ export class IsolatedServer {
   logs = '';
   db!: Database.Database;
   base = '';
-  constructor(public dir: string, public port: number, public serverFile: string) {}
+  constructor(public dir: string, public port: number, public serverFile: string, public systemConsoleDir?: string) {}
 
   /** `port` pins the API port (the browser suite's preview proxy needs it up front). */
-  static async start(options: { port?: number } = {}): Promise<IsolatedServer> {
+  static async start(options: { port?: number; systemConsoleDir?: string } = {}): Promise<IsolatedServer> {
     const dir = await mkdtemp(join(tmpdir(), 'tenant-boundaries-'));
     await mkdir(join(dir, 'data'), { recursive: true });
-    const server = new IsolatedServer(dir, options.port ?? await freePort(), await bundle());
+    const server = new IsolatedServer(dir, options.port ?? await freePort(), await bundle(), options.systemConsoleDir);
     server.base = `http://127.0.0.1:${server.port}`;
     await server.launch();
     server.db = new Database(join(dir, 'auth.db'));
@@ -70,10 +70,12 @@ export class IsolatedServer {
       env: {
         PATH: process.env.PATH,
         NODE_PATH: join(ROOT, 'node_modules'),
+        NODE_V8_COVERAGE: process.env.NODE_V8_COVERAGE,
         APP_TEST_MODE: '1',
         AUTH_DB_PATH: join(this.dir, 'auth.db'),
         APP_DATA_DIR: join(this.dir, 'data'),
         API_ONLY: 'true',
+        SYSTEM_CONSOLE_DIR: this.systemConsoleDir,
         PORT: String(this.port),
         SEED_DEMO_ADMIN: 'false',
         BETTER_AUTH_SECRET: 'isolated-tenant-boundaries-test-secret-0123456789',

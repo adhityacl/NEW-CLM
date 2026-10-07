@@ -93,7 +93,7 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
     if (!data || !profile || !policy) return { profile: false, region: false, contracts: false, notifications: false };
     const p = data.policy;
     return {
-      profile: profile.name !== data.name || (['legalEntity', 'brandName', 'tagline', 'logoUrl', 'primaryColor'] as const).some((k) => profile[k] !== data.profile[k]),
+      profile: profile.name !== data.name || (['legalEntity', 'brandName', 'logoUrl', 'primaryColor'] as const).some((k) => profile[k] !== data.profile[k]),
       region: (['countryCode', 'industry', 'language', 'timezone', 'defaultCurrency', 'reportingCurrency'] as const).some((k) => policy[k] !== p[k]),
       contracts: policy.expiryWarningDays !== p.expiryWarningDays || (policy.governingLaw || '') !== (p.governingLaw || '') || (policy.disputeVenue || '') !== (p.disputeVenue || '')
         || JSON.stringify(policy.ddOverrides) !== JSON.stringify(p.ddOverrides) || JSON.stringify(policy.customDueDiligence) !== JSON.stringify(p.customDueDiligence),
@@ -107,7 +107,7 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
   useEffect(() => registerDirtyCheck(() => Object.values(dirtyRef.current).some(Boolean)), []);
 
   const ids = {
-    name: useId(), legal: useId(), brand: useId(), tagline: useId(), logo: useId(), color: useId(), slug: useId(),
+    name: useId(), legal: useId(), brand: useId(), logo: useId(), color: useId(), slug: useId(),
     country: useId(), industry: useId(), language: useId(), timezone: useId(), tzList: useId(), currency: useId(), reporting: useId(),
     expiry: useId(), law: useId(), venue: useId(), reminders: useId(), list: useId(), legalEmail: useId(), financeEmail: useId(),
   };
@@ -251,10 +251,6 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
             <label htmlFor={ids.brand} className={labelClass}>{t('tb.brand_name', 'Brand name')}</label>
             <input id={ids.brand} className={fieldClass} maxLength={200} value={profile.brandName} onChange={(e) => setProfile({ ...profile, brandName: e.target.value })} />
           </div>
-          <div className="md:col-span-2">
-            <label htmlFor={ids.tagline} className={labelClass}>{t('tb.tagline', 'Tagline')}</label>
-            <input id={ids.tagline} className={fieldClass} maxLength={500} value={profile.tagline} onChange={(e) => setProfile({ ...profile, tagline: e.target.value })} />
-          </div>
           <div>
             <span className={labelClass}>{t('admin.org_logo_label', 'Logo Organisasi / Workspace')}</span>
             <div className="flex items-center gap-3">
@@ -271,7 +267,7 @@ export const OrganizationTab: React.FC<{ organizationId: string }> = ({ organiza
         </div>
       ), () => save('profile', {
         ...(profile.name !== data.name ? { name: profile.name.trim() } : {}),
-        profile: { legalEntity: profile.legalEntity, brandName: profile.brandName, tagline: profile.tagline, logoUrl: profile.logoUrl, primaryColor: profile.primaryColor },
+        profile: { legalEntity: profile.legalEntity, brandName: profile.brandName, logoUrl: profile.logoUrl, primaryColor: profile.primaryColor },
       }), Boolean(profile.name.trim()))}
 
       {sectionShell('region', <Globe2 className="h-5 w-5" />, t('tb.section_region', 'Region and formatting'), t('tb.section_region_desc', 'Country and industry packs, currencies, time zone and generated-content language.'), (

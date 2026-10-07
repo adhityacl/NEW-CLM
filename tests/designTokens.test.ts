@@ -17,7 +17,7 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-const FILES = sourceFiles('apps/frontend/src').concat(sourceFiles('packages/ui-components/src')).map((path) => ({ path, text: readFileSync(path, 'utf8') }));
+const FILES = sourceFiles('apps/frontend/src').concat(sourceFiles('packages/ui-components/src'), sourceFiles('packages/platform-console/src'), sourceFiles('apps/system-console/src')).map((path) => ({ path, text: readFileSync(path, 'utf8') }));
 
 test('filled primary buttons use theme tokens rather than a fixed green palette', () => {
   const offenders = FILES.flatMap(({ path, text }) => text.split('\n')
@@ -51,7 +51,7 @@ test('no text utility below 12px outside the dashboard', () => {
 test('every color token utility used in src is registered in index.css @theme', () => {
   // Only src/index.css's @theme generates utilities (styles/tokens.css is not loaded);
   // an unregistered token silently renders transparent/inherited colors.
-  const theme = readFileSync('apps/frontend/src/index.css', 'utf8');
+  const theme = readFileSync('packages/platform-console/src/index.css', 'utf8');
   const TOKENS = ['accent', 'accent-text', 'accent-strong', 'accent-strong-hover', 'accent-soft', 'accent-dark', 'ink', 'ink-soft', 'ink-faint', 'hairline', 'surface', 'surface-2', 'canvas'];
   const used = new Set<string>();
   for (const { text } of FILES) {
