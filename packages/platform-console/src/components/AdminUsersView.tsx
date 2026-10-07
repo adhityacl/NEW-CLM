@@ -14,6 +14,7 @@ import { AdminApiKeysTab } from './admin/AdminApiKeysTab';
 import { PlatformUsersTab, type PlatformUser } from './admin/PlatformUsersTab';
 import { CreateOrganizationModal, DeleteOrganizationModal, EditOrganizationModal, GenerateApiKeyModal } from './admin/AdminModals';
 
+const LazySQLiteBackups = lazy(() => import('./SQLiteBackupsPanel').then((m) => ({ default: m.SQLiteBackupsPanel })));
 const LazyPlatformConfigurationPanel = lazy(() => import('./admin/PlatformConfigurationPanel').then((m) => ({ default: m.PlatformConfigurationPanel })));
 
 const CONFIGURATION_SECTIONS: Record<ConsoleConfigurationSection, PlatformConfigurationSection> = {
@@ -135,7 +136,7 @@ export const AdminUsersView: React.FC<{ initialTab?: SystemSubmenu; onManageOrga
         </div>
       )}
 
-      {!configurationSection && (
+      {!configurationSection && activeTab !== 'backups' && (
         <AdminConsoleHeader
           area="system"
           activeTab={activeTab as ConsoleDashboardTab}
@@ -148,7 +149,9 @@ export const AdminUsersView: React.FC<{ initialTab?: SystemSubmenu; onManageOrga
       )}
 
       <div id={`admin-system-${activeTab}-panel`} role="tabpanel" aria-labelledby={`admin-system-${activeTab}-tab`} className="w-full">
-        {configurationSection ? (
+        {activeTab === 'backups' ? (
+          <Suspense fallback={<p role="status">{t('sys.loading', 'Loading…')}</p>}><LazySQLiteBackups /></Suspense>
+        ) : configurationSection ? (
           <Suspense fallback={<div role="status" className="flex min-h-56 items-center justify-center text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /></div>}>
             <LazyPlatformConfigurationPanel activeSection={configurationSection} />
           </Suspense>

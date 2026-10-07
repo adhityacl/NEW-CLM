@@ -3,7 +3,8 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  root: 'console',
   base: '/sys/',
   plugins: [react(), tailwindcss()],
-  build: { outDir: 'dist', sourcemap: false, manifest: true },
+  build: { outDir: '../dist/console', emptyOutDir: true, sourcemap: false, manifest: true },
 });

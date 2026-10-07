@@ -7,7 +7,7 @@ import ts from 'typescript';
 
 const root = resolve('.');
 const json = (path: string) => JSON.parse(readFileSync(join(root, path), 'utf8'));
-const dirs = ['apps/backend', 'apps/frontend', 'apps/system-console', 'packages/platform-console', 'packages/ui-components', 'packages/ts-config', 'packages/types', 'packages/shared'];
+const dirs = ['apps/backend', 'apps/frontend', 'packages/platform-console', 'packages/ui-components', 'packages/ts-config', 'packages/types', 'packages/shared'];
 
 test('deployable apps and shared packages are real npm workspaces with isolated environment and build output', () => {
   assert.deepEqual(json('package.json').workspaces, ['apps/*', 'packages/*']);
@@ -17,6 +17,8 @@ test('deployable apps and shared packages are real npm workspaces with isolated 
     assert.ok(existsSync(join(root, `apps/${app}/.env.example`)));
     assert.ok(existsSync(join(root, `apps/${app}/src`)));
   }
+  assert.ok(!existsSync(join(root, 'apps/system-console/package.json')), 'console belongs to the backend workspace');
+  assert.ok(existsSync(join(root, 'apps/backend/console/src/main.tsx')));
   assert.ok(!existsSync(join(root, '.env')), 'backend secrets belong to apps/backend');
   assert.ok(!existsSync(join(root, 'src')), 'application source must be inside its workspace');
   assert.ok(!existsSync(join(root, 'server.ts')));
@@ -27,9 +29,9 @@ test('workspace imports declare dependencies and never reach into another applic
   for (const dir of dirs.filter((dir) => !dir.endsWith('ts-config'))) {
     const manifest = json(`${dir}/package.json`);
     const dependencies = { ...manifest.dependencies, ...manifest.devDependencies, ...manifest.peerDependencies };
-    const source = join(root, dir, 'src');
-    for (const name of readdirSync(source, { recursive: true }).map(String).filter((name) => /\.tsx?$/.test(name))) {
-      const file = join(source, name);
+    const sources = dir === 'apps/backend' ? ['src', 'console/src'] : ['src'];
+    const files = sources.flatMap((source) => readdirSync(join(root, dir, source), { recursive: true }).map(String).filter((name) => /\.tsx?$/.test(name)).map((name) => join(root, dir, source, name)));
+    for (const file of files) {
       const ast = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest);
       const visit = (node: ts.Node) => {
         const literal = (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) ? node.moduleSpecifier

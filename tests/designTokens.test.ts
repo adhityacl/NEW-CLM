@@ -17,7 +17,7 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-const FILES = sourceFiles('apps/frontend/src').concat(sourceFiles('packages/ui-components/src'), sourceFiles('packages/platform-console/src'), sourceFiles('apps/system-console/src')).map((path) => ({ path, text: readFileSync(path, 'utf8') }));
+const FILES = sourceFiles('apps/frontend/src').concat(sourceFiles('packages/ui-components/src'), sourceFiles('packages/platform-console/src'), sourceFiles('apps/backend/console/src')).map((path) => ({ path, text: readFileSync(path, 'utf8') }));
 
 test('filled primary buttons use theme tokens rather than a fixed green palette', () => {
   const offenders = FILES.flatMap(({ path, text }) => text.split('\n')

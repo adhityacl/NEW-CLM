@@ -10,7 +10,7 @@ export default async function setup() {
     const build = spawnSync('npm', ['run', 'build:sys'], { stdio: 'inherit' });
     if (build.status !== 0) throw new Error('Console build failed');
   }
-  const server = await IsolatedServer.start({ port: API_PORT, systemConsoleDir: resolve('apps/system-console/dist') });
+  const server = await IsolatedServer.start({ port: API_PORT, systemConsoleDir: resolve('apps/backend/dist/console') });
   try {
     const ids = seedFixtures(server);
     const now = new Date().toISOString();

@@ -1,3 +1,5 @@
+import { SQLiteBackups } from './sqliteBackups';
+import { createSQLiteBackupRouter } from './sqliteBackupRoutes';
 import { mountSystemConsole } from './systemConsoleHosting';
 import "dotenv/config";
 import type { UITextOverrides } from '@legalio/types/uiTexts';
@@ -15,7 +17,7 @@ import {
 } from "./identity";
 import { BETTER_AUTH_ALLOWED, createAuthorizationMiddleware, isBetterAuthPathAllowed } from "./routePolicies";
 import { createOrganizationScope, filterRecords, recordVisible, normalizeDepartmentName, type RecordKind } from "./recordScope";
-import { IS_TEST_MODE, LEGACY_DATA_FILE, UPLOADS_DIR, REPOSITORY_DIR } from "./runtimePaths";
+import { IS_TEST_MODE, LEGACY_DATA_FILE, UPLOADS_DIR, REPOSITORY_DIR, APP_DATA_DIR } from "./runtimePaths";
 import {
   ApiError, appendAudit, buildTenantProjection, ensureTenantBoundarySchema, isEmptyInstall, markMigrationApplied,
   migrationApplied, readIntegration, writeIntegrationRow, patchOrganizationSettings, readOrganizationSettings, patchIntegration,
@@ -122,6 +124,8 @@ import {
 } from "./lib/cheapOcrPipeline";
 
 const app = express();
+const sqliteBackups = new SQLiteBackups(sqliteDb, APP_DATA_DIR);
+app.use(sqliteBackups.middleware);
 // This app is only ever meant to run behind a reverse proxy (nginx, Cloud
 // Run, Codespaces' tunnel — see README: "keep port 3000 closed to the
 // internet"), so trust its X-Forwarded-* headers for req.ip/req.protocol.
@@ -7547,6 +7551,7 @@ app.use("/api", createOrganizationAdminRouter({
   },
 }));
 
+app.use("/api/auth-console/backups", createSQLiteBackupRouter(sqliteDb, sqliteBackups));
 app.use("/api/auth-console", authConsoleRouter);
 app.all("/api/*", (req: express.Request, res: express.Response) => {
   res
@@ -7569,7 +7574,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   next(err);
 });
 async function startServer() {
-  mountSystemConsole(app, process.env.SYSTEM_CONSOLE_DIR || path.join(REPOSITORY_DIR, "apps/system-console/dist"));
+  mountSystemConsole(app, process.env.SYSTEM_CONSOLE_DIR || path.join(REPOSITORY_DIR, "apps/backend/dist/console"));
   let viteServer;
   // API_ONLY=true (set by `npm run dev:backend`) skips Vite entirely, for
   // running the backend as its own process against a separate `npm run

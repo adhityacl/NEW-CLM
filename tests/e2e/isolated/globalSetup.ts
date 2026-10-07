@@ -27,7 +27,7 @@ async function waitFor(url: string, child: ChildProcess, log: () => string) {
 }
 
 export default async function globalSetup() {
-  const server = await IsolatedServer.start({ port: API_PORT, systemConsoleDir: resolve('apps/system-console/dist') });
+  const server = await IsolatedServer.start({ port: API_PORT, systemConsoleDir: resolve('apps/backend/dist/console') });
   try {
     const ids = seedFixtures(server);
     await server.restart(); // rebuild the read projection from the seeded canonical rows

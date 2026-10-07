@@ -222,6 +222,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'admin-system-ai', label: t('settings.nav_ai', 'AI Model & Parser'), icon: AiIcon },
     { id: 'admin-system-smtp', label: t('tb.config_smtp', 'SMTP relay'), icon: Mail },
     { id: 'admin-system-ui-texts', label: t('tb.config_texts_short', 'UI texts'), icon: Languages },
+    { id: 'admin-system-backups', label: t('backup.title', 'Backup & Restore'), icon: Database },
     { id: 'admin-system-database', label: t('tb.config_maintenance', 'Database & reset'), icon: Database },
   ];
 

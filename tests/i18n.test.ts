@@ -38,7 +38,7 @@ test('every literal t() key used in src/ is in the catalog', () => {
     }
   };
   walk(new URL('../apps/frontend/src', import.meta.url).pathname);
-  walk(new URL('../apps/system-console/src', import.meta.url).pathname);
+  walk(new URL('../apps/backend/console/src', import.meta.url).pathname);
   walk(new URL('../packages/platform-console/src', import.meta.url).pathname);
   walk(new URL('../packages/ui-components/src', import.meta.url).pathname);
   const missing: string[] = [];

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @source "../../../packages/ui-components/src";
 @source "../../../apps/frontend/src";
-@source "../../../apps/system-console/src";
+@source "../../../apps/backend/console/src";
 @source ".";
 @source "../../../packages/shared/src";
 @import "./styles/data-tables.css";

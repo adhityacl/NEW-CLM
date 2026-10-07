@@ -1,3 +1,5 @@
+import Database from 'better-sqlite3';
+import { readFileSync } from 'node:fs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test, expect } from '@playwright/test';
@@ -65,8 +67,8 @@ test('superuser without membership navigates all tabs, supports history, mobile,
   await expect(page).toHaveURL(/tab=admin-system-dashboard$/);
   const nav = page.getByRole('navigation', { name: 'ADMIN NAVIGATION' });
   await expect(nav).toBeVisible();
-  // Reuse the approved six grouped sidebar entries and the existing content tabs.
-  for (const name of ['Dashboard', 'Google & storage', 'AI Model & Parser', 'SMTP relay', 'UI texts', 'Database & reset']) {
+  // Reuse the approved grouped sidebar entries and the existing content tabs.
+  for (const name of ['Dashboard', 'Google & storage', 'AI Model & Parser', 'SMTP relay', 'UI texts', 'Backup & Restore', 'Database & reset']) {
     await nav.getByRole('button', { name, exact: true }).click();
     await expect(page.locator('#sys-content')).not.toBeEmpty();
     await expect(page.locator('#sys-content')).not.toContainText('Select an organization');
@@ -141,7 +143,7 @@ test('legacy links redirect and organization management opens the selected works
 });
 
 test('first superuser can be created through /sys on a fresh installation', async ({ page }) => {
-  const fresh = await IsolatedServer.start({ systemConsoleDir: resolve('apps/system-console/dist') });
+  const fresh = await IsolatedServer.start({ systemConsoleDir: resolve('apps/backend/dist/console') });
   try {
     await page.goto(fresh.base + '/sys?tab=admin-system-users');
     await expect(page.getByRole('button', { name: 'Create admin account', exact: true })).toBeVisible();
@@ -207,4 +209,49 @@ test('organization forms omit tagline and editing preserves existing profile dat
     const current = await api(token, `/api/organizations/${orgId}/settings`);
     await api(token, `/api/organizations/${orgId}/settings`, { method: 'PATCH', body: { expectedVersion: current.data.version, profile: { tagline: initial.data.profile.tagline } } });
   }
+});
+
+test('backup management creates and downloads a full backup, confirms restore and returns to login', async ({ page }, testInfo) => {
+  const fresh = await IsolatedServer.start({ systemConsoleDir: resolve('apps/backend/dist/console') });
+  try {
+    await page.goto(fresh.base + '/sys?tab=admin-system-backups');
+    await page.getByLabel('Full Name', { exact: true }).fill('Backup Admin');
+    await page.getByLabel('Email', { exact: true }).fill('backup@example.test');
+    await page.getByLabel('Password', { exact: true }).fill('console-password-9');
+    await page.getByRole('button', { name: 'Create admin account', exact: true }).click();
+    await expect(page.getByRole('navigation')).toContainText('Backup & Restore');
+    const uploads = join(fresh.dir, 'data', 'uploads');
+    mkdirSync(uploads, { recursive: true });
+    writeFileSync(join(uploads, 'document.txt'), 'before backup');
+    await page.getByRole('button', { name: 'Back up now', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Backup created successfully.');
+    const row = page.getByRole('row').filter({ hasText: 'Manual' });
+    await expect(row).toContainText('Success');
+    const downloaded = page.waitForEvent('download');
+    await row.getByRole('link', { name: 'Download', exact: true }).click();
+    expect((await downloaded).suggestedFilename()).toMatch(/legalio-backup-.*\.tar\.gz$/);
+    await row.getByRole('button', { name: 'Restore', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('button', { name: 'Restore', exact: true })).toBeDisabled();
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('backup-management-mobile.png'), fullPage: true });
+    writeFileSync(join(uploads, 'document.txt'), 'after backup');
+    await row.getByRole('button', { name: 'Restore', exact: true }).click();
+    await dialog.getByLabel('Type RESTORE to confirm', { exact: true }).fill('RESTORE');
+    const restored = page.waitForResponse((response) => response.url().endsWith('/restore') && response.request().method() === 'POST');
+    await dialog.getByRole('button', { name: 'Restore', exact: true }).click();
+    expect((await restored).status()).toBe(202);
+    await expect(page.getByRole('status')).toContainText('safety backup created');
+    await fresh.kill(); fresh.db.close(); await fresh.launch();
+    fresh.db = new Database(join(fresh.dir, 'auth.db'));
+    expect(readFileSync(join(uploads, 'document.txt'), 'utf8')).toBe('before backup');
+    await page.goto(fresh.base + '/sys?tab=admin-system-backups');
+    await expect(page.getByRole('heading', { name: 'Welcome to Legalio CLM', exact: true })).toBeVisible();
+    await login(page, 'backup@example.test');
+    await expect(page.getByRole('row').filter({ hasText: 'Before restore' })).toBeVisible();
+  } finally { await fresh.stop(); }
 });

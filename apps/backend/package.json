@@ -6,11 +6,14 @@
   "scripts": {
     "dev": "API_ONLY=true tsx watch src/server.ts",
     "dev:combined": "tsx watch src/server.ts",
-    "build": "esbuild src/server.ts --bundle --platform=node --format=cjs --packages=external --alias:@legalio/shared=../../packages/shared/src --alias:@legalio/types=../../packages/types/src --sourcemap --outfile=dist/server.cjs",
+    "build": "npm run build:server && npm run build:console",
     "start": "node dist/server.cjs",
-    "lint": "node --max-old-space-size=2048 ../../node_modules/typescript/bin/tsc --noEmit",
+    "lint": "node --max-old-space-size=2048 ../../node_modules/typescript/bin/tsc --noEmit && node --max-old-space-size=2048 ../../node_modules/typescript/bin/tsc --noEmit --project console/tsconfig.json",
     "auth:generate": "better-auth generate --config ./auth.config.ts",
-    "auth:migrate": "better-auth migrate --config ./auth.config.ts"
+    "auth:migrate": "better-auth migrate --config ./auth.config.ts",
+    "build:server": "esbuild src/server.ts --bundle --platform=node --format=cjs --packages=external --alias:@legalio/shared=../../packages/shared/src --alias:@legalio/types=../../packages/types/src --sourcemap --outfile=dist/server.cjs",
+    "build:console": "vite build --config console/vite.config.ts",
+    "dev:console": "vite build --watch --config console/vite.config.ts"
   },
   "dependencies": {
     "@better-auth/infra": "^0.4.9",
@@ -26,7 +29,14 @@
     "pdf-parse": "^2.4.5",
     "google-auth-library": "^10.9.1",
     "@legalio/types": "*",
-    "@legalio/shared": "*"
+    "@legalio/shared": "*",
+    "@legalio/ui-components": "*",
+    "@tanstack/react-query": "^5.103.1",
+    "lucide-react": "^0.546.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "radix-ui": "^1.6.7",
+    "@legalio/platform-console": "*"
   },
   "devDependencies": {
     "@better-auth/cli": "^1.4.21",
@@ -40,6 +50,8 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "@legalio/ts-config": "*",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4"
   }
 }

@@ -6,7 +6,8 @@ import { dash, sentinel } from "@better-auth/infra";
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements, memberAc } from "better-auth/plugins/organization/access";
 import Database from "better-sqlite3";
-import { AUTH_DB_PATH } from "../runtimePaths";
+import { applyPendingRestore } from '../sqliteBackups';
+import { AUTH_DB_PATH, APP_DATA_DIR } from "../runtimePaths";
 
 const googleClientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
@@ -101,6 +102,7 @@ const orgRoles = {
 };
 
 // --- Database & Schema Initialization ---
+applyPendingRestore(AUTH_DB_PATH, APP_DATA_DIR);
 export const sqliteDb = new Database(AUTH_DB_PATH);
 sqliteDb.pragma("journal_mode = WAL");
 sqliteDb.pragma("foreign_keys = ON");

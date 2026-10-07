@@ -82,7 +82,7 @@
 
 ## Standalone superuser console
 
-Open **http://127.0.0.1:3000/sys?tab=admin-system-dashboard** to manage the platform. Express serves the built console even with `API_ONLY=true` or in production, so stopping the main frontend does not remove console access. The backend must remain running. `npm run dev` and `npm run dev:backend` build the console before startup; `npm run dev:sys` watches its source during development. Production builds and the backend Docker image include `apps/system-console/dist/`.
+Open **http://127.0.0.1:3000/sys?tab=admin-system-dashboard** to manage the platform. Express serves the built console even with `API_ONLY=true` or in production, so stopping the main frontend does not remove console access. The backend must remain running. `npm run dev` and `npm run dev:backend` build the console before startup; `npm run dev:sys` watches its source during development. Production builds and the backend Docker image include `apps/backend/dist/console/`.
 
 - `/app` is the organization workspace; `/sys` is the superuser console. Legacy `/app?tab=admin-system-*` links redirect to `/sys`.
 - Both applications reuse the approved login, header, sidebar components and styles. The console uses the app favicon, and its Users and Sessions tables share the same presentation.
@@ -97,7 +97,7 @@ See [architecture and operating instructions](docs/architecture/system-console.m
 
 **Latest updates**
 
-- **Monorepo**: `apps/frontend`, `apps/backend` and the standalone `apps/system-console`, reusable `packages/*`, npm workspaces and Turborepo build/type-check caching. Frontend and backend have separate Dockerfiles; the backend image includes the console; GitHub Actions selects verification jobs from changed paths.
+- **Monorepo**: `apps/frontend` and `apps/backend` (including the `/sys` console), reusable `packages/*`, npm workspaces and Turborepo build/type-check caching. Frontend and backend have separate Dockerfiles; the backend image includes the console; GitHub Actions selects verification jobs from changed paths.
 - **Tenant boundaries**: platform authority and organization membership are separate; tenant settings and administration use organization-scoped capabilities and shared API contracts.
 - **Shared UI dictionary**: System Admin text edits, CSV imports and resets now reach other users without reloading their page, with server persistence and retryable save errors.
 - **Organization UI**: synchronized default currency, compact logo upload layout, circular logos, a 44 × 44 px sidebar avatar, and simplified Tree View / Table View labels.
@@ -156,7 +156,7 @@ See [architecture and operating instructions](docs/architecture/system-console.m
 | Layer | Technology |
 | --- | --- |
 | 🎨 Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, Radix UI primitives (`packages/ui-components/src/`), TipTap, Recharts, TanStack Query |
-| 🖥️ Backend | Express and TypeScript, API-only (`apps/backend/src/server.ts`), no frontend assets. In development Vite still runs inside Express as middleware for convenience (one server, one port); in production the frontend build is served separately (see [Deploying to a new server](#deploying-to-a-new-server)). |
+| 🖥️ Backend | Express and TypeScript (`apps/backend/src/server.ts`), serving API endpoints and the built `/sys` console. In development Vite still runs inside Express as middleware for convenience (one server, one port); in production the frontend build is served separately (see [Deploying to a new server](#deploying-to-a-new-server)). |
 | 🔐 Auth | Better Auth (sessions, organizations, teams) plus a custom RBAC engine (`apps/backend/src/rbac.ts`) |
 | 🧱 Monorepo | npm workspaces (`apps/*`, `packages/*`) and Turborepo 2 for build and type-check tasks |
 | 💾 Data | SQLite via `better-sqlite3`, stored in one file: `auth.db` |
@@ -171,12 +171,12 @@ See [architecture and operating instructions](docs/architecture/system-console.m
 NEW-CLM/
 ├── .github/workflows/ci.yml
 ├── apps/
-│   ├── backend/                 # Express API
-│   │   ├── src/
+│   ├── backend/                 # Express API + System Console
+│   │   ├── src/                  # API/server
+│   │   ├── console/              # React + Vite UI served at /sys
 │   │   ├── .env.example
 │   │   ├── package.json
 │   │   └── Dockerfile
-│   ├── system-console/          # Independent superuser UI served at /sys
 │   └── frontend/                # React + Vite
 │       ├── src/
 │       ├── public/
@@ -205,24 +205,24 @@ Backend environment lives in `apps/backend/.env`; frontend public variables belo
 
 ## Workspace and build commands
 
-Install dependencies once at the repository root. The root lockfile covers all three apps and all shared packages.
+Install dependencies once at the repository root. The root lockfile covers both apps and all shared packages.
 
 | Command | Behavior |
 | --- | --- |
 | `npm run build` | `turbo run build`; builds the app dependency graph and caches each app's `dist/**` output. |
 | `npm run lint` | `turbo run lint --concurrency=1`, followed by a root TypeScript check. |
-| `npm run build:sys` | Builds the standalone superuser console in `apps/system-console/dist/`. |
+| `npm run build:sys` | Builds the standalone superuser console in `apps/backend/dist/console/`. |
 | `npm run dev:sys` | Watches and rebuilds the console served by the backend at `/sys`. |
 | `npm run test:system-console` | Checks standalone hosting and legacy route redirects. |
 | `npm run test:e2e:sys` | Tests the console against an isolated API-only backend without the workspace frontend. |
 | `npm run build:frontend` | Builds only `apps/frontend/dist/` directly through its workspace script. |
-| `npm run build:backend` | Builds only `apps/backend/dist/server.cjs` directly through its workspace script. |
+| `npm run build:backend` | Builds `apps/backend/dist/server.cjs` and `apps/backend/dist/console/` together. |
 | `npm run dev` | Combined Express + Vite development server on port 3000. |
 | `npm test` | Root `node:test` suites through `tsx`; run separately from Turbo. |
 
 Turbo reuses local cached results when inputs are unchanged. Shared TypeScript configuration is a global cache dependency, and `VITE_*` variables participate in the build cache key. `dev` is configured as persistent with caching disabled, but the root development commands currently invoke workspace scripts directly. To run an app through Turbo, use `npx turbo run build --filter=@legalio/frontend` or `--filter=@legalio/backend`.
 
-CI uses [scripts/affected-apps.mjs](scripts/affected-apps.mjs) to select applications by changed paths, then uses Turbo filters for each selected app. Shared contracts/configuration trigger all three apps; `packages/platform-console/` and `packages/ui-components/` trigger both UI apps. Documentation-only changes skip application verification. CI currently verifies code and builds; deployment is configured separately.
+CI uses [scripts/affected-apps.mjs](scripts/affected-apps.mjs) to select applications by changed paths, then uses Turbo filters for each selected app. Shared contracts/configuration trigger both apps; `packages/platform-console/` and `packages/ui-components/` trigger both apps. Documentation-only changes skip application verification. CI currently verifies code and builds; deployment is configured separately.
 
 ---
 
@@ -315,7 +315,7 @@ npm run test:e2e:fixtures  # mocked-API UI regressions
 npm run test:e2e:tenant-boundaries  # live browser suite plus workspace runtime checksums
 ```
 
-GitHub Actions selects frontend/backend/system-console jobs from changed paths. Shared contracts/configuration trigger all three; shared UI-package changes trigger both UI apps. Each job checks its dependency graph, runs the relevant tests and builds only its application; see [.github/workflows/ci.yml](.github/workflows/ci.yml). Browser tests remain available through the commands above.
+GitHub Actions selects frontend/backend jobs from changed paths. Shared contracts/configuration trigger both; shared UI-package changes trigger both apps. Each job checks its dependency graph, runs the relevant tests and builds only its application; see [.github/workflows/ci.yml](.github/workflows/ci.yml). Browser tests remain available through the commands above.
 
 Live tenant-boundaries tests use temporary databases/storage and synthetic fixtures instead of the workspace database. `test:tenant-boundaries` and `test:e2e:tenant-boundaries` also compare workspace runtime checksums before and after running. Mocked-API browser tests serve the frontend without opening the application database.
 
@@ -473,6 +473,16 @@ All application data lives in `auth.db`, including users, organizations, contrac
 ---
 
 ## Backups and updates
+
+Superusers can open **System Admin → Backup & Restore** at `/sys?tab=admin-system-backups`.
+
+- **Back up now** creates an online SQLite snapshot plus local `uploads/`, pauses new application requests and waits for existing requests to finish. History shows creation time, archive size, status and safety backups.
+- **Download** streams a `.tar.gz` archive containing `auth.db`, `uploads/` and a SHA-256 manifest. Local backups are stored under `APP_DATA_DIR/backups/` (repository-root `backups/` by default); they are not publicly served or encrypted. Keep a downloaded copy securely off the server. Remote Google Drive files are not downloaded into these backups.
+- **Restore** selects an existing successful local backup, requires typing `RESTORE`, checks checksums, SQLite integrity and matching schema, then creates a safety backup. It replaces the whole platform database and uploaded files, including all organizations. Restoration runs before the database opens on the next backend start; all sessions are invalidated.
+- The backend stops after accepting restore. Docker's restart policy or a service supervisor must restart it. If running manually (including a development watcher), start it again. For systemd, use `Restart=always` if automatic restart after restore is required. Sign in using an account from the restored backup.
+- This implementation requires one backend process with exclusive ownership of its SQLite database and uploads, and the standard `tar` command (included in the backend image). Scheduling, automatic retention, external archive import and remote storage are not included. Failed staged restores prevent startup until corrected; the pending marker and safety backup remain available for recovery.
+
+The commands below remain available for manual backup:
 
 **Backup** (safe while the app is running, because it uses SQLite's online backup):
 
